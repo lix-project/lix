@@ -9,6 +9,7 @@
 #include "lix/libutil/compute-levels.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/json.hh"
+#include "lix/libutil/c-calls.hh"
 
 #include <algorithm>
 #include <mutex>
@@ -403,8 +404,7 @@ void initPlugins()
         for (const auto & file : pluginFiles) {
             /* handle is purposefully leaked as there may be state in the
                DSO needed by the action of the plugin. */
-            void *handle =
-                dlopen(file.c_str(), RTLD_LAZY | RTLD_LOCAL);
+            void * handle = dlopen(requireCString(file), RTLD_LAZY | RTLD_LOCAL);
             if (!handle) {
                 printTaggedWarning(
                     "could not dynamically open plugin file '%s', skipping it: %s", file, dlerror()

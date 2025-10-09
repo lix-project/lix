@@ -6,6 +6,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/local-store.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libexpr/eval.hh"
@@ -59,7 +60,7 @@ void runProgramInStore(ref<Store> store,
         };
         for (auto & arg : args) helperArgs.push_back(arg);
 
-        execv(getSelfExe().value_or("nix").c_str(), stringsToCharPtrs(helperArgs).data());
+        sys::execv(getSelfExe().value_or("nix"), helperArgs);
 
         throw SysError("could not execute chroot helper");
     }
@@ -68,9 +69,9 @@ void runProgramInStore(ref<Store> store,
         setPersonality(*system);
 
     if (useSearchPath == UseSearchPath::Use)
-        execvp(program.c_str(), stringsToCharPtrs(args).data());
+        sys::execvp(program, args);
     else
-        execv(program.c_str(), stringsToCharPtrs(args).data());
+        sys::execv(program, args);
 
     throw SysError("unable to execute '%s'", program);
 }
@@ -147,8 +148,8 @@ struct CmdShell : InstallablesCommand, MixEnvironment
         auto unixPath = tokenizeString<Strings>(getEnv("PATH").value_or(""), ":");
         unixPath.insert(unixPath.begin(), pathAdditions.begin(), pathAdditions.end());
         auto unixPathString = concatStringsSep(":", unixPath);
-        setenv("PATH", unixPathString.c_str(), 1);
-        setenv("IN_NIX_SHELL", ignoreEnvironment ? "pure" : "impure", 1);
+        (void) sys::setenv("PATH", unixPathString, 1);
+        (void) sys::setenv("IN_NIX_SHELL", ignoreEnvironment ? "pure" : "impure", 1);
 
         Strings args;
         for (auto & arg : command) args.push_back(arg);
@@ -262,8 +263,9 @@ void chrootHelper(int argc, char * * argv)
 
         createDirs(tmpDir + storeDir);
 
-        if (mount(realStoreDir.c_str(), (tmpDir + storeDir).c_str(), "", MS_BIND, 0) == -1)
+        if (sys::mount(realStoreDir, (tmpDir + storeDir), "", MS_BIND, 0) == -1) {
             throw SysError("mounting '%s' on '%s'", realStoreDir, storeDir);
+        }
 
         for (auto entry : readDirectory("/")) {
             auto src = "/" + entry.name;
@@ -271,10 +273,12 @@ void chrootHelper(int argc, char * * argv)
             if (pathExists(dst)) continue;
             auto st = lstat(src);
             if (S_ISDIR(st.st_mode)) {
-                if (mkdir(dst.c_str(), 0700) == -1)
+                if (sys::mkdir(dst, 0700) == -1) {
                     throw SysError("creating directory '%s'", dst);
-                if (mount(src.c_str(), dst.c_str(), "", MS_BIND | MS_REC, 0) == -1)
+                }
+                if (sys::mount(src, dst, "", MS_BIND | MS_REC, 0) == -1) {
                     throw SysError("mounting '%s' on '%s'", src, dst);
+                }
             } else if (S_ISLNK(st.st_mode))
                 createSymlink(readLink(src), dst);
         }
@@ -283,14 +287,16 @@ void chrootHelper(int argc, char * * argv)
         if (!cwd) throw SysError("getting current directory");
         Finally freeCwd([&]() { free(cwd); });
 
-        if (chroot(tmpDir.c_str()) == -1)
+        if (sys::chroot(tmpDir) == -1) {
             throw SysError("chrooting into '%s'", tmpDir);
+        }
 
-        if (chdir(cwd) == -1)
+        if (sys::chdir(cwd) == -1) {
             throw SysError("chdir to '%s' in chroot", cwd);
-    } else
-        if (mount(realStoreDir.c_str(), storeDir.c_str(), "", MS_BIND, 0) == -1)
-            throw SysError("mounting '%s' on '%s'", realStoreDir, storeDir);
+        }
+    } else if (sys::mount(realStoreDir, storeDir, "", MS_BIND, 0) == -1) {
+        throw SysError("mounting '%s' on '%s'", realStoreDir, storeDir);
+    }
 
     writeFile("/proc/self/setgroups", "deny");
     writeFile("/proc/self/uid_map", fmt("%d %d %d", uid, uid, 1));
@@ -299,7 +305,7 @@ void chrootHelper(int argc, char * * argv)
     if (system != "")
         setPersonality(system);
 
-    execvp(cmd.c_str(), stringsToCharPtrs(args).data());
+    sys::execvp(cmd, args);
 
     throw SysError("unable to exec '%s'", cmd);
 

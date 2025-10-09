@@ -1,4 +1,5 @@
 #include "lix/libstore/build/child.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/globals.hh"
@@ -56,7 +57,7 @@ try {
             throw SysError("dupping to-hook read side");
         }
 
-        execv(buildHook.c_str(), stringsToCharPtrs(args).data());
+        sys::execv(buildHook, args);
 
         throw SysError("executing '%s'", buildHook);
     });

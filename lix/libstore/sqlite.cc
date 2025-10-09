@@ -1,4 +1,5 @@
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libstore/globals.hh"
@@ -71,7 +72,8 @@ SQLite::SQLite(const Path & path, SQLiteOpenMode mode)
     if (mode == SQLiteOpenMode::Normal) flags |= SQLITE_OPEN_CREATE;
     auto uri = "file:" + percentEncode(path) + "?immutable=" + (immutable ? "1" : "0");
     sqlite3 * db;
-    int ret = sqlite3_open_v2(uri.c_str(), &db, SQLITE_OPEN_URI | flags, vfs);
+    // NOLINTNEXTLINE(lix-unsafe-c-calls): vfs is safe
+    int ret = sqlite3_open_v2(requireCString(uri), &db, SQLITE_OPEN_URI | flags, vfs);
     if (ret != SQLITE_OK) {
         const char * err = sqlite3_errstr(ret);
         throw Error("cannot open SQLite database '%s': %s", path, err);
@@ -108,8 +110,9 @@ void SQLite::isCache()
 void SQLite::exec(const std::string & stmt, NeverAsync)
 {
     retrySQLite([&]() {
-        if (sqlite3_exec(db.get(), stmt.c_str(), 0, 0, 0) != SQLITE_OK)
+        if (sqlite3_exec(db.get(), requireCString(stmt), 0, 0, 0) != SQLITE_OK) {
             SQLiteError::throw_(db.get(), "executing SQLite statement '%s'", stmt);
+        }
     });
 }
 
@@ -145,8 +148,9 @@ SQLiteStmt::SQLiteStmt(sqlite3 * db, const std::string & sql)
 {
     checkInterrupt();
     sqlite3_stmt * stmt;
-    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (sqlite3_prepare_v2(db, requireCString(sql), -1, &stmt, 0) != SQLITE_OK) {
         SQLiteError::throw_(db, "creating statement '%s'", sql);
+    }
     this->stmt = {stmt, {this}};
     this->db = db;
     this->sql = sql;
@@ -179,6 +183,7 @@ SQLiteStmt::Use::~Use()
 SQLiteStmt::Use & SQLiteStmt::Use::operator () (std::string_view value, bool notNull)
 {
     if (notNull) {
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): nul bytes are allowed, hence the length arg
         if (sqlite3_bind_text(
                 stmt.stmt.get(), curArg++, value.data(), value.length(), SQLITE_TRANSIENT
             )
@@ -272,6 +277,7 @@ SQLiteTxn::SQLiteTxn(sqlite3 * db, SQLiteTxnType type)
         sql = "begin exclusive;";
         break;
     }
+    // NOLINTNEXTLINE(lix-unsafe-c-calls): only immediate strings here
     if (sqlite3_exec(db, sql, 0, 0, 0) != SQLITE_OK)
         SQLiteError::throw_(db, "starting transaction");
     this->db.reset(db);

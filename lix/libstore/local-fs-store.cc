@@ -3,6 +3,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/result.hh"
@@ -27,7 +28,7 @@ try {
     auto realPath = TRY_AWAIT(toRealPath(path));
 
     struct stat st;
-    if (lstat(realPath.c_str(), &st)) {
+    if (sys::lstat(realPath, &st)) {
         if (errno == ENOENT || errno == ENOTDIR) {
             co_return {Type::tMissing, 0, false};
         }

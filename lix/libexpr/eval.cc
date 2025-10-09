@@ -2603,6 +2603,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return v1.str() == v2.str();
 
         case nPath:
+            // NOLINTNEXTLINE(lix-unsafe-c-calls)
             return strcmp(v1.string().content, v2.string().content) == 0;
 
         case nNull:

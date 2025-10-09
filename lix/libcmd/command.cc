@@ -5,6 +5,8 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libcmd/repl.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
+#include "lix/libutil/error.hh"
 
 extern char * * environ __attribute__((weak));
 
@@ -303,8 +305,10 @@ void MixEnvironment::setEnviron() {
             throw UsageError("--unset does not make sense with --ignore-environment");
 
         for (const auto & var : keep) {
-            auto val = getenv(var.c_str());
-            if (val) stringsEnv.emplace_back(fmt("%s=%s", var.c_str(), val));
+            auto val = sys::getenv(var);
+            if (val) {
+                stringsEnv.emplace_back(fmt("%s=%s", var, val));
+            }
         }
 
         vectorEnv = stringsToCharPtrs(stringsEnv);
@@ -314,7 +318,7 @@ void MixEnvironment::setEnviron() {
             throw UsageError("--keep does not make sense without --ignore-environment");
 
         for (const auto & var : unset)
-            unsetenv(var.c_str());
+            (void) sys::unsetenv(var);
     }
 }
 

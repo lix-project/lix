@@ -1,6 +1,7 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/globals.hh"
@@ -163,7 +164,7 @@ struct curlFileTransfer : public FileTransfer
             }
             for (auto it = options.headers.begin(); it != options.headers.end(); ++it){
                 if (auto next = curl_slist_append(
-                        requestHeaders.get(), fmt("%s: %s", it->first, it->second).c_str()
+                        requestHeaders.get(), requireCString(fmt("%s: %s", it->first, it->second))
                     );
                     next != nullptr)
                 {
@@ -788,7 +789,7 @@ struct curlFileTransfer : public FileTransfer
                 throw std::bad_alloc();
             }
             KJ_DEFER(curl_url_cleanup(url));
-            curl_url_set(url, CURLUPART_URL, uri.c_str(), 0);
+            curl_url_set(url, CURLUPART_URL, requireCString(uri), 0);
             char * path = nullptr;
             curl_url_get(url, CURLUPART_PATH, &path, 0);
             auto decoded = kj::decodeUriComponent(kj::arrayPtr(path, path + strlen(path)));
@@ -796,7 +797,7 @@ struct curlFileTransfer : public FileTransfer
                 Path fsPath(decoded.cStr(), decoded.size());
                 FileTransferResult metadata{.effectiveUri = std::string("file://") + path};
                 struct stat st;
-                AutoCloseFD fd(open(fsPath.c_str(), O_RDONLY));
+                AutoCloseFD fd(sys::open(fsPath, O_RDONLY));
                 if (!fd || fstat(fd.get(), &st) != 0) {
                     throw FileTransferError(
                         NotFound, std::nullopt, "%s: file not found (%s)", fsPath, strerror(errno)

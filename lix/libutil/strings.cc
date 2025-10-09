@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/references.hh"
 #include <boost/lexical_cast.hpp>
@@ -9,7 +10,9 @@ std::vector<char *> stringsToCharPtrs(const Strings & ss)
 {
     std::vector<char *> res;
     // This is const cast since this exists for OS APIs that want char *
-    for (auto & s : ss) res.push_back(const_cast<char *>(s.data()));
+    for (auto & s : ss) {
+        res.push_back(const_cast<char *>(requireCString(s).asCStr()));
+    }
     res.push_back(0);
     return res;
 }

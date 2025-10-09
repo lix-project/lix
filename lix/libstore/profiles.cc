@@ -1,6 +1,7 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libutil/strings.hh"
@@ -114,8 +115,9 @@ try {
 
 static void removeFile(const Path & path)
 {
-    if (remove(path.c_str()) == -1)
+    if (sys::remove(path) == -1) {
         throw SysError("cannot unlink '%1%'", path);
+    }
 }
 
 

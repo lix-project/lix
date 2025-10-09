@@ -12,6 +12,7 @@ sources = files(
   'HasPrefixSuffix.cc',
   'LixClangTidyChecks.cc',
   'NeverAsync.cc',
+  'UnsafeCCalls.cc',
 )
 
 lix_clang_tidy = shared_module('lix-clang-tidy', sources,

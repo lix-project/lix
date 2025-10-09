@@ -13,6 +13,7 @@
 #include <fcntl.h>
 
 #include "lix/libutil/archive.hh"
+#include "c-calls.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/config.hh"
@@ -40,7 +41,7 @@ PathFilter defaultPathFilter = [](const Path &) { return true; };
 
 static WireFormatGenerator dumpContents(Path path, off_t size)
 {
-    AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
+    AutoCloseFD fd{sys::open(path, O_RDONLY | O_CLOEXEC)};
     if (!fd) throw SysError("opening file '%1%'", path);
 
     std::vector<char> buf(65536);
@@ -316,6 +317,7 @@ struct CaseInsensitiveCompare
 {
     bool operator() (const std::string & a, const std::string & b) const
     {
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): valid pathnames never contain nuls
         return strcasecmp(a.c_str(), b.c_str()) < 0;
     }
 };
@@ -1032,8 +1034,9 @@ public:
     {
         auto name = maybeCaseHackFilename(name_);
         Path p = dstPath + name;
-        if (mkdir(p.c_str(), 0777) == -1)
+        if (sys::mkdir(p, 0777) == -1) {
             throw SysError("creating directory '%1%'", p);
+        }
         return make_box_ptr<NARRestoreVisitor>(p + "/", useCaseHack);
     };
 
@@ -1041,7 +1044,7 @@ public:
     {
         auto name = maybeCaseHackFilename(name_);
         Path p = dstPath + name;
-        AutoCloseFD fd = AutoCloseFD{open(p.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666)};
+        AutoCloseFD fd = sys::open(p, O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0666);
         if (!fd) throw SysError("creating file '%1%'", p);
 
         return make_box_ptr<MyFileHandle>(std::move(fd), size, executable);

@@ -56,6 +56,7 @@ using NdString = std::unique_ptr<const char, decltype(&lixdoc_free_string)>;
  */
 NdString lambdaDocsForPos(SourcePath const path, nix::Pos const &pos) {
   std::string const file = path.to_string();
+  // NOLINTNEXTLINE(lix-unsafe-c-calls): paths are safe
   return NdString{lixdoc_get_function_docs(file.c_str(), pos.line, pos.column), &lixdoc_free_string};
 }
 

@@ -1,5 +1,6 @@
 #include "lix/libstore/temporary-dir.hh"
 
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/globals.hh"
 
@@ -15,7 +16,7 @@ std::pair<AutoCloseFD, Path> createTempFile(const Path & prefix)
 {
     Path tmpl(defaultTempDir() + "/" + prefix + ".XXXXXX");
     // FIXME: use O_TMPFILE.
-    AutoCloseFD fd(mkstemp(tmpl.data()));
+    AutoCloseFD fd(sys::mkstemp(tmpl));
     if (!fd)
         throw SysError("creating temporary file '%s'", tmpl);
     closeOnExec(fd.get());

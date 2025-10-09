@@ -1,4 +1,5 @@
 #include "async-io.hh"
+#include "c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/finally.hh"
@@ -353,8 +354,9 @@ RunningProgram runProgram2(const RunOptions & options)
             }
         }
 
-        if (options.chdir && chdir((*options.chdir).c_str()) == -1)
+        if (options.chdir && sys::chdir(*options.chdir) == -1) {
             throw SysError("chdir failed");
+        }
 
 #if __linux__
         if (!options.caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
@@ -414,12 +416,12 @@ RunningProgram runProgram2(const RunOptions & options)
 
         restoreProcessContext();
 
-        if (options.searchPath)
-            execvp(options.program.c_str(), stringsToCharPtrs(args_).data());
+        if (options.searchPath) {
+            sys::execvp(options.program, args_);
             // This allows you to refer to a program with a pathname relative
             // to the PATH variable.
-        else
-            execv(options.program.c_str(), stringsToCharPtrs(args_).data());
+        } else
+            sys::execv(options.program, args_);
 
         throw SysError("executing '%1%'", options.program);
     }, processOptions)};

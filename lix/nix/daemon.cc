@@ -16,6 +16,7 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/archive.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libutil/finally.hh"
@@ -153,8 +154,11 @@ static bool matchUser(const std::string & user, const std::string & group, const
 
     for (auto & i : users)
         if (i.substr(0, 1) == "@") {
-            if (group == i.substr(1)) return true;
-            struct group * gr = getgrnam(i.c_str() + 1);
+            auto rest = i.substr(1);
+            if (group == rest) {
+                return true;
+            }
+            struct group * gr = sys::getgrnam(rest);
             if (!gr) continue;
             if (matchUser(user, *gr)) return true;
         }

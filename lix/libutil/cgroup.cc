@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include "error.hh"
 #include "file-descriptor.hh"
 #include "logging.hh"
@@ -26,7 +27,7 @@ static bool isCgroupDelegated(const Path & path)
 {
     char delegate_xattr;
 
-    if (getxattr(path.c_str(), "user.delegate", &delegate_xattr, sizeof(delegate_xattr)) >= 1) {
+    if (sys::getxattr(path, "user.delegate", &delegate_xattr, sizeof(delegate_xattr)) >= 1) {
         if (delegate_xattr != '1') {
             throw Error("Unexpected `user.delegate` xattr: '%c'", delegate_xattr);
         }
@@ -130,7 +131,7 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
     // has been excised. until then a timeout on group death will have to do.
     {
         auto eventsFile = aliveCgroup / "cgroup.events";
-        AutoCloseFD events(open(eventsFile.c_str(), O_RDONLY));
+        AutoCloseFD events(sys::open(eventsFile, O_RDONLY));
         if (!events) {
             throw SysError("failed to open %s", eventsFile);
         }
@@ -169,7 +170,7 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
 
     Result<CgroupStats> stats = readStatistics(aliveCgroup);
 
-    if (rmdir(aliveCgroup.c_str()) == -1) {
+    if (sys::rmdir(aliveCgroup) == -1) {
         throw SysError("deleting cgroup '%s' at '%s'", name, aliveCgroup);
     }
 
@@ -316,13 +317,13 @@ AutoDestroyCgroup::AutoDestroyCgroup(
 {
     auto path = std::get<std::filesystem::path>(cgroup_);
 
-    if (mkdir(path.c_str(), 0755) == -1) {
+    if (sys::mkdir(path, 0755) == -1) {
         throw SysError(
             "cannot create the top-level directory at '%s' for cgroup '%s'", path, name_
         );
     }
 
-    if (chown(path.c_str(), uid, gid) == -1) {
+    if (sys::chown(path, uid, gid) == -1) {
         throw SysError(
             "cannot delegate the top-level directory '%s' from cgroup '%s' to user uid=%d,gid=%d",
             path,
@@ -332,9 +333,9 @@ AutoDestroyCgroup::AutoDestroyCgroup(
         );
     }
 
-    AutoCloseFD cgroupFd{open(path.c_str(), O_PATH | O_NOFOLLOW)};
+    AutoCloseFD cgroupFd{sys::open(path, O_PATH | O_NOFOLLOW)};
     for (auto node : {"procs", "threads", "subtree_control"}) {
-        if (fchownat(cgroupFd.get(), fmt("cgroup.%s", node).c_str(), uid, gid, 0) == -1) {
+        if (sys::fchownat(cgroupFd.get(), fmt("cgroup.%s", node), uid, gid, 0) == -1) {
             throw SysError(
                 "cannot delegate '%s' from cgroup '%s' to user uid=%d,gid=%d", node, name_, uid, gid
             );

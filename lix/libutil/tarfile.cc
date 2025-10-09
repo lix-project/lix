@@ -4,6 +4,7 @@
 
 #include "async-io.hh"
 #include "file-descriptor.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -28,6 +29,7 @@ static ssize_t callback_read(struct archive * archive, void * _self, const void 
     } catch (EndOfFile &) {
         return 0;
     } catch (std::exception & err) { // NOLINT(lix-foreign-exceptions)
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): what() is a c string
         archive_set_error(archive, EIO, "Source threw exception: %s", err.what());
         return -1;
     }
@@ -71,7 +73,10 @@ TarArchive::TarArchive(const Path & path)
     archive_read_support_filter_all(archive);
     archive_read_support_format_all(archive);
     archive_read_set_option(archive, nullptr, "mac-ext", nullptr);
-    check(archive_read_open_filename(archive, path.c_str(), 16384), "failed to open archive: %s");
+    check(
+        archive_read_open_filename(archive, requireCString(path), 16384),
+        "failed to open archive: %s"
+    );
 }
 
 void TarArchive::close()
@@ -86,6 +91,8 @@ TarArchive::~TarArchive()
 
 static void extract_archive(TarArchive & archive, const Path & destDir)
 {
+    requireCString(destDir);
+
     int flags = ARCHIVE_EXTRACT_TIME
         | ARCHIVE_EXTRACT_SECURE_SYMLINKS
         | ARCHIVE_EXTRACT_SECURE_NODOTDOT;
@@ -102,6 +109,7 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
         else
             archive.check(r);
 
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): destDir is checked, name is a c string
         archive_entry_copy_pathname(entry,
             (destDir + "/" + name).c_str());
 
@@ -112,6 +120,7 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
         // Patch hardlink path
         const char *original_hardlink = archive_entry_hardlink(entry);
         if (original_hardlink) {
+            // NOLINTNEXTLINE(lix-unsafe-c-calls): destDir is checked, name is a c string
             archive_entry_copy_hardlink(entry,
                 (destDir + "/" + original_hardlink).c_str());
         }

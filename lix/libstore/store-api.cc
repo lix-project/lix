@@ -7,6 +7,7 @@
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/logging.hh"
@@ -1366,7 +1367,7 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
         auto stateDir = getOr(params, "state", settings.nixStateDir);
         if (allowDaemon == AllowDaemon::Allow && pathExists(settings.nixDaemonSocketFile)) {
             return make_ref<UDSRemoteStore>(params);
-        } else if (access(stateDir.c_str(), R_OK | W_OK) == 0) {
+        } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
             return LocalStore::makeLocalStore(params);
         }
 #if __linux__

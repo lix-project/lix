@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/unix-domain-socket.hh"
@@ -29,7 +30,7 @@ AutoCloseFD createUnixDomainSocket(const Path & path, mode_t mode)
 
     bind(fdSocket.get(), path);
 
-    chmodPath(path.c_str(), mode);
+    chmodPath(path, mode);
 
     if (listen(fdSocket.get(), 100) == -1)
         throw SysError("cannot listen on socket '%1%'", path);
@@ -69,8 +70,9 @@ static void bindConnectProcHelper(
             try {
                 pipe.readSide.close();
                 Path dir = dirOf(path);
-                if (chdir(dir.c_str()) == -1)
+                if (sys::chdir(dir) == -1) {
                     throw SysError("chdir to '%s' failed", dir);
+                }
                 std::string base(baseNameOf(path));
                 if (base.size() + 1 >= sizeof(addr.sun_path))
                     throw Error("socket path '%s' is too long", base);
@@ -102,7 +104,7 @@ static void bindConnectProcHelper(
 
 void bind(int fd, const std::string & path)
 {
-    unlink(path.c_str());
+    (void) sys::unlink(path);
 
     bindConnectProcHelper("bind", ::bind, fd, path);
 }

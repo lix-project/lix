@@ -1,9 +1,12 @@
+#include <sys/mount.h>
 #include <sys/time.h>
 #include <cstdlib>
 #include <filesystem>
 #include <atomic>
 #include <random>
+#include <sys/xattr.h>
 
+#include "c-calls.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -106,7 +109,7 @@ Path canonPath(PathView path, bool resolveSymlinks)
 Path realPath(Path const & path)
 {
     // With nullptr, realpath() malloc's and returns a new c-string.
-    char * resolved = realpath(path.c_str(), nullptr);
+    char * resolved = realpath(requireCString(path), nullptr);
     int saved = errno;
     if (resolved == nullptr) {
         throw SysError(saved, "cannot get realpath for '%s'", path);
@@ -138,8 +141,9 @@ Path tildePath(Path const & path, const std::optional<Path> & home)
 
 void chmodPath(const Path & path, mode_t mode)
 {
-    if (chmod(path.c_str(), mode) == -1)
+    if (sys::chmod(path, mode) == -1) {
         throw SysError("setting permissions on '%s'", path);
+    }
 }
 
 Path dirOf(const PathView path)
@@ -199,8 +203,9 @@ bool isDirOrInDir(std::string_view path, std::string_view dir)
 struct stat stat(const Path & path)
 {
     struct stat st;
-    if (stat(path.c_str(), &st))
+    if (sys::stat(path, &st)) {
         throw SysError("getting status of '%1%'", path);
+    }
     return st;
 }
 
@@ -208,16 +213,16 @@ struct stat stat(const Path & path)
 struct stat lstat(const Path & path)
 {
     struct stat st;
-    if (lstat(path.c_str(), &st))
+    if (sys::lstat(path, &st)) {
         throw SysError("getting status of '%1%'", path);
+    }
     return st;
 }
 
 std::optional<struct stat> maybeStat(const Path & path)
 {
     std::optional<struct stat> st{std::in_place};
-    if (stat(path.c_str(), &*st))
-    {
+    if (sys::stat(path, &*st)) {
         if (errno == ENOENT || errno == ENOTDIR)
             st.reset();
         else
@@ -229,8 +234,7 @@ std::optional<struct stat> maybeStat(const Path & path)
 std::optional<struct stat> maybeLstat(const Path & path)
 {
     std::optional<struct stat> st{std::in_place};
-    if (lstat(path.c_str(), &*st))
-    {
+    if (sys::lstat(path, &*st)) {
         if (errno == ENOENT || errno == ENOTDIR)
             st.reset();
         else
@@ -271,7 +275,7 @@ Path readLink(const Path & path)
     std::vector<char> buf;
     for (ssize_t bufSize = PATH_MAX/4; true; bufSize += bufSize/2) {
         buf.resize(bufSize);
-        ssize_t rlSize = readlink(path.c_str(), buf.data(), bufSize);
+        ssize_t rlSize = sys::readlink(path, buf.data(), bufSize);
         if (rlSize == -1)
             if (errno == EINVAL)
                 throw Error("'%1%' is not a symlink", path);
@@ -317,7 +321,7 @@ static DirEntries readDirectory(DIR *dir, const Path & path, bool interruptible)
 
 static DirEntries readDirectory(const Path & path, bool interruptible)
 {
-    AutoCloseDir dir(opendir(path.c_str()));
+    AutoCloseDir dir(sys::opendir(path));
     if (!dir) throw SysError("opening directory '%1%'", path);
 
     return readDirectory(dir.get(), path, interruptible);
@@ -341,7 +345,7 @@ unsigned char getFileType(const Path & path)
 
 std::string readFile(const Path & path)
 {
-    AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
+    AutoCloseFD fd{sys::open(path, O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     return readFile(fd.get());
@@ -350,7 +354,7 @@ std::string readFile(const Path & path)
 
 Generator<Bytes> readFileSource(const Path & path)
 {
-    AutoCloseFD fd{open(path.c_str(), O_RDONLY | O_CLOEXEC)};
+    AutoCloseFD fd{sys::open(path, O_RDONLY | O_CLOEXEC)};
     if (!fd)
         throw SysError("opening file '%s'", path);
     return [](AutoCloseFD fd) -> Generator<Bytes> {
@@ -360,7 +364,7 @@ Generator<Bytes> readFileSource(const Path & path)
 
 void writeFile(const Path & path, std::string_view s, mode_t mode, bool allowInterrupts)
 {
-    AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
+    AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
 
@@ -389,7 +393,7 @@ void writeFileUninterruptible(const Path & path, std::string_view s, mode_t mode
 void writeFileAndSync(const Path & path, std::string_view s, mode_t mode)
 {
     {
-        AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
+        AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
         if (!fd) {
             throw SysError("opening file '%1%'", path);
         }
@@ -405,7 +409,7 @@ void writeFileAndSync(const Path & path, std::string_view s, mode_t mode)
 
 static AutoCloseFD openForWrite(const Path & path, mode_t mode)
 {
-    AutoCloseFD fd{open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
+    AutoCloseFD fd{sys::open(path, O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC, mode)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     return fd;
@@ -467,7 +471,7 @@ try {
 
 void syncParent(const Path & path)
 {
-    AutoCloseFD fd{open(dirOf(path).c_str(), O_RDONLY, 0)};
+    AutoCloseFD fd{sys::open(dirOf(path), O_RDONLY, 0)};
     if (!fd)
         throw SysError("opening file '%1%'", path);
     fd.fsync();
@@ -493,7 +497,7 @@ static void _deletePath(int parentfd, const std::string & name, uint64_t & bytes
      */
 
     struct stat st;
-    if (fstatat(parentfd, name.c_str(), &st, AT_SYMLINK_NOFOLLOW) == -1) {
+    if (sys::fstatat(parentfd, name, &st, AT_SYMLINK_NOFOLLOW) == -1) {
         if (errno == ENOENT) return;
         throw SysError("getting status of '%1%' in directory '%2%'", name, guessOrInventPathFromFD(parentfd));
     }
@@ -526,23 +530,29 @@ static void _deletePath(int parentfd, const std::string & name, uint64_t & bytes
         /* Make the directory accessible. */
         const auto PERM_MASK = S_IRUSR | S_IWUSR | S_IXUSR;
         if ((st.st_mode & PERM_MASK) != PERM_MASK) {
-            if (fchmodat(parentfd, name.c_str(), st.st_mode | PERM_MASK, 0) == -1) {
+            if (sys::fchmodat(parentfd, name, st.st_mode | PERM_MASK, 0) == -1) {
                 throw SysError("chmod '%1%' in directory '%2%'", name, guessOrInventPathFromFD(parentfd));
             }
         }
 
-        int fd = openat(parentfd, name.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-        if (fd == -1)
-            throw SysError("opening directory '%1%' in directory '%2%'", name, guessOrInventPathFromFD(parentfd));
-        AutoCloseDir dir(fdopendir(fd));
+        auto fd = sys::openat(parentfd, name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+        if (!fd) {
+            throw SysError(
+                "opening directory '%1%' in directory '%2%'",
+                name,
+                guessOrInventPathFromFD(parentfd)
+            );
+        }
+        AutoCloseDir dir(fdopendir(fd.get()));
         if (!dir)
             throw SysError("opening directory '%1%' in directory '%2%'", name, guessOrInventPathFromFD(parentfd));
+        fd.release();
         for (auto & i : readDirectory(dir.get(), name, interruptible))
             _deletePath(dirfd(dir.get()), i.name, bytesFreed, interruptible);
     }
 
     int flags = S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0;
-    if (unlinkat(parentfd, name.c_str(), flags) == -1) {
+    if (sys::unlinkat(parentfd, name, flags) == -1) {
         if (errno == ENOENT) return;
         throw SysError("cannot unlink '%1%' in directory '%2%'", name, guessOrInventPathFromFD(parentfd));
     }
@@ -554,7 +564,7 @@ static void _deletePath(const Path & path, uint64_t & bytesFreed, bool interrupt
     if (dir == "")
         dir = "/";
 
-    AutoCloseFD dirfd{open(dir.c_str(), O_RDONLY)};
+    AutoCloseFD dirfd{sys::open(dir, O_RDONLY)};
     if (!dirfd) {
         if (errno == ENOENT) return;
         throw SysError("opening directory '%1%'", path);
@@ -590,16 +600,18 @@ Paths createDirs(const Path & path)
     if (path == "/") return created;
 
     struct stat st;
-    if (lstat(path.c_str(), &st) == -1) {
+    if (sys::lstat(path, &st) == -1) {
         created = createDirs(dirOf(path));
-        if (mkdir(path.c_str(), 0777) == -1 && errno != EEXIST)
+        if (sys::mkdir(path, 0777) == -1 && errno != EEXIST) {
             throw SysError("creating directory '%1%'", path);
+        }
         st = lstat(path);
         created.push_back(path);
     }
 
-    if (S_ISLNK(st.st_mode) && stat(path.c_str(), &st) == -1)
+    if (S_ISLNK(st.st_mode) && sys::stat(path, &st) == -1) {
         throw SysError("statting symlink '%1%'", path);
+    }
 
     if (!S_ISDIR(st.st_mode)) throw Error("'%1%' is not a directory", path);
 
@@ -624,8 +636,9 @@ AutoDelete::~AutoDelete()
             if (recursive)
                 deletePath(path);
             else {
-                if (remove(path.c_str()) == -1)
+                if (sys::remove(path) == -1) {
                     throw SysError("cannot unlink '%1%'", path);
+                }
             }
         }
     } catch (...) {
@@ -666,7 +679,7 @@ Path createTempSubdir(const Path & parent, const Path & prefix,
     while (1) {
         checkInterrupt();
         Path tmpDir = tempName(parent, prefix, includePid, counter);
-        if (mkdir(tmpDir.c_str(), mode) == 0) {
+        if (sys::mkdir(tmpDir, mode) == 0) {
 #if __FreeBSD__
             /* Explicitly set the group of the directory.  This is to
                work around around problems caused by BSD's group
@@ -695,8 +708,9 @@ Path makeTempPath(const Path & root, const Path & suffix)
 
 void createSymlink(const Path & target, const Path & link)
 {
-    if (symlink(target.c_str(), link.c_str()))
+    if (sys::symlink(target, link)) {
         throw SysError("creating symlink from '%1%' to '%2%'", link, target);
+    }
 }
 
 void replaceSymlink(const Path & target, const Path & link)
@@ -728,14 +742,15 @@ void setWriteTime(const fs::path & p, const struct stat & st)
         .tv_sec = st.st_mtime,
         .tv_usec = 0,
     };
-    if (lutimes(p.c_str(), times) != 0)
+    if (sys::lutimes(p, times) != 0) {
         throw SysError("changing modification time of '%s'", p);
+    }
 }
 
 void copy(const fs::directory_entry & from, const fs::path & to, CopyFileFlags flags)
 {
     // TODO: Rewrite the `is_*` to use `symlink_status()`
-    auto statOfFrom = lstat(from.path().c_str());
+    auto statOfFrom = lstat(from.path());
     auto fromStatus = from.symlink_status();
 
     // Mark the directory as writable so that we can delete its children

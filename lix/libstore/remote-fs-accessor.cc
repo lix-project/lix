@@ -1,5 +1,6 @@
 #include "lix/libstore/remote-fs-accessor.hh"
 #include "lix/libstore/nar-accessor.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/json.hh"
 
 #include <sys/types.h>
@@ -72,10 +73,9 @@ try {
         try {
             listing = nix::readFile(makeCacheFile(storePath.hashPart(), "ls"));
 
-            auto narAccessor = makeLazyNarAccessor(listing,
-                [cacheFile](uint64_t offset, uint64_t length) {
-
-                    AutoCloseFD fd{open(cacheFile.c_str(), O_RDONLY | O_CLOEXEC)};
+            auto narAccessor =
+                makeLazyNarAccessor(listing, [cacheFile](uint64_t offset, uint64_t length) {
+                    AutoCloseFD fd{sys::open(cacheFile, O_RDONLY | O_CLOEXEC)};
                     if (!fd)
                         throw SysError("opening NAR cache file '%s'", cacheFile);
 

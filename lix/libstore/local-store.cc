@@ -8,6 +8,7 @@
 #include "lix/libstore/nar-info.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
@@ -125,8 +126,9 @@ LocalStore::LocalStore(LocalStoreConfig config)
     for (auto & perUserDir : {profilesDir + "/per-user", gcRootsDir + "/per-user"}) {
         createDirs(perUserDir);
         if (!config_.readOnly) {
-            if (chmod(perUserDir.c_str(), 0755) == -1)
+            if (sys::chmod(perUserDir, 0755) == -1) {
                 throw SysError("could not set permissions on '%s' to 755", perUserDir);
+            }
         }
     }
 
@@ -135,19 +137,22 @@ LocalStore::LocalStore(LocalStoreConfig config)
     if (getuid() == 0 && settings.buildUsersGroup != "") {
         mode_t perm = 01775;
 
-        struct group * gr = getgrnam(settings.buildUsersGroup.get().c_str());
+        struct group * gr = sys::getgrnam(settings.buildUsersGroup);
         if (!gr)
             printError("warning: the group '%1%' specified in 'build-users-group' does not exist", settings.buildUsersGroup);
         else {
             struct stat st;
-            if (stat(config_.realStoreDir.get().c_str(), &st))
+            if (sys::stat(config_.realStoreDir, &st)) {
                 throw SysError("getting attributes of path '%1%'", config_.realStoreDir);
+            }
 
             if (st.st_uid != 0 || st.st_gid != gr->gr_gid || (st.st_mode & ~S_IFMT) != perm) {
-                if (chown(config_.realStoreDir.get().c_str(), 0, gr->gr_gid) == -1)
+                if (sys::chown(config_.realStoreDir, 0, gr->gr_gid) == -1) {
                     throw SysError("changing ownership of path '%1%'", config_.realStoreDir);
-                if (chmod(config_.realStoreDir.get().c_str(), perm) == -1)
+                }
+                if (sys::chmod(config_.realStoreDir, perm) == -1) {
                     throw SysError("changing permissions on path '%1%'", config_.realStoreDir);
+                }
             }
         }
     }
@@ -173,10 +178,8 @@ LocalStore::LocalStore(LocalStoreConfig config)
        before doing a garbage collection. */
     try {
         struct stat st;
-        if (stat(reservedSpacePath.c_str(), &st) == -1 ||
-            st.st_size != settings.reservedSize)
-        {
-            AutoCloseFD fd{open(reservedSpacePath.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC, 0600)};
+        if (sys::stat(reservedSpacePath, &st) == -1 || st.st_size != settings.reservedSize) {
+            AutoCloseFD fd{sys::open(reservedSpacePath, O_WRONLY | O_CREAT | O_CLOEXEC, 0600)};
             int res = -1;
 #if HAVE_POSIX_FALLOCATE
             res = posix_fallocate(fd.get(), 0, settings.reservedSize);
@@ -193,7 +196,7 @@ LocalStore::LocalStore(LocalStoreConfig config)
        schema upgrade is in progress. */
     if (!config_.readOnly) {
         Path globalLockPath = dbDir + "/big-lock";
-        globalLock = openLockFile(globalLockPath.c_str(), true);
+        globalLock = openLockFile(globalLockPath, true);
     }
 
     if (!config_.readOnly && !tryLockFile(globalLock.get(), ltRead)) {
@@ -328,7 +331,7 @@ LocalStore::LocalStore(std::string scheme, std::string path, LocalStoreConfig co
 AutoCloseFD LocalStore::openGCLock()
 {
     Path fnGCLock = config_.stateDir + "/gc.lock";
-    AutoCloseFD fdGCLock{open(fnGCLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
+    AutoCloseFD fdGCLock{sys::open(fnGCLock, O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
     if (!fdGCLock)
         throw SysError("opening global GC lock '%1%'", fnGCLock);
     return fdGCLock;
@@ -354,7 +357,7 @@ LocalStore::~LocalStore()
         auto fdTempRoots(_fdTempRoots.lock());
         if (*fdTempRoots) {
             fdTempRoots->reset();
-            unlink(fnTempRoots.c_str());
+            (void) sys::unlink(fnTempRoots);
         }
     } catch (...) {
         ignoreExceptionInDestructor();
@@ -377,8 +380,9 @@ void LocalStore::openDB(DBState & state, bool create)
         throw Error("cannot create database while in read-only mode");
     }
 
-    if (access(dbDir.c_str(), R_OK | (config_.readOnly ? 0 : W_OK)))
+    if (sys::access(dbDir, R_OK | (config_.readOnly ? 0 : W_OK))) {
         throw SysError("Nix database directory '%1%' is not writable", dbDir);
+    }
 
     /* Open the Nix database. */
     std::string dbPath = dbDir + "/db.sqlite";
@@ -445,12 +449,14 @@ void LocalStore::makeStoreWritable()
     if (getuid() != 0) return;
     /* Check if /nix/store is on a read-only mount. */
     struct statvfs stat;
-    if (statvfs(config_.realStoreDir.get().c_str(), &stat) != 0)
+    if (sys::statvfs(config_.realStoreDir, &stat) != 0) {
         throw SysError("getting info about the Nix store mount point");
+    }
 
     if (stat.f_flag & ST_RDONLY) {
-        if (mount(0, config_.realStoreDir.get().c_str(), "none", MS_REMOUNT | MS_BIND, 0) == -1)
+        if (sys::mount("", config_.realStoreDir, "none", MS_REMOUNT | MS_BIND, 0) == -1) {
             throw SysError("remounting %1% writable", config_.realStoreDir);
+        }
     }
 #endif
 }
@@ -470,8 +476,9 @@ static void canonicaliseTimestampAndPermissions(const Path & path, const struct 
             mode = (st.st_mode & S_IFMT)
                  | 0444
                  | (st.st_mode & S_IXUSR ? 0111 : 0);
-            if (chmod(path.c_str(), mode) == -1)
+            if (sys::chmod(path, mode) == -1) {
                 throw SysError("changing mode of '%1%' to %2$o", path, mode);
+            }
         }
 
     }
@@ -483,13 +490,13 @@ static void canonicaliseTimestampAndPermissions(const Path & path, const struct 
         times[1].tv_sec = mtimeStore;
         times[1].tv_usec = 0;
 #if HAVE_LUTIMES
-        if (lutimes(path.c_str(), times) == -1)
-            if (errno != ENOSYS ||
-                (!S_ISLNK(st.st_mode) && utimes(path.c_str(), times) == -1))
+        if (sys::lutimes(path, times) == -1) {
+            if (errno != ENOSYS || (!S_ISLNK(st.st_mode) && sys::utimes(path, times) == -1))
 #else
         if (!S_ISLNK(st.st_mode) && utimes(path.c_str(), times) == -1)
 #endif
-            throw SysError("changing modification time of '%1%'", path);
+                throw SysError("changing modification time of '%1%'", path);
+        }
     }
 }
 
@@ -539,7 +546,7 @@ static void canonicalisePathMetaData_(
 
 #if __linux__
     /* Remove extended attributes / ACLs. */
-    ssize_t eaSize = llistxattr(path.c_str(), nullptr, 0);
+    ssize_t eaSize = sys::llistxattr(path, nullptr, 0);
 
     if (eaSize < 0) {
         if (errno != ENOTSUP && errno != ENODATA)
@@ -547,21 +554,23 @@ static void canonicalisePathMetaData_(
     } else if (eaSize > 0) {
         std::vector<char> eaBuf(eaSize);
 
-        if ((eaSize = llistxattr(path.c_str(), eaBuf.data(), eaBuf.size())) < 0)
+        if ((eaSize = sys::llistxattr(path, eaBuf.data(), eaBuf.size())) < 0) {
             throw SysError("querying extended attributes of '%s'", path);
+        }
 
         bool resetMode = false;
         if ((S_ISREG(st.st_mode) || S_ISDIR(st.st_mode)) && !(st.st_mode & S_IWUSR)) {
             resetMode = true;
-            chmod(path.c_str(), st.st_mode | S_IWUSR);
+            (void) sys::chmod(path, st.st_mode | S_IWUSR);
         }
         for (auto & eaName: tokenizeString<Strings>(std::string(eaBuf.data(), eaSize), std::string("\000", 1))) {
             if (settings.ignoredAcls.get().count(eaName)) continue;
-            if (lremovexattr(path.c_str(), eaName.c_str()) == -1)
+            if (sys::lremovexattr(path, eaName) == -1) {
                 throw SysError("removing extended attribute '%s' from '%s'", eaName, path);
+            }
         }
         if (resetMode) {
-            chmod(path.c_str(), st.st_mode);
+            (void) sys::chmod(path, st.st_mode);
             resetMode = false;
         }
      }
@@ -580,7 +589,7 @@ static void canonicalisePathMetaData_(
        users group); we check for this case below. */
     if (st.st_uid != geteuid()) {
 #if HAVE_LCHOWN
-        if (lchown(path.c_str(), geteuid(), getegid()) == -1)
+        if (sys::lchown(path, geteuid(), getegid()) == -1)
 #else
         if (!S_ISLNK(st.st_mode) &&
             chown(path.c_str(), geteuid(), getegid()) == -1)
@@ -1407,7 +1416,7 @@ std::pair<Path, AutoCloseFD> LocalStore::createTempDirInStore()
            the GC between createTempDir() and when we acquire a lock on it.
            We'll repeat until 'tmpDir' exists and we've locked it. */
         tmpDirFn = createTempDir(config_.realStoreDir, "tmp");
-        tmpDirFd = AutoCloseFD{open(tmpDirFn.c_str(), O_RDONLY | O_DIRECTORY)};
+        tmpDirFd = sys::open(tmpDirFn, O_RDONLY | O_DIRECTORY);
         if (tmpDirFd.get() < 0) {
             continue;
         }
@@ -1501,10 +1510,11 @@ try {
                 printError("link '%s' was modified! expected hash '%s', got '%s'",
                     linkPath, link.name, hash);
                 if (repair) {
-                    if (unlink(linkPath.c_str()) == 0)
+                    if (sys::unlink(linkPath) == 0) {
                         printInfo("removed link '%s'", linkPath);
-                    else
+                    } else {
                         throw SysError("removing corrupt link '%s'", linkPath);
+                    }
                 } else {
                     errors = true;
                 }

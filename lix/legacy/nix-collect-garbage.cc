@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/store-cast.hh"
@@ -24,9 +25,11 @@ bool dryRun = false;
 
 static void removeOldGenerations(std::string dir, NeverAsync = {})
 {
-    if (access(dir.c_str(), R_OK) != 0) return;
+    if (sys::access(dir, R_OK) != 0) {
+        return;
+    }
 
-    bool canWrite = access(dir.c_str(), W_OK) == 0;
+    bool canWrite = sys::access(dir, W_OK) == 0;
 
     for (auto & i : readDirectory(dir)) {
         checkInterrupt();

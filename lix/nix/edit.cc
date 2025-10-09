@@ -3,6 +3,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/editor-for.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "edit.hh"
 
@@ -51,7 +52,7 @@ struct CmdEdit : InstallableCommand
 
         printMsg(lvlChatty, "running editor: %s", concatMapStringsSep(" ", args, shellEscape));
 
-        execvp(args.front().c_str(), stringsToCharPtrs(args).data());
+        sys::execvp(args.front(), args);
 
         std::string command;
         for (const auto &arg : args) command += " '" + arg + "'";

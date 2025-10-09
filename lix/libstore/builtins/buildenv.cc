@@ -1,4 +1,5 @@
 #include "lix/libstore/builtins/buildenv.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/strings.hh"
 
 #include <sys/stat.h>
@@ -40,8 +41,9 @@ static void createLinks(State & state, const Path & srcDir, const Path & dstDir,
 
         struct stat srcSt;
         try {
-            if (stat(srcFile.c_str(), &srcSt) == -1)
+            if (sys::stat(srcFile, &srcSt) == -1) {
                 throw SysError("getting status of '%1%'", srcFile);
+            }
         } catch (SysError & e) {
             if (e.errNo == ENOENT || e.errNo == ENOTDIR) {
                 printTaggedWarning("skipping dangling symlink '%s'", dstFile);
@@ -66,7 +68,7 @@ static void createLinks(State & state, const Path & srcDir, const Path & dstDir,
             continue;
 
         else if (S_ISDIR(srcSt.st_mode)) {
-            auto dstStOpt = maybeLstat(dstFile.c_str());
+            auto dstStOpt = maybeLstat(dstFile);
             if (dstStOpt) {
                 auto & dstSt = *dstStOpt;
                 if (S_ISDIR(dstSt.st_mode)) {
@@ -76,10 +78,12 @@ static void createLinks(State & state, const Path & srcDir, const Path & dstDir,
                     auto target = canonPath(dstFile, true);
                     if (!S_ISDIR(lstat(target).st_mode))
                         throw Error("collision between '%1%' and non-directory '%2%'", srcFile, target);
-                    if (unlink(dstFile.c_str()) == -1)
+                    if (sys::unlink(dstFile) == -1) {
                         throw SysError("unlinking '%1%'", dstFile);
-                    if (mkdir(dstFile.c_str(), 0755) == -1)
+                    }
+                    if (sys::mkdir(dstFile, 0755) == -1) {
                         throw SysError("creating directory '%1%'", dstFile);
+                    }
                     createLinks(state, target, dstFile, state.priorities[dstFile]);
                     createLinks(state, srcFile, dstFile, priority);
                     continue;
@@ -88,7 +92,7 @@ static void createLinks(State & state, const Path & srcDir, const Path & dstDir,
         }
 
         else {
-            auto dstStOpt = maybeLstat(dstFile.c_str());
+            auto dstStOpt = maybeLstat(dstFile);
             if (dstStOpt) {
                 auto & dstSt = *dstStOpt;
                 if (S_ISLNK(dstSt.st_mode)) {
@@ -101,8 +105,9 @@ static void createLinks(State & state, const Path & srcDir, const Path & dstDir,
                         );
                     if (prevPriority < priority)
                         continue;
-                    if (unlink(dstFile.c_str()) == -1)
+                    if (sys::unlink(dstFile) == -1) {
                         throw SysError("unlinking '%1%'", dstFile);
+                    }
                 } else if (S_ISDIR(dstSt.st_mode))
                     throw Error("collision between non-directory '%1%' and directory '%2%'", srcFile, dstFile);
             }

@@ -1,4 +1,5 @@
 #include "lix/libstore/lock.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/globals.hh"
@@ -11,14 +12,14 @@ namespace nix {
 
 #if __linux__
 
-static std::vector<gid_t> get_group_list(const char *username, gid_t group_id)
+static std::vector<gid_t> get_group_list(const std::string & username, gid_t group_id)
 {
     std::vector<gid_t> gids;
     gids.resize(32); // Initial guess
 
     auto getgroupl_failed {[&] {
         int ngroups = gids.size();
-        int err = getgrouplist(username, group_id, gids.data(), &ngroups);
+        int err = getgrouplist(requireCString(username), group_id, gids.data(), &ngroups);
         gids.resize(ngroups);
         return err == -1;
     }};
@@ -53,7 +54,7 @@ struct SimpleUserLock : UserLock
         createDirs(settings.nixStateDir + "/userpool");
 
         /* Get the members of the build-users-group. */
-        struct group * gr = getgrnam(settings.buildUsersGroup.get().c_str());
+        struct group * gr = sys::getgrnam(settings.buildUsersGroup);
         if (!gr)
             throw Error("the group '%s' specified in 'build-users-group' does not exist", settings.buildUsersGroup);
 
@@ -72,7 +73,7 @@ struct SimpleUserLock : UserLock
         for (auto & i : users) {
             debug("trying user '%s'", i);
 
-            struct passwd * pw = getpwnam(i.c_str());
+            auto pw = sys::getpwnam(i);
             if (!pw) {
 #ifdef __APPLE__
 #define APPLE_HINT "\n\nhint: this may be caused by an update to macOS Sequoia breaking existing Lix installations.\n" \
@@ -86,7 +87,7 @@ struct SimpleUserLock : UserLock
 
             auto fnUserLock = fmt("%s/userpool/%s", settings.nixStateDir,pw->pw_uid);
 
-            AutoCloseFD fd{open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
+            AutoCloseFD fd{sys::open(fnUserLock, O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 
@@ -158,7 +159,7 @@ struct AutoUserLock : UserLock
 
             auto fnUserLock = fmt("%s/userpool2/slot-%d", settings.nixStateDir, i);
 
-            AutoCloseFD fd{open(fnUserLock.c_str(), O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
+            AutoCloseFD fd{sys::open(fnUserLock, O_RDWR | O_CREAT | O_CLOEXEC, 0600)};
             if (!fd)
                 throw SysError("opening user lock '%s'", fnUserLock);
 
@@ -176,7 +177,7 @@ struct AutoUserLock : UserLock
                 if (useUserNamespace)
                     lock->firstGid = firstUid;
                 else {
-                    struct group * gr = getgrnam(settings.buildUsersGroup.get().c_str());
+                    struct group * gr = sys::getgrnam(settings.buildUsersGroup);
                     if (!gr)
                         throw Error("the group '%s' specified in 'build-users-group' does not exist", settings.buildUsersGroup);
                     lock->firstGid = gr->gr_gid;

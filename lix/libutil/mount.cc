@@ -1,4 +1,5 @@
 #include "lix/libutil/mount.hh"
+#include "c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -12,8 +13,9 @@ void bindPath(const Path & source, const Path & target, bool optional, CopyFileF
     debug("bind mounting '%1%' to '%2%'", source, target);
 
     auto bindMount = [&]() {
-        if (mount(source.c_str(), target.c_str(), "", MS_BIND | MS_REC, 0) == -1)
+        if (sys::mount(source, target, "", MS_BIND | MS_REC, 0) == -1) {
             throw SysError("bind mount from '%1%' to '%2%' failed", source, target);
+        }
     };
 
     auto maybeSt = maybeLstat(source);

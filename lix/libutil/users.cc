@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -38,7 +39,7 @@ Path getHome()
         if (homeDir) {
             // Only use `$HOME` if it exists and is owned by the current user.
             struct stat st;
-            int result = stat(homeDir->c_str(), &st);
+            int result = sys::stat(*homeDir, &st);
             if (result != 0) {
                 if (errno != ENOENT) {
                     printTaggedWarning(

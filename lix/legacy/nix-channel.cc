@@ -8,6 +8,7 @@
 #include "lix/libexpr/eval-settings.hh" // for defexpr
 #include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/users.hh"
@@ -44,7 +45,7 @@ static void readChannels()
 // Writes the list of channels.
 static void writeChannels()
 {
-    auto channelsFD = AutoCloseFD{open(channelsList.c_str(), O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0644)};
+    auto channelsFD = sys::open(channelsList, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC, 0644);
     if (!channelsFD)
         throw SysError("opening '%1%' for writing", channelsList);
     for (const auto & channel : channels)
@@ -174,11 +175,12 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
 
     // Make the channels appear in nix-env.
     struct stat st;
-    if (lstat(nixDefExpr.c_str(), &st) == 0) {
+    if (sys::lstat(nixDefExpr, &st) == 0) {
         if (S_ISLNK(st.st_mode))
             // old-skool ~/.nix-defexpr
-            if (unlink(nixDefExpr.c_str()) == -1)
+            if (sys::unlink(nixDefExpr) == -1) {
                 throw SysError("unlinking %1%", nixDefExpr);
+            }
     } else if (errno != ENOENT) {
         throw SysError("getting status of %1%", nixDefExpr);
     }

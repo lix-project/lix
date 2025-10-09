@@ -16,6 +16,7 @@
 #include "lix/libexpr/value-to-xml.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libfetchers/fetch-to-store.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/types.hh"
 #include "value.hh"
@@ -273,12 +274,12 @@ void prim_importNative(EvalState & state, Value * * args, Value & v)
 
     std::string sym(state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.importNative"));
 
-    void *handle = dlopen(path.canonical().c_str(), RTLD_LAZY | RTLD_LOCAL);
+    void * handle = dlopen(requireCString(path.canonical().abs()), RTLD_LAZY | RTLD_LOCAL);
     if (!handle)
         state.ctx.errors.make<EvalError>("could not open '%1%': %2%", path, dlerror()).debugThrow();
 
     dlerror();
-    ValueInitializer func = reinterpret_cast<ValueInitializer>(dlsym(handle, sym.c_str()));
+    ValueInitializer func = reinterpret_cast<ValueInitializer>(dlsym(handle, requireCString(sym)));
     if(!func) {
         char *message = dlerror();
         if (message)
@@ -484,6 +485,7 @@ struct CompareValues : NeverAsync
             case nString:
                 return v1.str() < v2.str();
             case nPath:
+                // NOLINTNEXTLINE(lix-unsafe-c-calls)
                 return strcmp(v1.string().content, v2.string().content) < 0;
             case nList:
                 // Lexicographic comparison

@@ -5,6 +5,7 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/filetransfer.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/tarfile.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libexpr/eval-inline.hh" // IWYU pragma: keep
@@ -99,7 +100,7 @@ std::tuple<StorePath, Hash> prefetchFile(
             if (executable)
                 mode = 0700;
 
-            AutoCloseFD fd{open(tmpFile.c_str(), O_WRONLY | O_CREAT | O_EXCL, mode)};
+            AutoCloseFD fd{sys::open(tmpFile, O_WRONLY | O_CREAT | O_EXCL, mode)};
             if (!fd) throw SysError("creating temporary file '%s'", tmpFile);
 
             FdSink sink(fd.get());

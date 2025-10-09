@@ -4,6 +4,7 @@
 #include "error.hh"
 #include "file-descriptor.hh"
 #include "io-buffer.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/tarfile.hh"
@@ -85,14 +86,21 @@ struct ArchiveCompressionSink : CompressionSink
 
     ArchiveCompressionSink(Sink & nextSink, std::string format, bool parallel, int level = COMPRESSION_LEVEL_DEFAULT) : nextSink(nextSink)
     {
+        auto cFormat = requireCString(format);
         archive = archive_write_new();
         if (!archive) throw Error("failed to initialize libarchive");
-        check(archive_write_add_filter_by_name(archive, format.c_str()), "couldn't initialize compression (%s)");
+        check(
+            archive_write_add_filter_by_name(archive, cFormat),
+            "couldn't initialize compression (%s)"
+        );
         check(archive_write_set_format_raw(archive));
-        if (parallel)
-            check(archive_write_set_filter_option(archive, format.c_str(), "threads", "0"));
+        if (parallel) {
+            check(archive_write_set_filter_option(archive, cFormat, "threads", "0"));
+        }
         if (level != COMPRESSION_LEVEL_DEFAULT)
-            check(archive_write_set_filter_option(archive, format.c_str(), "compression-level", std::to_string(level).c_str()));
+            check(archive_write_set_filter_option(
+                archive, cFormat, "compression-level", requireCString(std::to_string(level))
+            ));
         // disable internal buffering
         check(archive_write_set_bytes_per_block(archive, 0));
         // disable output padding

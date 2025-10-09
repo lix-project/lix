@@ -3,7 +3,9 @@
 #include <unistd.h>
 
 #include "test-session.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/escape-char.hh"
+#include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
 
@@ -34,7 +36,7 @@ RunningProcess RunningProcess::start(std::string executable, Strings args)
         if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1) {
             throw SysError("dupping stderr");
         }
-        execv(executable.c_str(), stringsToCharPtrs(args).data());
+        sys::execv(executable, args);
         throw SysError("exec did not happen");
     });
 

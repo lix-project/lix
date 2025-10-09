@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -110,7 +111,7 @@ static el_status_t doCompletion() {
     if (possible.size() == 1) {
         const auto completion = *possible.cbegin();
         if (completion.size() > s.size()) {
-            rl_insert_text(completion.c_str() + s.size());
+            rl_insert_text(requireCString(completion.substr(s.size())));
             return redisplay();
         }
 
@@ -134,7 +135,7 @@ static el_status_t doCompletion() {
     }
     if (len > 0) {
         auto commonPrefix = possible.begin()->substr(start, len);
-        rl_insert_text(commonPrefix.c_str());
+        rl_insert_text(requireCString(commonPrefix));
         el_ring_bell();
         return redisplay();
     }
@@ -154,7 +155,7 @@ ReadlineLikeInteracter::Guard ReadlineLikeInteracter::init(detail::ReplCompleter
         logWarning(e.info());
     }
     el_hist_size = 1000;
-    read_history(historyFile.c_str());
+    read_history(requireCString(historyFile));
     auto oldRepl = curRepl;
     curRepl = repl;
     Guard restoreRepl([oldRepl] { curRepl = oldRepl; });
@@ -202,7 +203,7 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
     };
 
     setupSignals();
-    char * s = readline(promptForType(promptType));
+    char * s = readline(promptForType(promptType)); // NOLINT(lix-unsafe-c-calls)
     Finally doFree([&]() { free(s); });
     restoreSignals();
 
@@ -223,7 +224,7 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
 
 void ReadlineLikeInteracter::writeHistory()
 {
-    int ret = write_history(historyFile.c_str());
+    int ret = write_history(requireCString(historyFile));
     int writeHistErr = errno;
 
     if (ret == 0) {

@@ -1,6 +1,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
@@ -51,7 +52,7 @@ bool touchCacheFile(const Path & path, time_t touch_time)
     times[1].tv_sec = touch_time;
     times[1].tv_usec = 0;
 
-    return lutimes(path.c_str(), times) == 0;
+    return sys::lutimes(path, times) == 0;
 }
 
 Path getCachePath(std::string_view key)
@@ -128,7 +129,7 @@ try {
     time_t now = time(0);
     struct stat st;
     std::optional<std::string> cachedRef;
-    if (stat(headRefFile.c_str(), &st) == 0) {
+    if (sys::stat(headRefFile, &st) == 0) {
         cachedRef = TRY_AWAIT(readHead(cacheDir));
         if (cachedRef != std::nullopt &&
             *cachedRef != gitInitialBranch &&
@@ -737,8 +738,7 @@ struct GitInputScheme : InputScheme
                         /* If the local ref is older than ‘tarball-ttl’ seconds, do a
                            git fetch to update the local ref to the remote ref. */
                         struct stat st;
-                        return stat(path.c_str(), &st) == 0 &&
-                            isCacheFileWithinTtl(now, st);
+                        return sys::stat(path, &st) == 0 && isCacheFileWithinTtl(now, st);
                     };
                     if (auto result = resolveRefToCachePath(
                         input,

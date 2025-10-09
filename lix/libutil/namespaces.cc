@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -49,8 +50,9 @@ void restoreMountNamespace()
                 throw SysError("chroot into saved root");
         }
 
-        if (chdir(savedCwd.c_str()) == -1)
+        if (sys::chdir(savedCwd) == -1) {
             throw SysError("restoring cwd");
+        }
     } catch (Error & e) {
         debug("%1%", Uncolored(e.msg()));
     }

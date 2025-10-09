@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include <cstring>
 #include <map>
 #include <optional>
@@ -11,7 +12,7 @@ namespace nix {
 
 std::optional<std::string> getEnv(const std::string & key)
 {
-    char * value = getenv(key.c_str());
+    char * value = sys::getenv(key);
     if (!value) return {};
     return std::string(value);
 }
@@ -40,14 +41,14 @@ std::map<std::string, std::string> getEnv()
 void clearEnv()
 {
     for (auto & name : getEnv())
-        unsetenv(name.first.c_str());
+        (void) sys::unsetenv(name.first);
 }
 
 void replaceEnv(const std::map<std::string, std::string> & newEnv)
 {
     clearEnv();
-    for (auto & newEnvVar : newEnv)
-        setenv(newEnvVar.first.c_str(), newEnvVar.second.c_str(), 1);
+    for (auto & newEnvVar : newEnv) {
+        (void) sys::setenv(newEnvVar.first, newEnvVar.second, 1);
+    }
 }
-
 }

@@ -1,5 +1,6 @@
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
@@ -20,7 +21,7 @@ namespace nix {
 
 AutoCloseFD openLockFile(const Path & path, bool create)
 {
-    AutoCloseFD fd{open(path.c_str(), O_CLOEXEC | O_RDWR | (create ? O_CREAT : 0), 0600)};
+    AutoCloseFD fd{sys::open(path, O_CLOEXEC | O_RDWR | (create ? O_CREAT : 0), 0600)};
     if (!fd && (create || errno != ENOENT))
         throw SysError("opening lock file '%1%'", path);
 
@@ -235,7 +236,7 @@ void PathLock::unlock()
         // this file it will figure out that the file is stale once it calls stat()
         // and inspects the link count. if unlink fails we merely leave around some
         // stale lock file paths that can be reused or cleaned up by other threads.
-        unlink(path.c_str());
+        (void) sys::unlink(path);
         // clobber file contents for compatibility wither other nix implementations
         writeFull(fd.get(), "d");
 

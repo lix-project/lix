@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/logging.hh"
 
@@ -22,12 +23,13 @@ void commonExecveingChildInit()
         throw SysError("cannot dup stderr into stdout");
 
     /* Reroute stdin to /dev/null. */
-    int fdDevNull = open(pathNullDevice.c_str(), O_RDWR);
-    if (fdDevNull == -1)
+    auto fdDevNull = sys::open(pathNullDevice, O_RDWR);
+    if (!fdDevNull) {
         throw SysError("cannot open '%1%'", pathNullDevice);
-    if (dup2(fdDevNull, STDIN_FILENO) == -1)
+    }
+    if (dup2(fdDevNull.get(), STDIN_FILENO) == -1) {
         throw SysError("cannot dup null device into stdin");
-    close(fdDevNull);
+    }
 }
 
 }

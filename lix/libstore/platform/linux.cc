@@ -1,4 +1,5 @@
 #include "lix/libstore/build/worker.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -46,7 +47,7 @@ static void readProcLink(const std::string & file, UncheckedRoots & roots)
 {
     constexpr auto bufsiz = PATH_MAX;
     char buf[bufsiz];
-    auto res = readlink(file.c_str(), buf, bufsiz);
+    auto res = sys::readlink(file, buf, bufsiz);
     if (res == -1) {
         if (errno == ENOENT || errno == EACCES || errno == ESRCH) {
             return;
@@ -96,7 +97,7 @@ try {
                     readProcLink(fmt("/proc/%s/cwd", ent->d_name), unchecked);
 
                     auto fdStr = fmt("/proc/%s/fd", ent->d_name);
-                    auto fdDir = AutoCloseDir(opendir(fdStr.c_str()));
+                    auto fdDir = sys::opendir(fdStr);
                     if (!fdDir) {
                         if (errno == ENOENT || errno == EACCES) {
                             continue;
@@ -787,11 +788,19 @@ void LinuxLocalDerivationGoal::prepareSandbox()
     printMsg(lvlChatty, "setting up chroot environment in '%1%'", chrootRootDir);
 
     // FIXME: make this 0700
-    if (mkdir(chrootRootDir.c_str(), buildUser && buildUser->getUIDCount() != 1 ? 0755 : 0750) == -1)
+    if (sys::mkdir(chrootRootDir, buildUser && buildUser->getUIDCount() != 1 ? 0755 : 0750) == -1) {
         throw SysError("cannot create '%1%'", chrootRootDir);
+    }
 
-    if (buildUser && chown(chrootRootDir.c_str(), buildUser->getUIDCount() != 1 ? buildUser->getUID() : 0, buildUser->getGID()) == -1)
+    if (buildUser
+        && sys::chown(
+               chrootRootDir,
+               buildUser->getUIDCount() != 1 ? buildUser->getUID() : 0,
+               buildUser->getGID()
+           ) == -1)
+    {
         throw SysError("cannot change ownership of '%1%'", chrootRootDir);
+    }
 
     /* Create a writable /tmp in the chroot.  Many builders need
        this.  (Of course they should really respect $TMPDIR
@@ -827,8 +836,9 @@ void LinuxLocalDerivationGoal::prepareSandbox()
     createDirs(chrootStoreDir);
     chmodPath(chrootStoreDir, 01775);
 
-    if (buildUser && chown(chrootStoreDir.c_str(), 0, buildUser->getGID()) == -1)
+    if (buildUser && sys::chown(chrootStoreDir, 0, buildUser->getGID()) == -1) {
         throw SysError("cannot change ownership of '%1%'", chrootStoreDir);
+    }
 
     for (auto & i : inputPaths) {
         auto p = worker.store.printStorePath(i);
@@ -1077,7 +1087,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
             // clang-format on
         };
 
-        AutoCloseFD netns(open(fmt("/proc/%i/ns/net", pid.get()).c_str(), O_RDONLY | O_CLOEXEC));
+        AutoCloseFD netns(sys::open(fmt("/proc/%i/ns/net", pid.get()), O_RDONLY | O_CLOEXEC));
         if (!netns) {
             throw SysError("failed to open netns");
         }
@@ -1085,7 +1095,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
         AutoCloseFD userns;
         if (usingUserNamespace) {
             userns =
-                AutoCloseFD(open(fmt("/proc/%i/ns/user", pid.get()).c_str(), O_RDONLY | O_CLOEXEC));
+                AutoCloseFD(sys::open(fmt("/proc/%i/ns/user", pid.get()), O_RDONLY | O_CLOEXEC));
             if (!userns) {
                 throw SysError("failed to open userns");
             }

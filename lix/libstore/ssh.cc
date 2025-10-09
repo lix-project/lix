@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libstore/ssh.hh"
@@ -92,7 +93,7 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
             throw SysError("duping over stderr");
         }
 
-        execvp(args.begin()->c_str(), stringsToCharPtrs(args).data());
+        sys::execvp(*args.begin(), args);
 
         // could not exec ssh/bash
         throw SysError("unable to execute '%s'", args.front());

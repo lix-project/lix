@@ -2,6 +2,7 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/processes.hh"
@@ -42,7 +43,7 @@ static void makeSymlink(const Path & link, const Path & target)
 
     /* Create the new symlink. */
     Path tempLink = makeTempPath(link);
-    unlink(tempLink.c_str()); // just in case; ignore errors
+    (void) sys::unlink(tempLink); // just in case; ignore errors
     createSymlink(target, tempLink);
 
     /* Atomically replace the old one. */
@@ -98,21 +99,21 @@ void LocalStore::createTempRootsFile()
     /* Create the temporary roots file for this process. */
     while (true) {
         auto tmp = makeTempPath(fnTempRoots, ".tmp");
-        AutoCloseFD fd{open(tmp.c_str(), O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600)};
+        AutoCloseFD fd{sys::open(tmp, O_RDWR | O_CREAT | O_EXCL | O_CLOEXEC, 0600)};
         if (!fd && errno != EEXIST) {
             throw SysError("opening lock file '%1%'", tmp);
         }
         // if we can't lock it then GC must've found and deleted it, so we try again.
         // if we *can* lock it GC may have still deleted it, and rename will tell us.
         if (!tryLockFile(fd.get(), ltWrite)) {
-            unlink(tmp.c_str()); // just to be sure it's gone
+            (void) sys::unlink(tmp); // just to be sure it's gone
             continue;
         } else if (auto fdTempRoots(_fdTempRoots.lock()); *fdTempRoots) {
-            if (unlink(tmp.c_str()) == -1) {
+            if (sys::unlink(tmp) == -1) {
                 throw SysError("deleting lock file '%1%'", tmp);
             }
             break;
-        } else if (rename(tmp.c_str(), fnTempRoots.c_str()) == -1) {
+        } else if (sys::rename(tmp, fnTempRoots) == -1) {
             if (errno != ENOENT) {
                 throw SysError("moving lock file '%1%'", tmp);
             }
@@ -224,7 +225,7 @@ void LocalStore::findTempRoots(Roots & tempRoots, bool censor)
         pid_t pid = std::stoi(i.name);
 
         debug("reading temporary root file '%1%'", path);
-        AutoCloseFD fd(open(path.c_str(), O_CLOEXEC | O_RDWR, 0666));
+        AutoCloseFD fd(sys::open(path, O_CLOEXEC | O_RDWR, 0666));
         if (!fd) {
             /* It's okay if the file has disappeared. */
             if (errno == ENOENT) continue;
@@ -236,7 +237,7 @@ void LocalStore::findTempRoots(Roots & tempRoots, bool censor)
            we don't care about its temporary roots. */
         if (tryLockFile(fd.get(), ltWrite)) {
             printInfo("removing stale temporary roots file '%1%'", path);
-            unlink(path.c_str());
+            (void) sys::unlink(path);
             writeFull(fd.get(), "d");
             continue;
         }
@@ -296,7 +297,7 @@ try {
                 if (!pathExists(target)) {
                     if (isInDir(path, config().stateDir + "/" + gcRootsDir + "/auto")) {
                         printInfo("removing stale link from '%1%' to '%2%'", path, target);
-                        unlink(path.c_str());
+                        (void) sys::unlink(path);
                     }
                 } else {
                     struct stat st2 = lstat(target);
@@ -673,7 +674,7 @@ try {
            by another process. We need to be sure that we can acquire an
            exclusive lock before deleting them. */
         if (baseName.find("tmp-", 0) == 0) {
-            AutoCloseFD tmpDirFd{open(realPath.c_str(), O_RDONLY | O_DIRECTORY)};
+            AutoCloseFD tmpDirFd{sys::open(realPath, O_RDONLY | O_DIRECTORY)};
             if (tmpDirFd.get() == -1 || !tryLockFile(tmpDirFd.get(), ltWrite)) {
                 debug("skipping locked tempdir '%s'", realPath);
                 return;
@@ -847,7 +848,7 @@ try {
             printInfo("determining live/dead paths...");
 
         try {
-            AutoCloseDir dir(opendir(config().realStoreDir.get().c_str()));
+            AutoCloseDir dir(sys::opendir(config().realStoreDir));
             if (!dir) throw SysError("opening directory '%1%'", config().realStoreDir);
 
             /* Read the store and delete all paths that are invalid or
@@ -891,7 +892,7 @@ try {
     if (options.action == GCOptions::gcDeleteDead || deleteSpecific) {
         printInfo("deleting unused links...");
 
-        AutoCloseDir dir(opendir(linksDir.c_str()));
+        AutoCloseDir dir(sys::opendir(linksDir));
         if (!dir) throw SysError("opening directory '%1%'", linksDir);
 
         int64_t actualSize = 0, unsharedSize = 0;
@@ -913,16 +914,18 @@ try {
 
             printMsg(lvlTalkative, "deleting unused link '%1%'", path);
 
-            if (unlink(path.c_str()) == -1)
+            if (sys::unlink(path) == -1) {
                 throw SysError("deleting '%1%'", path);
+            }
 
             /* Do not accound for deleted file here. Rely on deletePath()
                accounting.  */
         }
 
         struct stat st;
-        if (stat(linksDir.c_str(), &st) == -1)
+        if (sys::stat(linksDir, &st) == -1) {
             throw SysError("statting '%1%'", linksDir);
+        }
         int64_t overhead = st.st_blocks * 512ULL;
 
         printInfo("note: currently hard linking saves %.2f MiB",
@@ -962,8 +965,9 @@ try {
             return std::stoll(readFile(*fakeFreeSpaceFile));
 
         struct statvfs st;
-        if (statvfs(config().realStoreDir.get().c_str(), &st))
+        if (sys::statvfs(config().realStoreDir, &st)) {
             throw SysError("getting filesystem info about '%s'", config().realStoreDir);
+        }
 
         return (uint64_t) st.f_bavail * st.f_frsize;
     };

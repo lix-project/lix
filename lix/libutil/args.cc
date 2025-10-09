@@ -1,4 +1,5 @@
 #include "lix/libutil/args.hh"
+#include "c-calls.hh"
 #include "lix/libutil/args/root.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/strings.hh"
@@ -366,6 +367,7 @@ static void _completePath(AddCompletions & completions, std::string_view prefix,
         flags |= GLOB_ONLYDIR;
     #endif
     // using expandTilde here instead of GLOB_TILDE(_CHECK) so that ~<Tab> expands to /home/user/
+    // NOLINTNEXTLINE(lix-unsafe-c-calls)
     if (glob((expandTilde(prefix) + "*").c_str(), flags, nullptr, &globbuf) == 0) {
         for (size_t i = 0; i < globbuf.gl_pathc; ++i) {
             if (onlyDirs) {
@@ -603,7 +605,7 @@ void ExternalCommand::run() {
         "running external command: %s",
         concatMapStringsSep(" ", externalArgv, shellEscape)
     );
-    execv(absoluteBinaryPath.c_str(), stringsToCharPtrs(externalArgv).data());
+    sys::execv(absoluteBinaryPath, externalArgv);
 
     throw SysError(errno, "failed to execute external command '%1%'", absoluteBinaryPath);
 }

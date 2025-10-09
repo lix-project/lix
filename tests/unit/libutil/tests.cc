@@ -1,3 +1,4 @@
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
@@ -232,14 +233,14 @@ namespace nix {
         Path filePath = getUnitTestDataPath("guess-or-invent/test.txt");
         createDirs(dirOf(filePath));
         writeFile(filePath, "some text");
-        AutoCloseFD file{open(filePath.c_str(), O_RDONLY, 0666)};
+        AutoCloseFD file{sys::open(filePath, O_RDONLY, 0666)};
         testGuessOrInventPathPrePostDeletion(file, filePath);
     }
 
     TEST(guessOrInventPath, directories) {
         Path dirPath = getUnitTestDataPath("guess-or-invent/test-dir");
         createDirs(dirPath);
-        AutoCloseFD directory{open(dirPath.c_str(), O_DIRECTORY, 0666)};
+        AutoCloseFD directory{sys::open(dirPath, O_DIRECTORY, 0666)};
         testGuessOrInventPathPrePostDeletion(directory, dirPath);
     }
 
@@ -249,15 +250,15 @@ namespace nix {
         Path targetPath = getUnitTestDataPath("guess-or-invent/nowhere");
         createDirs(dirOf(symlinkPath));
         createSymlink(targetPath, symlinkPath);
-        AutoCloseFD symlink{open(symlinkPath.c_str(), O_PATH | O_NOFOLLOW, 0666)};
+        AutoCloseFD symlink{sys::open(symlinkPath, O_PATH | O_NOFOLLOW, 0666)};
         testGuessOrInventPathPrePostDeletion(symlink, symlinkPath);
     }
 
     TEST(guessOrInventPath, fifos) {
         Path fifoPath = getUnitTestDataPath("guess-or-invent/fifo");
         createDirs(dirOf(fifoPath));
-        ASSERT_TRUE(mkfifo(fifoPath.c_str(), 0666) == 0);
-        AutoCloseFD fifo{open(fifoPath.c_str(), O_PATH | O_NOFOLLOW, 0666)};
+        ASSERT_TRUE(mkfifo(fifoPath.c_str(), 0666) == 0); // NOLINT(lix-unsafe-c-calls)
+        AutoCloseFD fifo{sys::open(fifoPath, O_PATH | O_NOFOLLOW, 0666)};
         testGuessOrInventPathPrePostDeletion(fifo, fifoPath);
     }
 #endif

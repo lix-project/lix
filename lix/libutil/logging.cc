@@ -1,3 +1,4 @@
+#include "c-calls.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
@@ -366,7 +367,7 @@ void logFatal(std::string const & s)
 {
     writeLogsToStderr(s + "\n");
     // std::string for guaranteed null termination
-    syslog(LOG_CRIT, "%s", s.c_str());
+    syslog(LOG_CRIT, "%s", requireCString(s).asCStr());
 }
 
 }

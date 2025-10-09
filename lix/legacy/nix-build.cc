@@ -9,6 +9,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libmain/shared.hh"
@@ -225,8 +226,9 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
             left = {"default.nix"};
     }
 
-    if (runEnv)
-        setenv("IN_NIX_SHELL", pure ? "pure" : "impure", 1);
+    if (runEnv) {
+        (void) sys::setenv("IN_NIX_SHELL", pure ? "pure" : "impure", 1);
+    }
 
     DrvInfos drvs;
 
@@ -540,15 +542,13 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
         environ = envPtrs.data();
 
-        auto argPtrs = stringsToCharPtrs(args);
-
         restoreProcessContext();
 
         logger->pause();
 
         printMsg(lvlChatty, "running shell: %s", concatMapStringsSep(" ", args, shellEscape));
 
-        execvp(shell->c_str(), argPtrs.data());
+        sys::execvp(*shell, args);
 
         throw SysError("executing shell '%s'", *shell);
     }

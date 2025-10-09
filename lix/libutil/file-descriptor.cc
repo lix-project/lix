@@ -184,7 +184,7 @@ std::string guessOrInventPathFromFD(int fd)
      * But we can read /proc/ */
 #if __linux__
     try {
-        return readLink(fmt("/proc/self/fd/%1%", fd).c_str());
+        return readLink(fmt("/proc/self/fd/%1%", fd));
     } catch (...) {
     }
 #elif defined (HAVE_F_GETPATH) && HAVE_F_GETPATH

@@ -3,6 +3,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/compression.hh"
 #include "lix/libutil/strings.hh"
 
@@ -51,8 +52,9 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
 
         auto executable = drv.env.find("executable");
         if (executable != drv.env.end() && executable->second == "1") {
-            if (chmod(storePath.c_str(), 0755) == -1)
+            if (sys::chmod(storePath, 0755) == -1) {
                 throw SysError("making '%1%' executable", storePath);
+            }
         }
     };
 

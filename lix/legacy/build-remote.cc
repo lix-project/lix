@@ -1,5 +1,6 @@
 #include "lix/libstore/path.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
@@ -255,7 +256,7 @@ try {
     bool canBuildLocally = amWilling && couldBuildLocally;
 
     /* Error ignored here, will be caught later */
-    mkdir(currentLoad.c_str(), 0777);
+    (void) sys::mkdir(currentLoad, 0777);
 
     while (true) {
         bestSlotLock.reset();

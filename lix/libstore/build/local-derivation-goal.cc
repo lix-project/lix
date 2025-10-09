@@ -12,6 +12,7 @@
 #include "lix/libstore/path-references.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/daemon.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/fmt.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/file-descriptor.hh"
@@ -370,11 +371,12 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
         auto & localStore = getLocalStore();
         uint64_t required = 8ULL * 1024 * 1024; // FIXME: make configurable
         struct statvfs st;
-        if (statvfs(localStore.config().realStoreDir.get().c_str(), &st) == 0 &&
-            (uint64_t) st.f_bavail * st.f_bsize < required)
-            diskFull = true;
-        if (statvfs(tmpDirRoot.c_str(), &st) == 0 && (uint64_t) st.f_bavail * st.f_bsize < required)
+        if (sys::statvfs(localStore.config().realStoreDir, &st) == 0
+            && (uint64_t) st.f_bavail * st.f_bsize < required)
         {
+            diskFull = true;
+        }
+        if (sys::statvfs(tmpDirRoot, &st) == 0 && (uint64_t) st.f_bavail * st.f_bsize < required) {
             diskFull = true;
         }
     }
@@ -491,7 +493,7 @@ try {
     }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
      * POSIX semantics.*/
-    tmpDirRootFd = AutoCloseFD{open(tmpDirRoot.c_str(), O_RDONLY | O_NOFOLLOW | O_DIRECTORY)};
+    tmpDirRootFd = sys::open(tmpDirRoot, O_RDONLY | O_NOFOLLOW | O_DIRECTORY);
     if (!tmpDirRootFd) {
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDirRoot);
     }
@@ -785,11 +787,13 @@ try {
     std::string slaveName = ptsname(builderOutPTY.get());
 
     if (buildUser) {
-        if (chmod(slaveName.c_str(), 0600))
+        if (sys::chmod(slaveName, 0600)) {
             throw SysError("changing mode of pseudoterminal slave");
+        }
 
-        if (chown(slaveName.c_str(), buildUser->getUID(), 0))
+        if (sys::chown(slaveName, buildUser->getUID(), 0)) {
             throw SysError("changing owner of pseudoterminal slave");
+        }
     }
 #if __APPLE__
     else {
@@ -802,9 +806,8 @@ try {
         throw SysError("unlocking pseudoterminal");
 
     /* Open the slave side of the pseudoterminal and use it as stderr. */
-    auto openSlave = [&]()
-    {
-        AutoCloseFD builderOut{open(slaveName.c_str(), O_RDWR | O_NOCTTY)};
+    auto openSlave = [&]() {
+        AutoCloseFD builderOut{sys::open(slaveName, O_RDWR | O_NOCTTY)};
         if (!builderOut)
             throw SysError("opening pseudoterminal slave");
 
@@ -896,7 +899,12 @@ void LocalDerivationGoal::initTmpDir() {
                 std::string fn = ".attr-" + hash.to_string(Base::Base32, false);
                 Path p = tmpDir + "/" + fn;
                 /* TODO(jade): we should have BorrowedFD instead of OwnedFD. */
-                AutoCloseFD passAsFileFd{openat(tmpDirFd.get(), fn.c_str(), O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC | O_EXCL | O_NOFOLLOW, 0666)};
+                AutoCloseFD passAsFileFd{sys::openat(
+                    tmpDirFd.get(),
+                    fn,
+                    O_WRONLY | O_TRUNC | O_CREAT | O_CLOEXEC | O_EXCL | O_NOFOLLOW,
+                    0666
+                )};
                 if (!passAsFileFd) {
                     throw SysError("opening `passAsFile` file in the sandbox '%1%'", p);
                 }
@@ -1083,8 +1091,9 @@ try {
 void LocalDerivationGoal::chownToBuilder(const Path & path)
 {
     if (!buildUser) return;
-    if (chown(path.c_str(), buildUser->getUID(), buildUser->getGID()) == -1)
+    if (sys::chown(path, buildUser->getUID(), buildUser->getGID()) == -1) {
         throw SysError("cannot change ownership of '%1%'", path);
+    }
 }
 
 void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
@@ -1173,8 +1182,9 @@ void LocalDerivationGoal::runChild()
 
             /* Bind-mount chroot directory to itself, to treat it as a
                different filesystem from /, as needed for pivot_root. */
-            if (mount(chrootRootDir.c_str(), chrootRootDir.c_str(), 0, MS_BIND, 0) == -1)
+            if (sys::mount(chrootRootDir, chrootRootDir, "", MS_BIND, 0) == -1) {
                 throw SysError("unable to bind mount '%1%'", chrootRootDir);
+            }
 
             /* Bind-mount the sandbox's Nix store onto itself so that
                we can mark it as a "shared" subtree, allowing bind
@@ -1186,11 +1196,13 @@ void LocalDerivationGoal::runChild()
                to fail with EINVAL. Don't know why. */
             Path chrootStoreDir = chrootRootDir + worker.store.config().storeDir;
 
-            if (mount(chrootStoreDir.c_str(), chrootStoreDir.c_str(), 0, MS_BIND, 0) == -1)
+            if (sys::mount(chrootStoreDir, chrootStoreDir, "", MS_BIND, 0) == -1) {
                 throw SysError("unable to bind mount the Nix store", chrootStoreDir);
+            }
 
-            if (mount(0, chrootStoreDir.c_str(), 0, MS_SHARED, 0) == -1)
+            if (sys::mount("", chrootStoreDir, "", MS_SHARED, 0) == -1) {
                 throw SysError("unable to make '%s' shared", chrootStoreDir);
+            }
 
             /* Set up a nearly empty /dev, unless the user asked to
                bind-mount the host /dev. */
@@ -1295,21 +1307,31 @@ void LocalDerivationGoal::runChild()
 
             /* Bind a new instance of procfs on /proc. */
             createDirs(chrootRootDir + "/proc");
-            if (mount("none", (chrootRootDir + "/proc").c_str(), "proc", 0, 0) == -1)
+            if (sys::mount("none", chrootRootDir + "/proc", "proc", 0, 0) == -1) {
                 throw SysError("mounting /proc");
+            }
 
             /* Mount sysfs on /sys. */
             if (buildUser && buildUser->getUIDCount() != 1) {
                 createDirs(chrootRootDir + "/sys");
-                if (mount("none", (chrootRootDir + "/sys").c_str(), "sysfs", 0, 0) == -1)
+                if (sys::mount("none", chrootRootDir + "/sys", "sysfs", 0, 0) == -1) {
                     throw SysError("mounting /sys");
+                }
             }
 
             /* Mount a new tmpfs on /dev/shm to ensure that whatever
                the builder puts in /dev/shm is cleaned up automatically. */
-            if (pathExists("/dev/shm") && mount("none", (chrootRootDir + "/dev/shm").c_str(), "tmpfs", 0,
-                    fmt("size=%s", settings.sandboxShmSize).c_str()) == -1)
+            if (pathExists("/dev/shm")
+                && sys::mount(
+                       "none",
+                       chrootRootDir + "/dev/shm",
+                       "tmpfs",
+                       0,
+                       fmt("size=%s", settings.sandboxShmSize).c_str()
+                   ) == -1)
+            {
                 throw SysError("mounting /dev/shm");
+            }
 
             /* Mount a new devpts on /dev/pts.  Note that this
                requires the kernel to be compiled with
@@ -1319,7 +1341,10 @@ void LocalDerivationGoal::runChild()
                 !pathExists(chrootRootDir + "/dev/ptmx")
                 && !pathsInChroot.count("/dev/pts"))
             {
-                if (mount("none", (chrootRootDir + "/dev/pts").c_str(), "devpts", 0, "newinstance,mode=0620") == 0)
+                if (sys::mount(
+                        "none", (chrootRootDir + "/dev/pts"), "devpts", 0, "newinstance,mode=0620"
+                    )
+                    == 0)
                 {
                     createSymlink("/dev/pts/ptmx", chrootRootDir + "/dev/ptmx");
 
@@ -1364,8 +1389,9 @@ void LocalDerivationGoal::runChild()
                 throw SysError("unsharing cgroup namespace");
 
             /* Do the chroot(). */
-            if (chdir(chrootRootDir.c_str()) == -1)
+            if (sys::chdir(chrootRootDir) == -1) {
                 throw SysError("cannot change directory to '%1%'", chrootRootDir);
+            }
 
             if (mkdir("real-root", 0) == -1)
                 throw SysError("cannot create real-root directory");
@@ -1424,8 +1450,9 @@ void LocalDerivationGoal::runChild()
         }
 #endif
 
-        if (chdir(tmpDirInSandbox.c_str()) == -1)
+        if (sys::chdir(tmpDirInSandbox) == -1) {
             throw SysError("changing into '%1%'", tmpDir);
+        }
 
         /* Close all other file descriptors. */
         closeExtraFDs();
@@ -1658,7 +1685,7 @@ void LocalDerivationGoal::runChild()
 
 void LocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
 {
-    execve(builder.c_str(), stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
+    sys::execve(builder, args, envStrs);
 }
 
 
@@ -1738,7 +1765,7 @@ try {
             continue;
         }
 
-        auto optSt = maybeLstat(actualPath.c_str());
+        auto optSt = maybeLstat(actualPath);
         if (!optSt)
             throw BuildError(
                 "builder for '%s' failed to produce output path for output '%s' at '%s'",
@@ -2216,9 +2243,11 @@ try {
             msg << HintFmt("derivation '%s' may not be deterministic: outputs differ", drvPath.to_string());
             for (auto [oldPath, newPath]: nondeterministic) {
                 if (newPath) {
-                    msg << HintFmt("\n  output differs: output '%s' differs from '%s'", oldPath.c_str(), *newPath);
+                    msg << HintFmt(
+                        "\n  output differs: output '%s' differs from '%s'", oldPath, *newPath
+                    );
                 } else {
-                    msg << HintFmt("\n  output '%s' differs", oldPath.c_str());
+                    msg << HintFmt("\n  output '%s' differs", oldPath);
                 }
             }
             throw NotDeterministic(msg.str());
@@ -2569,36 +2598,39 @@ try {
 static void makeVisible(int parentFd, const char * entry, uid_t user, gid_t group)
 {
     struct stat st;
+    // NOLINTNEXTLINE(lix-unsafe-c-calls): entry is a dentry name
     if (fstatat(parentFd, entry, &st, AT_SYMLINK_NOFOLLOW)) {
         throw SysError("fstat(%s)", guessOrInventPathFromFD(parentFd));
     }
     if (S_ISDIR(st.st_mode)) {
-        int dirfd = openat(parentFd, entry, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-        if (dirfd < 0) {
+        auto dirfd = sys::openat(parentFd, entry, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+        if (!dirfd) {
             throw SysError("openat(%s/%s)", guessOrInventPathFromFD(parentFd), entry);
         }
-        AutoCloseDir dir(fdopendir(dirfd));
+        AutoCloseDir dir(fdopendir(dirfd.get()));
         if (!dir) {
-            close(dirfd);
             throw SysError("fdopendir(%s/%s)", guessOrInventPathFromFD(parentFd), entry);
         }
+        dirfd.release();
 
         struct dirent * dirent;
         while (errno = 0, dirent = readdir(dir.get())) {
             if (strcmp(dirent->d_name, ".") == 0 || strcmp(dirent->d_name, "..") == 0) {
                 continue;
             }
-            makeVisible(dirfd, dirent->d_name, user, group);
+            makeVisible(::dirfd(dir.get()), dirent->d_name, user, group);
         }
     }
 
     // ignore permissions errors for symlinks. linux can't chmod them.
     // clear special permission bits while we're here, just to be safe
-    if (fchmodat(parentFd, entry, st.st_mode & 0777, AT_SYMLINK_NOFOLLOW) && !S_ISLNK(st.st_mode)) {
+    if (sys::fchmodat(parentFd, entry, st.st_mode & 0777, AT_SYMLINK_NOFOLLOW)
+        && !S_ISLNK(st.st_mode))
+    {
         throw SysError("fchmod(%s)", guessOrInventPathFromFD(parentFd));
     }
     if (user != uid_t(-1) && group != gid_t(-1)
-        && fchownat(parentFd, entry, user, group, AT_SYMLINK_NOFOLLOW))
+        && sys::fchownat(parentFd, entry, user, group, AT_SYMLINK_NOFOLLOW))
     {
         throw SysError("fchown(%s)", guessOrInventPathFromFD(parentFd));
     }
@@ -2621,7 +2653,7 @@ void LocalDerivationGoal::finalizeTmpDir(bool force, bool duringDestruction)
             } catch (SysError & e) {
                 printError("error making '%s' accessible: %s", tmpDir, e.what());
             }
-            chmod(tmpDirRoot.c_str(), 0755);
+            (void) sys::chmod(tmpDirRoot, 0755);
         }
         else if (duringDestruction)
             deletePathUninterruptible(tmpDirRoot);

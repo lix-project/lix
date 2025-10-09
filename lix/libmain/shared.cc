@@ -3,6 +3,7 @@
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libmain/loggers.hh"
@@ -307,8 +308,8 @@ void printVersion(const std::string & programName)
 void showManPage(const std::string & name)
 {
     restoreProcessContext();
-    setenv("MANPATH", settings.nixManDir.c_str(), 1);
-    execlp("man", "man", name.c_str(), nullptr);
+    (void) sys::setenv("MANPATH", settings.nixManDir, 1);
+    execlp("man", "man", requireCString(name).asCStr(), nullptr);
     throw SysError("command 'man %1%' failed", name.c_str());
 }
 

@@ -1,6 +1,7 @@
 #include "lix/libstore/build/derivation-goal.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/build/hook-instance.hh"
@@ -1182,7 +1183,7 @@ Path DerivationGoal::openLogFile()
     Path logFileName = fmt("%s/%s%s", dir, baseName.substr(2),
         settings.compressLog ? ".bz2" : "");
 
-    fdLogFile = AutoCloseFD{open(logFileName.c_str(), O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666)};
+    fdLogFile = sys::open(logFileName, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
     if (!fdLogFile) throw SysError("creating log file '%1%'", logFileName);
 
     logFileSink = std::make_shared<FdSink>(fdLogFile.get());

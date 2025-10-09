@@ -1,6 +1,7 @@
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
@@ -21,8 +22,9 @@ namespace nix {
 static void makeWritable(const Path & path)
 {
     auto st = lstat(path);
-    if (chmod(path.c_str(), st.st_mode | S_IWUSR) == -1)
+    if (sys::chmod(path, st.st_mode | S_IWUSR) == -1) {
         throw SysError("changing writability of '%1%'", path);
+    }
 }
 
 
@@ -47,7 +49,7 @@ LocalStore::InodeHash LocalStore::loadInodeHash()
     debug("loading hash inodes in memory");
     InodeHash inodeHash;
 
-    AutoCloseDir dir(opendir(linksDir.c_str()));
+    AutoCloseDir dir(sys::opendir(linksDir));
     if (!dir) throw SysError("opening directory '%1%'", linksDir);
 
     struct dirent * dirent;
@@ -68,7 +70,7 @@ Strings LocalStore::readDirectoryIgnoringInodes(const Path & path, const InodeHa
 {
     Strings names;
 
-    AutoCloseDir dir(opendir(path.c_str()));
+    AutoCloseDir dir(sys::opendir(path));
     if (!dir) throw SysError("opening directory '%1%'", path);
 
     struct dirent * dirent;
@@ -167,15 +169,16 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
                 "There may be more corrupted paths."
                 "\nYou should run `nix-store --verify --check-contents --repair` to fix them all"
             );
-            if (unlink(linkPath.c_str()) == -1 && errno != ENOENT)
+            if (sys::unlink(linkPath) == -1 && errno != ENOENT) {
                 throw SysError("cannot unlink '%1%'", linkPath);
+            }
             stLinkOpt.reset();
         }
     }
 
     if (!stLinkOpt) {
         /* Nope, create a hard link in the links directory. */
-        if (link(path.c_str(), linkPath.c_str()) == 0) {
+        if (sys::link(path, linkPath) == 0) {
             inodeHash.insert(st.st_ino);
             return;
         }
@@ -221,9 +224,9 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
     MakeReadOnly makeReadOnly(mustToggle ? dirOfPath : "");
 
     Path tempLink = makeTempPath(config().realStoreDir, "/.tmp-link");
-    unlink(tempLink.c_str()); // just in case; ignore errors
+    (void) sys::unlink(tempLink); // just in case; ignore errors
 
-    if (link(linkPath.c_str(), tempLink.c_str()) == -1) {
+    if (sys::link(linkPath, tempLink) == -1) {
         if (errno == EMLINK) {
             /* Too many links to the same file (>= 32000 on most file
                systems).  This is likely to happen with empty files.
@@ -239,8 +242,9 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
     try {
         renameFile(tempLink, path);
     } catch (SysError & e) {
-        if (unlink(tempLink.c_str()) == -1)
+        if (sys::unlink(tempLink) == -1) {
             printError("unable to unlink '%1%': %2%", tempLink, strerror(errno));
+        }
         if (errno == EMLINK) {
             /* Some filesystems generate too many links on the rename,
                rather than on the original link.  (Probably it
