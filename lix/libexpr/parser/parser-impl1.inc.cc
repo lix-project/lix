@@ -326,10 +326,11 @@ template<> struct BuildAST<grammar::v1::attr::simple> {
 template<> struct BuildAST<grammar::v1::attr::string> {
     static void apply(const auto & in, auto & s, State & ps) {
         auto e = s->popExprOnly();
-        if (auto str = dynamic_cast<ExprString *>(e.get()))
-            s.pushAttr(ps.symbols.create(str->s), ps.at(in));
-        else
+        if (auto estr = dynamic_cast<ExprString *>(e.get())) {
+            s.pushAttr(ps.symbols.create(estr->str()), ps.at(in));
+        } else {
             s.pushAttr(std::move(e), ps.at(in));
+        }
     }
 };
 
@@ -387,9 +388,9 @@ template<> struct BuildAST<grammar::v1::inherit> : change_head<InheritState> {
         for (auto & i : s.attrs) {
             if (i.symbol)
                 continue;
-            if (auto str = dynamic_cast<ExprString *>(i.expr.get()))
-                i = AttrName(i.pos, ps.symbols.create(str->s));
-            else {
+            if (auto estr = dynamic_cast<ExprString *>(i.expr.get())) {
+                i = AttrName(i.pos, ps.symbols.create(estr->str()));
+            } else {
                 throw ParseError({
                     .msg = HintFmt("dynamic attributes not allowed in inherit"),
                     .pos = ps.positions[i.pos]
@@ -770,13 +771,15 @@ template<> struct BuildAST<grammar::v1::path> : change_head<StringState> {
     template<typename E>
     static void check_slash(PosIdx end, StringState & s, State & ps) {
         auto e = dynamic_cast<E *>(s.parts.back().second.get());
-        if (!e || !e->s.ends_with('/'))
+        if (!e || !e->str().ends_with('/')) {
             return;
-        if (s.parts.size() > 1 || e->s != "/")
+        }
+        if (s.parts.size() > 1 || e->str() != "/") {
             throw ParseError({
                 .msg = HintFmt("path has a trailing slash"),
                 .pos = ps.positions[end],
             });
+        }
     }
 
     static void success(const auto & in, StringState & s, ExprState & e, State & ps) {

@@ -45,7 +45,7 @@ private:
     /*
      * The type that actually stores the string contained inside of the Value.
      */
-    std::string contents;
+    std::unique_ptr<Value::Str, Value::Str::Deleter> contents;
 
     Value::String strcb;
 
@@ -56,8 +56,8 @@ private:
 
 public:
     explicit InternedSymbol(std::string_view s)
-        : contents(s)
-        , strcb{.content = contents.c_str(), .context = nullptr}
+        : contents(Value::Str::copy(s))
+        , strcb{.content = contents.get(), .context = nullptr}
         , underlyingValue(NewValueAs::string, &strcb)
     {
     }
@@ -69,17 +69,17 @@ public:
 
     operator SymbolStr() const
     {
-        return SymbolStr(contents);
+        return SymbolStr(contents->str());
     }
 
     bool operator==(std::string_view s2) const
     {
-        return contents == s2;
+        return contents->str() == s2;
     }
 
     operator std::string_view() const
     {
-        return contents;
+        return contents->str();
     }
 
     Value toValue() const

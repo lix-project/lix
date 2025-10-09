@@ -2014,17 +2014,16 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
         for (const auto & part : s) result += *part;
         return result;
     };
-    /* c_str() is not str().c_str() because we want to create a string
-       Value. allocating a GC'd string directly and moving it into a
-       Value lets us avoid an allocation and copy. */
-    const auto c_str = [&] {
-        char * result = gcAllocString(sSize + 1);
-        char * tmp = result;
+    /* build a gc'd value string directly instead of going through str()
+       and mkString to save an allocation and copy */
+    const auto gcStr = [&] {
+        auto result = Value::Str::gcAlloc(sSize);
+
+        char * tmp = result->contents;
         for (const auto & part : s) {
             memcpy(tmp, part->data(), part->size());
             tmp += part->size();
         }
-        *tmp = 0;
         return result;
     };
 
@@ -2098,7 +2097,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
             state.ctx.errors.make<EvalError>("a string that refers to a store path cannot be appended to a path").atPos(pos).withFrame(env, *this).debugThrow();
         v.mkPath(CanonPath(canonPath(str())));
     } else
-        v.mkStringMove(c_str(), context);
+        v.mkStringMove(gcStr(), context);
 }
 
 
@@ -2369,8 +2368,8 @@ BackedStringView EvalState::coerceToString(
 
     if (v.type() == nPath) {
         return !canonicalizePath && !copyToStore
-            ? v.string().content // FIXME: hack to preserve path literals that end in a slash, as in
-                                 // /foo/${x}.
+            // FIXME: hack to preserve path literals that end in a slash, as in /foo/${x}.
+            ? std::string(v.string().content->str())
             : (copyToStore
                    ? ctx.store->printStorePath(
                          aio.blockOn(ctx.paths.copyPathToStore(context, v.path(), ctx.repair))
@@ -2603,8 +2602,7 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return v1.str() == v2.str();
 
         case nPath:
-            // NOLINTNEXTLINE(lix-unsafe-c-calls)
-            return strcmp(v1.string().content, v2.string().content) == 0;
+            return v1.string().content->str() == v2.string().content->str();
 
         case nNull:
             return true;

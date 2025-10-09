@@ -485,8 +485,7 @@ struct CompareValues : NeverAsync
             case nString:
                 return v1.str() < v2.str();
             case nPath:
-                // NOLINTNEXTLINE(lix-unsafe-c-calls)
-                return strcmp(v1.string().content, v2.string().content) < 0;
+                return v1.string().content->str() < v2.string().content->str();
             case nList:
                 // Lexicographic comparison
                 for (size_t i = 0;; i++) {
@@ -1356,11 +1355,6 @@ static void prim_readFile(EvalState & state, Value * * args, Value & v)
 {
     auto path = realisePath(state, *args[0]);
     auto s = path.readFile();
-    if (s.find((char) 0) != std::string::npos)
-        state.ctx.errors.make<EvalError>(
-            "the contents of the file '%1%' cannot be represented as a Nix string",
-            path
-        ).debugThrow();
     StorePathSet refs;
     if (state.ctx.store->isInStore(path.canonical().abs())) {
         try {

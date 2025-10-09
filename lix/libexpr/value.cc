@@ -59,9 +59,11 @@ void Value::mkPrimOp(PrimOp * p)
     *this = {NewValueAs::primop, *p};
 }
 
-void Value::mkString(std::string_view s)
+void Value::mkString(std::string_view s, const char ** context)
 {
-    mkString(gcCopyStringIfNeeded(s));
+    auto block = gcAllocType<String>();
+    *block = {.content = Str::gcCopy(s), .context = context};
+    raw = tag(tString, block);
 }
 
 void Value::mkString(std::string_view s, const NixStringContext & context)
@@ -70,10 +72,12 @@ void Value::mkString(std::string_view s, const NixStringContext & context)
     copyContextToValue(*untag<String *>(), context);
 }
 
-void Value::mkStringMove(const char * s, const NixStringContext & context)
+void Value::mkStringMove(Str * s, const NixStringContext & context)
 {
-    mkString(s);
-    copyContextToValue(*untag<String *>(), context);
+    auto block = gcAllocType<String>();
+    *block = {.content = s, .context = nullptr};
+    raw = tag(tString, block);
+    copyContextToValue(*block, context);
 }
 
 void Value::mkPath(const SourcePath & path)

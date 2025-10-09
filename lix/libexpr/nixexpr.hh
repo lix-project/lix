@@ -204,21 +204,31 @@ struct ExprFloat : ExprLiteral
 
 struct ExprString : ExprLiteral
 {
-    std::string s;
-    Value::String strcb{.content = s.c_str(), .context = nullptr};
-    ExprString(const PosIdx pos, std::string && s) : ExprLiteral(pos), s(std::move(s))
+    std::unique_ptr<Value::Str, Value::Str::Deleter> contents;
+    Value::String strcb{.content = contents.get(), .context = nullptr};
+    ExprString(const PosIdx pos, std::string s) : ExprLiteral(pos), contents(Value::Str::copy(s))
     {
         v = {NewValueAs::string, &strcb};
+    }
+
+    std::string_view str() const
+    {
+        return contents->str();
     }
 };
 
 struct ExprPath : ExprLiteral
 {
-    std::string s;
-    Value::String strcb{.content = s.c_str(), .context = Value::String::path};
-    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), s(std::move(s))
+    std::unique_ptr<Value::Str, Value::Str::Deleter> contents;
+    Value::String strcb{.content = contents.get(), .context = Value::String::path};
+    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), contents(Value::Str::copy(s))
     {
-        v = {NewValueAs::path, &strcb};
+        v = Value{NewValueAs::path, &strcb};
+    }
+
+    std::string_view str() const
+    {
+        return contents->str();
     }
 };
 

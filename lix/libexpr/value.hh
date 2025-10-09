@@ -7,8 +7,10 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <ranges>
 #include <span>
+#include <string_view>
 #include <type_traits>
 
 #include "lix/libexpr/gc-alloc.hh"
@@ -290,6 +292,67 @@ private:
 public:
 
     /**
+     * Underlying data storage for stringly values (i.e., strings and paths). Stores
+     * both the length of the string and its contents in a single GC-allocated block
+     * of memory to reduce overhead in the most common case. This and `String` could
+     * be merged into a single struct to decrease memory overhead further, but doing
+     * so precludes us from using atomic allocations that do not need to be scanned,
+     * increasing GC runtime overhead. We only use this struct to replace C strings.
+     */
+    struct Str
+    {
+        struct Deleter
+        {
+            void operator()(Str * s)
+            {
+                free(s);
+            }
+        };
+
+        size_t length;
+        char contents[0];
+
+        std::string_view str() const
+        {
+            return {contents, length};
+        }
+
+        static Str * gcAlloc(size_t size)
+        {
+            auto result = static_cast<Str *>(LIX_GC_MALLOC_ATOMIC(sizeof(Value::Str) + size));
+            if (result) {
+                result->length = size;
+                return result;
+            }
+            throw std::bad_alloc();
+        }
+
+        static std::unique_ptr<Str, Deleter> copy(std::string_view s)
+        {
+            auto result = alloc(s.size());
+            memcpy(result->contents, s.data(), s.size());
+            return {result, {}};
+        }
+
+        static Str * gcCopy(std::string_view s)
+        {
+            auto result = gcAlloc(s.size());
+            memcpy(result->contents, s.data(), s.size());
+            return result;
+        }
+
+    private:
+        static Str * alloc(size_t size)
+        {
+            if (auto result = static_cast<Str *>(malloc(sizeof(Value::Str) + size))) {
+                result->length = size;
+                return result;
+            }
+            throw std::bad_alloc();
+        }
+    };
+
+    /**
      * Empty list constant.
      */
     static Value EMPTY_LIST;
@@ -377,7 +440,7 @@ public:
     /// Neither the C-string nor the context array are copied; this constructor
     /// assumes suitable memory has already been allocated (with the GC if
     /// enabled), and string and context data copied into that memory.
-    Value(string_t, char const * strPtr, char const ** contextPtr = nullptr)
+    Value(string_t, const Str * strPtr, char const ** contextPtr = nullptr)
     {
         auto block = gcAllocType<String>();
         *block = {.content = strPtr, .context = contextPtr};
@@ -394,44 +457,11 @@ public:
     Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
     {
         auto block = gcAllocType<String>();
-        *block = {.content = gcCopyStringIfNeeded(copyFrom), .context = nullptr};
+        *block = {.content = Str::gcCopy(copyFrom), .context = nullptr};
         raw = tag(tString, block);
 
         if (context.empty()) {
             // It stays nullptr.
-            return;
-        }
-
-        // Copy the context.
-        block->context = gcAllocType<char const *>(context.size() + 1);
-
-        size_t n = 0;
-        for (NixStringContextElem const & contextElem : context) {
-            block->context[n] = gcCopyStringIfNeeded(contextElem.to_string());
-            n += 1;
-        }
-
-        // Terminator sentinel.
-        block->context[n] = nullptr;
-    }
-
-    /// Constructx a nix language value of type "string", with the value of the
-    /// C-string pointed to by @ref strPtr, and optionally with a set of string
-    /// context @ref context.
-    ///
-    /// The C-string is not copied; this constructor assumes suitable memory
-    /// has already been allocated (with the GC if enabled), and string data
-    /// has been copied into that memory. The context data *is* copied from
-    /// @ref context, and this constructor performs a dynamic (GC) allocation
-    /// to do so.
-    Value(string_t, char const * strPtr, NixStringContext const & context)
-    {
-        auto block = gcAllocType<String>();
-        *block = {.content = strPtr, .context = nullptr};
-        raw = tag(tString, block);
-
-        if (context.empty()) {
-            // It stays nullptr
             return;
         }
 
@@ -467,7 +497,7 @@ public:
     Value(path_t, SourcePath const & path)
     {
         auto block = gcAllocType<String>();
-        *block = {.content = gcCopyStringIfNeeded(path.canonical().abs()), .context = String::path};
+        *block = {.content = Str::gcCopy(path.canonical().abs()), .context = String::path};
         raw = tag(tString, block);
     }
 
@@ -620,7 +650,7 @@ public:
         /// marker location for paths, to be used as path context.
         static inline const char * path[] = {"\1<path>", nullptr};
 
-        const char * content;
+        const Str * content;
         const char ** context; // must be in sorted order
 
         bool isPath() const
@@ -733,25 +763,18 @@ public:
         raw = tag(tBool, b);
     }
 
-    inline void mkString(const char * s, const char * * context = 0)
-    {
-        auto block = gcAllocType<String>();
-        *block = {.content = s, .context = context};
-        raw = tag(tString, block);
-    }
-
-    void mkString(std::string_view s);
+    void mkString(std::string_view s, const char ** context = 0);
 
     void mkString(std::string_view s, const NixStringContext & context);
 
-    void mkStringMove(const char * s, const NixStringContext & context);
+    void mkStringMove(Str * s, const NixStringContext & context);
 
     void mkPath(const SourcePath & path);
 
     inline void mkPath(const char * path)
     {
         auto block = gcAllocType<String>();
-        *block = {.content = path, .context = String::path};
+        *block = {.content = Str::gcCopy(path), .context = String::path};
         raw = tag(tString, block);
     }
 
@@ -812,13 +835,13 @@ public:
     SourcePath path() const
     {
         assert(internalType() == tString && untag<const String *>()->isPath());
-        return SourcePath{CanonPath(untag<const String *>()->content)};
+        return SourcePath{CanonPath(untag<const String *>()->content->str())};
     }
 
     std::string_view str() const
     {
         assert(internalType() == tString && !untag<const String *>()->isPath());
-        return std::string_view(untag<const String *>()->content);
+        return std::string_view(untag<const String *>()->content->str());
     }
 
     NixInt integer() const

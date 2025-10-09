@@ -35,7 +35,7 @@ escapeString(std::ostream & output, std::string_view string, EscapeStringOptions
             output << "\\r";
         } else if (*i == '\t') {
             output << "\\t";
-        } else if (*i == '$' && *(i + 1) == '{') {
+        } else if (*i == '$' && i + 1 != string.end() && *(i + 1) == '{') {
             output << "\\" << *i;
         } else if (options.escapeNonPrinting && !isprint(*i)) {
             output << MaybeHexEscapedChar{*i};
