@@ -15,9 +15,7 @@ functional2_env = environment()
 # set the bin dir for us to know where to find the lix binaries for our declarative path
 # without leaking all of PATH or env
 functional2_env.set('NIX_BIN_DIR', bindir)
-if build_test_shell != ''
-  functional2_env.set('BUILD_TEST_SHELL', build_test_shell)
-endif
+functional2_env.set('BUILD_TEST_SHELL', build_test_shell)
 functional2_env.set('system', host_system)
 
 test(

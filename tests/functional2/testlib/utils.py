@@ -144,7 +144,6 @@ def get_global_asset(name: str) -> Fileish:
                 "system": os.environ.get("system"),  # noqa: SIM112 # system is actually lowercase here
                 # Either just the build shell or entire global path if we are darwin
                 "path": os.environ.get("BUILD_TEST_SHELL") or os.environ.get("PATH"),
-                "shell": Path(os.environ.get("BUILD_TEST_SHELL") or "/bin") / "sh",
             },
         )
     return CopyFile(functional2_base_folder / "testlib" / "global_assets" / name)
