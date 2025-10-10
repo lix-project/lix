@@ -252,6 +252,8 @@ try {
             // Don't forget to print it into the STDERR log, this is
             // what's shown in the Hydra UI.
             std::cerr << msg << "\n";
+        } catch (const nix::Interrupted &) {
+            throw;
         } catch ( // NOLINT(lix-foreign-exceptions)
             const std::exception &e) { // FIXME: for some reason the catch block
                                        // above, doesn't trigger on macOS (?)
@@ -282,6 +284,8 @@ try {
     if (tryWriteLine(to.get(), "restart") < 0) {
         return; // main process died
     };
+} catch (const nix::Interrupted &) {
+    // The coordinator should get the interrupt too, so it doesn't need to be logged.
 } catch (nix::Error &e) {
     nix::JSON err;
     auto msg = e.msg();

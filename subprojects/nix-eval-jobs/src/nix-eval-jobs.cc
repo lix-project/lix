@@ -161,7 +161,18 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true)
                 strerror(errno));
         } else {
             if (WIFEXITED(status)) {
-                if (WEXITSTATUS(status) == 1) {
+                if (WEXITSTATUS(status) == 0) {
+                    // On the user hitting Ctrl-C, both the worker and the coordinator will receive the signal.
+                    // When the worker is interrupted, it will "unexpectedly" exit successfully.
+                    // Check whether the coordinator was interrupted as well, and don't show an ugly error in this case.
+                    checkInterrupt();
+                    // Maybe the coordinator noticed the broken pipe before its own interrupt.
+                    // Wait for a bit and try again.
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    checkInterrupt();
+                    // No, the coordinator was not interrupted, possibly the signal was sent manually to the worker.
+                    // Show the error in this case.
+                } else if (WEXITSTATUS(status) == 1) {
                     throw Error(
                         "while %s, evaluation worker exited with exit code 1, "
                         "(possible infinite recursion)",
