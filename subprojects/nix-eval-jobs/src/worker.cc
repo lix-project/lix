@@ -12,6 +12,7 @@
 #include <lix/libexpr/attr-set.hh>
 #include <lix/libutil/canon-path.hh>
 #include <lix/libcmd/common-eval-args.hh>
+#include <lix/libutil/current-process.hh>
 #include <lix/libutil/error.hh>
 #include <lix/libexpr/eval-cache.hh>
 #include <lix/libexpr/eval-inline.hh>
@@ -124,6 +125,10 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
 
 void worker(nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args)
 try {
+    // Increase the default stack size for the evaluator and for
+    // libstdc++'s std::regex.
+    nix::setStackSize(64 * 1024 * 1024);
+
 #if HAVE_BOEHMGC
     // We are doing the garbage collection by killing forks.
     GC_disable();
@@ -138,7 +143,7 @@ try {
     }
 #endif
 
-    nix::AsyncIoRoot aio;
+    auto & aio = args.aio();
 
     auto evalStore = aio.blockOn(args.evalStoreUrl
                          ? nix::openStore(*args.evalStoreUrl)

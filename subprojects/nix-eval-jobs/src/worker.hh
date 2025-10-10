@@ -6,7 +6,7 @@
 
 #include "eval-args.hh"
 
-class MyArgs;
+struct MyArgs;
 
 namespace nix {
 class AutoCloseFD;

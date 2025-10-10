@@ -10,7 +10,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/json.hh"
 
-class MyArgs;
+struct MyArgs;
 
 namespace nix {
 class EvalState;

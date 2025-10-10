@@ -19,6 +19,8 @@
 #include <lix/libutil/config.hh>
 #include <lix/libutil/error.hh>
 #include <lix/libstore/globals.hh>
+#include <lix/libutil/current-process.hh>
+#include <lix/libutil/finally.hh>
 #include <lix/libutil/logging.hh>
 #include <lix/libutil/terminal.hh>
 #include <lix/libutil/ref.hh>
@@ -44,34 +46,50 @@
 
 using namespace nix;
 
-using Processor =
-    std::function<void(AutoCloseFD &to, AutoCloseFD &from, MyArgs &args)>;
+static constexpr int NEJ_FROM_WORKER_FD = 3;
+static constexpr int NEJ_TO_WORKER_FD = 4;
 
 /* Auto-cleanup of fork's process and fds. */
 struct Proc {
     AutoCloseFD to, from;
-    Pid pid;
+    RunningProgram child;
 
-    Proc(MyArgs &myArgs, const Processor &proc) {
+    Proc(MyArgs &myArgs) {
+        const auto self = [] {
+            auto tmp = getSelfExe();
+            if (!tmp) {
+                throw Error("can't locate the nix-eval-jobs binary!");
+            }
+            return *tmp;
+        }();
+
+        Strings args = myArgs.cmdline;
+        args.push_front("--worker");
+
         Pipe toPipe, fromPipe;
         toPipe.create();
         fromPipe.create();
-        auto p = startProcess(
-            [&,
-             to{std::make_shared<AutoCloseFD>(std::move(fromPipe.writeSide))},
-             from{
-                 std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}]() {
-                debug("created worker process %d", getpid());
-                proc(*to, *from, myArgs);
-            },
-            ProcessOptions{});
 
+        RunOptions options{
+            .program = self,
+            .argv0 = "nix-eval-jobs",
+            .args = args,
+            .redirections = {
+                { .dup = NEJ_FROM_WORKER_FD, .from = fromPipe.writeSide.get() },
+                { .dup = NEJ_TO_WORKER_FD, .from = toPipe.readSide.get() },
+            },
+        };
+
+        child = runProgram2(options);
         to = std::move(toPipe.writeSide);
         from = std::move(fromPipe.readSide);
-        pid = std::move(p);
     }
 
-    ~Proc() {}
+    ~Proc() {
+        if (child) {
+            child.kill();
+        }
+    }
 };
 
 // We'd highly prefer using std::thread here; but this won't let us configure the stack
@@ -132,7 +150,7 @@ struct State {
 };
 
 void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
-    int status = proc.pid.wait();
+    int status = proc.child.wait();
     if (WIFEXITED(status)) {
         if (WEXITSTATUS(status) == 0) {
             // On the user hitting Ctrl-C, both the worker and the coordinator will receive the signal.
@@ -162,20 +180,11 @@ void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
                 "memory limit reached?",
                 msg);
             break;
-#ifdef __APPLE__
-        case SIGBUS:
-            throw Error(
-                "while %s, evaluation worker got killed by SIGBUS, "
-                "(possible infinite recursion)",
-                msg);
-            break;
-#else
         case SIGSEGV:
             throw Error(
                 "while %s, evaluation worker got killed by SIGSEGV, "
                 "(possible infinite recursion)",
                 msg);
-#endif
         default:
             throw Error(
                 "while %s, evaluation worker got killed by signal %d (%s)",
@@ -206,7 +215,7 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
 
         while (true) {
             if (!proc_.has_value()) {
-                proc_ = std::make_unique<Proc>(myArgs, worker);
+                proc_ = std::make_unique<Proc>(myArgs);
                 fromReader_ =
                     std::make_unique<LineReader>(proc_.value()->from.release());
             }
@@ -242,6 +251,9 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                     state->exc) {
                     if (tryWriteLine(proc->to.get(), "exit") < 0) {
                         handleBrokenWorkerPipe(*proc.get(), "sending exit");
+                    }
+                    if (proc->child) {
+                        (void) proc->child.wait();
                     }
                     return;
                 }
@@ -358,6 +370,13 @@ int main(int argc, char **argv) {
 
         if (myArgs.showTrace) {
             loggerSettings.showTrace.override(true);
+        }
+
+        if (myArgs.worker) {
+            AutoCloseFD fromCoordinator{NEJ_TO_WORKER_FD};
+            AutoCloseFD toCoordinator{NEJ_FROM_WORKER_FD};
+            worker(toCoordinator, fromCoordinator, myArgs);
+            return 0;
         }
 
         Sync<State> state_;

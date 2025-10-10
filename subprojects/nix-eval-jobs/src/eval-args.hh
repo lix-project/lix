@@ -11,14 +11,16 @@
 #include <string>
 #include <optional>
 
-class MyArgs : virtual public nix::MixEvalArgs,
+struct MyArgs : virtual public nix::MixEvalArgs,
                virtual public nix::MixCommonArgs,
                virtual public nix::RootArgs {
-    // intentionally hidden in this subclass because it's mondo dangerous
-    // in n-e-j due to all the forking we do for worker process creation.
     nix::AsyncIoRoot & aio_;
     nix::AsyncIoRoot & aio() override { return aio_; }
-  public:
+
+    // stash the command line to be able to pass it to the worker
+    nix::Strings cmdline;
+
+    bool worker = false;
     std::string releaseExpr;
     nix::Path gcRootsDir;
     bool flake = false;

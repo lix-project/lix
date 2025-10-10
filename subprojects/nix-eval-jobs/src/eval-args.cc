@@ -28,6 +28,12 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
         }},
     });
 
+    addFlag({
+        .longName = "worker",
+        .handler = {&worker, true},
+        .hidden = true,
+    });
+
     addFlag({.longName = "impure",
              .description = "allow impure expressions",
              .handler = {&impure, true}});
@@ -119,5 +125,6 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
 }
 
 void MyArgs::parseArgs(char **argv, int argc) {
-    parseCmdline(nix::Strings(argv + 1, argv + argc));
+    cmdline = nix::Strings(argv + 1, argv + argc);
+    parseCmdline(cmdline);
 }
