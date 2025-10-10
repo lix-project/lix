@@ -19,7 +19,7 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
         .handler = {[&]() {
             printf("USAGE: nix-eval-jobs [options] expr\n\n");
             for (const auto &[name, flag] : longFlags) {
-                if (hiddenCategories.count(flag->category)) {
+                if (flag->hidden || hiddenCategories.count(flag->category)) {
                     continue;
                 }
                 std::cout << nix::fmt("  --%-20s %s\n", name, flag->description);
