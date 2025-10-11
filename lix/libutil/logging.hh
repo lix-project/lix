@@ -265,6 +265,38 @@ Logger * makeJSONLogger(Logger & prevLogger);
  */
 extern Verbosity verbosity;
 
+#define ACTIVITY_PROGRESS(act, ...)     \
+    do {                                \
+        auto && _lix_act = (act);       \
+        _lix_act.progress(__VA_ARGS__); \
+    } while (0)
+#define ACTIVITY_RESULT(act, ...)     \
+    do {                              \
+        auto && _lix_act = (act);     \
+        _lix_act.result(__VA_ARGS__); \
+    } while (0)
+#define ACTIVITY_SET_EXPECTED(act, ...)    \
+    do {                                   \
+        auto && _lix_act = (act);          \
+        _lix_act.setExpected(__VA_ARGS__); \
+    } while (0)
+
+#define ACTIVITY_PROGRESS_SYNC(aio, act, ...) \
+    do {                                      \
+        auto && _lix_act = (act);             \
+        _lix_act.progress(__VA_ARGS__);       \
+    } while (0)
+#define ACTIVITY_RESULT_SYNC(aio, act, ...) \
+    do {                                    \
+        auto && _lix_act = (act);           \
+        _lix_act.result(__VA_ARGS__);       \
+    } while (0)
+#define ACTIVITY_SET_EXPECTED_SYNC(aio, act, ...) \
+    do {                                          \
+        auto && _lix_act = (act);                 \
+        _lix_act.setExpected(__VA_ARGS__);        \
+    } while (0)
+
 /**
  * Print a message with the standard ErrorInfo format.
  * In general, use these 'log' macros for reporting problems that may require user

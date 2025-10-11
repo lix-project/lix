@@ -2,6 +2,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
@@ -272,7 +273,7 @@ try {
     auto paths = TRY_AWAIT(queryAllValidPaths());
     InodeHash inodeHash = loadInodeHash();
 
-    act.progress(0, paths.size());
+    ACTIVITY_PROGRESS(act, 0, paths.size());
 
     uint64_t done = 0;
 
@@ -292,7 +293,7 @@ try {
             );
         }
         done++;
-        act.progress(done, paths.size());
+        ACTIVITY_PROGRESS(act, done, paths.size());
     }
     co_return result::success();
 } catch (...) {

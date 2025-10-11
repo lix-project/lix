@@ -332,9 +332,7 @@ try {
         storePathsToAdd.insert(thingToAdd.first.path);
     }
 
-    auto showProgress = [&]() {
-        act.progress(nrDone, pathsToCopy.size(), nrRunning, nrFailed);
-    };
+#define SHOW_PROGRESS() ACTIVITY_PROGRESS(act, nrDone, pathsToCopy.size(), nrRunning, nrFailed)
 
     TRY_AWAIT(processGraphAsync<StorePath>(
         storePathsToAdd,
@@ -346,12 +344,12 @@ try {
 
                 if (TRY_AWAIT(isValidPath(info.path))) {
                     nrDone++;
-                    showProgress();
+                    SHOW_PROGRESS();
                     co_return StorePathSet();
                 }
 
                 bytesExpected += info.narSize;
-                act.setExpected(actCopyPath, bytesExpected);
+                ACTIVITY_SET_EXPECTED(act, actCopyPath, bytesExpected);
 
                 co_return info.references;
             } catch (...) {
@@ -377,7 +375,7 @@ try {
 
                 if (!TRY_AWAIT(isValidPath(info.path))) {
                     MaintainCount<decltype(nrRunning)> mc(nrRunning);
-                    showProgress();
+                    SHOW_PROGRESS();
                     try {
                         TRY_AWAIT(addToStore(info, *TRY_AWAIT(source()), repair, checkSigs));
                     } catch (Error & e) {
@@ -385,19 +383,22 @@ try {
                         if (!settings.keepGoing)
                             throw e;
                         printMsg(lvlError, "could not copy %s: %s", printStorePath(path), e.what());
-                        showProgress();
+                        SHOW_PROGRESS();
                         co_return result::success();
                     }
                 }
 
                 nrDone++;
-                showProgress();
+                SHOW_PROGRESS();
                 co_return result::success();
             } catch (...) {
                 co_return result::current_exception();
             }
-        }));
+        }
+    ));
     co_return result::success();
+
+#undef SHOW_PROGRESS
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1007,7 +1008,7 @@ struct CopyPathStream : AsyncInputStream
             copied += *result;
         }
         if (doLog) {
-            act.progress(copied, expected);
+            ACTIVITY_PROGRESS(act, copied, expected);
         }
         co_return result;
     } catch (...) {

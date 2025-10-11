@@ -826,7 +826,7 @@ try {
                 );
                 continue;
             }
-            act->result(type, fields);
+            ACTIVITY_RESULT(*act, type, fields);
         } else if (msg == STDERR_LAST) {
             break;
         } else {

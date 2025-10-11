@@ -892,7 +892,7 @@ try {
         const std::string_view data{buffer.data(), *got};
         for (auto c : data) {
             if (c == '\n') {
-                act.result(resPostBuildLogLine, currentLine);
+                ACTIVITY_RESULT(act, resPostBuildLogLine, currentLine);
                 currentLine.clear();
             } else {
                 currentLine += c;
@@ -902,7 +902,7 @@ try {
 
     if (currentLine != "") {
         currentLine += '\n';
-        act.result(resPostBuildLogLine, currentLine);
+        ACTIVITY_RESULT(act, resPostBuildLogLine, currentLine);
     }
 
     wait.run();

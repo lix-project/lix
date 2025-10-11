@@ -6,6 +6,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/build/local-derivation-goal.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/build/hook-instance.hh" // IWYU pragma: keep
 #include <boost/outcome/try.hpp>
@@ -290,17 +291,18 @@ try {
 
         // only update progress info while running. this notably excludes updating
         // progress info while destroying, which causes the progress bar to assert
-        actDerivations.progress(
-            doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
+        ACTIVITY_PROGRESS(
+            actDerivations, doneBuilds, expectedBuilds + doneBuilds, runningBuilds, failedBuilds
         );
-        actSubstitutions.progress(
+        ACTIVITY_PROGRESS(
+            actSubstitutions,
             doneSubstitutions,
             expectedSubstitutions + doneSubstitutions,
             runningSubstitutions,
             failedSubstitutions
         );
-        act.setExpected(actFileTransfer, expectedDownloadSize + doneDownloadSize);
-        act.setExpected(actCopyPath, expectedNarSize + doneNarSize);
+        ACTIVITY_SET_EXPECTED(act, actFileTransfer, expectedDownloadSize + doneDownloadSize);
+        ACTIVITY_SET_EXPECTED(act, actCopyPath, expectedNarSize + doneNarSize);
 
         // limit to 50fps. that should be more than good enough for anything we do
         co_await AIO().provider.getTimer().afterDelay(20 * kj::MILLISECONDS);
