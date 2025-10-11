@@ -3,6 +3,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/repair-flag.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/strings.hh"
@@ -92,9 +93,9 @@ Strings LocalStore::readDirectoryIgnoringInodes(const Path & path, const InodeHa
     return names;
 }
 
-
-void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
-    const Path & path, InodeHash & inodeHash, RepairFlag repair)
+std::optional<struct ::stat> LocalStore::optimisePath_(
+    OptimiseStats & stats, const Path & path, OptimizeState & state, RepairFlag repair
+)
 {
     checkInterrupt();
 
@@ -110,15 +111,16 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
     if (std::regex_search(path, std::regex("\\.app/Contents/.+$")))
     {
         debug("'%1%' is not allowed to be linked in macOS", path);
-        return;
+        return std::nullopt;
     }
 #endif
 
     if (S_ISDIR(st.st_mode)) {
-        Strings names = readDirectoryIgnoringInodes(path, inodeHash);
-        for (auto & i : names)
-            optimisePath_(act, stats, path + "/" + i, inodeHash, repair);
-        return;
+        Strings names = readDirectoryIgnoringInodes(path, state.inodeHash);
+        for (auto & i : names) {
+            state.paths.push_back(path + "/" + i);
+        }
+        return std::nullopt;
     }
 
     /* We can hard link regular files and maybe symlinks. */
@@ -126,7 +128,8 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
 #if CAN_LINK_SYMLINK
         && !S_ISLNK(st.st_mode)
 #endif
-        ) return;
+    )
+        return std::nullopt;
 
     /* Sometimes SNAFUs can cause files in the Nix store to be
        modified, in particular when running programs as root under
@@ -134,13 +137,13 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        those files.  FIXME: check the modification time. */
     if (S_ISREG(st.st_mode) && (st.st_mode & S_IWUSR)) {
         printTaggedWarning("skipping suspicious writable file '%1%'", path);
-        return;
+        return std::nullopt;
     }
 
     /* This can still happen on top-level files. */
-    if (st.st_nlink > 1 && inodeHash.count(st.st_ino)) {
+    if (st.st_nlink > 1 && state.inodeHash.count(st.st_ino)) {
         debug("'%s' is already linked, with %d other file(s)", path, st.st_nlink - 2);
-        return;
+        return std::nullopt;
     }
 
     /* Hash the file.  Note that hashPath() returns the hash over the
@@ -180,8 +183,8 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
     if (!stLinkOpt) {
         /* Nope, create a hard link in the links directory. */
         if (sys::link(path, linkPath) == 0) {
-            inodeHash.insert(st.st_ino);
-            return;
+            state.inodeHash.insert(st.st_ino);
+            return std::nullopt;
         }
 
         switch (errno) {
@@ -197,7 +200,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
                just effectively disable deduplication of this
                file.  */
             printInfo("cannot link '%s' to '%s': %s", linkPath, path, strerror(errno));
-            return;
+            return std::nullopt;
 
         default:
             throw SysError("cannot link '%1%' to '%2%'", linkPath, path);
@@ -208,7 +211,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
        current file with a hard link to that file. */
     if (st.st_ino == stLinkOpt->st_ino) {
         debug("'%1%' is already linked to '%2%'", path, linkPath);
-        return;
+        return std::nullopt;
     }
 
     printMsg(lvlTalkative, "linking '%1%' to '%2%'", path, linkPath);
@@ -234,7 +237,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
                Just shrug and ignore. */
             if (st.st_size)
                 printInfo("'%1%' has maximum number of links", linkPath);
-            return;
+            return std::nullopt;
         }
         throw SysError("cannot link '%1%' to '%2%'", tempLink, linkPath);
     }
@@ -252,7 +255,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
                temporarily increases the st_nlink field before
                decreasing it again.) */
             debug("'%s' has reached maximum number of links", linkPath);
-            return;
+            return std::nullopt;
         }
         throw;
     }
@@ -260,18 +263,39 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
     stats.filesLinked++;
     stats.bytesFreed += st.st_size;
     stats.blocksFreed += st.st_blocks;
-
-    if (act)
-        act->result(resFileLinked, st.st_size, st.st_blocks);
+    return st;
 }
 
+kj::Promise<Result<void>> LocalStore::optimiseTree_(
+    Activity * act,
+    OptimiseStats & stats,
+    const Path & path,
+    OptimizeState & state,
+    RepairFlag repair
+)
+try {
+    assert(state.paths.empty());
+
+    state.paths.push_back(path);
+    while (!state.paths.empty()) {
+        auto path = std::move(state.paths.front());
+        state.paths.pop_front();
+        const auto optimized = optimisePath_(stats, path, state, repair);
+        if (act && optimized) {
+            ACTIVITY_RESULT(*act, resFileLinked, optimized->st_size, optimized->st_blocks);
+        }
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
 
 kj::Promise<Result<void>> LocalStore::optimiseStore(OptimiseStats & stats)
 try {
     auto act = logger->startActivity(actOptimiseStore);
 
     auto paths = TRY_AWAIT(queryAllValidPaths());
-    InodeHash inodeHash = loadInodeHash();
+    OptimizeState state{.inodeHash = loadInodeHash()};
 
     ACTIVITY_PROGRESS(act, 0, paths.size());
 
@@ -284,13 +308,13 @@ try {
             auto act = logger->startActivity(
                 lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i))
             );
-            optimisePath_(
+            TRY_AWAIT(optimiseTree_(
                 &act,
                 stats,
                 config().realStoreDir + "/" + std::string(i.to_string()),
-                inodeHash,
+                state,
                 NoRepair
-            );
+            ));
         }
         done++;
         ACTIVITY_PROGRESS(act, done, paths.size());
@@ -314,12 +338,17 @@ try {
     co_return result::current_exception();
 }
 
-void LocalStore::optimisePath(const Path & path, RepairFlag repair)
-{
+kj::Promise<Result<void>> LocalStore::optimisePath(const Path & path, RepairFlag repair)
+try {
     OptimiseStats stats;
-    InodeHash inodeHash;
+    OptimizeState state;
 
-    if (settings.autoOptimiseStore) optimisePath_(nullptr, stats, path, inodeHash, repair);
+    if (settings.autoOptimiseStore) {
+        TRY_AWAIT(optimiseTree_(nullptr, stats, path, state, repair));
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

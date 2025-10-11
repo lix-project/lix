@@ -10,6 +10,7 @@
 #include "lix/libutil/types.hh"
 
 #include <chrono>
+#include <deque>
 #include <future>
 #include <kj/async.h>
 #include <string>
@@ -308,7 +309,7 @@ public:
      * Optimise a single store path. Optionally, test the encountered
      * symlinks for corruption.
      */
-    void optimisePath(const Path & path, RepairFlag repair);
+    kj::Promise<Result<void>> optimisePath(const Path & path, RepairFlag repair);
 
     kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
 
@@ -400,10 +401,25 @@ private:
     std::pair<Path, AutoCloseFD> createTempDirInStore();
 
     typedef std::unordered_set<ino_t> InodeHash;
+    struct OptimizeState
+    {
+        InodeHash inodeHash;
+        std::deque<Path> paths;
+    };
 
     InodeHash loadInodeHash();
     Strings readDirectoryIgnoringInodes(const Path & path, const InodeHash & inodeHash);
-    void optimisePath_(Activity * act, OptimiseStats & stats, const Path & path, InodeHash & inodeHash, RepairFlag repair);
+    /// Returns the stat data of `path` if it was optimized, `nullopt` otherwise.
+    std::optional<struct ::stat> optimisePath_(
+        OptimiseStats & stats, const Path & path, OptimizeState & state, RepairFlag repair
+    );
+    kj::Promise<Result<void>> optimiseTree_(
+        Activity * act,
+        OptimiseStats & stats,
+        const Path & path,
+        OptimizeState & state,
+        RepairFlag repair
+    );
 
     // Internal versions that are not wrapped in retry_sqlite.
     bool isValidPath_(DBState & state, const StorePath & path);
