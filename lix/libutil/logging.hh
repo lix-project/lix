@@ -422,8 +422,7 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
     JSON & json,
     const Activity & act,
     std::map<ActivityId, Activity> & activities,
-    std::string_view source,
-    bool trusted
+    std::string_view source
 );
 
 /**
@@ -434,7 +433,6 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
     const std::string & msg,
     const Activity & act,
     std::map<ActivityId, Activity> & activities,
-    std::string_view source,
-    bool trusted
+    std::string_view source
 );
 }

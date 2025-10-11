@@ -310,8 +310,7 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
     JSON & json,
     const Activity & act,
     std::map<ActivityId, Activity> & activities,
-    std::string_view source,
-    bool trusted
+    std::string_view source
 )
 {
     try {
@@ -319,13 +318,12 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
 
         if (action == "start") {
             auto type = (ActivityType) json["type"];
-            if (trusted || type == actFileTransfer)
-                activities.emplace(
-                    json["id"],
-                    act.addChild(
-                        (Verbosity) json["level"], type, json["text"], getFields(json["fields"])
-                    )
-                );
+            activities.emplace(
+                json["id"],
+                act.addChild(
+                    (Verbosity) json["level"], type, json["text"], getFields(json["fields"])
+                )
+            );
         }
 
         else if (action == "stop")
@@ -360,8 +358,7 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
     const std::string & msg,
     const Activity & act,
     std::map<ActivityId, Activity> & activities,
-    std::string_view source,
-    bool trusted
+    std::string_view source
 )
 {
     auto json = parseJSONMessage(msg, source);
@@ -369,7 +366,7 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
         return std::nullopt;
     }
 
-    return handleJSONLogMessage(*json, act, activities, source, trusted);
+    return handleJSONLogMessage(*json, act, activities, source);
 }
 
 Activity::~Activity()

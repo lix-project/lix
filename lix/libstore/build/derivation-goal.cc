@@ -1239,7 +1239,7 @@ try {
         });
 
         if (const auto state = handleJSONLogMessage(
-                currentLogLine, *act, builderActivities, "the derivation builder", false
+                currentLogLine, *act, builderActivities, "the derivation builder"
             ))
         {
             return *state;
@@ -1323,7 +1323,9 @@ try {
             if (c == '\n') {
                 auto json = parseJSONMessage(currentHookLine, "the derivation builder");
                 if (json) {
-                    auto s = handleJSONLogMessage(*json, worker.act, hook->activities, "the derivation builder", true);
+                    auto s = handleJSONLogMessage(
+                        *json, worker.act, hook->activities, "the derivation builder"
+                    );
                     // ensure that logs from a builder using `ssh-ng://` as protocol
                     // are also available to `nix log`.
                     if (s && logSink) {
