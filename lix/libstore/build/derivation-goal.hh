@@ -325,7 +325,7 @@ protected:
     kj::Promise<Result<std::optional<WorkResult>>> handleHookOutput(AsyncInputStream & in) noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
-    void flushLine();
+    Logger::BufferState flushLine();
 
     virtual std::string buildErrorContents(const std::string & exitMsg, bool diskFull);
 

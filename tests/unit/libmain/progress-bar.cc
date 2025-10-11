@@ -34,7 +34,7 @@ namespace nix
             fmt("downloading '%s'", TEST_URL),
             {"https://github.com/NixOS/nixpkgs/archive/master.tar.gz"}
         );
-        act.progress(TEST_DONE, TEST_EXPECTED);
+        (void) act.progress(TEST_DONE, TEST_EXPECTED);
         auto state = progressBar.state_.lock();
         std::string const renderedStatus = progressBar.getStatus(*state);
 

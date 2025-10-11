@@ -75,13 +75,13 @@ struct ProgressBar : public Logger
 
     bool isVerbose() override;
 
-    void log(Verbosity lvl, std::string_view s) override;
+    BufferState log(Verbosity lvl, std::string_view s) override;
 
-    void logEI(const ErrorInfo & ei) override;
+    BufferState logEI(const ErrorInfo & ei) override;
 
-    void log(State & state, Verbosity lvl, std::string_view s);
+    BufferState log(State & state, Verbosity lvl, std::string_view s);
 
-    void startActivityImpl(
+    BufferState startActivityImpl(
         ActivityId act,
         Verbosity lvl,
         ActivityType type,
@@ -92,9 +92,10 @@ struct ProgressBar : public Logger
 
     bool hasAncestor(State & state, ActivityType type, ActivityId act);
 
-    void stopActivityImpl(ActivityId act) override;
+    BufferState stopActivityImpl(ActivityId act) override;
 
-    void resultImpl(ActivityId act, ResultType type, const std::vector<Field> & fields) override;
+    BufferState
+    resultImpl(ActivityId act, ResultType type, const std::vector<Field> & fields) override;
 
     void update(State & state);
 

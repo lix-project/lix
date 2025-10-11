@@ -4,6 +4,10 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/config.hh"
+#include "result.hh"
+#include "serialise.hh"
+#include <kj/async.h>
+#include <optional>
 
 namespace nix {
 
@@ -105,6 +109,11 @@ class Logger
 
 public:
 
+    enum class [[nodiscard]] BufferState {
+        HasSpace,
+        NeedsFlush,
+    };
+
     struct Field
     {
         // FIXME: use std::variant.
@@ -127,14 +136,19 @@ public:
     // Whether the logger prints the whole build log
     virtual bool isVerbose() { return false; }
 
-    virtual void log(Verbosity lvl, std::string_view s) = 0;
+    virtual BufferState bufferState() const
+    {
+        return BufferState::HasSpace;
+    }
 
-    virtual void logEI(const ErrorInfo & ei) = 0;
+    virtual BufferState log(Verbosity lvl, std::string_view s) = 0;
 
-    void logEI(Verbosity lvl, ErrorInfo ei)
+    virtual BufferState logEI(const ErrorInfo & ei) = 0;
+
+    BufferState logEI(Verbosity lvl, ErrorInfo ei)
     {
         ei.level = lvl;
-        logEI(ei);
+        return logEI(ei);
     }
 
     Activity startActivity(
@@ -148,19 +162,35 @@ public:
     Activity
     startActivity(ActivityType type, const Fields & fields = {}, const Activity * parent = nullptr);
 
+    virtual kj::Promise<Result<void>> flush()
+    {
+        return {result::success()};
+    }
+
+    virtual void waitForSpace() {}
+
 protected:
-    virtual void startActivityImpl(
+    virtual BufferState startActivityImpl(
         ActivityId act,
         Verbosity lvl,
         ActivityType type,
         const std::string & s,
         const Fields & fields,
         ActivityId parent
-    ) {};
+    )
+    {
+        return BufferState::HasSpace;
+    }
 
-    virtual void stopActivityImpl(ActivityId act) {};
+    virtual BufferState stopActivityImpl(ActivityId act)
+    {
+        return BufferState::HasSpace;
+    }
 
-    virtual void resultImpl(ActivityId act, ResultType type, const Fields & fields) {};
+    virtual BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields)
+    {
+        return BufferState::HasSpace;
+    }
 
 public:
     virtual void writeToStdout(std::string_view s);
@@ -216,6 +246,11 @@ public:
 
     ~Activity();
 
+    Logger & getLogger() const
+    {
+        return *logger;
+    }
+
     void swap(Activity & other)
     {
         std::swap(logger, other.logger);
@@ -232,23 +267,29 @@ public:
         return logger->startActivity(level, type, s, fields, this);
     }
 
-    void progress(uint64_t done = 0, uint64_t expected = 0, uint64_t running = 0, uint64_t failed = 0) const
-    { result(resProgress, done, expected, running, failed); }
+    Logger::BufferState progress(
+        uint64_t done = 0, uint64_t expected = 0, uint64_t running = 0, uint64_t failed = 0
+    ) const
+    {
+        return result(resProgress, done, expected, running, failed);
+    }
 
-    void setExpected(ActivityType type2, uint64_t expected) const
-    { result(resSetExpected, type2, expected); }
+    Logger::BufferState setExpected(ActivityType type2, uint64_t expected) const
+    {
+        return result(resSetExpected, type2, expected);
+    }
 
     template<typename... Args>
-    void result(ResultType type, const Args & ... args) const
+    Logger::BufferState result(ResultType type, const Args &... args) const
     {
         Logger::Fields fields;
         nop{(fields.emplace_back(Logger::Field(args)), 1)...};
-        result(type, fields);
+        return result(type, fields);
     }
 
-    void result(ResultType type, const Logger::Fields & fields) const
+    Logger::BufferState result(ResultType type, const Logger::Fields & fields) const
     {
-        logger->resultImpl(id, type, fields);
+        return logger->resultImpl(id, type, fields);
     }
 
     friend class Logger;
@@ -265,37 +306,59 @@ Logger * makeJSONLogger(Logger & prevLogger);
  */
 extern Verbosity verbosity;
 
-#define ACTIVITY_PROGRESS(act, ...)     \
-    do {                                \
-        auto && _lix_act = (act);       \
-        _lix_act.progress(__VA_ARGS__); \
+#define ACTIVITY_PROGRESS(act, ...)                                                     \
+    do {                                                                                \
+        auto && _lix_act = (act);                                                       \
+        if (_lix_act.progress(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            LIX_TRY_AWAIT(_lix_act.getLogger().flush());                                \
+        }                                                                               \
     } while (0)
-#define ACTIVITY_RESULT(act, ...)     \
-    do {                              \
-        auto && _lix_act = (act);     \
-        _lix_act.result(__VA_ARGS__); \
+#define ACTIVITY_RESULT(act, ...)                                                     \
+    do {                                                                              \
+        auto && _lix_act = (act);                                                     \
+        if (_lix_act.result(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            LIX_TRY_AWAIT(_lix_act.getLogger().flush());                              \
+        }                                                                             \
     } while (0)
-#define ACTIVITY_SET_EXPECTED(act, ...)    \
-    do {                                   \
-        auto && _lix_act = (act);          \
-        _lix_act.setExpected(__VA_ARGS__); \
+#define ACTIVITY_SET_EXPECTED(act, ...)                                                    \
+    do {                                                                                   \
+        auto && _lix_act = (act);                                                          \
+        if (_lix_act.setExpected(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            LIX_TRY_AWAIT(_lix_act.getLogger().flush());                                   \
+        }                                                                                  \
     } while (0)
 
-#define ACTIVITY_PROGRESS_SYNC(aio, act, ...) \
-    do {                                      \
-        auto && _lix_act = (act);             \
-        _lix_act.progress(__VA_ARGS__);       \
+#define ACTIVITY_PROGRESS_SYNC(aio, act, ...)                                           \
+    do {                                                                                \
+        auto && _lix_act = (act);                                                       \
+        if (_lix_act.progress(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            (aio).blockOn(_lix_act.getLogger().flush());                                \
+        }                                                                               \
     } while (0)
-#define ACTIVITY_RESULT_SYNC(aio, act, ...) \
-    do {                                    \
-        auto && _lix_act = (act);           \
-        _lix_act.result(__VA_ARGS__);       \
+#define ACTIVITY_RESULT_SYNC(aio, act, ...)                                           \
+    do {                                                                              \
+        auto && _lix_act = (act);                                                     \
+        if (_lix_act.result(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            (aio).blockOn(_lix_act.getLogger().flush());                              \
+        }                                                                             \
     } while (0)
-#define ACTIVITY_SET_EXPECTED_SYNC(aio, act, ...) \
-    do {                                          \
-        auto && _lix_act = (act);                 \
-        _lix_act.setExpected(__VA_ARGS__);        \
+#define ACTIVITY_SET_EXPECTED_SYNC(aio, act, ...)                                          \
+    do {                                                                                   \
+        auto && _lix_act = (act);                                                          \
+        if (_lix_act.setExpected(__VA_ARGS__) == ::nix::Logger::BufferState::NeedsFlush) { \
+            (aio).blockOn(_lix_act.getLogger().flush());                                   \
+        }                                                                                  \
     } while (0)
+
+// NOTE: unlike activity progress updates we *do not* flush buffers for "normal"
+// messages. the largest producers or log items are builds (which report logs as
+// activity results), the curl thread (which can only wait after we have reached
+// a buffer watermark, not actually flush it due to kj limitations), debug level
+// log messages (which are not latency-sensitive), and interactive use (which we
+// only ever run with a logger that writes directly to stderr). we have tried to
+// add buffer flushing to these log macros, but it turned out to be *incredibly*
+// invasive in many places to outright impossible in some, such as logError in a
+// catch block (because c++ doesn't allow awaits in catch blocks). fucking mess.
 
 /**
  * Print a message with the standard ErrorInfo format.
@@ -303,11 +366,11 @@ extern Verbosity verbosity;
  * intervention or that need more explanation.  Use the 'print' macros for more
  * lightweight status messages.
  */
-#define logErrorInfo(level, errorInfo...)             \
-    do {                                              \
-        if ((level) <= ::nix::verbosity) {            \
-            ::nix::logger->logEI((level), errorInfo); \
-        }                                             \
+#define logErrorInfo(level, errorInfo...)                    \
+    do {                                                     \
+        if ((level) <= ::nix::verbosity) {                   \
+            (void) ::nix::logger->logEI((level), errorInfo); \
+        }                                                    \
     } while (0)
 
 #define logError(errorInfo...) logErrorInfo(::nix::lvlError, errorInfo)
@@ -323,7 +386,8 @@ extern Verbosity verbosity;
         auto _lix_logger_print_lvl = level;                                                       \
         const char * _lix_format = []<size_t N>(const char(&_lix_fs)[N]) { return _lix_fs; }(fs); \
         if (_lix_logger_print_lvl <= ::nix::verbosity) {                                          \
-            loggerParam->log(_lix_logger_print_lvl, ::nix::HintFmt(_lix_format, ##args).str());   \
+            (void                                                                                 \
+            ) loggerParam->log(_lix_logger_print_lvl, ::nix::HintFmt(_lix_format, ##args).str()); \
         }                                                                                         \
     } while (0)
 #define printMsg(level, fs, args...) printMsgUsing(::nix::logger, level, fs, ##args)
@@ -353,17 +417,24 @@ std::optional<JSON> parseJSONMessage(const std::string & msg, std::string_view s
 /**
  * @param source A noun phrase describing the source of the message, e.g. "the builder".
  */
-bool handleJSONLogMessage(JSON & json,
-    const Activity & act, std::map<ActivityId, Activity> & activities,
+[[nodiscard]]
+std::optional<Logger::BufferState> handleJSONLogMessage(
+    JSON & json,
+    const Activity & act,
+    std::map<ActivityId, Activity> & activities,
     std::string_view source,
-    bool trusted);
+    bool trusted
+);
 
 /**
  * @param source A noun phrase describing the source of the message, e.g. "the builder".
  */
-bool handleJSONLogMessage(const std::string & msg,
-    const Activity & act, std::map<ActivityId, Activity> & activities,
+[[nodiscard]]
+std::optional<Logger::BufferState> handleJSONLogMessage(
+    const std::string & msg,
+    const Activity & act,
+    std::map<ActivityId, Activity> & activities,
     std::string_view source,
-    bool trusted);
-
+    bool trusted
+);
 }

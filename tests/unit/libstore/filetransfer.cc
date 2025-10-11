@@ -431,15 +431,17 @@ TEST(FileTransfer, DISABLED_interrupt)
 {
     struct InterruptingLogger : Logger
     {
-        void log(Verbosity lvl, std::string_view s) override
+        BufferState log(Verbosity lvl, std::string_view s) override
         {
             if (s.starts_with("finished") && s.ends_with("body = 10 bytes")) {
                 triggerInterrupt();
                 checkInterrupt();
             }
+            return BufferState::HasSpace;
         }
-        void logEI(const ErrorInfo & ei) override
+        BufferState logEI(const ErrorInfo & ei) override
         {
+            return BufferState::HasSpace;
         }
     };
 

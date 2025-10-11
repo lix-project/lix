@@ -3,6 +3,7 @@
 
 #include "lix/libexpr/eval-settings.hh"
 
+#include "lix/libutil/logging.hh"
 #include "tests/libexpr.hh"
 
 namespace nix {
@@ -17,12 +18,16 @@ namespace nix {
                 return oss.str();
             }
 
-            void log(Verbosity lvl, std::string_view s) override {
+            BufferState log(Verbosity lvl, std::string_view s) override
+            {
                 oss << s << std::endl;
+                return BufferState::HasSpace;
             }
 
-            void logEI(const ErrorInfo & ei) override {
+            BufferState logEI(const ErrorInfo & ei) override
+            {
                 showErrorInfo(oss, ei, loggerSettings.showTrace.get());
+                return BufferState::HasSpace;
             }
     };
 

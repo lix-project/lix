@@ -3,6 +3,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
@@ -373,7 +374,9 @@ struct curlFileTransfer : public FileTransfer
         int progressCallback(curl_off_t dltotal, curl_off_t dlnow)
         {
             try {
-                act.progress(dlnow, dltotal);
+                if (act.progress(dlnow, dltotal) == Logger::BufferState::NeedsFlush) {
+                    act.getLogger().waitForSpace();
+                }
             } catch (nix::Interrupted &) {
             }
             return isInterrupted();
@@ -405,7 +408,9 @@ struct curlFileTransfer : public FileTransfer
 
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
-                act.progress(bodySize, bodySize);
+                if (act.progress(bodySize, bodySize) == Logger::BufferState::NeedsFlush) {
+                    act.getLogger().waitForSpace();
+                }
                 auto state = downloadState.lock();
                 state->done = true;
                 state->signal();

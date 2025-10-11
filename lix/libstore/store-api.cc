@@ -383,6 +383,12 @@ try {
                         if (!settings.keepGoing)
                             throw e;
                         printMsg(lvlError, "could not copy %s: %s", printStorePath(path), e.what());
+                        goto failed;
+                    }
+
+                    // can't co_await in catch, so we need this monstrosity
+                    if (false) {
+                    failed:
                         SHOW_PROGRESS();
                         co_return result::success();
                     }

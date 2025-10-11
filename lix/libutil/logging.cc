@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <atomic>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <syslog.h>
 
@@ -31,7 +32,9 @@ Activity Logger::startActivity(
 )
 {
     Activity result{*this};
-    startActivityImpl(result.id, lvl, type, s, fields, parent ? parent->id : 0);
+    // NOTE we assume that activities aren't started in monstrous numbers, so the inevitable
+    // state updates (via progress, result, or setExpected) should be enough to flush stuff.
+    (void) startActivityImpl(result.id, lvl, type, s, fields, parent ? parent->id : 0);
     return result;
 }
 
@@ -72,9 +75,11 @@ public:
         return printBuildLogs;
     }
 
-    void log(Verbosity lvl, std::string_view s) override
+    BufferState log(Verbosity lvl, std::string_view s) override
     {
-        if (lvl > verbosity) return;
+        if (lvl > verbosity) {
+            return BufferState::HasSpace;
+        }
 
         std::string prefix;
 
@@ -92,17 +97,18 @@ public:
         }
 
         writeLogsToStderr(prefix + filterANSIEscapes(s, !tty) + "\n");
+        return BufferState::HasSpace;
     }
 
-    void logEI(const ErrorInfo & ei) override
+    BufferState logEI(const ErrorInfo & ei) override
     {
         std::stringstream oss;
         showErrorInfo(oss, ei, loggerSettings.showTrace.get());
 
-        log(ei.level, oss.str());
+        return log(ei.level, oss.str());
     }
 
-    void startActivityImpl(
+    BufferState startActivityImpl(
         ActivityId act,
         Verbosity lvl,
         ActivityType type,
@@ -111,11 +117,13 @@ public:
         ActivityId parent
     ) override
     {
-        if (lvl <= verbosity && !s.empty())
-            log(lvl, s + "...");
+        if (lvl <= verbosity && !s.empty()) {
+            return log(lvl, s + "...");
+        }
+        return BufferState::HasSpace;
     }
 
-    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
+    BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         if (type == resBuildLogLine && printBuildLogs) {
             auto lastLine = fields[0].s;
@@ -125,6 +133,7 @@ public:
             auto lastLine = fields[0].s;
             printError("post-build-hook: %1%", Uncolored(lastLine));
         }
+        return BufferState::HasSpace;
     }
 };
 
@@ -184,21 +193,23 @@ struct JSONLogger : Logger {
                 abort();
     }
 
-    void write(const JSON & json)
+    BufferState write(const JSON & json)
     {
-        prevLogger.log(lvlError, "@nix " + json.dump(-1, ' ', false, JSON::error_handler_t::replace));
+        return prevLogger.log(
+            lvlError, "@nix " + json.dump(-1, ' ', false, JSON::error_handler_t::replace)
+        );
     }
 
-    void log(Verbosity lvl, std::string_view s) override
+    BufferState log(Verbosity lvl, std::string_view s) override
     {
         JSON json;
         json["action"] = "msg";
         json["level"] = lvl;
         json["msg"] = s;
-        write(json);
+        return write(json);
     }
 
-    void logEI(const ErrorInfo & ei) override
+    BufferState logEI(const ErrorInfo & ei) override
     {
         std::ostringstream oss;
         showErrorInfo(oss, ei, loggerSettings.showTrace.get());
@@ -222,10 +233,10 @@ struct JSONLogger : Logger {
             json["trace"] = traces;
         }
 
-        write(json);
+        return write(json);
     }
 
-    void startActivityImpl(
+    BufferState startActivityImpl(
         ActivityId act,
         Verbosity lvl,
         ActivityType type,
@@ -242,25 +253,25 @@ struct JSONLogger : Logger {
         json["text"] = s;
         json["parent"] = parent;
         addFields(json, fields);
-        write(json);
+        return write(json);
     }
 
-    void stopActivityImpl(ActivityId act) override
+    BufferState stopActivityImpl(ActivityId act) override
     {
         JSON json;
         json["action"] = "stop";
         json["id"] = act;
-        write(json);
+        return write(json);
     }
 
-    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
+    BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         JSON json;
         json["action"] = "result";
         json["id"] = act;
         json["type"] = type;
         addFields(json, fields);
-        write(json);
+        return write(json);
     }
 };
 
@@ -295,9 +306,13 @@ std::optional<JSON> parseJSONMessage(const std::string & msg, std::string_view s
     return std::nullopt;
 }
 
-bool handleJSONLogMessage(JSON & json,
-    const Activity & act, std::map<ActivityId, Activity> & activities,
-    std::string_view source, bool trusted)
+std::optional<Logger::BufferState> handleJSONLogMessage(
+    JSON & json,
+    const Activity & act,
+    std::map<ActivityId, Activity> & activities,
+    std::string_view source,
+    bool trusted
+)
 {
     try {
         std::string action = json["action"];
@@ -319,33 +334,40 @@ bool handleJSONLogMessage(JSON & json,
         else if (action == "result") {
             auto i = activities.find((ActivityId) json["id"]);
             if (i != activities.end())
-                i->second.result((ResultType) json["type"], getFields(json["fields"]));
+                return i->second.result((ResultType) json["type"], getFields(json["fields"]));
         }
 
         else if (action == "setPhase") {
             std::string phase = json["phase"];
-            act.result(resSetPhase, phase);
+            return act.result(resSetPhase, phase);
         }
 
         else if (action == "msg") {
             std::string msg = json["msg"];
-            logger->log((Verbosity) json["level"], msg);
+            return logger->log((Verbosity) json["level"], msg);
         }
 
-        return true;
+        return Logger::BufferState::HasSpace;
     } catch (JSON::exception &e) { // NOLINT(lix-foreign-exceptions)
         printTaggedWarning(
             "Unable to handle a JSON message from %s: %s", Uncolored(source), e.what()
         );
-        return false;
+        return std::nullopt;
     }
 }
 
-bool handleJSONLogMessage(const std::string & msg,
-    const Activity & act, std::map<ActivityId, Activity> & activities, std::string_view source, bool trusted)
+std::optional<Logger::BufferState> handleJSONLogMessage(
+    const std::string & msg,
+    const Activity & act,
+    std::map<ActivityId, Activity> & activities,
+    std::string_view source,
+    bool trusted
+)
 {
     auto json = parseJSONMessage(msg, source);
-    if (!json) return false;
+    if (!json) {
+        return std::nullopt;
+    }
 
     return handleJSONLogMessage(*json, act, activities, source, trusted);
 }
@@ -356,7 +378,10 @@ Activity::~Activity()
         return;
     }
     try {
-        logger->stopActivityImpl(id);
+        // NOTE we can't flush here, and async destruction of activities is bound to fail
+        // at some point. eventually something will flush the buffer for us (see also the
+        // startActivity comment, we also don't flush buffers there even when they fill.)
+        (void) logger->stopActivityImpl(id);
     } catch (...) {
         ignoreExceptionInDestructor();
     }

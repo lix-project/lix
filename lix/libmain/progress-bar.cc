@@ -104,31 +104,34 @@ bool ProgressBar::isVerbose()
     return printBuildLogs;
 }
 
-void ProgressBar::log(Verbosity lvl, std::string_view s)
+Logger::BufferState ProgressBar::log(Verbosity lvl, std::string_view s)
 {
-    if (lvl > verbosity) return;
+    if (lvl > verbosity) {
+        return BufferState::HasSpace;
+    }
     auto state(state_.lock());
-    log(*state, lvl, s);
+    return log(*state, lvl, s);
 }
 
-void ProgressBar::logEI(const ErrorInfo & ei)
+Logger::BufferState ProgressBar::logEI(const ErrorInfo & ei)
 {
     auto state(state_.lock());
 
     std::stringstream oss;
     showErrorInfo(oss, ei, loggerSettings.showTrace.get());
 
-    log(*state, ei.level, oss.str());
+    return log(*state, ei.level, oss.str());
 }
 
-void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
+Logger::BufferState ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
 {
     if (state.paused == 0) eraseProgressDisplay(state);
     writeLogsToStderr(filterANSIEscapes(s + ANSI_NORMAL "\n", !isTTY));
     restoreProgressDisplay(state);
+    return BufferState::HasSpace;
 }
 
-void ProgressBar::startActivityImpl(
+Logger::BufferState ProgressBar::startActivityImpl(
     ActivityId act,
     Verbosity lvl,
     ActivityType type,
@@ -140,7 +143,7 @@ void ProgressBar::startActivityImpl(
     auto state(state_.lock());
 
     if (lvl <= verbosity && !s.empty() && type != actBuildWaiting)
-        log(*state, lvl, s + "...");
+        (void) log(*state, lvl, s + "...");
 
     state->activities.emplace_back(ActInfo {
         .s = s,
@@ -198,6 +201,7 @@ void ProgressBar::startActivityImpl(
         i->visible = false;
 
     update(*state);
+    return BufferState::HasSpace;
 }
 
 /* Check whether an activity has an ancestore with the specified
@@ -213,7 +217,7 @@ bool ProgressBar::hasAncestor(State & state, ActivityType type, ActivityId act)
     return false;
 }
 
-void ProgressBar::stopActivityImpl(ActivityId act)
+Logger::BufferState ProgressBar::stopActivityImpl(ActivityId act)
 {
     auto state(state_.lock());
 
@@ -233,9 +237,11 @@ void ProgressBar::stopActivityImpl(ActivityId act)
     }
 
     update(*state);
+    return BufferState::HasSpace;
 }
 
-void ProgressBar::resultImpl(ActivityId act, ResultType type, const std::vector<Field> & fields)
+Logger::BufferState
+ProgressBar::resultImpl(ActivityId act, ResultType type, const std::vector<Field> & fields)
 {
     auto state(state_.lock());
 
@@ -256,7 +262,11 @@ void ProgressBar::resultImpl(ActivityId act, ResultType type, const std::vector<
                 if (type == resPostBuildLogLine) {
                     suffix = " (post)> ";
                 }
-                log(*state, lvlInfo, ANSI_FAINT + info.name.value_or("unnamed") + suffix + ANSI_NORMAL + lastLine);
+                (void) log(
+                    *state,
+                    lvlInfo,
+                    ANSI_FAINT + info.name.value_or("unnamed") + suffix + ANSI_NORMAL + lastLine
+                );
             } else {
                 if (!printMultiline) {
                     state->activities.erase(i->second);
@@ -310,6 +320,8 @@ void ProgressBar::resultImpl(ActivityId act, ResultType type, const std::vector<
         state->activitiesByType[type].expected += j;
         update(*state);
     }
+
+    return BufferState::HasSpace;
 }
 
 void ProgressBar::update(State & state)

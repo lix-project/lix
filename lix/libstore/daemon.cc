@@ -64,7 +64,7 @@ struct TunnelLogger : public Logger
         assert(clientVersion >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
     }
 
-    void enqueueMsg(const std::string & s)
+    BufferState enqueueMsg(const std::string & s)
     {
         auto state(state_.lock());
 
@@ -81,27 +81,32 @@ struct TunnelLogger : public Logger
             }
         } else
             state->pendingMsgs.push_back(s);
+        return BufferState::HasSpace;
     }
 
-    void log(Verbosity lvl, std::string_view s) override
+    BufferState log(Verbosity lvl, std::string_view s) override
     {
-        if (lvl > verbosity) return;
+        if (lvl > verbosity) {
+            return BufferState::HasSpace;
+        }
 
         StringSink buf;
         buf << STDERR_NEXT << (s + "\n");
-        enqueueMsg(buf.s);
+        return enqueueMsg(buf.s);
     }
 
-    void logEI(const ErrorInfo & ei) override
+    BufferState logEI(const ErrorInfo & ei) override
     {
-        if (ei.level > verbosity) return;
+        if (ei.level > verbosity) {
+            return BufferState::HasSpace;
+        }
 
         std::stringstream oss;
         showErrorInfo(oss, ei, false);
 
         StringSink buf;
         buf << STDERR_NEXT << oss.str();
-        enqueueMsg(buf.s);
+        return enqueueMsg(buf.s);
     }
 
     /* startWork() means that we're starting an operation for which we
@@ -134,7 +139,7 @@ struct TunnelLogger : public Logger
         }
     }
 
-    void startActivityImpl(
+    BufferState startActivityImpl(
         ActivityId act,
         Verbosity lvl,
         ActivityType type,
@@ -145,21 +150,21 @@ struct TunnelLogger : public Logger
     {
         StringSink buf;
         buf << STDERR_START_ACTIVITY << act << lvl << type << s << fields << parent;
-        enqueueMsg(buf.s);
+        return enqueueMsg(buf.s);
     }
 
-    void stopActivityImpl(ActivityId act) override
+    BufferState stopActivityImpl(ActivityId act) override
     {
         StringSink buf;
         buf << STDERR_STOP_ACTIVITY << act;
-        enqueueMsg(buf.s);
+        return enqueueMsg(buf.s);
     }
 
-    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
+    BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         StringSink buf;
         buf << STDERR_RESULT << act << type << fields;
-        enqueueMsg(buf.s);
+        return enqueueMsg(buf.s);
     }
 };
 

@@ -1261,9 +1261,11 @@ try {
         for (auto c : data)
             if (c == '\r')
                 currentLogLinePos = 0;
-            else if (c == '\n')
-                flushLine();
-            else {
+            else if (c == '\n') {
+                if (flushLine() == Logger::BufferState::NeedsFlush) {
+                    TRY_AWAIT(act->getLogger().flush());
+                }
+            } else {
                 if (currentLogLinePos >= currentLogLine.size())
                     currentLogLine.resize(currentLogLinePos + 1);
                 currentLogLine[currentLogLinePos++] = c;
@@ -1357,12 +1359,13 @@ try {
         );
     }
 
-    return handlers.then([this](auto r) {
-        if (!currentLogLine.empty()) flushLine();
-        return r;
-    });
+    const auto r = TRY_AWAIT(handlers);
+    if (!currentLogLine.empty() && flushLine() == Logger::BufferState::NeedsFlush) {
+        TRY_AWAIT(act->getLogger().flush());
+    }
+    co_return r;
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::monitorForSilence() noexcept
@@ -1413,20 +1416,24 @@ DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStrea
     co_return std::nullopt;
 }
 
-void DerivationGoal::flushLine()
+Logger::BufferState DerivationGoal::flushLine()
 {
-    if (handleJSONLogMessage(currentLogLine, *act, builderActivities, "the derivation builder", false))
-        ;
+    KJ_DEFER({
+        currentLogLine = "";
+        currentLogLinePos = 0;
+    });
 
-    else {
+    if (const auto state = handleJSONLogMessage(
+            currentLogLine, *act, builderActivities, "the derivation builder", false
+        ))
+    {
+        return *state;
+    } else {
         logTail.push_back(currentLogLine);
         if (logTail.size() > settings.logLines) logTail.pop_front();
 
-        act->result(resBuildLogLine, currentLogLine);
+        return act->result(resBuildLogLine, currentLogLine);
     }
-
-    currentLogLine = "";
-    currentLogLinePos = 0;
 }
 
 
