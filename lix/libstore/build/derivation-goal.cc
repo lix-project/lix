@@ -1309,6 +1309,8 @@ try {
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
 DerivationGoal::handleHookOutput(AsyncInputStream & in) noexcept
 try {
+    std::string currentHookLine;
+
     auto buf = kj::heapArray<char>(4096);
     while (true) {
         const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()));

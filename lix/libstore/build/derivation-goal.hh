@@ -201,8 +201,6 @@ struct DerivationGoal : public Goal
      */
     std::list<std::string> logTail;
 
-    std::string currentHookLine;
-
     /**
      * The build hook.
      */
