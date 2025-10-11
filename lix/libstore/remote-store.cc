@@ -784,43 +784,54 @@ RemoteStore::Connection::processStderr(AsyncFdIoStream & stream)
 try {
     AsyncBufferedInputStream from{stream, fromBuf};
 
+    std::map<ActivityId, Activity> remoteActivities;
+
     while (true) {
         auto msg = TRY_AWAIT(readNum<uint64_t>(from));
 
         if (msg == STDERR_ERROR) {
             co_return RemoteError{std::make_exception_ptr(TRY_AWAIT(readError(from)))};
-        }
-
-        else if (msg == STDERR_NEXT)
+        } else if (msg == STDERR_NEXT) {
             printError("%1%", Uncolored(chomp(TRY_AWAIT(readString(from)))));
-
-        else if (msg == STDERR_START_ACTIVITY) {
+        } else if (msg == STDERR_START_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));
             auto lvl = (Verbosity) TRY_AWAIT(readNum<unsigned>(from));
             auto type = (ActivityType) TRY_AWAIT(readNum<unsigned>(from));
             auto s = TRY_AWAIT(readString(from));
             auto fields = TRY_AWAIT(readFields(from));
-            auto parent = TRY_AWAIT(readNum<ActivityId>(from));
-            logger->startActivity(act, lvl, type, s, fields, parent);
-        }
-
-        else if (msg == STDERR_STOP_ACTIVITY) {
+            const auto parentId = TRY_AWAIT(readNum<ActivityId>(from));
+            const auto parent = parentId == 0 ? nullptr : [&] {
+                const auto parent = get(remoteActivities, parentId);
+                if (!parent) {
+                    printError(
+                        "remote started child activity of %s that isn't currently known!", parentId
+                    );
+                }
+                return parent;
+            }();
+            remoteActivities.emplace(act, Activity(*logger, lvl, type, s, fields, parent));
+        } else if (msg == STDERR_STOP_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));
-            logger->stopActivity(act);
-        }
-
-        else if (msg == STDERR_RESULT) {
-            auto act = TRY_AWAIT(readNum<ActivityId>(from));
+            if (remoteActivities.erase(act) == 0) {
+                printError("remote stopped activity %s that isn't currently known!", act);
+            }
+        } else if (msg == STDERR_RESULT) {
+            const auto actId = TRY_AWAIT(readNum<ActivityId>(from));
             auto type = (ResultType) TRY_AWAIT(readNum<unsigned>(from));
             auto fields = TRY_AWAIT(readFields(from));
-            logger->result(act, type, fields);
-        }
-
-        else if (msg == STDERR_LAST)
+            const auto act = get(remoteActivities, actId);
+            if (!act) {
+                printError(
+                    "remote reported result for activity %s that isn't currently known!", actId
+                );
+                continue;
+            }
+            act->result(type, fields);
+        } else if (msg == STDERR_LAST) {
             break;
-
-        else
+        } else {
             throw Error("got unknown message type %x from Nix daemon", msg);
+        }
     }
 
     co_return RemoteError{nullptr};
