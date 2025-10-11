@@ -1229,6 +1229,30 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
 DerivationGoal::handleBuilderOutput(AsyncInputStream & in) noexcept
 try {
+    std::string currentLogLine;
+    size_t currentLogLinePos = 0; // to handle carriage return
+
+    auto flushLine = [&] {
+        KJ_DEFER({
+            currentLogLine = "";
+            currentLogLinePos = 0;
+        });
+
+        if (const auto state = handleJSONLogMessage(
+                currentLogLine, *act, builderActivities, "the derivation builder", false
+            ))
+        {
+            return *state;
+        } else {
+            logTail.push_back(currentLogLine);
+            if (logTail.size() > settings.logLines) {
+                logTail.pop_front();
+            }
+
+            return act->result(resBuildLogLine, currentLogLine);
+        }
+    };
+
     auto buf = kj::heapArray<char>(4096);
     while (true) {
         std::string_view data;
@@ -1416,27 +1440,6 @@ DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStrea
     }
     co_return std::nullopt;
 }
-
-Logger::BufferState DerivationGoal::flushLine()
-{
-    KJ_DEFER({
-        currentLogLine = "";
-        currentLogLinePos = 0;
-    });
-
-    if (const auto state = handleJSONLogMessage(
-            currentLogLine, *act, builderActivities, "the derivation builder", false
-        ))
-    {
-        return *state;
-    } else {
-        logTail.push_back(currentLogLine);
-        if (logTail.size() > settings.logLines) logTail.pop_front();
-
-        return act->result(resBuildLogLine, currentLogLine);
-    }
-}
-
 
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()
 try {

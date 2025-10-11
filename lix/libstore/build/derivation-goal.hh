@@ -201,9 +201,6 @@ struct DerivationGoal : public Goal
      */
     std::list<std::string> logTail;
 
-    std::string currentLogLine;
-    size_t currentLogLinePos = 0; // to handle carriage return
-
     std::string currentHookLine;
 
     /**
@@ -325,7 +322,6 @@ protected:
     kj::Promise<Result<std::optional<WorkResult>>> handleHookOutput(AsyncInputStream & in) noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
-    Logger::BufferState flushLine();
 
     virtual std::string buildErrorContents(const std::string & exitMsg, bool diskFull);
 
