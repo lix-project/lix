@@ -94,7 +94,9 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         }
 
         {
-            Activity act(*logger, lvlInfo, actUnknown, fmt("downloading '%s'...", store->printStorePath(storePath)));
+            auto act = logger->startActivity(
+                lvlInfo, actUnknown, fmt("downloading '%s'...", store->printStorePath(storePath))
+            );
             aio().blockOn(store->ensurePath(storePath));
         }
 
@@ -107,7 +109,11 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         Path const newNixEnv = store->printStorePath(storePath) + "/bin/nix-env";
 
         {
-            Activity act(*logger, lvlInfo, actUnknown, fmt("verifying that '%s' works...", store->printStorePath(storePath)));
+            auto act = logger->startActivity(
+                lvlInfo,
+                actUnknown,
+                fmt("verifying that '%s' works...", store->printStorePath(storePath))
+            );
             auto s = aio().blockOn(runProgram(newNixEnv, false, {"--version"}));
             if (s.find("Nix") == std::string::npos)
                 throw Error("could not verify that '%s' works", newNixEnv);
@@ -284,7 +290,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             return store->parseStorePath(*this->overrideStorePath);
         }
 
-        Activity act(*logger, lvlInfo, actUnknown, "querying latest Nix version");
+        auto act = logger->startActivity(lvlInfo, actUnknown, "querying latest Nix version");
 
         // FIXME: use nixos.org?
         auto [res, content] = aio().blockOn(getFileTransfer()->download(storePathsUrl));

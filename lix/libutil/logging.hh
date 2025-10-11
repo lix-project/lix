@@ -97,9 +97,11 @@ struct LoggerSettings : Config
 
 extern LoggerSettings loggerSettings;
 
+class Activity;
+
 class Logger
 {
-    friend struct Activity;
+    friend class Activity;
 
 public:
 
@@ -135,13 +137,32 @@ public:
         logEI(ei);
     }
 
-    virtual void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
-        const std::string & s, const Fields & fields, ActivityId parent) { };
+    Activity startActivity(
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields = {},
+        const Activity * parent = nullptr
+    );
 
-    virtual void stopActivity(ActivityId act) { };
+    Activity
+    startActivity(ActivityType type, const Fields & fields = {}, const Activity * parent = nullptr);
 
-    virtual void result(ActivityId act, ResultType type, const Fields & fields) { };
+protected:
+    virtual void startActivityImpl(
+        ActivityId act,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields,
+        ActivityId parent
+    ) {};
 
+    virtual void stopActivityImpl(ActivityId act) {};
+
+    virtual void resultImpl(ActivityId act, ResultType type, const Fields & fields) {};
+
+public:
     virtual void writeToStdout(std::string_view s);
 
     template<typename... Args>
@@ -171,31 +192,14 @@ struct nop
     { }
 };
 
-struct Activity
+class Activity
 {
-private:
     Logger * logger;
-
     ActivityId id;
 
+    explicit Activity(Logger & logger);
+
 public:
-    Activity(
-        Logger & logger,
-        Verbosity lvl,
-        ActivityType type,
-        const std::string & s = "",
-        const Logger::Fields & fields = {},
-        const Activity * parent = nullptr
-    );
-
-    Activity(
-        Logger & logger,
-        ActivityType type,
-        const Logger::Fields & fields = {},
-        const Activity * parent = nullptr
-    )
-        : Activity(logger, lvlError, type, "", fields, parent) {};
-
     Activity(Activity && other) : logger(nullptr), id(0)
     {
         swap(other);
@@ -218,6 +222,16 @@ public:
         std::swap(id, other.id);
     }
 
+    Activity addChild(
+        Verbosity level,
+        ActivityType type,
+        const std::string & s = "",
+        const Logger::Fields & fields = {}
+    ) const
+    {
+        return logger->startActivity(level, type, s, fields, this);
+    }
+
     void progress(uint64_t done = 0, uint64_t expected = 0, uint64_t running = 0, uint64_t failed = 0) const
     { result(resProgress, done, expected, running, failed); }
 
@@ -234,7 +248,7 @@ public:
 
     void result(ResultType type, const Logger::Fields & fields) const
     {
-        logger->result(id, type, fields);
+        logger->resultImpl(id, type, fields);
     }
 
     friend class Logger;

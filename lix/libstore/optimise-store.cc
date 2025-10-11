@@ -267,7 +267,7 @@ void LocalStore::optimisePath_(Activity * act, OptimiseStats & stats,
 
 kj::Promise<Result<void>> LocalStore::optimiseStore(OptimiseStats & stats)
 try {
-    Activity act(*logger, actOptimiseStore);
+    auto act = logger->startActivity(actOptimiseStore);
 
     auto paths = TRY_AWAIT(queryAllValidPaths());
     InodeHash inodeHash = loadInodeHash();
@@ -280,7 +280,9 @@ try {
         TRY_AWAIT(addTempRoot(i));
         if (!TRY_AWAIT(isValidPath(i))) continue; /* path was GC'ed, probably */
         {
-            Activity act(*logger, lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i)));
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("optimising path '%s'", printStorePath(i))
+            );
             optimisePath_(
                 &act,
                 stats,

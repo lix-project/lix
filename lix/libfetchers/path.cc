@@ -131,7 +131,7 @@ struct PathInputScheme : InputScheme
         } else
             absPath = path;
 
-        Activity act(*logger, lvlTalkative, actUnknown, fmt("copying '%s'", absPath));
+        auto act = logger->startActivity(lvlTalkative, actUnknown, fmt("copying '%s'", absPath));
 
         // FIXME: check whether access to 'path' is allowed.
         auto storePath = store->maybeParseStorePath(absPath);

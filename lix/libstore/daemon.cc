@@ -134,22 +134,28 @@ struct TunnelLogger : public Logger
         }
     }
 
-    void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
-        const std::string & s, const Fields & fields, ActivityId parent) override
+    void startActivityImpl(
+        ActivityId act,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields,
+        ActivityId parent
+    ) override
     {
         StringSink buf;
         buf << STDERR_START_ACTIVITY << act << lvl << type << s << fields << parent;
         enqueueMsg(buf.s);
     }
 
-    void stopActivity(ActivityId act) override
+    void stopActivityImpl(ActivityId act) override
     {
         StringSink buf;
         buf << STDERR_STOP_ACTIVITY << act;
         enqueueMsg(buf.s);
     }
 
-    void result(ActivityId act, ResultType type, const Fields & fields) override
+    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         StringSink buf;
         buf << STDERR_RESULT << act << type << fields;

@@ -809,7 +809,7 @@ try {
                 }
                 return parent;
             }();
-            remoteActivities.emplace(act, Activity(*logger, lvl, type, s, fields, parent));
+            remoteActivities.emplace(act, logger->startActivity(lvl, type, s, fields, parent));
         } else if (msg == STDERR_STOP_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));
             if (remoteActivities.erase(act) == 0) {

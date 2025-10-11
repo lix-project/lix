@@ -28,12 +28,11 @@ namespace nix
         ASSERT_NE(dynamic_cast<ProgressBar *>(logger), nullptr);
         ProgressBar & progressBar = dynamic_cast<ProgressBar &>(*logger);
 
-        Activity act(
-            progressBar,
+        auto act = progressBar.startActivity(
             lvlDebug,
             actFileTransfer,
             fmt("downloading '%s'", TEST_URL),
-            { "https://github.com/NixOS/nixpkgs/archive/master.tar.gz" }
+            {"https://github.com/NixOS/nixpkgs/archive/master.tar.gz"}
         );
         act.progress(TEST_DONE, TEST_EXPECTED);
         auto state = progressBar.state_.lock();

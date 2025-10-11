@@ -295,8 +295,8 @@ try {
         Pipe logPipe;
 
         try {
-            Activity act(
-                *logger, lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
             );
 
             std::tie(sshStore, logPipe) = TRY_AWAIT(bestMachine->openStore());
@@ -445,7 +445,9 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
         AutoCloseFD uploadLock = openLockFile(lockFileName, true);
 
         {
-            Activity act(*logger, lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri));
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri)
+            );
 
             auto result = TRY_AWAIT(
                 AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite))
@@ -458,7 +460,9 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
         auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;
 
         {
-            Activity act(*logger, lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri)
+            );
             TRY_AWAIT(copyPaths(*store, *sshStore, inputs, NoRepair, NoCheckSigs, substitute));
         }
 
@@ -528,7 +532,9 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
         }
 
         if (!missingPaths.empty()) {
-            Activity act(*logger, lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri));
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri)
+            );
             if (auto localStore = store.try_cast_shared<LocalStore>())
                 for (auto & path : missingPaths)
                     localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */

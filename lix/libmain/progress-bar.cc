@@ -128,7 +128,7 @@ void ProgressBar::log(State & state, Verbosity lvl, std::string_view s)
     restoreProgressDisplay(state);
 }
 
-void ProgressBar::startActivity(
+void ProgressBar::startActivityImpl(
     ActivityId act,
     Verbosity lvl,
     ActivityType type,
@@ -213,7 +213,7 @@ bool ProgressBar::hasAncestor(State & state, ActivityType type, ActivityId act)
     return false;
 }
 
-void ProgressBar::stopActivity(ActivityId act)
+void ProgressBar::stopActivityImpl(ActivityId act)
 {
     auto state(state_.lock());
 
@@ -235,7 +235,7 @@ void ProgressBar::stopActivity(ActivityId act)
     update(*state);
 }
 
-void ProgressBar::result(ActivityId act, ResultType type, const std::vector<Field> & fields)
+void ProgressBar::resultImpl(ActivityId act, ResultType type, const std::vector<Field> & fields)
 {
     auto state(state_.lock());
 

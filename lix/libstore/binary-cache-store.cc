@@ -463,8 +463,7 @@ BinaryCacheStore::queryPathInfoUncached(const StorePath & storePath, const Activ
 try {
     auto uri = getUri();
     auto storePathS = printStorePath(storePath);
-    auto act = std::make_shared<Activity>(
-        *logger,
+    auto act = logger->startActivity(
         lvlTalkative,
         actQueryPathInfo,
         fmt("querying info about '%s' on '%s'", storePathS, uri),
@@ -474,7 +473,7 @@ try {
 
     auto narInfoFile = narInfoFileFor(storePath);
 
-    auto data = TRY_AWAIT(getFileContents(narInfoFile, act.get()));
+    auto data = TRY_AWAIT(getFileContents(narInfoFile, &act));
 
     if (!data) co_return result::success(nullptr);
 

@@ -95,10 +95,12 @@ struct CmdSearch : InstallableCommand, MixJSON
 
         std::function<void(eval_cache::AttrCursor & cursor, const std::vector<std::string> & attrPath, bool initialRecurse)> visit;
 
-        visit = [&](eval_cache::AttrCursor & cursor, const std::vector<std::string> & attrPath, bool initialRecurse)
-        {
-            Activity act(*logger, lvlInfo, actUnknown,
-                fmt("evaluating '%s'", concatStringsSep(".", attrPath)));
+        visit = [&](eval_cache::AttrCursor & cursor,
+                    const std::vector<std::string> & attrPath,
+                    bool initialRecurse) {
+            auto act = logger->startActivity(
+                lvlInfo, actUnknown, fmt("evaluating '%s'", concatStringsSep(".", attrPath))
+            );
             try {
                 auto recurse = [&]()
                 {

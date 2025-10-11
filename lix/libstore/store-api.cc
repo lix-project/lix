@@ -1034,8 +1034,7 @@ try {
     auto srcUri = srcStore.getUri();
     auto dstUri = dstStore.getUri();
     auto storePathS = srcStore.printStorePath(storePath);
-    Activity act(
-        *logger,
+    auto act = logger->startActivity(
         lvlInfo,
         actCopyPath,
         makeCopyPathMessage(srcUri, dstUri, storePathS),
@@ -1104,7 +1103,8 @@ try {
     for (auto & path : storePaths)
         if (!valid.count(path)) missing.insert(path);
 
-    Activity act(*logger, lvlInfo, actCopyPaths, fmt("copying %d paths", missing.size()));
+    auto act =
+        logger->startActivity(lvlInfo, actCopyPaths, fmt("copying %d paths", missing.size()));
 
     // In the general case, `addMultipleToStore` requires a sorted list of
     // store paths to add, so sort them right now
@@ -1167,13 +1167,12 @@ try {
                 auto srcUri = srcStore.getUri();
                 auto dstUri = dstStore.getUri();
                 auto storePathS = srcStore.printStorePath(missingPath);
-                auto act = std::make_shared<Activity>(
-                    *logger,
+                auto act = std::make_shared<Activity>(logger->startActivity(
                     lvlInfo,
                     actCopyPath,
                     makeCopyPathMessage(srcUri, dstUri, storePathS),
                     Logger::Fields{storePathS, srcUri, dstUri}
-                );
+                ));
 
                 co_return make_box_ptr<SinglePathStream>(
                     act, info->narSize, TRY_AWAIT(srcStore.narFromPath(missingPath, act.get()))

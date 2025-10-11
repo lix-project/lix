@@ -22,6 +22,24 @@ static GlobalConfig::Register rLoggerSettings(&loggerSettings);
 
 Logger * logger = makeSimpleLogger(true);
 
+Activity Logger::startActivity(
+    Verbosity lvl,
+    ActivityType type,
+    const std::string & s,
+    const Fields & fields,
+    const Activity * parent
+)
+{
+    Activity result{*this};
+    startActivityImpl(result.id, lvl, type, s, fields, parent ? parent->id : 0);
+    return result;
+}
+
+Activity Logger::startActivity(ActivityType type, const Fields & fields, const Activity * parent)
+{
+    return startActivity(lvlError, type, "", fields, parent);
+}
+
 void Logger::writeToStdout(std::string_view s)
 {
     writeFull(
@@ -84,15 +102,20 @@ public:
         log(ei.level, oss.str());
     }
 
-    void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
-        const std::string & s, const Fields & fields, ActivityId parent)
-        override
+    void startActivityImpl(
+        ActivityId act,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields,
+        ActivityId parent
+    ) override
     {
         if (lvl <= verbosity && !s.empty())
             log(lvl, s + "...");
     }
 
-    void result(ActivityId act, ResultType type, const Fields & fields) override
+    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         if (type == resBuildLogLine && printBuildLogs) {
             auto lastLine = fields[0].s;
@@ -120,18 +143,8 @@ Logger * makeSimpleLogger(bool printBuildLogs)
 
 std::atomic<uint64_t> nextId{0};
 
-Activity::Activity(
-    Logger & logger,
-    Verbosity lvl,
-    ActivityType type,
-    const std::string & s,
-    const Logger::Fields & fields,
-    const Activity * parent
-)
-    : logger(&logger)
-    , id(nextId++ + (((uint64_t) getpid()) << 32))
+Activity::Activity(Logger & logger) : logger(&logger), id(nextId++ + (((uint64_t) getpid()) << 32))
 {
-    logger.startActivity(id, lvl, type, s, fields, parent ? parent->id : 0);
 }
 
 void to_json(JSON & json, std::shared_ptr<Pos> pos)
@@ -212,8 +225,14 @@ struct JSONLogger : Logger {
         write(json);
     }
 
-    void startActivity(ActivityId act, Verbosity lvl, ActivityType type,
-        const std::string & s, const Fields & fields, ActivityId parent) override
+    void startActivityImpl(
+        ActivityId act,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields,
+        ActivityId parent
+    ) override
     {
         JSON json;
         json["action"] = "start";
@@ -226,7 +245,7 @@ struct JSONLogger : Logger {
         write(json);
     }
 
-    void stopActivity(ActivityId act) override
+    void stopActivityImpl(ActivityId act) override
     {
         JSON json;
         json["action"] = "stop";
@@ -234,7 +253,7 @@ struct JSONLogger : Logger {
         write(json);
     }
 
-    void result(ActivityId act, ResultType type, const Fields & fields) override
+    void resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
         JSON json;
         json["action"] = "result";
@@ -287,15 +306,9 @@ bool handleJSONLogMessage(JSON & json,
             auto type = (ActivityType) json["type"];
             if (trusted || type == actFileTransfer)
                 activities.emplace(
-                    std::piecewise_construct,
-                    std::forward_as_tuple(json["id"]),
-                    std::forward_as_tuple(
-                        *logger,
-                        (Verbosity) json["level"],
-                        type,
-                        json["text"],
-                        getFields(json["fields"]),
-                        &act
+                    json["id"],
+                    act.addChild(
+                        (Verbosity) json["level"], type, json["text"], getFields(json["fields"])
                     )
                 );
         }
@@ -343,7 +356,7 @@ Activity::~Activity()
         return;
     }
     try {
-        logger->stopActivity(id);
+        logger->stopActivityImpl(id);
     } catch (...) {
         ignoreExceptionInDestructor();
     }

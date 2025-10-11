@@ -227,12 +227,12 @@ struct DerivationGoal : public Goal
 
     NotifyingCounter<uint64_t>::Bump mcExpectedBuilds, mcRunningBuilds;
 
-    std::unique_ptr<Activity> act;
+    std::optional<Activity> act;
 
     /**
      * Activity that denotes waiting for a lock.
      */
-    std::unique_ptr<Activity> actLock;
+    std::optional<Activity> actLock;
 
     std::map<ActivityId, Activity> builderActivities;
 

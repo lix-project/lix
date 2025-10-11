@@ -313,7 +313,7 @@ kj::Promise<Result<void>> Store::queryMissing(const std::vector<DerivedPath> & t
     StorePathSet & willBuild_, StorePathSet & willSubstitute_, StorePathSet & unknown_,
     uint64_t & downloadSize_, uint64_t & narSize_)
 try {
-    Activity act(*logger, lvlDebug, actUnknown, "querying info about missing paths");
+    auto act = logger->startActivity(lvlDebug, actUnknown, "querying info about missing paths");
 
     downloadSize_ = narSize_ = 0;
 

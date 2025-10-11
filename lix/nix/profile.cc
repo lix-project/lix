@@ -329,8 +329,7 @@ struct CmdProfileUpgrade : virtual SourceExprCommand, MixDefaultProfile, MixProf
 
             upgradedCount++;
 
-             Activity act(
-                *logger,
+            auto act = logger->startActivity(
                 lvlChatty,
                 actUnknown,
                 fmt("checking '%s' for updates", element.source->attrPath),

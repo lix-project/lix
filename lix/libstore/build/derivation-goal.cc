@@ -616,8 +616,12 @@ void DerivationGoal::started()
         "building '%s'", worker.store.printStorePath(drvPath));
     fmt("building '%s'", worker.store.printStorePath(drvPath));
     if (hook) msg += fmt(" on '%s'", machineName);
-    act = std::make_unique<Activity>(*logger, lvlInfo, actBuild, msg,
-        Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1});
+    act = logger->startActivity(
+        lvlInfo,
+        actBuild,
+        msg,
+        Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1}
+    );
     mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 }
 
@@ -649,8 +653,11 @@ retry:
     outputLocks = tryLockPaths(lockFiles);
     if (!outputLocks) {
         if (!actLock)
-            actLock = std::make_unique<Activity>(*logger, lvlWarn, actBuildWaiting,
-                fmt("waiting for lock on %s", Magenta(showPaths(lockFiles))));
+            actLock = logger->startActivity(
+                lvlWarn,
+                actBuildWaiting,
+                fmt("waiting for lock on %s", Magenta(showPaths(lockFiles)))
+            );
         co_await waitForAWhile();
         // we can loop very often, and `co_return co_await` always allocates a new frame
         goto retry;
@@ -706,8 +713,12 @@ retry:
             /* Not now; wait until at least one child finishes or
                 the wake-up timeout expires. */
             if (!actLock)
-                actLock = std::make_unique<Activity>(*logger, lvlTalkative, actBuildWaiting,
-                    fmt("waiting for a machine to build '%s'", Magenta(worker.store.printStorePath(drvPath))));
+                actLock = logger->startActivity(
+                    lvlTalkative,
+                    actBuildWaiting,
+                    fmt("waiting for a machine to build '%s'",
+                        Magenta(worker.store.printStorePath(drvPath)))
+                );
             outputLocks.reset();
             co_await waitForAWhile();
             goto retry;
@@ -842,8 +853,7 @@ try {
         co_return result::success();
     }
 
-    Activity act(
-        logger,
+    auto act = logger.startActivity(
         lvlTalkative,
         actPostBuildHook,
         fmt("running post-build-hook '%s'", settings.postBuildHook),

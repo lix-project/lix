@@ -223,10 +223,8 @@ try {
         try {
             ReceiveInterrupts receiveInterrupts;
 
-            Activity act(
-                *logger,
-                actSubstitute,
-                Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()}
+            auto act = logger->startActivity(
+                actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()}
             );
 
             aio.blockOn(copyStorePath(

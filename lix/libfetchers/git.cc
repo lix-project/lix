@@ -758,7 +758,9 @@ struct GitInputScheme : InputScheme
             // Because git needs to figure out what we're fetching
             // (i.e. is it a rev? a branch? a tag?)
             if (doFetch) {
-                Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching Git repository '%s'", actualUrl));
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("fetching Git repository '%s'", actualUrl)
+                );
 
                 auto ref = input.getRef();
                 std::string fetchRef;
@@ -893,7 +895,9 @@ struct GitInputScheme : InputScheme
                 // TODO: repoDir might lack the ref (it only checks if rev
                 // exists, see FIXME above) so use a big hammer and fetch
                 // everything to ensure we get the rev.
-                Activity act(*logger, lvlTalkative, actUnknown, fmt("making temporary clone of '%s'", repoDir));
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("making temporary clone of '%s'", repoDir)
+                );
                 TRY_AWAIT(runProgram(
                     "git",
                     true,
@@ -932,13 +936,17 @@ struct GitInputScheme : InputScheme
                source repo if it exists. */
             auto modulesPath = repoDir + "/" + gitDir + "/modules";
             if (pathExists(modulesPath)) {
-                Activity act(*logger, lvlTalkative, actUnknown, fmt("copying submodules of '%s'", actualUrl));
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("copying submodules of '%s'", actualUrl)
+                );
                 TRY_AWAIT(runProgram("cp", true, {"-R", "--", modulesPath, tmpGitDir + "/modules"})
                 );
             }
 
             {
-                Activity act(*logger, lvlTalkative, actUnknown, fmt("fetching submodules of '%s'", actualUrl));
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("fetching submodules of '%s'", actualUrl)
+                );
                 TRY_AWAIT(runProgram(
                     "git",
                     true,

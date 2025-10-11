@@ -110,8 +110,7 @@ std::tuple<StorePath, Hash> prefetchFile(
 
         /* Optionally unpack the file. */
         if (unpack) {
-            Activity act(*logger, lvlChatty, actUnknown,
-                fmt("unpacking '%s'", url));
+            auto act = logger->startActivity(lvlChatty, actUnknown, fmt("unpacking '%s'", url));
             Path unpacked = (Path) tmpDir + "/unpacked";
             createDirs(unpacked);
             unpackTarfile(tmpFile, unpacked);
@@ -125,8 +124,8 @@ std::tuple<StorePath, Hash> prefetchFile(
                 tmpFile = unpacked;
         }
 
-        Activity act(*logger, lvlChatty, actUnknown,
-            fmt("adding '%s' to the store", url));
+        auto act =
+            logger->startActivity(lvlChatty, actUnknown, fmt("adding '%s' to the store", url));
 
         auto info = aio.blockOn(
             store->addToStoreSlow(*name, tmpFile, ingestionMethod, hashType, expectedHash)

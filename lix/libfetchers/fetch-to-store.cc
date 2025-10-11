@@ -10,7 +10,7 @@ kj::Promise<Result<StorePath>> fetchToStoreFlat(
     std::string_view name,
     RepairFlag repair)
 try {
-    Activity act(*logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", path));
+    auto act = logger->startActivity(lvlChatty, actUnknown, fmt("copying '%s' to the store", path));
     auto physicalPath = path.canonical().abs();
 
     co_return settings.readOnlyMode
@@ -26,8 +26,8 @@ kj::Promise<Result<StorePath>> fetchToStoreRecursive(
     std::string_view name,
     RepairFlag repair)
 try {
-    Activity act(
-        *logger, lvlChatty, actUnknown, fmt("copying '%s' to the store", contents.rootPath)
+    auto act = logger->startActivity(
+        lvlChatty, actUnknown, fmt("copying '%s' to the store", contents.rootPath)
     );
 
     co_return settings.readOnlyMode

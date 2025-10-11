@@ -70,7 +70,7 @@ struct CmdVerify : StorePathsCommand
 
         auto publicKeys = getDefaultPublicKeys();
 
-        Activity act(*logger, actVerifyPaths);
+        auto act = logger->startActivity(actVerifyPaths);
 
         std::atomic<size_t> done{0};
         std::atomic<size_t> untrusted{0};
@@ -96,7 +96,9 @@ struct CmdVerify : StorePathsCommand
                 // Note: info->path can be different from storePath
                 // for binary cache stores when using --all (since we
                 // can't enumerate names efficiently).
-                Activity act2(*logger, lvlInfo, actUnknown, fmt("checking '%s'", store->printStorePath(info->path)));
+                auto act2 = logger->startActivity(
+                    lvlInfo, actUnknown, fmt("checking '%s'", store->printStorePath(info->path))
+                );
 
                 if (!noContents) {
 

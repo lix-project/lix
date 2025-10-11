@@ -150,12 +150,13 @@ struct curlFileTransfer : public FileTransfer
             const std::chrono::milliseconds & connectTimeout
         )
             : uri(uri)
-            , act(*logger,
+            , act(logger->startActivity(
                   lvlTalkative,
                   actFileTransfer,
                   fmt(uploadData ? "uploading '%s'" : "downloading '%s'", uri),
                   {uri},
-                  parentAct)
+                  parentAct
+              ))
             , metadataPromise(std::move(metadataPromise))
             , req(curl_easy_init())
         {

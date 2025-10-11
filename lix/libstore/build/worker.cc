@@ -25,13 +25,13 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 }
 
 Worker::Worker(Store & store, Store & evalStore)
-    : act(*logger, actRealise)
-    , actDerivations(*logger, actBuilds)
-    , actSubstitutions(*logger, actCopyPaths)
+    : act(logger->startActivity(actRealise))
+    , actDerivations(logger->startActivity(actBuilds))
+    , actSubstitutions(logger->startActivity(actCopyPaths))
     , store(store)
     , evalStore(evalStore)
-      /* Make sure that we are always allowed to run at least one substitution.
-         This prevents infinite waiting. */
+    /* Make sure that we are always allowed to run at least one substitution.
+       This prevents infinite waiting. */
     , substitutions(std::max<unsigned>(1, settings.maxSubstitutionJobs))
     , localBuilds(settings.maxBuildJobs)
     , children(errorHandler)
