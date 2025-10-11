@@ -36,8 +36,9 @@ let
   input3 = mkDerivation {
     shell = busybox;
     name = "build-remote-input-3";
+    # `echo -n` tests handling of logs without trailing newlines
     buildCommand = ''
-      echo hi-input3
+      echo -n hi-input3
       read x < ${input2}
       echo $x BAZ > $out
     '';

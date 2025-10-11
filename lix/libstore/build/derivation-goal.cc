@@ -1250,6 +1250,11 @@ try {
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
+            if (!currentLogLine.empty()) {
+                if (flushLine() == Logger::BufferState::NeedsFlush) {
+                    TRY_AWAIT(act->getLogger().flush());
+                }
+            }
             co_return std::nullopt;
         }
 
@@ -1359,11 +1364,7 @@ try {
         );
     }
 
-    const auto r = TRY_AWAIT(handlers);
-    if (!currentLogLine.empty() && flushLine() == Logger::BufferState::NeedsFlush) {
-        TRY_AWAIT(act->getLogger().flush());
-    }
-    co_return r;
+    co_return TRY_AWAIT(handlers);
 } catch (...) {
     co_return result::current_exception();
 }
