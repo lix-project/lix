@@ -122,9 +122,17 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
     return std::nullopt;
 }
 
-void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
-            nix::Bindings &autoArgs, nix::AutoCloseFD &to,
-            nix::AutoCloseFD &from, MyArgs &args, nix::AsyncIoRoot &aio) {
+void worker(nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args)
+try {
+    nix::AsyncIoRoot aio;
+
+    auto evalStore = aio.blockOn(args.evalStoreUrl
+                         ? nix::openStore(*args.evalStoreUrl)
+                         : nix::openStore());
+    auto evaluator =
+        nix::make_ref<nix::eval_cache::CachingEvaluator>(
+            aio, args.searchPath, evalStore);
+    nix::Bindings &autoArgs = *args.getAutoArgs(*evaluator);
 
     nix::Value vRoot = [&]() {
         auto state = evaluator->begin(aio);
@@ -253,4 +261,17 @@ void worker(nix::ref<nix::eval_cache::CachingEvaluator> evaluator,
     if (tryWriteLine(to.get(), "restart") < 0) {
         return; // main process died
     };
+} catch (nix::Error &e) {
+    nix::JSON err;
+    auto msg = e.msg();
+    err["error"] = nix::filterANSIEscapes(msg, true);
+    printError("%1%", nix::Uncolored(msg));
+    if (tryWriteLine(to.get(), err.dump()) < 0) {
+        return; // main process died
+    };
+    // Don't forget to print it into the STDERR log, this is
+    // what's shown in the Hydra UI.
+    if (tryWriteLine(to.get(), "restart") < 0) {
+        return; // main process died
+    }
 }

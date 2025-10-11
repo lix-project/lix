@@ -44,9 +44,8 @@
 
 using namespace nix;
 
-using Processor = std::function<void(
-    ref<nix::eval_cache::CachingEvaluator> state, Bindings &autoArgs,
-    AutoCloseFD &to, AutoCloseFD &from, MyArgs &args, AsyncIoRoot &aio)>;
+using Processor =
+    std::function<void(AutoCloseFD &to, AutoCloseFD &from, MyArgs &args)>;
 
 /* Auto-cleanup of fork's process and fds. */
 struct Proc {
@@ -63,30 +62,7 @@ struct Proc {
              from{
                  std::make_shared<AutoCloseFD>(std::move(toPipe.readSide))}]() {
                 debug("created worker process %d", getpid());
-                try {
-                    AsyncIoRoot aio;
-                    auto evalStore = aio.blockOn(myArgs.evalStoreUrl
-                                         ? openStore(*myArgs.evalStoreUrl)
-                                         : openStore());
-                    auto evaluator =
-                        nix::make_ref<nix::eval_cache::CachingEvaluator>(
-                            aio, myArgs.searchPath, evalStore);
-                    Bindings &autoArgs = *myArgs.getAutoArgs(*evaluator);
-                    proc(evaluator, autoArgs, *to, *from, myArgs, aio);
-                } catch (Error &e) {
-                    JSON err;
-                    auto msg = e.msg();
-                    err["error"] = nix::filterANSIEscapes(msg, true);
-                    printError("%1%", Uncolored(msg));
-                    if (tryWriteLine(to->get(), err.dump()) < 0) {
-                        return; // main process died
-                    };
-                    // Don't forget to print it into the STDERR log, this is
-                    // what's shown in the Hydra UI.
-                    if (tryWriteLine(to->get(), "restart") < 0) {
-                        return; // main process died
-                    }
-                }
+                proc(*to, *from, myArgs);
             },
             ProcessOptions{});
 
