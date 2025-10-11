@@ -1040,7 +1040,7 @@ try {
         actCopyPath,
         makeCopyPathMessage(srcUri, dstUri, storePathS),
         {storePathS, srcUri, dstUri},
-        context ? context->id : 0
+        context
     );
 
     auto info = TRY_AWAIT(srcStore.queryPathInfo(storePath, &act));

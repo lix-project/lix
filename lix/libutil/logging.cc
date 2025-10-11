@@ -120,11 +120,18 @@ Logger * makeSimpleLogger(bool printBuildLogs)
 
 std::atomic<uint64_t> nextId{0};
 
-Activity::Activity(Logger & logger, Verbosity lvl, ActivityType type,
-    const std::string & s, const Logger::Fields & fields, ActivityId parent)
-    : logger(logger), id(nextId++ + (((uint64_t) getpid()) << 32))
+Activity::Activity(
+    Logger & logger,
+    Verbosity lvl,
+    ActivityType type,
+    const std::string & s,
+    const Logger::Fields & fields,
+    const Activity * parent
+)
+    : logger(&logger)
+    , id(nextId++ + (((uint64_t) getpid()) << 32))
 {
-    logger.startActivity(id, lvl, type, s, fields, parent);
+    logger.startActivity(id, lvl, type, s, fields, parent ? parent->id : 0);
 }
 
 void to_json(JSON & json, std::shared_ptr<Pos> pos)
@@ -279,10 +286,18 @@ bool handleJSONLogMessage(JSON & json,
         if (action == "start") {
             auto type = (ActivityType) json["type"];
             if (trusted || type == actFileTransfer)
-                activities.emplace(std::piecewise_construct,
+                activities.emplace(
+                    std::piecewise_construct,
                     std::forward_as_tuple(json["id"]),
-                    std::forward_as_tuple(*logger, (Verbosity) json["level"], type,
-                        json["text"], getFields(json["fields"]), act.id));
+                    std::forward_as_tuple(
+                        *logger,
+                        (Verbosity) json["level"],
+                        type,
+                        json["text"],
+                        getFields(json["fields"]),
+                        &act
+                    )
+                );
         }
 
         else if (action == "stop")
@@ -324,8 +339,11 @@ bool handleJSONLogMessage(const std::string & msg,
 
 Activity::~Activity()
 {
+    if (!logger) {
+        return;
+    }
     try {
-        logger.stopActivity(id);
+        logger->stopActivity(id);
     } catch (...) {
         ignoreExceptionInDestructor();
     }

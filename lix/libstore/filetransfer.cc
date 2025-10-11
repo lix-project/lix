@@ -142,7 +142,7 @@ struct curlFileTransfer : public FileTransfer
         TransferItem(
             const std::string & uri,
             FileTransferOptions && options,
-            ActivityId parentAct,
+            const Activity * parentAct,
             std::optional<std::string_view> uploadData,
             bool noBody,
             curl_off_t writtenToSink,
@@ -904,7 +904,7 @@ struct curlFileTransfer : public FileTransfer
         FileTransferOptions options;
         std::optional<std::string> data;
         bool noBody;
-        ActivityId parentAct;
+        const Activity * parentAct;
 
         std::shared_ptr<TransferItem> transfer;
         FileTransferResult metadata;
@@ -929,7 +929,7 @@ struct curlFileTransfer : public FileTransfer
             , options(options)
             , data(std::move(data))
             , noBody(noBody)
-            , parentAct(context ? context->id : 0)
+            , parentAct(context)
             , backoff(backoffTimeouts(
                   fileTransferSettings.tries,
                   std::chrono::seconds(fileTransferSettings.maxConnectTimeout.get()),

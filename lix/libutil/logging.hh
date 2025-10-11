@@ -173,30 +173,50 @@ struct nop
 
 struct Activity
 {
-    Logger & logger;
+private:
+    Logger * logger;
 
-    const ActivityId id;
+    ActivityId id;
 
+public:
     Activity(
         Logger & logger,
         Verbosity lvl,
         ActivityType type,
         const std::string & s = "",
         const Logger::Fields & fields = {},
-        ActivityId parent = 0
+        const Activity * parent = nullptr
     );
 
     Activity(
         Logger & logger,
         ActivityType type,
         const Logger::Fields & fields = {},
-        ActivityId parent = 0
+        const Activity * parent = nullptr
     )
         : Activity(logger, lvlError, type, "", fields, parent) {};
 
+    Activity(Activity && other) : logger(nullptr), id(0)
+    {
+        swap(other);
+    }
+
+    Activity & operator=(Activity && other)
+    {
+        Activity(std::move(other)).swap(*this);
+        return *this;
+    }
+
     Activity(const Activity & act) = delete;
+    Activity & operator=(const Activity & act) = delete;
 
     ~Activity();
+
+    void swap(Activity & other)
+    {
+        std::swap(logger, other.logger);
+        std::swap(id, other.id);
+    }
 
     void progress(uint64_t done = 0, uint64_t expected = 0, uint64_t running = 0, uint64_t failed = 0) const
     { result(resProgress, done, expected, running, failed); }
@@ -214,7 +234,7 @@ struct Activity
 
     void result(ResultType type, const Logger::Fields & fields) const
     {
-        logger.result(id, type, fields);
+        logger->result(id, type, fields);
     }
 
     friend class Logger;

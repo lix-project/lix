@@ -469,7 +469,7 @@ try {
         actQueryPathInfo,
         fmt("querying info about '%s' on '%s'", storePathS, uri),
         Logger::Fields{storePathS, uri},
-        context ? context->id : 0
+        context
     );
 
     auto narInfoFile = narInfoFileFor(storePath);
