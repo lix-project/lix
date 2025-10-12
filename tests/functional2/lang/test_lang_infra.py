@@ -839,3 +839,23 @@ def test_generic_missing_in_file(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
     assert "ERROR lang/test_lang.py::test_eval[generic-missing:eval-okay] - FileNotFound" in out
+
+
+@pytest.mark.parametrize("pytest_command", [["--setup-plan"]], indirect=True)
+@with_files(
+    get_functional2_lang_files(
+        {
+            "functional2": {
+                "lang": {
+                    "generic-duplicate": {
+                        "eval-okay.out.exp": File("A"),
+                        "eval-okay.err.exp": File("B"),
+                        "in.nix": File(""),
+                    }
+                }
+            }
+        }
+    )
+)
+def test_generic_no_duplicate_collection(pytest_command: Command):
+    pytest_command.run().ok()

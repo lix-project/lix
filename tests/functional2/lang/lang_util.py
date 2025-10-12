@@ -346,6 +346,7 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
     invalid_tests: list[InvalidLangTest] = []
     all_files = set(folder.iterdir())
     unused = {f.name for f in all_files if not f.name.startswith("_")}
+    collected: set[str] = set()
     for file in all_files:
         file: Path
         if file.suffix == ".exp":
@@ -356,6 +357,12 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
             # `"parse-fail-some-name.err.exp".stem` => "parse-fail-some-name.err"
             # `"parse-fail-some-name.err.exp".split(".")[0]` => "parse-fail-some-name"
             test_name = file.name.rsplit(".", 2)[0]
+            if test_name in collected:
+                # Skipping collection to avoid duplicate collection
+                # when both `.err.exp` and `.out.exp` are provided
+                # in case of non-error traces
+                continue
+            collected |= {test_name}
             full_name = LANG_TEST_ID_PATTERN.format(folder_name=parent_name, test_name=test_name)
             match = re.fullmatch(NAME_PATTERN_GENERIC_EXP, test_name)
             if match is None:
