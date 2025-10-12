@@ -20,12 +20,13 @@ class _ManagedPath:
     Wrapper class to handle building the `PATH` environment variable
     """
 
-    build_shell: dataclasses.InitVar[str]
+    build_shell: dataclasses.InitVar[str | None]
     """statically linked shell to use within builds which provides coreutils functionality"""
     _path: list[str] = dataclasses.field(default_factory=list)
 
-    def __post_init__(self, build_shell: str):
-        self.prepend(build_shell)
+    def __post_init__(self, build_shell: str | None):
+        if build_shell:
+            self.prepend(build_shell)
 
     def to_path(self) -> str:
         """
