@@ -69,12 +69,19 @@ Worker::Worker(Store & store, Store & evalStore)
      * At this point, we know that if `settings.useCgroups = true`, then `useBuildUsers() = true`.
      * UID ranges may or may not be available.
      */
+
+#define CGROUPS_DISABLE_MSG "It is possible you did not intend to use cgroups for this operation.\n" \
+                            "You may disable them with the `--no-use-cgroups` argument."
+
     if (settings.useCgroups) {
         if (!hasCgroupFeature(
                 platformFeatures.availableCgroupFeatures, CgroupAvailableFeatureSet::CGROUPV2
             ))
         {
-            throw Error("Running a build with cgroups requires cgroups v2 support on the system.");
+             throw Error(
+                "Running a build with cgroups requires cgroups v2 support on the system.\n\n"
+                 CGROUPS_DISABLE_MSG
+             );
         }
 
         if (!hasCgroupFeature(
@@ -83,7 +90,8 @@ Worker::Worker(Store & store, Store & evalStore)
         {
             throw Error(
                 "Running a build with cgroups requires cgroups v2 kill feature which requires "
-                "a Linux kernel newer than 5.14."
+                "a Linux kernel newer than 5.14.\n\n"
+                 CGROUPS_DISABLE_MSG
             );
         }
 
@@ -102,7 +110,8 @@ Worker::Worker(Store & store, Store & evalStore)
                     "delegated, but only this process' cgroup is delegated.\n"
                     "If you used systemd with `Delegate=yes`, consider moving the process in a "
                     "sub-cgroup or use `DelegateSubgroup=` to move it automatically.\n"
-                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
+                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information.\n\n"
+                     CGROUPS_DISABLE_MSG
                 );
             } else {
                 throw Error(
@@ -110,11 +119,13 @@ Worker::Worker(Store & store, Store & evalStore)
                     "delegated.\n"
                     "If you use systemd, adding `Delegate=yes` and `DelegateSubgroup=supervisor` "
                     "to the [Unit] section will delegate the parent cgroup tree.\n"
-                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information."
+                    "See <https://systemd.io/CGROUP_DELEGATION/> for more information.\n\n"
+                     CGROUPS_DISABLE_MSG
                 );
             }
         }
     }
+#undef CGROUPS_DISABLE_MSG
 #endif
 }
 
