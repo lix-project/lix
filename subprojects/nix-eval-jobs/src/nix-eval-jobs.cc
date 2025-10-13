@@ -131,85 +131,59 @@ struct State {
     std::map<std::string, JSON> jobs;
 };
 
-void handleBrokenWorkerPipe(Proc &proc, std::string_view msg, bool retry = true) {
-    // we already took the process status from Proc, no
-    // need to wait for it again to avoid error messages
-    pid_t pid = proc.pid.release();
-    while (1) {
-        int status;
-        int rc = waitpid(pid, &status, WNOHANG);
-        if (rc == 0) {
-            // If the worker dies (e.g. with a SIGSEGV due to an unnoticed infinite
-            // recursion), it closes the pipes first and then exits. Now it may happen
-            // that a read from the pipe happens when the process is still alive, but the
-            // pipes are closed.
-            // This is still a valid condition and shouldn't be reported as `BUG:`. Hence
-            // we wait a bit and then retry.
-            if (retry) {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                handleBrokenWorkerPipe(proc, msg, false);
-            } else {
-                kill(pid, SIGKILL);
-                throw Error("BUG: while %s, worker pipe got closed but evaluation "
-                            "worker still running?",
-                            msg);
-            }
-        } else if (rc == -1) {
-            kill(pid, SIGKILL);
+void handleBrokenWorkerPipe(Proc &proc, std::string_view msg) {
+    int status = proc.pid.wait();
+    if (WIFEXITED(status)) {
+        if (WEXITSTATUS(status) == 0) {
+            // On the user hitting Ctrl-C, both the worker and the coordinator will receive the signal.
+            // When the worker is interrupted, it will "unexpectedly" exit successfully.
+            // Check whether the coordinator was interrupted as well, and don't show an ugly error in this case.
+            checkInterrupt();
+            // Maybe the coordinator noticed the broken pipe before its own interrupt.
+            // Wait for a bit and try again.
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            checkInterrupt();
+            // No, the coordinator was not interrupted, possibly the signal was sent manually to the worker.
+            // Show the error in this case.
+        } else if (WEXITSTATUS(status) == 1) {
             throw Error(
-                "BUG: while %s, waitpid for evaluation worker failed: %s", msg,
-                strerror(errno));
-        } else {
-            if (WIFEXITED(status)) {
-                if (WEXITSTATUS(status) == 0) {
-                    // On the user hitting Ctrl-C, both the worker and the coordinator will receive the signal.
-                    // When the worker is interrupted, it will "unexpectedly" exit successfully.
-                    // Check whether the coordinator was interrupted as well, and don't show an ugly error in this case.
-                    checkInterrupt();
-                    // Maybe the coordinator noticed the broken pipe before its own interrupt.
-                    // Wait for a bit and try again.
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    checkInterrupt();
-                    // No, the coordinator was not interrupted, possibly the signal was sent manually to the worker.
-                    // Show the error in this case.
-                } else if (WEXITSTATUS(status) == 1) {
-                    throw Error(
-                        "while %s, evaluation worker exited with exit code 1, "
-                        "(possible infinite recursion)",
-                        msg);
-                }
-                throw Error("while %s, evaluation worker exited with %d", msg,
-                            WEXITSTATUS(status));
-            } else if (WIFSIGNALED(status)) {
-                switch (WTERMSIG(status)) {
-                case SIGKILL:
-                    throw Error(
-                        "while %s, evaluation worker got killed by SIGKILL, "
-                        "maybe "
-                        "memory limit reached?",
-                        msg);
-                    break;
-#ifdef __APPLE__
-                case SIGBUS:
-                    throw Error(
-                        "while %s, evaluation worker got killed by SIGBUS, "
-                        "(possible infinite recursion)",
-                        msg);
-                    break;
-#else
-                case SIGSEGV:
-                    throw Error(
-                        "while %s, evaluation worker got killed by SIGSEGV, "
-                        "(possible infinite recursion)",
-                        msg);
-#endif
-                default:
-                    throw Error(
-                        "while %s, evaluation worker got killed by signal %d (%s)",
-                        msg, WTERMSIG(status), strsignal(WTERMSIG(status)));
-                }
-            } // else ignore WIFSTOPPED and WIFCONTINUED
+                "while %s, evaluation worker exited with exit code 1, "
+                "(possible infinite recursion)",
+                msg);
         }
+        throw Error("while %s, evaluation worker exited with %d", msg,
+                    WEXITSTATUS(status));
+    } else if (WIFSIGNALED(status)) {
+        switch (WTERMSIG(status)) {
+        case SIGKILL:
+            throw Error(
+                "while %s, evaluation worker got killed by SIGKILL, "
+                "maybe "
+                "memory limit reached?",
+                msg);
+            break;
+#ifdef __APPLE__
+        case SIGBUS:
+            throw Error(
+                "while %s, evaluation worker got killed by SIGBUS, "
+                "(possible infinite recursion)",
+                msg);
+            break;
+#else
+        case SIGSEGV:
+            throw Error(
+                "while %s, evaluation worker got killed by SIGSEGV, "
+                "(possible infinite recursion)",
+                msg);
+#endif
+        default:
+            throw Error(
+                "while %s, evaluation worker got killed by signal %d (%s)",
+                msg, WTERMSIG(status), strsignal(WTERMSIG(status)));
+        }
+    } else {
+        // WIFSTOPPED and WIFCONTINUED should not happen, as neither WUNTRACED nor WCONTINUED are passed
+        throw Error("while %s, waitpid for evaluation worker returned unexpected status: %d", msg, status);
     }
 }
 

@@ -139,22 +139,8 @@ def test_recursion_error() -> None:
         )
         print(stderr)
 
-        # Closing pipes and exiting is not atomic, so it is possible
-        # that the worker is still up when the collector notices that
-        # the pipe is closed already. We mitigate this condition a bit
-        # by waiting a second and checking the state of the worker again,
-        # but assuming the infrec error is still racy.
-        # Hence, we assert that one of the two possible outcomes actually happen.
-        assert (
-            (
-                "packageWithInfiniteRecursion" in stderr
-                and "possible infinite recursion" in stderr
-            )
-            or
-            (
-                "worker pipe got closed" in stderr
-            )
-        )
+        assert "packageWithInfiniteRecursion" in stderr
+        assert "possible infinite recursion" in stderr
 
 
 def test_constituents() -> None:
