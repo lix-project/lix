@@ -14,6 +14,9 @@
   boost,
 }:
 
+# gcc ICEs on coroutines at least until 14.3, possibly longer
+assert stdenv.cc.isClang;
+
 let
   sourceBase = if srcDir == null then ./. else srcDir;
   package = stdenv.mkDerivation (finalAttrs: {

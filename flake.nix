@@ -228,6 +228,7 @@
           };
 
           nix-eval-jobs = final.callPackage ./subprojects/nix-eval-jobs {
+            stdenv = currentStdenv;
             srcDir = ./subprojects/nix-eval-jobs;
           };
 
