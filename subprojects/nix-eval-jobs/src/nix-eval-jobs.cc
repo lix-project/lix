@@ -4,6 +4,8 @@
 #include <lix/libexpr/eval-settings.hh>
 #include <lix/libmain/shared.hh>
 #include <lix/libutil/async.hh>
+#include <lix/libutil/async-collect.hh>
+#include <lix/libutil/async-semaphore.hh>
 #include <lix/libutil/sync.hh>
 #include <lix/libexpr/eval.hh>
 #include <lix/libutil/json.hh>
@@ -25,14 +27,11 @@
 #include <lix/libutil/terminal.hh>
 #include <lix/libutil/ref.hh>
 #include <lix/libstore/store-api.hh>
-#include <condition_variable>
 #include <filesystem>
-#include <exception>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -75,8 +74,8 @@ class Collector {
     using Response = std::variant<Next, JsonResponse, Restart>;
 
     RunningProgram child;
-    AutoCloseFD to;
-    std::optional<LineReader> from;
+    std::optional<AsyncFdIoStream> to;
+    std::optional<AsyncLineReader> from;
 
     Strings workerCmdline;
 
@@ -105,11 +104,12 @@ class Collector {
         };
 
         child = runProgram2(options);
-        to = std::move(toPipe.writeSide);
-        from.emplace(fromPipe.readSide.release());
+        to.emplace(std::move(toPipe.writeSide));
+        from.emplace(std::move(fromPipe.readSide));
     }
 
-    void waitForWorkerReady() {
+    kj::Promise<Result<void>> waitForWorkerReady()
+    try {
         assert(child);
         std::visit(overloaded{
             [](const Next &) {},
@@ -121,53 +121,66 @@ class Collector {
                 to.reset();
                 from.reset();
             },
-        }, readResponse("checking worker process"));
+        }, LIX_TRY_AWAIT(readResponse("checking worker process")));
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void makeWorkerReady() {
+    kj::Promise<Result<void>> makeWorkerReady()
+    try {
         if (child) {
-            waitForWorkerReady();
+            LIX_TRY_AWAIT(waitForWorkerReady());
         }
         if (!child) {
             startWorker();
-            waitForWorkerReady();
+            LIX_TRY_AWAIT(waitForWorkerReady());
         }
         if (!child) {
             throw Error("worker exited immediately");
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    Response readResponse(std::string_view msg) {
+    kj::Promise<Result<Response>> readResponse(std::string_view msg)
+    try {
         assert(from);
-        auto line = from->readLine();
-        if (line.empty()) {
+        auto line = LIX_TRY_AWAIT(from->readLine());
+        if (!line) {
             handleBrokenPipe(msg);
         } else if (line == "next") {
-            return Next{};
+            co_return Next{};
         } else if (line == "restart") {
-            return Restart{};
+            co_return Restart{};
         } else {
             try {
-                return JsonResponse{JSON::parse(line)};
+                co_return JsonResponse{JSON::parse(*line)};
             } catch (const json::ParseError &e) {
                 throw Error(
                     "Received invalid JSON from worker: %s\n json: '%s'",
-                    e.what(), line);
+                    e.what(), *line);
             }
         }
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    void writeRequest(Request request) {
+    kj::Promise<Result<void>> writeRequest(Request request)
+    try {
         assert(to);
         auto line = std::visit(overloaded{
             [](const Do &request) {
-                return fmt("do %s", request.attrPath.dump());
+                return fmt("do %s\n", request.attrPath.dump());
             },
             [](const Exit &) {
-                return std::string{"exit"};
+                return std::string{"exit\n"};
             },
         }, request);
-        if (tryWriteLine(to.get(), line) < 0) {
+        try {
+            LIX_TRY_AWAIT(to->writeFull(line.data(), line.size()));
+        } catch (SysError &err) {
             auto msg = std::visit(overloaded{
                 [](const Do &request) {
                     return fmt("sending attrPath '%s'", joinAttrPath(request.attrPath));
@@ -178,6 +191,9 @@ class Collector {
             }, request);
             handleBrokenPipe(msg);
         }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     [[noreturn]] void handleBrokenPipe(std::string_view msg) {
@@ -240,10 +256,11 @@ public:
         }
     }
 
-    JSON evaluate(JSON attrPath) {
-        makeWorkerReady();
-        writeRequest(Do{attrPath});
-        return std::visit(overloaded{
+    kj::Promise<Result<JSON>> evaluate(JSON attrPath)
+    try {
+        LIX_TRY_AWAIT(makeWorkerReady());
+        LIX_TRY_AWAIT(writeRequest(Do{attrPath}));
+        co_return std::visit(overloaded{
             [](const Next &) -> JSON {
                 throw Error("unexpected response from worker: next");
             },
@@ -253,93 +270,101 @@ public:
             [](const Restart &) -> JSON {
                 throw Error("unexpected response from worker: restart");
             },
-        }, readResponse(fmt("reading result for attrPath '%s'", joinAttrPath(attrPath))));
-    }
-
-    void exit() {
-        if (child) {
-            waitForWorkerReady();
-        }
-        if (child) {
-            writeRequest(Exit{});
-            // The worker will print "restart" when exiting cleanly, even if due to an explicit exit request.
-            waitForWorkerReady();
-        }
-    }
-};
-
-struct State {
-    std::set<JSON> todo = JSON::array({JSON::array()});
-    std::set<JSON> active;
-    std::exception_ptr exc;
-    std::map<std::string, JSON> jobs;
-};
-
-void collectorThread(MyArgs &myArgs, Sync<State> &state_, std::condition_variable &wakeup) {
-    try {
-        Collector collector{myArgs.cmdline};
-
-        while (true) {
-            /* Wait for a job name to become available. */
-            JSON attrPath;
-            while (true) {
-                checkInterrupt();
-                auto state(state_.lock());
-                if ((state->todo.empty() && state->active.empty()) ||
-                    state->exc) {
-                    collector.exit();
-                    return;
-                }
-                if (!state->todo.empty()) {
-                    attrPath = *state->todo.begin();
-                    state->todo.erase(state->todo.begin());
-                    state->active.insert(attrPath);
-                    break;
-                } else
-                    state.wait(wakeup);
-            }
-
-            /* Tell the worker to evaluate it. */
-            auto response = collector.evaluate(attrPath);
-
-            /* Handle the response. */
-            std::vector<JSON> newAttrs;
-            if (response.find("attrs") != response.end()) {
-                for (auto &i : response["attrs"]) {
-                    JSON newAttr = JSON(response["attrPath"]);
-                    newAttr.emplace_back(i);
-                    newAttrs.push_back(newAttr);
-                }
-            } else {
-                auto state(state_.lock());
-                state->jobs.insert_or_assign(response["attr"], response);
-                if (nix::settings.readOnlyMode) {
-                    response.erase("namedConstituents");
-                    response.erase("constituents");
-                }
-                auto named = response.find("namedConstituents");
-                if (named == response.end() || named->empty()) {
-                    response.erase("namedConstituents");
-                    logger->writeToStdout(response.dump());
-                }
-            }
-
-            /* Add newly discovered job names to the queue. */
-            {
-                auto state(state_.lock());
-                state->active.erase(attrPath);
-                for (auto p : newAttrs) {
-                    state->todo.insert(p);
-                }
-                wakeup.notify_all();
-            }
-        }
+        }, LIX_TRY_AWAIT(readResponse(fmt("reading result for attrPath '%s'", joinAttrPath(attrPath)))));
     } catch (...) {
-        auto state(state_.lock());
-        state->exc = std::current_exception();
-        wakeup.notify_all();
+        co_return result::current_exception();
     }
-}
+
+    kj::Promise<Result<void>> exit()
+    try {
+        if (child) {
+            LIX_TRY_AWAIT(waitForWorkerReady());
+        }
+        if (child) {
+            LIX_TRY_AWAIT(writeRequest(Exit{}));
+            // The worker will print "restart" when exiting cleanly, even if due to an explicit exit request.
+            LIX_TRY_AWAIT(waitForWorkerReady());
+        }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
+};
+
+class Coordinator {
+    AsyncSemaphore semaphore;
+    kj::Array<Collector> workers;
+    std::vector<Collector *> idleWorkers;
+
+    kj::Promise<Result<void>> evaluateRecursively(JSON attrPath, std::map<std::string, JSON> &jobs)
+    try {
+        JSON response;
+        {
+            auto _token = co_await semaphore.acquire();
+            auto *worker = idleWorkers.back();
+            idleWorkers.pop_back();
+            Finally _returnWorker{[&]() {
+                idleWorkers.push_back(worker);
+            }};
+            response = LIX_TRY_AWAIT(worker->evaluate(attrPath));
+        }
+
+        std::vector<JSON> newAttrs;
+        if (response.find("attrs") != response.end()) {
+            for (auto &i : response["attrs"]) {
+                JSON newAttr = JSON(response["attrPath"]);
+                newAttr.emplace_back(i);
+                newAttrs.push_back(newAttr);
+            }
+        } else {
+            jobs.insert_or_assign(response["attr"], response);
+            if (nix::settings.readOnlyMode) {
+                response.erase("namedConstituents");
+                response.erase("constituents");
+            }
+            auto named = response.find("namedConstituents");
+            if (named == response.end() || named->empty()) {
+                response.erase("namedConstituents");
+                nix::logger->writeToStdout(response.dump());
+            }
+        }
+
+        LIX_TRY_AWAIT(asyncSpread(newAttrs, [&](const JSON &newAttr) {
+            return evaluateRecursively(newAttr, jobs);
+        }));
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+public:
+    Coordinator(size_t nrWorkers, const Strings &cmdline)
+        : semaphore{static_cast<unsigned>(nrWorkers)} {
+        if (nrWorkers >= std::numeric_limits<unsigned>::max() - 1) {
+            throw Error("nix-eval-jobs cannot handle %d workers, please choose a reasonable number");
+        }
+
+        auto builder = kj::heapArrayBuilder<Collector>(nrWorkers);
+        for (unsigned i = 0; i < nrWorkers; ++i) {
+            auto worker = &builder.add(cmdline);
+            idleWorkers.push_back(worker);
+        }
+        workers = builder.finish();
+    }
+
+    kj::Promise<Result<std::map<std::string, JSON>>> run()
+    try {
+        std::map<std::string, JSON> jobs;
+        LIX_TRY_AWAIT(evaluateRecursively(JSON::array(), jobs));
+        for (auto &worker : workers) {
+            LIX_TRY_AWAIT(worker.exit());
+        }
+        co_return jobs;
+    } catch (...) {
+        co_return result::current_exception();
+    }
+};
 
 int main(int argc, char **argv) {
     return handleExceptions(argv[0], [&]() {
@@ -390,23 +415,8 @@ int main(int argc, char **argv) {
             return 0;
         }
 
-        Sync<State> state_;
-
-        /* Start a collector thread per worker process. */
-        std::vector<std::thread> threads;
-        std::condition_variable wakeup;
-        for (size_t i = 0; i < myArgs.nrWorkers; i++) {
-            threads.emplace_back(std::bind(collectorThread, std::ref(myArgs),
-                                           std::ref(state_), std::ref(wakeup)));
-        }
-
-        for (auto &thread : threads)
-            thread.join();
-
-        auto state(state_.lock());
-
-        if (state->exc)
-            std::rethrow_exception(state->exc);
+        Coordinator coordinator{myArgs.nrWorkers, myArgs.cmdline};
+        auto jobs = aio.blockOn(coordinator.run());
 
         if (myArgs.constituents) {
             auto store = aio.blockOn(myArgs.evalStoreUrl
@@ -415,28 +425,28 @@ int main(int argc, char **argv) {
             std::visit(
                 nix::overloaded{
                     [&](const std::vector<AggregateJob> &namedConstituents) {
-                        rewriteAggregates(state->jobs, namedConstituents, store,
+                        rewriteAggregates(jobs, namedConstituents, store,
                                           myArgs.gcRootsDir, aio);
                     },
                     [&](const DependencyCycle &e) {
                         printError(
                             "Found dependency cycle between jobs '%s' and '%s'",
                             e.a, e.b);
-                        state->jobs[e.a]["error"] = e.message();
-                        state->jobs[e.b]["error"] = e.message();
+                        jobs[e.a]["error"] = e.message();
+                        jobs[e.b]["error"] = e.message();
 
-                        logger->writeToStdout(state->jobs[e.a].dump());
-                        logger->writeToStdout(state->jobs[e.b].dump());
+                        nix::logger->writeToStdout(jobs[e.a].dump());
+                        nix::logger->writeToStdout(jobs[e.b].dump());
 
                         for (const auto &jobName : e.remainingAggregates) {
-                            state->jobs[jobName]["error"] =
+                            jobs[jobName]["error"] =
                                 "Skipping aggregate because of a dependency "
                                 "cycle";
-                            logger->writeToStdout(state->jobs[jobName].dump());
+                            nix::logger->writeToStdout(jobs[jobName].dump());
                         }
                     },
                 },
-                resolveNamedConstituents(state->jobs));
+                resolveNamedConstituents(jobs));
         }
 
         return 0;

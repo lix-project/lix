@@ -56,3 +56,38 @@ LineReader::LineReader(LineReader &&other) {
     // Remove trailing newline
     return std::string_view(buffer, read - 1);
 }
+
+AsyncLineReader::AsyncLineReader(nix::AutoCloseFD fd)
+    : stream{std::move(fd)}, readBuffer{kj::heapArray<char>(4096)} {}
+
+kj::Promise<nix::Result<std::optional<std::string>>> AsyncLineReader::readLine()
+try {
+    auto pos = buffer.find('\n');
+    if (pos != std::string::npos) {
+        std::string result = buffer.substr(0, pos);
+        memmove(buffer.data(), buffer.data() + pos + 1, buffer.size() - pos - 1);
+        buffer.resize(buffer.size() - pos - 1);
+        co_return result;
+    }
+
+    // No full line was buffered, read until we have one.
+    while (true) {
+        auto nRead = LIX_TRY_AWAIT(stream.read(readBuffer.begin(), readBuffer.size()));
+        if (!nRead && !buffer.empty()) {
+            // File has ended, but not everything has been read out of the buffer yet.
+            co_return std::move(buffer);
+        } else if (!nRead) {
+            co_return std::nullopt;
+        }
+        std::string_view readStr{readBuffer.begin(), *nRead};
+
+        auto pos = readStr.find('\n');
+        if (pos != std::string_view::npos) {
+            buffer.append(readStr.substr(0, pos));
+            co_return std::exchange(buffer, readStr.substr(pos + 1));
+        }
+        buffer.append(readStr);
+    }
+} catch (...) {
+    co_return nix::result::current_exception();
+}
