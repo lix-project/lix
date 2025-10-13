@@ -54,7 +54,7 @@ def evaluate(
     assert res.returncode == expected_statuscode
     print(res.stdout)
     print(res.stderr)
-    return [json.loads(r) for r in res.stdout.split("\n") if r], res.stderr
+    return sorted([json.loads(r) for r in res.stdout.split("\n") if r], key=lambda job: job["attr"]), res.stderr
 
 
 def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
@@ -62,18 +62,18 @@ def common_test(extra_args: List[str]) -> List[Dict[str, Any]]:
         results, _ = evaluate(tempdir, 0, extra_args)
         assert len(results) == 4
 
-        built_job = results[0]
+        dotted_job = results[0]
+        assert dotted_job["attr"] == '"dotted.attr"'
+        assert dotted_job["attrPath"] == ["dotted.attr"]
+        check_gc_root(tempdir, dotted_job["drvPath"])
+
+        built_job = results[1]
         assert built_job["attr"] == "builtJob"
         assert built_job["name"] == "job1"
         assert built_job["outputs"]["out"].startswith("/nix/store")
         assert built_job["drvPath"].endswith(".drv")
         assert built_job["meta"]["broken"] is False
         check_gc_root(tempdir, built_job["drvPath"])
-
-        dotted_job = results[1]
-        assert dotted_job["attr"] == '"dotted.attr"'
-        assert dotted_job["attrPath"] == ["dotted.attr"]
-        check_gc_root(tempdir, dotted_job["drvPath"])
 
         recurse_drv = results[2]
         assert recurse_drv["attr"] == "recurse.drvB"
@@ -234,15 +234,15 @@ def test_constituents_error() -> None:
         )
         assert len(results) == 2
 
-        child = results[0]
-        assert child["attr"] == "doesnteval"
-        assert "error" in child
-
-        aggregate = results[1]
+        aggregate = results[0]
         assert aggregate["attr"] == "aggregate"
         assert "namedConstituents" not in aggregate
         assert "doesntexist: does not exist\n" in aggregate["error"]
         assert "constituents" in aggregate
+
+        child = results[1]
+        assert child["attr"] == "doesnteval"
+        assert "error" in child
 
 
 def test_transitivity() -> None:
@@ -260,15 +260,15 @@ def test_transitivity() -> None:
         )
         assert len(results) == 3
 
-        job = results[0]
-        assert job["attr"] == "constituent"
-        assert "constituents" not in job
+        aggregate0 = results[0]
+        assert aggregate0["attr"] == "aggregate0"
 
         aggregate1 = results[1]
         assert aggregate1["attr"] == "aggregate1"
 
-        aggregate0 = results[2]
-        assert aggregate0["attr"] == "aggregate0"
+        job = results[2]
+        assert job["attr"] == "constituent"
+        assert "constituents" not in job
 
         assert aggregate1["drvPath"] == aggregate0["constituents"][0]
 
