@@ -184,7 +184,8 @@ struct BuilderConnection
 
     // start the thread that reads ssh stderr and turns it into log items.
     // this future *must* outlive sshStore, otherwise it will never finish
-    std::future<void> startLogThread(int intoFD)
+    std::future<void>
+    startLogThread(const std::string & buildDescription, const std::string & drvPath)
     {
         if (!logPipe.readSide) {
             return {};
@@ -192,18 +193,56 @@ struct BuilderConnection
 
         logPipe.writeSide.close();
 
+        // NOTE this is very similar to handleBuilderOutput in DerivationGoal, but unlike
+        // the derivation goal we do not need to handle EIO from a pty here. we also have
+        // no timeouts or limits to keep track of, which makes deduplication less useful.
         return std::async(
             std::launch::async,
-            [](int from, int to) {
+            [this, buildDescription, drvPath](int from) {
                 AsyncIoRoot aio;
 
-                auto reader = AIO().lowLevelProvider.wrapInputFd(from);
-                auto writer = AIO().lowLevelProvider.wrapOutputFd(to);
+                auto act = logger->startActivity(
+                    lvlInfo, actBuild, buildDescription, Logger::Fields{drvPath, storeUri, 1, 1}
+                );
 
-                reader->pumpTo(*writer).wait(aio.kj.waitScope);
+                std::map<ActivityId, Activity> activities;
+
+                auto reader = AIO().lowLevelProvider.wrapInputFd(from);
+
+                LogLineSplitter splitter;
+
+                auto flushLine = [&](const std::string & line) {
+                    if (const auto state =
+                            handleJSONLogMessage(line, act, activities, "the derivation builder"))
+                    {
+                        if (state == Logger::BufferState::NeedsFlush) {
+                            aio.blockOn(act.getLogger().flush());
+                        }
+                    } else {
+                        ACTIVITY_RESULT_SYNC(aio, act, resBuildLogLine, line);
+                    }
+                };
+
+                auto buf = kj::heapArray<char>(4096);
+                while (true) {
+                    const auto got = aio.blockOn(reader->tryRead(buf.begin(), 1, buf.size()));
+                    if (got == 0) {
+                        break;
+                    }
+
+                    std::string_view data{buf.begin(), got};
+                    while (!data.empty()) {
+                        if (auto line = splitter.feed(data)) {
+                            flushLine(*line);
+                        }
+                    }
+                }
+
+                if (auto left = splitter.finish(); !left.empty()) {
+                    flushLine(left);
+                }
             },
-            logPipe.readSide.get(),
-            intoFD
+            logPipe.readSide.get()
         );
     }
 };
@@ -420,12 +459,12 @@ kj::Promise<void> Instance::build(BuildContext context)
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
     try {
-        const int logFD = (co_await buildLogger.getFd()).orDefault(-1);
-        if (logFD < 0) {
-            throw Error("build-hook needs a logFD from the builder to build");
-        }
-
-        auto logThread = builder.startLogThread(logFD);
+        auto logThread = builder.startLogThread(
+            fmt("%s on '%s'",
+                rpc::to<std::string_view>(context.getParams().getDescription()),
+                builder.storeUri),
+            store->printStorePath(drvPath)
+        );
         KJ_DEFER({
             // drop any existing ssh connection so the log thread can exit
             builder.sshStore = nullptr;

@@ -352,7 +352,7 @@ public:
 
     kj::Promise<Result<WorkResult>> repairClosure() noexcept;
 
-    void started();
+    std::string buildDescription() const;
 
     WorkResult done(
         BuildResult::Status status,

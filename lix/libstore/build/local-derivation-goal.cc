@@ -279,7 +279,13 @@ retry:
         /* Okay, we have to build. */
         TRY_AWAIT(startBuilder());
 
-        started();
+        act = logger->startActivity(
+            lvlInfo,
+            actBuild,
+            buildDescription(),
+            Logger::Fields{worker.store.printStorePath(drvPath), "", 1, 1}
+        );
+        mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
         if (auto error = TRY_AWAIT(handleChildOutput())) {
             co_return std::move(*error);
         }

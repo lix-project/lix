@@ -9,13 +9,14 @@ using StoreTypes = import "/lix/libstore/types.capnp";
 
 interface HookInstance {
   interface BuildLogger {
-    # only used for fd passing
+    # will be used later
   }
 
   interface AcceptedBuild {
     run @0 (
       inputs :List(StoreTypes.StorePath), # actual a set
       wantedOutputs :List(Data), # actually StringSet
+      description :Text, # root activity description for this build
     ) -> (result :Types.ResultV);
   }
 

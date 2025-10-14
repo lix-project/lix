@@ -608,21 +608,14 @@ try {
     co_return result::current_exception();
 }
 
-void DerivationGoal::started()
+std::string DerivationGoal::buildDescription() const
 {
-    auto msg = fmt(
-        buildMode == bmRepair ? "repairing outputs of '%s'" :
-        buildMode == bmCheck ? "checking outputs of '%s'" :
-        "building '%s'", worker.store.printStorePath(drvPath));
-    fmt("building '%s'", worker.store.printStorePath(drvPath));
-    if (hook) msg += fmt(" on '%s'", machineName);
-    act = logger->startActivity(
-        lvlInfo,
-        actBuild,
-        msg,
-        Logger::Fields{worker.store.printStorePath(drvPath), hook ? machineName : "", 1, 1}
+    return fmt(
+        buildMode == bmRepair      ? "repairing outputs of '%s'"
+            : buildMode == bmCheck ? "checking outputs of '%s'"
+                                   : "building '%s'",
+        worker.store.printStorePath(drvPath)
     );
-    mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 }
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::tryToBuild() noexcept
@@ -1047,16 +1040,7 @@ try {
 
 namespace {
 struct BuildHookLogger final : rpc::build_remote::HookInstance::BuildLogger::Server
-{
-    AutoCloseFD fd;
-
-    BuildHookLogger(AutoCloseFD fd) : fd(std::move(fd)) {}
-
-    kj::Maybe<int> getFd() override
-    {
-        return fd.get();
-    }
-};
+{};
 }
 
 kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
@@ -1075,12 +1059,6 @@ try {
         hook = TRY_AWAIT(HookInstance::create());
     }
 
-    // open a pipe to receive logs directly from the hook
-    Pipe logPipe;
-    logPipe.create();
-    builderOutFD = &logPipe.readSide;
-    KJ_DEFER(builderOutFD = nullptr);
-
     KJ_DEFER(hook = nullptr);
     auto output = handleChildOutput();
 
@@ -1089,7 +1067,7 @@ try {
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
     RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
-    buildReq.setBuildLogger(kj::heap<BuildHookLogger>(std::move(logPipe.writeSide)));
+    buildReq.setBuildLogger(kj::heap<BuildHookLogger>());
     auto buildRespPromise = buildReq.send();
     auto buildResp = TRY_AWAIT_RPC(buildRespPromise);
 
@@ -1128,6 +1106,7 @@ try {
             missingOutputs.insert(outputName);
         }
         RPC_FILL(runReq, initWantedOutputs, missingOutputs);
+        RPC_FILL(runReq, setDescription, buildDescription());
     }
 
     /* Create the log file and pipe. */
@@ -1138,7 +1117,7 @@ try {
     // build via hook is now properly running. wait for it to finish
     actLock.reset();
     buildResult.startTime = time(0); // inexact
-    started();
+    mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 
     auto result = co_await runPromise;
 
