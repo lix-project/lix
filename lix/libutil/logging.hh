@@ -435,4 +435,27 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
     std::map<ActivityId, Activity> & activities,
     std::string_view source
 );
+
+/**
+ * Split a log stream into lines, processing carriage returns (`\r`) as a terminal would.
+ */
+class LogLineSplitter
+{
+    std::string line;
+    size_t pos = 0;
+
+public:
+    /**
+     * Feeds some input to the splitter and returns the first full line or `nullopt` if
+     * there is no complete line in the buffer yet. If any input remains `input` is set
+     * to the unconsumed data and `feed` should be called again until `input` is empty.
+     * If this function returns `nullopt` it guarantees that `input` is fully consumed.
+     */
+    std::optional<std::string> feed(std::string_view & input);
+
+    /**
+     * Clear the line buffer and return its current contents.
+     */
+    std::string finish();
+};
 }

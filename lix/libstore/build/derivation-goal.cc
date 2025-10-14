@@ -1229,27 +1229,20 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
 DerivationGoal::handleBuilderOutput(AsyncInputStream & in) noexcept
 try {
-    std::string currentLogLine;
-    size_t currentLogLinePos = 0; // to handle carriage return
+    LogLineSplitter splitter;
 
-    auto flushLine = [&] {
-        KJ_DEFER({
-            currentLogLine = "";
-            currentLogLinePos = 0;
-        });
-
-        if (const auto state = handleJSONLogMessage(
-                currentLogLine, *act, builderActivities, "the derivation builder"
-            ))
+    auto flushLine = [&](const std::string & line) {
+        if (const auto state =
+                handleJSONLogMessage(line, *act, builderActivities, "the derivation builder"))
         {
             return *state;
         } else {
-            logTail.push_back(currentLogLine);
+            logTail.push_back(line);
             if (logTail.size() > settings.logLines) {
                 logTail.pop_front();
             }
 
-            return act->result(resBuildLogLine, currentLogLine);
+            return act->result(resBuildLogLine, line);
         }
     };
 
@@ -1274,8 +1267,8 @@ try {
         lastChildActivity = AIO().provider.getTimer().now();
 
         if (data.empty()) {
-            if (!currentLogLine.empty()) {
-                if (flushLine() == Logger::BufferState::NeedsFlush) {
+            if (auto left = splitter.finish(); !left.empty()) {
+                if (flushLine(left) == Logger::BufferState::NeedsFlush) {
                     TRY_AWAIT(act->getLogger().flush());
                 }
             }
@@ -1287,20 +1280,17 @@ try {
             co_return tooMuchLogs();
         }
 
-        for (auto c : data)
-            if (c == '\r')
-                currentLogLinePos = 0;
-            else if (c == '\n') {
-                if (flushLine() == Logger::BufferState::NeedsFlush) {
+        if (logSink) {
+            (*logSink)(data);
+        }
+
+        while (!data.empty()) {
+            if (auto line = splitter.feed(data)) {
+                if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
                     TRY_AWAIT(act->getLogger().flush());
                 }
-            } else {
-                if (currentLogLinePos >= currentLogLine.size())
-                    currentLogLine.resize(currentLogLinePos + 1);
-                currentLogLine[currentLogLinePos++] = c;
             }
-
-        if (logSink) (*logSink)(data);
+        }
     }
 } catch (...) {
     co_return result::current_exception();

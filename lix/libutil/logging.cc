@@ -423,4 +423,28 @@ void logFatal(std::string const & s)
     syslog(LOG_CRIT, "%s", requireCString(s).asCStr());
 }
 
+std::optional<std::string> LogLineSplitter::feed(std::string_view & input)
+{
+    for (auto [idx, c] : enumerate(input)) {
+        if (c == '\r') {
+            pos = 0;
+        } else if (c == '\n') {
+            input = input.substr(idx + 1);
+            return finish();
+        } else {
+            if (pos >= line.size()) {
+                line.resize(pos + 1);
+            }
+            line[pos++] = c;
+        }
+    }
+    input = {};
+    return std::nullopt;
+}
+
+std::string LogLineSplitter::finish()
+{
+    pos = 0;
+    return std::move(line);
+}
 }
