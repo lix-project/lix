@@ -121,7 +121,6 @@ DerivationGoal::~DerivationGoal() noexcept(false)
 void DerivationGoal::killChild()
 {
     hook.reset();
-    builderOutFD = nullptr;
 }
 
 
@@ -796,15 +795,12 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
 
 int DerivationGoal::getChildStatus()
 {
-    builderOutFD = nullptr;
     return hook->pid.kill();
 }
-
 
 void DerivationGoal::closeReadPipes()
 {
     hook->fromHook.reset();
-    builderOutFD = nullptr;
 }
 
 void DerivationGoal::cleanupHookFinally()
@@ -1205,80 +1201,13 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
             getName(), settings.maxLogSize));
 }
 
-kj::Promise<Result<std::optional<Goal::WorkResult>>>
-DerivationGoal::handleBuilderOutput(AsyncInputStream & in) noexcept
+kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleRawChildStream() noexcept
 try {
-    LogLineSplitter splitter;
+    assert(hook);
 
-    auto flushLine = [&](const std::string & line) {
-        if (const auto state =
-                handleJSONLogMessage(line, *act, builderActivities, "the derivation builder"))
-        {
-            return *state;
-        } else {
-            logTail.push_back(line);
-            if (logTail.size() > settings.logLines) {
-                logTail.pop_front();
-            }
-
-            return act->result(resBuildLogLine, line);
-        }
-    };
-
-    auto buf = kj::heapArray<char>(4096);
-    while (true) {
-        std::string_view data;
-        try {
-            if (const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()))) {
-                data = {buf.begin(), *got};
-            } else {
-                co_return std::nullopt;
-            }
-        } catch (SysError & e) {
-            // the builder output stream may be a pty fd, and closing one pty
-            // endpoint sends EIO to the other endpoint. this is a good exit.
-            if (e.errNo == EIO) {
-                data = {};
-            } else {
-                throw;
-            }
-        }
-        lastChildActivity = AIO().provider.getTimer().now();
-
-        if (data.empty()) {
-            if (auto left = splitter.finish(); !left.empty()) {
-                if (flushLine(left) == Logger::BufferState::NeedsFlush) {
-                    TRY_AWAIT(act->getLogger().flush());
-                }
-            }
-            co_return std::nullopt;
-        }
-
-        logSize += data.size();
-        if (settings.maxLogSize && logSize > settings.maxLogSize) {
-            co_return tooMuchLogs();
-        }
-
-        if (logSink) {
-            (*logSink)(data);
-        }
-
-        while (!data.empty()) {
-            if (auto line = splitter.feed(data)) {
-                if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
-                    TRY_AWAIT(act->getLogger().flush());
-                }
-            }
-        }
-    }
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<std::optional<Goal::WorkResult>>>
-DerivationGoal::handleHookOutput(AsyncInputStream & in) noexcept
-try {
     std::string currentHookLine;
+
+    AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());
 
     auto buf = kj::heapArray<char>(4096);
     while (true) {
@@ -1337,19 +1266,16 @@ try {
 
 kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleChildOutput() noexcept
 try {
-    kj::Own<AsyncInputStream> builderIn, hookIn;
-    if (builderOutFD) {
-        builderIn = kj::heap<AsyncFdIoStream>(AsyncFdIoStream::shared_fd{}, builderOutFD->get());
-    }
-    if (hook) {
-        hookIn = kj::heap<AsyncFdIoStream>(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());
-    }
+    lastChildActivity = AIO().provider.getTimer().now();
 
-    auto handlers = handleChildStreams(builderIn.get(), hookIn.get())
-                        .attach(std::move(builderIn), std::move(hookIn));
+    auto handler = handleRawChildStream();
+
+    if (respectsTimeouts() && settings.maxSilentTime != 0) {
+        handler = handler.exclusiveJoin(monitorForSilence());
+    }
 
     if (respectsTimeouts() && settings.buildTimeout != 0) {
-        handlers = handlers.exclusiveJoin(
+        handler = handler.exclusiveJoin(
             AIO()
                 .provider.getTimer()
                 .afterDelay(settings.buildTimeout.get() * kj::SECONDS)
@@ -1361,7 +1287,7 @@ try {
         );
     }
 
-    co_return TRY_AWAIT(handlers);
+    co_return TRY_AWAIT(handler);
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1378,40 +1304,6 @@ kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::monitorForS
             );
         }
     }
-}
-
-kj::Promise<Result<std::optional<Goal::WorkResult>>>
-DerivationGoal::handleChildStreams(AsyncInputStream * builderIn, AsyncInputStream * hookIn) noexcept
-{
-    assert(builderIn || hookIn);
-
-    lastChildActivity = AIO().provider.getTimer().now();
-
-    auto handlers = kj::joinPromisesFailFast([&] {
-        kj::Vector<kj::Promise<Result<std::optional<WorkResult>>>> parts{2};
-
-        if (builderIn) {
-            parts.add(handleBuilderOutput(*builderIn));
-        }
-        if (hookIn) {
-            parts.add(handleHookOutput(*hookIn));
-        }
-
-        return parts.releaseAsArray();
-    }());
-
-    if (respectsTimeouts() && settings.maxSilentTime != 0) {
-        handlers = handlers.exclusiveJoin(monitorForSilence().then([](auto r) {
-            return kj::arr(std::move(r));
-        }));
-    }
-
-    for (auto r : co_await handlers) {
-        if (r) {
-            co_return r;
-        }
-    }
-    co_return std::nullopt;
 }
 
 kj::Promise<Result<OutputPathMap>> DerivationGoal::queryDerivationOutputMap()

@@ -1,4 +1,5 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
+#include "build/derivation-goal.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
@@ -337,7 +338,6 @@ void LocalDerivationGoal::closeReadPipes()
         DerivationGoal::closeReadPipes();
     } else {
         builderOutPTY.close();
-        builderOutFD = nullptr;
     }
 }
 
@@ -789,9 +789,9 @@ try {
 
     /* Create a pseudoterminal to get the output of the builder. */
     builderOutPTY = AutoCloseFD{posix_openpt(O_RDWR | O_NOCTTY)};
-    if (!builderOutPTY)
+    if (!builderOutPTY) {
         throw SysError("opening pseudoterminal master");
-    builderOutFD = &builderOutPTY;
+    }
 
     // FIXME: not thread-safe, use ptsname_r
     std::string slaveName = ptsname(builderOutPTY.get());
@@ -2689,5 +2689,79 @@ StorePath LocalDerivationGoal::makeFallbackPath(const StorePath & path)
         Hash(HashType::SHA256), path.name());
 }
 
+kj::Promise<Result<std::optional<Goal::WorkResult>>>
+LocalDerivationGoal::handleRawChildStream() noexcept
+try {
+    if (hook) {
+        co_return TRY_AWAIT(DerivationGoal::handleRawChildStream());
+    }
 
+    AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, builderOutPTY.get());
+
+    LogLineSplitter splitter;
+
+    auto flushLine = [&](const std::string & line) {
+        if (const auto state =
+                handleJSONLogMessage(line, *act, builderActivities, "the derivation builder"))
+        {
+            return *state;
+        } else {
+            logTail.push_back(line);
+            if (logTail.size() > settings.logLines) {
+                logTail.pop_front();
+            }
+
+            return act->result(resBuildLogLine, line);
+        }
+    };
+
+    auto buf = kj::heapArray<char>(4096);
+    while (true) {
+        std::string_view data;
+        try {
+            if (const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()))) {
+                data = {buf.begin(), *got};
+            } else {
+                co_return std::nullopt;
+            }
+        } catch (SysError & e) {
+            // the builder output stream may be a pty fd, and closing one pty
+            // endpoint sends EIO to the other endpoint. this is a good exit.
+            if (e.errNo == EIO) {
+                data = {};
+            } else {
+                throw;
+            }
+        }
+        lastChildActivity = AIO().provider.getTimer().now();
+
+        if (data.empty()) {
+            if (auto left = splitter.finish(); !left.empty()) {
+                if (flushLine(left) == Logger::BufferState::NeedsFlush) {
+                    TRY_AWAIT(act->getLogger().flush());
+                }
+            }
+            co_return std::nullopt;
+        }
+
+        logSize += data.size();
+        if (settings.maxLogSize && logSize > settings.maxLogSize) {
+            co_return tooMuchLogs();
+        }
+
+        if (logSink) {
+            (*logSink)(data);
+        }
+
+        while (!data.empty()) {
+            if (auto line = splitter.feed(data)) {
+                if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
+                    TRY_AWAIT(act->getLogger().flush());
+                }
+            }
+        }
+    }
+} catch (...) {
+    co_return result::current_exception();
+}
 }
