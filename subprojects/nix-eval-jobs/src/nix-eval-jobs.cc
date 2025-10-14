@@ -334,10 +334,6 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
 }
 
 int main(int argc, char **argv) {
-
-    /* We are doing the garbage collection by killing forks */
-    setenv("GC_DONT_GC", "1", 1);
-
     return handleExceptions(argv[0], [&]() {
         initNix();
         initLibExpr();

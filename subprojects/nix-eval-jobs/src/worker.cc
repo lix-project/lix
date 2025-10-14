@@ -124,6 +124,20 @@ readConstituents(const nix::Value *v, nix::box_ptr<nix::EvalState> &state,
 
 void worker(nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args)
 try {
+#if HAVE_BOEHMGC
+    // We are doing the garbage collection by killing forks.
+    GC_disable();
+
+    // There is some memory usage overhead on top of the GC heap size.
+    // A simple model using fixed and proportional overhead already gives reasonable results.
+    // The parameters have been determined experimentally using evaluation of nixpkgs.
+    size_t maxGcHeapSize = std::ldexp(std::max(0.0, 0.9 * (static_cast<double>(args.maxMemorySize) - 150.0)), 20);
+    if (GC_get_heap_size() > maxGcHeapSize) {
+        throw nix::Error("The heap is too large. Increase %s or reduce %s.",
+                         "--max-memory-size", "GC_INITIAL_HEAP_SIZE");
+    }
+#endif
+
     nix::AsyncIoRoot aio;
 
     auto evalStore = aio.blockOn(args.evalStoreUrl
@@ -250,12 +264,19 @@ try {
             return; // main process died
         }
 
-        /* If our RSS exceeds the maximum, exit. The collector will
-           start a new process. */
+        // If the memory limit is exceeded, exit.
+        // The collector will start a new process.
+#if HAVE_BOEHMGC
+        if (GC_get_heap_size() > maxGcHeapSize) {
+            break;
+        }
+#else
         struct rusage r;
         getrusage(RUSAGE_SELF, &r);
-        if ((size_t)r.ru_maxrss > args.maxMemorySize * 1024)
+        if ((size_t)r.ru_maxrss > args.maxMemorySize * 1024) {
             break;
+        }
+#endif
     }
 
     if (tryWriteLine(to.get(), "restart") < 0) {
