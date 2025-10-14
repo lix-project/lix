@@ -236,7 +236,7 @@ enum class BuildRejected { Temporarily, Permanently };
 
 static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> connectToBuilder(
     const ref<Store> & store,
-    const std::optional<StorePath> & drvPath,
+    const StorePath & drvPath,
     Machines & machines,
     const unsigned int maxBuildJobs,
     const bool amWilling,
@@ -273,7 +273,7 @@ try {
             } else {
                 printSelectionFailureMessage(
                     couldBuildLocally ? lvlChatty : lvlWarn,
-                    drvPath ? drvPath->to_string() : "<unknown>",
+                    drvPath.to_string(),
                     machines,
                     neededSystem,
                     requiredFeatures
