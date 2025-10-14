@@ -7,6 +7,7 @@
 #include "lix/libutil/serialise.hh"
 #include <capnp/rpc-twoparty.h>
 #include <kj/async-io.h>
+#include <memory>
 #include <utility>
 
 namespace nix {
@@ -19,7 +20,7 @@ struct HookInstance
     AutoCloseFD fromHook;
 
     kj::Own<kj::AsyncCapabilityStream> conn;
-    std::optional<capnp::TwoPartyClient> client;
+    std::unique_ptr<capnp::TwoPartyClient> client;
     rpc::build_remote::HookInstance::Client rpc;
 
     /**
@@ -31,11 +32,17 @@ struct HookInstance
 
     static kj::Promise<Result<std::unique_ptr<HookInstance>>> create();
 
-    HookInstance(AutoCloseFD fromHook, AutoCloseFD rpc, Pid pid)
+    HookInstance(
+        AutoCloseFD fromHook,
+        kj::Own<kj::AsyncCapabilityStream> conn,
+        std::unique_ptr<capnp::TwoPartyClient> client,
+        rpc::build_remote::HookInstance::Client rpc,
+        Pid pid
+    )
         : fromHook(std::move(fromHook))
-        , conn(AIO().lowLevelProvider.wrapUnixSocketFd(kj::AutoCloseFd(rpc.release())))
-        , client(std::in_place, *this->conn, 1)
-        , rpc(client->bootstrap().castAs<rpc::build_remote::HookInstance>())
+        , conn(std::move(conn))
+        , client(std::move(client))
+        , rpc(std::move(rpc))
         , pid(std::move(pid))
     {
     }

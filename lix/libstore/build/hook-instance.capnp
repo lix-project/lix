@@ -31,7 +31,10 @@ interface HookInstance {
     }
   }
 
-  build @0 (
+  init @0 (
+    settings :Types.Settings
+  ) -> (result :Types.ResultV);
+  build @1 (
     amWilling :Bool,
     neededSystem :Data,
     drvPath :StoreTypes.StorePath,

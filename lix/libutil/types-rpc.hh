@@ -2,6 +2,7 @@
 ///@file RPC helper functions for `types.hh`
 
 #include "error.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.capnp.h"
 #include "rpc.hh"
@@ -125,6 +126,44 @@ struct Fill<Result<T>, std::exception_ptr>
     static void fill(Result<T>::Builder rb, const std::exception_ptr & e, auto &&...)
     {
         detail::makeBadResult(rb, e);
+    }
+};
+
+template<>
+struct Fill<Settings::Setting, std::pair<const std::string, Config::SettingInfo>>
+{
+    static void fill(
+        Settings::Setting::Builder sb,
+        const std::pair<const std::string, Config::SettingInfo> & s,
+        auto &&... args
+    )
+    {
+        LIX_RPC_FILL(sb, setName, s.first);
+        LIX_RPC_FILL(sb, setValue, s.second.value);
+    }
+};
+
+template<>
+struct Fill<Settings, std::map<std::string, Config::SettingInfo>>
+{
+    static void fill(
+        Settings::Builder sb, const std::map<std::string, Config::SettingInfo> & s, auto &&... args
+    )
+    {
+        LIX_RPC_FILL(sb, initMap, s);
+    }
+};
+
+template<>
+struct Convert<Settings, std::map<std::string, std::string>>
+{
+    static std::map<std::string, std::string> convert(const Settings::Reader & t, auto &&...)
+    {
+        std::map<std::string, std::string> result;
+        for (const auto & s : t.getMap()) {
+            result[rpc::to<std::string>(s.getName())] = rpc::to<std::string>(s.getValue());
+        }
+        return result;
     }
 };
 }

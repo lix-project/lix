@@ -34,3 +34,13 @@ struct ResultV {
     bad @1 :Error;
   }
 }
+
+struct Settings {
+  struct Setting {
+    name @0 :Data;
+    value @1 :Data;
+  }
+
+  # actually a map, but will treat it as a last-value-wins list of pairs for now.
+  map @0 :List(Setting);
+}

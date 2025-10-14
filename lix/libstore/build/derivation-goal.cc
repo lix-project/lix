@@ -1118,7 +1118,7 @@ try {
 
     // close the rpc connection to have the hook exit
     hook->rpc = nullptr;
-    hook->client = std::nullopt;
+    hook->client = nullptr;
     hook->conn = nullptr;
 
     if (auto error = TRY_AWAIT(output)) {

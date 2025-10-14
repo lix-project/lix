@@ -4,7 +4,10 @@
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/build/hook-instance.hh"
+#include "lix/libutil/rpc.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
+#include <memory>
 
 namespace nix {
 
@@ -33,9 +36,6 @@ try {
     fromHook_.create();
 
     /* Create the communication pipes. */
-    Pipe toHook_;
-    toHook_.create();
-
     auto [selfRPC, hookRPC] = SocketPair::stream();
 
     printMsg(lvlChatty, "running build hook: %s", concatMapStringsSep(" ", args, shellEscape));
@@ -50,9 +50,6 @@ try {
         if (chdir("/") == -1) throw SysError("changing into /");
 
         /* Dup the communication pipes. */
-        if (dup2(toHook_.readSide.get(), STDIN_FILENO) == -1) {
-            throw SysError("dupping to-hook read side");
-        }
         if (dup2(hookRPC.get(), STDOUT_FILENO) == -1) {
             throw SysError("dupping to-hook read side");
         }
@@ -66,15 +63,23 @@ try {
 
     std::map<std::string, Config::SettingInfo> settings;
     globalConfig.getSettings(settings, true);
-    FdSink sink(toHook_.writeSide.get());
-    for (auto & setting : settings) {
-        sink << 1 << setting.first << setting.second.value;
+
+    auto conn = AIO().lowLevelProvider.wrapUnixSocketFd(kj::AutoCloseFd(selfRPC.release()));
+    auto client = std::make_unique<capnp::TwoPartyClient>(*conn, 1);
+    auto rpc = client->bootstrap().castAs<rpc::build_remote::HookInstance>();
+
+    {
+        auto initReq = rpc.initRequest();
+        RPC_FILL(initReq, initSettings, settings);
+        TRY_AWAIT_RPC(initReq.send());
     }
-    sink << 0;
-    sink.flush();
 
     co_return std::make_unique<HookInstance>(
-        std::move(fromHook_.readSide), std::move(selfRPC), std::move(pid)
+        std::move(fromHook_.readSide),
+        std::move(conn),
+        std::move(client),
+        std::move(rpc),
+        std::move(pid)
     );
 } catch (...) {
     co_return result::current_exception();

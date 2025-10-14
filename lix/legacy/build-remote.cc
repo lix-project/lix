@@ -6,11 +6,14 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh"
+#include "lix/libutil/types.hh"
 #include <algorithm>
 #include <capnp/rpc-twoparty.h>
 #include <chrono>
 #include <cstring>
+#include <exception>
 #include <future>
+#include <kj/async.h>
 #include <kj/time.h>
 #include <set>
 #include <memory>
@@ -44,8 +47,9 @@ namespace {
 struct Instance final : rpc::build_remote::HookInstance::Server
 {
     unsigned int maxBuildJobs;
+    bool initialized = false;
 
-    Instance(unsigned int maxBuildJobs) : maxBuildJobs(maxBuildJobs) {}
+    kj::Promise<void> init(InitContext context) override;
 
     kj::Promise<void> build(BuildContext context) override;
 };
@@ -375,30 +379,47 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
         verbosity = (Verbosity) std::stoll(argv.front());
 
-        FdSource source(STDIN_FILENO);
-
-        /* Read the parent's settings. */
-        while (readNum<unsigned>(source)) {
-            auto name = readString(source);
-            auto value = readString(source);
-            settings.set(name, value);
-        }
-
-        auto maxBuildJobs = settings.maxBuildJobs;
-        settings.maxBuildJobs.set("1"); // hack to make tests with local?root= work
-
-        initPlugins();
-
         auto conn = aio.kj.lowLevelProvider->wrapUnixSocketFd(1);
-        capnp::TwoPartyServer srv(kj::heap<Instance>(maxBuildJobs));
+        capnp::TwoPartyServer srv(kj::heap<Instance>());
         srv.accept(*conn, 1).wait(aio.kj.waitScope);
         return 0;
     }
 }
 
+kj::Promise<void> Instance::init(InitContext context)
+{
+    try {
+        if (initialized) {
+            throw Error("build hook can only be initialized once");
+        }
+
+        /* Read the parent's settings. */
+        for (const auto & [name, value] : rpc::to<StringMap>(context.getParams().getSettings())) {
+            settings.set(name, value);
+        }
+
+        maxBuildJobs = settings.maxBuildJobs;
+        settings.maxBuildJobs.set("1"); // hack to make tests with local?root= work
+
+        initPlugins();
+
+        initialized = true;
+
+        context.getResults().initResult().setGood();
+    } catch (...) {
+        RPC_FILL(context.getResults(), initResult, std::current_exception());
+    }
+
+    return kj::READY_NOW;
+}
+
 kj::Promise<void> Instance::build(BuildContext context)
 {
     try {
+        if (!initialized) {
+            throw Error("build hook not fully initialized");
+        }
+
         // FIXME this does not open a daemon connection for historical reasons.
         // we may create a lot of build hook instances, and having each of them
         // also create a daemon instance is inefficient and wasteful. in future
