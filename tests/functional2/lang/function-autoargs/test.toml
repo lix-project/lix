@@ -1,0 +1,3 @@
+[[test]]
+runner = "eval-okay"
+flags = [ "--arg", "lib", "import(./lib.nix)", "--argstr", "xyzzy", "xyzzy!", "-A", "result" ]
