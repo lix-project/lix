@@ -23,6 +23,7 @@
 
 #include <boost/outcome/try.hpp>
 #include <capnp/rpc-twoparty.h>
+#include <cstdint>
 #include <fstream>
 #include <kj/array.h>
 #include <kj/async-unix.h>
@@ -1150,8 +1151,6 @@ kj::Promise<Result<SingleDrvOutputs>> DerivationGoal::registerOutputs()
 
 Path DerivationGoal::openLogFile()
 {
-    logSize = 0;
-
     if (!settings.keepLog) return "";
 
     auto baseName = std::string(baseNameOf(worker.store.printStorePath(drvPath)));
@@ -1181,7 +1180,6 @@ Path DerivationGoal::openLogFile()
     return logFileName;
 }
 
-
 void DerivationGoal::closeLogFile()
 {
     auto logSink2 = std::dynamic_pointer_cast<CompressionSink>(logSink);
@@ -1205,6 +1203,7 @@ kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleRawCh
 try {
     assert(hook);
 
+    uint64_t logSize = 0;
     std::string currentHookLine;
 
     AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());

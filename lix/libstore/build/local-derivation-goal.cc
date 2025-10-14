@@ -2699,6 +2699,7 @@ try {
     AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, builderOutPTY.get());
 
     LogLineSplitter splitter;
+    uint64_t logSize = 0;
 
     auto flushLine = [&](const std::string & line) {
         if (const auto state =

@@ -192,11 +192,6 @@ struct DerivationGoal : public Goal
     std::shared_ptr<BufferedSink> logFileSink, logSink;
 
     /**
-     * Number of bytes received from the builder's stdout/stderr.
-     */
-    unsigned long logSize;
-
-    /**
      * The most recent log lines.
      */
     std::list<std::string> logTail;
