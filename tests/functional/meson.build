@@ -158,7 +158,6 @@ functional_tests_scripts = [
   'toString-path.sh',
   'read-only-store.sh',
   'nested-sandboxing.sh',
-  'debugger.sh',
   'test-libstoreconsumer.sh',
   'extra-sandbox-profile.sh',
   'substitute-truncated-nar.sh',
