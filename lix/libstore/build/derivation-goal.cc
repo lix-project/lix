@@ -1086,8 +1086,6 @@ try {
     // the build was accepted by the hook, we can free the slot for another build now
     hookSlot = {};
 
-    machineName = rpc::to<std::string>(buildResp.getAccept().getMachineName());
-
     auto runReq = buildResp.getAccept().getMachine().runRequest();
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */

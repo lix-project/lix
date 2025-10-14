@@ -24,11 +24,10 @@ interface HookInstance {
     union {
       accept :group {
         machine @0 :AcceptedBuild;
-        machineName @1 :Data;
       }
-      postpone @2 :Void;
-      decline @3 :Void;
-      declinePermanently @4 :Void;
+      postpone @1 :Void;
+      decline @2 :Void;
+      declinePermanently @3 :Void;
     }
   }
 

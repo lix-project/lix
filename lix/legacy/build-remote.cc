@@ -449,7 +449,6 @@ kj::Promise<void> Instance::build(BuildContext context)
         assert(builder);
 
         auto ac = context.getResults().initResult().initGood().initAccept();
-        RPC_FILL(ac, setMachineName, builder->storeUri);
         ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder), buildLogger));
     } catch (...) {
         RPC_FILL(context.getResults(), initResult, std::current_exception());

@@ -219,11 +219,6 @@ struct DerivationGoal : public Goal
 
     std::map<ActivityId, Activity> builderActivities;
 
-    /**
-     * The remote machine on which we're building.
-     */
-    std::string machineName;
-
     /** Witness type to say that the drvPath has already been added as a temp root */
     struct DrvHasRoot { explicit DrvHasRoot() = default; };
 
