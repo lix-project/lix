@@ -121,6 +121,11 @@ T runAsyncUnwrap(Result<T> t)
             } catch (::nix::BaseException & e) {                               \
                 e.addAsyncTrace(::std::source_location::current(), _l_ctx());  \
                 throw;                                                         \
+                /* NOLINTNEXTLINE(lix-foreign-exceptions) */                   \
+            } catch (::kj::Exception & e) {                                    \
+                ::nix::Error fe{e.getDescription().cStr()};                    \
+                fe.addAsyncTrace(::std::source_location::current(), _l_ctx()); \
+                throw fe;                                                      \
             } catch (...) {                                                    \
                 auto fe = ::nix::ForeignException::wrapCurrent();              \
                 fe.addAsyncTrace(::std::source_location::current(), _l_ctx()); \
