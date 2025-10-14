@@ -361,6 +361,7 @@ def _collect_generic_test_group(folder: Path) -> tuple[list[LangTest], list[Inva
                 # Skipping collection to avoid duplicate collection
                 # when both `.err.exp` and `.out.exp` are provided
                 # in case of non-error traces
+                unused -= {file.name}
                 continue
             collected |= {test_name}
             full_name = LANG_TEST_ID_PATTERN.format(folder_name=parent_name, test_name=test_name)

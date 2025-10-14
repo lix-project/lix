@@ -858,4 +858,5 @@ def test_generic_missing_in_file(pytest_command: Command):
     )
 )
 def test_generic_no_duplicate_collection(pytest_command: Command):
-    pytest_command.run().ok()
+    res = pytest_command.run().ok()
+    assert "test_invalid_configuration[name0-reasons0] SKIPPED" in res.stdout_plain
