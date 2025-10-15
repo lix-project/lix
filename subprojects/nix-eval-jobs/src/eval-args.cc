@@ -22,8 +22,7 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
                 if (hiddenCategories.count(flag->category)) {
                     continue;
                 }
-                printf("  --%-20s %s\n", name.c_str(),
-                       flag->description.c_str());
+                std::cout << nix::fmt("  --%-20s %s\n", name, flag->description);
             }
             ::exit(0);
         }},
