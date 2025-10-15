@@ -100,6 +100,7 @@
         "x86_64-darwin"
         "aarch64-darwin"
       ];
+      nonDarwinSystems = linuxSystems;
       systems = linuxSystems ++ darwinSystems;
 
       # If you add something here, please update the list in doc/manual/src/contributing/hacking.md.
@@ -371,7 +372,10 @@
               ;
           }
           // {
-            nix-eval-jobs = forAllSystems (system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs);
+            # the n-e-j test suite is unusably slow in darwin ci. disbled until anywho fixes this.
+            nix-eval-jobs = (lib.genAttrs nonDarwinSystems) (
+              system: self.packages.${system}.nix-eval-jobs.tests.nix-eval-jobs
+            );
 
             # This is x86_64-linux only, just because we have significantly
             # cheaper x86_64-linux compute in CI.
