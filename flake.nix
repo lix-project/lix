@@ -260,6 +260,15 @@
             nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.buildPackages.bmake ];
             postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] prevAttrs.postInstall;
           });
+
+          capnproto = prev.capnproto.overrideAttrs (old: {
+            patches = old.patches or [ ] ++ [
+              # backport of https://github.com/capnproto/capnproto/pull/1810
+              ./misc/capnproto-promise-nodiscard.patch
+              # backport of https://github.com/capnproto/capnproto/pull/2296
+              ./misc/capnproto-monotonic-clocks-are-a-lie.patch
+            ];
+          });
         };
     in
     {

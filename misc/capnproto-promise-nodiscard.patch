@@ -1,0 +1,194 @@
+diff --git a/c++/src/kj/array.h b/c++/src/kj/array.h
+index 3932f9f4..677c691a 100644
+--- a/c++/src/kj/array.h
++++ b/c++/src/kj/array.h
+@@ -780,7 +780,7 @@ struct CopyConstructArray_<T, Iterator, true, false> {
+
+   static T* apply(T* __restrict__ pos, Iterator start, Iterator end) {
+     // Verify that T can be *implicitly* constructed from the source values.
+-    if (false) implicitCast<T>(kj::mv(*start));
++    if (false) (void)implicitCast<T>(kj::mv(*start));
+
+     if (noexcept(T(kj::mv(*start)))) {
+       while (start != end) {
+diff --git a/c++/src/kj/async-coroutine-test.c++ b/c++/src/kj/async-coroutine-test.c++
+index de767eca..d6ed1359 100644
+--- a/c++/src/kj/async-coroutine-test.c++
++++ b/c++/src/kj/async-coroutine-test.c++
+@@ -288,5 +288,5 @@ KJ_TEST("Exceptions during suspended coroutine frame-unwind propagate via destru
+   WaitScope waitScope(loop);
+
+   auto exception = KJ_ASSERT_NONNULL(kj::runCatchingExceptions([&]() {
+-    deferredThrowCoroutine(kj::NEVER_DONE);
++    (void)deferredThrowCoroutine(kj::NEVER_DONE);
+   }));
+
+   KJ_EXPECT(exception.getDescription() == "thrown during unwind");
+diff --git a/c++/src/kj/async-io-test.c++ b/c++/src/kj/async-io-test.c++
+index e8892b79..dffcbb26 100644
+--- a/c++/src/kj/async-io-test.c++
++++ b/c++/src/kj/async-io-test.c++
+@@ -1577,7 +1577,7 @@ KJ_TEST("Userland pipe pump into zero-limited pipe, no data to pump") {
+   auto pipe2 = newOneWayPipe(uint64_t(0));
+   auto pumpPromise = KJ_ASSERT_NONNULL(pipe2.out->tryPumpFrom(*pipe.in));
+
+-  expectRead(*pipe2.in, "");
++  expectRead(*pipe2.in, "").wait(ws);
+   pipe.out = nullptr;
+   KJ_EXPECT(pumpPromise.wait(ws) == 0);
+ }
+@@ -1590,7 +1590,7 @@ KJ_TEST("Userland pipe pump into zero-limited pipe, data is pumped") {
+   auto pipe2 = newOneWayPipe(uint64_t(0));
+   auto pumpPromise = KJ_ASSERT_NONNULL(pipe2.out->tryPumpFrom(*pipe.in));
+
+-  expectRead(*pipe2.in, "");
++  expectRead(*pipe2.in, "").wait(ws);
+   auto writePromise = pipe.out->write("foo", 3);
+   KJ_EXPECT_THROW_RECOVERABLE_MESSAGE("abortRead() has been called", pumpPromise.wait(ws));
+ }
+diff --git a/c++/src/kj/async.h b/c++/src/kj/async.h
+index 564b5171..d4f2d55c 100644
+--- a/c++/src/kj/async.h
++++ b/c++/src/kj/async.h
+@@ -118,7 +118,7 @@ private:
+ // Promises
+
+ template <typename T>
+-class Promise: protected _::PromiseBase {
++class [[nodiscard]] Promise: protected _::PromiseBase {
+   // The basic primitive of asynchronous computation in KJ.  Similar to "futures", but designed
+   // specifically for event loop concurrency.  Similar to E promises and JavaScript Promises/A.
+   //
+diff --git a/c++/src/kj/common-test.c++ b/c++/src/kj/common-test.c++
+index 97856125..913a6be4 100644
+--- a/c++/src/kj/common-test.c++
++++ b/c++/src/kj/common-test.c++
+@@ -573,7 +573,7 @@ TEST(Common, Downcast) {
+
+   EXPECT_EQ(&bar, &downcast<Bar>(foo));
+ #if defined(KJ_DEBUG) && !KJ_NO_RTTI
+-  KJ_EXPECT_THROW_MESSAGE("Value cannot be downcast", downcast<Baz>(foo));
++  KJ_EXPECT_THROW_MESSAGE("Value cannot be downcast", (void)downcast<Baz>(foo));
+ #endif
+
+ #if KJ_NO_RTTI
+diff --git a/c++/src/kj/compat/http-test.c++ b/c++/src/kj/compat/http-test.c++
+index f10ff8d1..9003099d 100644
+--- a/c++/src/kj/compat/http-test.c++
++++ b/c++/src/kj/compat/http-test.c++
+@@ -6553,7 +6553,7 @@ KJ_TEST("Simple CONNECT Server works") {
+              "\r\n"
+              "hello"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+
+@@ -6628,7 +6628,7 @@ KJ_TEST("CONNECT Server (201 status)") {
+              "\r\n"
+              "hello"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+
+@@ -6706,7 +6706,7 @@ KJ_TEST("CONNECT Server rejected") {
+              "\r\n"
+              "boom"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+
+@@ -6774,7 +6774,7 @@ KJ_TEST("CONNECT Server cancels read") {
+              "HTTP/1.1 200 OK\r\n"
+              "\r\n"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+ }
+@@ -6840,7 +6840,7 @@ KJ_TEST("CONNECT Server cancels write") {
+              "HTTP/1.1 200 OK\r\n"
+              "\r\n"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+ }
+@@ -6913,7 +6913,7 @@ KJ_TEST("CONNECT rejects Transfer-Encoding") {
+              "\r\n"
+              "ERROR: Bad Request"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+ }
+@@ -6947,7 +6947,7 @@ KJ_TEST("CONNECT rejects Content-Length") {
+              "\r\n"
+              "ERROR: Bad Request"_kj).wait(waitScope);
+
+-  expectEnd(*pipe.ends[1]);
++  expectEnd(*pipe.ends[1]).wait(waitScope);
+
+   listenTask.wait(waitScope);
+ }
+diff --git a/c++/src/kj/compat/tls-test.c++ b/c++/src/kj/compat/tls-test.c++
+index dddefa57..52ccc68a 100644
+--- a/c++/src/kj/compat/tls-test.c++
++++ b/c++/src/kj/compat/tls-test.c++
+@@ -1037,15 +1037,15 @@ KJ_TEST("TLS receiver experiences pre-TLS error") {
+   TlsReceiverTest test;
+
+   KJ_LOG(INFO, "Accepting before a bad connect");
+-  auto promise = test.receiver->accept();
++  auto acceptPromise = test.receiver->accept();
+
+   KJ_LOG(INFO, "Disappointing our server");
+-  test.baseReceiver->badConnect();
++  auto connectPromise = test.baseReceiver->badConnect();
+
+   // Can't use KJ_EXPECT_THROW_RECOVERABLE_MESSAGE because wait() that returns a value can't throw
+   // recoverable exceptions. Can't use KJ_EXPECT_THROW_MESSAGE because non-recoverable exceptions
+   // will fork() in -fno-exception which screws up our state.
+-  promise.then([](auto) {
++  acceptPromise.then([](auto) {
+     KJ_FAIL_EXPECT("expected exception");
+   }, [](kj::Exception&& e) {
+     KJ_EXPECT(e.getDescription() == "Pipes are leaky");
+diff --git a/c++/src/kj/test.h b/c++/src/kj/test.h
+index 5acbb00d..de5efec2 100644
+--- a/c++/src/kj/test.h
++++ b/c++/src/kj/test.h
+@@ -92,6 +92,7 @@ private:
+   else KJ_FAIL_EXPECT("failed: expected " #cond, _kjCondition, ##__VA_ARGS__)
+ #endif
+
++// TODO(msvc): cast results to void like non-MSVC versions do
+ #if _MSC_VER && !defined(__clang__)
+ #define KJ_EXPECT_THROW_RECOVERABLE(type, code, ...) \
+   do { \
+@@ -115,7 +116,7 @@ private:
+ #else
+ #define KJ_EXPECT_THROW_RECOVERABLE(type, code, ...) \
+   do { \
+-    KJ_IF_MAYBE(e, ::kj::runCatchingExceptions([&]() { code; })) { \
++    KJ_IF_MAYBE(e, ::kj::runCatchingExceptions([&]() { (void)({code}); })) { \
+       KJ_EXPECT(e->getType() == ::kj::Exception::Type::type, \
+           "code threw wrong exception type: " #code, *e, ##__VA_ARGS__); \
+     } else { \
+@@ -125,7 +126,7 @@ private:
+
+ #define KJ_EXPECT_THROW_RECOVERABLE_MESSAGE(message, code, ...) \
+   do { \
+-    KJ_IF_MAYBE(e, ::kj::runCatchingExceptions([&]() { code; })) { \
++    KJ_IF_MAYBE(e, ::kj::runCatchingExceptions([&]() { (void)({code}); })) { \
+       KJ_EXPECT(::kj::_::hasSubstring(e->getDescription(), message), \
+           "exception description didn't contain expected substring", *e, ##__VA_ARGS__); \
+     } else { \
