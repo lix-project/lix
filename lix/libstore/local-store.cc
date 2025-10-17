@@ -1166,7 +1166,7 @@ try {
 
             canonicalisePathMetaData(realPath, {});
 
-            optimisePath(realPath, repair); // FIXME: combine with hashPath()
+            TRY_AWAIT(optimisePath(realPath, repair)); // FIXME: combine with hashPath()
 
             TRY_AWAIT(registerValidPath(info));
         }
@@ -1333,7 +1333,7 @@ try {
 
             canonicalisePathMetaData(realPath, {}); // FIXME: merge into restorePath
 
-            optimisePath(realPath, repair);
+            TRY_AWAIT(optimisePath(realPath, repair));
 
             ValidPathInfo info {
                 *this,
@@ -1385,7 +1385,7 @@ try {
             sink << dumpString(s);
             auto narHash = hashString(HashType::SHA256, sink.s);
 
-            optimisePath(realPath, repair);
+            TRY_AWAIT(optimisePath(realPath, repair));
 
             ValidPathInfo info { dstPath, narHash };
             info.narSize = sink.s.size();

@@ -2229,7 +2229,8 @@ try {
                 debug("unreferenced input: '%1%'", worker.store.printStorePath(i));
         }
 
-        localStore.optimisePath(actualPath, NoRepair); // FIXME: combine with scanForReferences()
+        // FIXME: combine with scanForReferences()
+        TRY_AWAIT(localStore.optimisePath(actualPath, NoRepair));
         worker.markContentsGood(newInfo.path);
 
         newInfo.deriver = drvPath;
