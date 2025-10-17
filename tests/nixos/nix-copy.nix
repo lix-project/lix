@@ -12,6 +12,21 @@ let
   pkgC = pkgs.hello;
   pkgD = pkgs.tmux;
 
+  # fake SSH executable that simulates interaction with the tty.
+  # ssh does this for password prompts and host key confirmation
+  fakeSSH = pkgs.writeTextFile {
+    name = "fake-ssh";
+    text = ''
+      #!${pkgs.runtimeShell}
+
+      set -euo pipefail
+      echo "fake-ssh ran" >/dev/tty
+      exit 1
+    '';
+    executable = true;
+    destination = "/bin/ssh";
+  };
+
 in {
   name = "nix-copy";
 
@@ -70,7 +85,7 @@ in {
     # requires some proper cli automation, which we do not have. however, since ssh interacts with
     # /dev/tty directly and the host key message goes there too, we don't even need to check this.
     server.fail("nix-store --check-validity ${pkgA}")
-    client.succeed("echo | script -f /dev/stdout -c 'nix copy --to ssh://server ${pkgA}' | grep 'continue connecting'")
+    client.succeed("echo | script -f /dev/stdout -c 'PATH=\"${fakeSSH}/bin:$PATH\" nix copy --to ssh://server ${pkgA}' | grep 'fake-ssh ran'")
 
     client.copy_from_host("key", "/root/.ssh/id_ed25519.setup")
     client.succeed("chmod 600 /root/.ssh/id_ed25519.setup")
