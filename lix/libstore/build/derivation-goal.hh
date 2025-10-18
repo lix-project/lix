@@ -311,7 +311,6 @@ protected:
 
     kj::Promise<Result<std::optional<WorkResult>>>
     wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> handler) noexcept;
-    virtual kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
 

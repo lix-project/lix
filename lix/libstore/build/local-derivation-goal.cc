@@ -2687,10 +2687,6 @@ StorePath LocalDerivationGoal::makeFallbackPath(const StorePath & path)
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
 LocalDerivationGoal::handleRawChildStream() noexcept
 try {
-    if (hook) {
-        co_return TRY_AWAIT(DerivationGoal::handleRawChildStream());
-    }
-
     AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, builderOutPTY.get());
 
     std::map<ActivityId, Activity> builderActivities;

@@ -324,7 +324,7 @@ protected:
      */
     virtual Pid startChild(std::function<void()> openSlave);
 
-    kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept override;
+    kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
 
     /**
      * Set up the system call filtering required for the sandbox.

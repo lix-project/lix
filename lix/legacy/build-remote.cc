@@ -3,16 +3,15 @@
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/logging-rpc.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/rpc.hh"
-#include "lix/libutil/types-rpc.hh"
+#include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types.hh"
 #include <algorithm>
 #include <capnp/rpc-twoparty.h>
-#include <chrono>
 #include <cstring>
 #include <exception>
-#include <future>
 #include <kj/async.h>
 #include <kj/time.h>
 #include <set>
@@ -47,10 +46,11 @@ namespace {
 struct Instance final : rpc::build_remote::HookInstance::Server
 {
     unsigned int maxBuildJobs;
-    bool initialized = false;
+    bool initialized = false, used = false;
 
     kj::Promise<void> init(InitContext context) override;
 
+    kj::Promise<void> buildImpl(BuildContext context);
     kj::Promise<void> build(BuildContext context) override;
 };
 }
@@ -188,11 +188,10 @@ struct BuilderConnection
 
     // start the thread that reads ssh stderr and turns it into log items.
     // this future *must* outlive sshStore, otherwise it will never finish
-    std::future<void>
-    startLogThread(const std::string & buildDescription, const std::string & drvPath)
-    {
+    kj::Promise<Result<void>> startLogThread(std::string buildDescription, std::string drvPath)
+    try {
         if (!logPipe.readSide) {
-            return {};
+            co_return result::success();
         }
 
         logPipe.writeSide.close();
@@ -200,54 +199,51 @@ struct BuilderConnection
         // NOTE this is very similar to handleBuilderOutput in DerivationGoal, but unlike
         // the derivation goal we do not need to handle EIO from a pty here. we also have
         // no timeouts or limits to keep track of, which makes deduplication less useful.
-        return std::async(
-            std::launch::async,
-            [this, buildDescription, drvPath](int from) {
-                AsyncIoRoot aio;
-
-                auto act = logger->startActivity(
-                    lvlInfo, actBuild, buildDescription, Logger::Fields{drvPath, storeUri, 1, 1}
-                );
-
-                std::map<ActivityId, Activity> activities;
-
-                auto reader = AIO().lowLevelProvider.wrapInputFd(from);
-
-                LogLineSplitter splitter;
-
-                auto flushLine = [&](const std::string & line) {
-                    if (const auto state =
-                            handleJSONLogMessage(line, act, activities, "the derivation builder"))
-                    {
-                        if (state == Logger::BufferState::NeedsFlush) {
-                            aio.blockOn(act.getLogger().flush());
-                        }
-                    } else {
-                        ACTIVITY_RESULT_SYNC(aio, act, resBuildLogLine, line);
-                    }
-                };
-
-                auto buf = kj::heapArray<char>(4096);
-                while (true) {
-                    const auto got = aio.blockOn(reader->tryRead(buf.begin(), 1, buf.size()));
-                    if (got == 0) {
-                        break;
-                    }
-
-                    std::string_view data{buf.begin(), got};
-                    while (!data.empty()) {
-                        if (auto line = splitter.feed(data)) {
-                            flushLine(*line);
-                        }
-                    }
-                }
-
-                if (auto left = splitter.finish(); !left.empty()) {
-                    flushLine(left);
-                }
-            },
-            logPipe.readSide.get()
+        auto act = logger->startActivity(
+            lvlInfo, actBuild, buildDescription, Logger::Fields{drvPath, storeUri, 1, 1}
         );
+
+        std::map<ActivityId, Activity> activities;
+
+        auto reader = AIO().lowLevelProvider.wrapInputFd(logPipe.readSide.get());
+
+        LogLineSplitter splitter;
+
+        auto flushLine = [&](const std::string & line) {
+            if (const auto state =
+                    handleJSONLogMessage(line, act, activities, "the derivation builder"))
+            {
+                return *state;
+            } else {
+                return act.result(resBuildLogLine, line);
+            }
+        };
+
+        auto buf = kj::heapArray<char>(4096);
+        while (true) {
+            const auto got = co_await reader->tryRead(buf.begin(), 1, buf.size());
+            if (got == 0) {
+                break;
+            }
+
+            std::string_view data{buf.begin(), got};
+            while (!data.empty()) {
+                if (auto line = splitter.feed(data)) {
+                    if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
+                        TRY_AWAIT(act.getLogger().flush());
+                    }
+                }
+            }
+        }
+
+        if (auto line = splitter.finish(); !line.empty()) {
+            (void) flushLine(line);
+            TRY_AWAIT(act.getLogger().flush());
+        }
+
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 };
 
@@ -256,21 +252,16 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
     ref<Store> store;
     StorePath drvPath;
     BuilderConnection builder;
-    rpc::build_remote::HookInstance::BuildLogger::Client buildLogger;
+    bool used = false;
 
-    AcceptedBuild(
-        ref<Store> store,
-        StorePath drvPath,
-        BuilderConnection builder,
-        rpc::build_remote::HookInstance::BuildLogger::Client buildLogger
-    )
+    AcceptedBuild(ref<Store> store, StorePath drvPath, BuilderConnection builder)
         : store(store)
         , drvPath(drvPath)
         , builder(std::move(builder))
-        , buildLogger(std::move(buildLogger))
     {
     }
 
+    kj::Promise<void> runImpl(RunContext context);
     kj::Promise<void> run(RunContext context) override;
 };
 
@@ -365,8 +356,6 @@ try {
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
-        logger = makeJSONLogger(*logger);
-
         /* Ensure we don't get any SSH passphrase or host key popups. */
         unsetenv("DISPLAY");
         unsetenv("SSH_ASKPASS");
@@ -393,6 +382,8 @@ kj::Promise<void> Instance::init(InitContext context)
             throw Error("build hook can only be initialized once");
         }
 
+        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
+
         /* Read the parent's settings. */
         for (const auto & [name, value] : rpc::to<StringMap>(context.getParams().getSettings())) {
             settings.set(name, value);
@@ -413,85 +404,109 @@ kj::Promise<void> Instance::init(InitContext context)
     return kj::READY_NOW;
 }
 
-kj::Promise<void> Instance::build(BuildContext context)
+kj::Promise<void> Instance::buildImpl(BuildContext context)
 {
-    try {
-        if (!initialized) {
-            throw Error("build hook not fully initialized");
-        }
+    if (!initialized) {
+        throw Error("build hook not fully initialized");
+    }
 
-        // FIXME this does not open a daemon connection for historical reasons.
-        // we may create a lot of build hook instances, and having each of them
-        // also create a daemon instance is inefficient and wasteful. in future
-        // versions of the build hook (where we don't need one hook process per
-        // build) we should change this to using a daemon connection, ideally a
-        // daemon connection provided by the parent via file descriptor passing
-        auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
+    // FIXME this does not open a daemon connection for historical reasons.
+    // we may create a lot of build hook instances, and having each of them
+    // also create a daemon instance is inefficient and wasteful. in future
+    // versions of the build hook (where we don't need one hook process per
+    // build) we should change this to using a daemon connection, ideally a
+    // daemon connection provided by the parent via file descriptor passing
+    auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
-        /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
-           that gets cleared on reboot, but it wouldn't work on macOS. */
-        auto currentLoadName = "/current-load";
-        if (auto localStore = store.try_cast_shared<LocalFSStore>())
-            currentLoad = std::string { localStore->config().stateDir } + currentLoadName;
-        else
-            currentLoad = settings.nixStateDir + currentLoadName;
+    /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
+       that gets cleared on reboot, but it wouldn't work on macOS. */
+    auto currentLoadName = "/current-load";
+    if (auto localStore = store.try_cast_shared<LocalFSStore>()) {
+        currentLoad = std::string{localStore->config().stateDir} + currentLoadName;
+    } else {
+        currentLoad = settings.nixStateDir + currentLoadName;
+    }
 
-        auto machines = getMachines();
-        debug("got %d remote builders", machines.size());
+    auto machines = getMachines();
+    debug("got %d remote builders", machines.size());
 
-        if (machines.empty()) {
-            context.getResults().initResult().initGood().setDeclinePermanently();
+    if (machines.empty()) {
+        context.getResults().initResult().initGood().setDeclinePermanently();
+        co_return;
+    }
+
+    auto amWilling = context.getParams().getAmWilling();
+    auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
+    auto drvPath = from(context.getParams().getDrvPath(), *store);
+    auto requiredFeatures =
+        rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
+
+    auto result = TRY_AWAIT(connectToBuilder(
+        store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
+    ));
+
+    if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
+        switch (*immediateResponse) {
+        case BuildRejected::Temporarily:
+            context.getResults().initResult().initGood().setPostpone();
+            co_return;
+        case BuildRejected::Permanently:
+            context.getResults().initResult().initGood().setDecline();
             co_return;
         }
-
-        auto amWilling = context.getParams().getAmWilling();
-        auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
-        auto drvPath = from(context.getParams().getDrvPath(), *store);
-        auto requiredFeatures =
-            rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
-        auto buildLogger = context.getParams().getBuildLogger();
-
-        auto result = TRY_AWAIT(connectToBuilder(
-            store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
-        ));
-
-        if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
-            switch (*immediateResponse) {
-            case BuildRejected::Temporarily:
-                context.getResults().initResult().initGood().setPostpone();
-                co_return;
-            case BuildRejected::Permanently:
-                context.getResults().initResult().initGood().setDecline();
-                co_return;
-            }
-        }
-
-        auto builder = std::get_if<BuilderConnection>(&result);
-        assert(builder);
-
-        auto ac = context.getResults().initResult().initGood().initAccept();
-        ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder), buildLogger));
-    } catch (...) {
-        RPC_FILL(context.getResults(), initResult, std::current_exception());
     }
+
+    auto builder = std::get_if<BuilderConnection>(&result);
+    assert(builder);
+
+    auto ac = context.getResults().initResult().initGood().initAccept();
+    ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+}
+
+kj::Promise<void> Instance::build(BuildContext context)
+try {
+    if (used) {
+        throw Error("build hooks can only accept a single job");
+    }
+    used = true; // lock out other rpc calls during processing
+    co_await buildImpl(context);
+    TRY_AWAIT(logger->flush());
+    used = context.getResults().getResult().getGood().isAccept();
+} catch (...) {
+    RPC_FILL(context.getResults(), getResult, std::current_exception());
 }
 
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
     try {
-        auto logThread = builder.startLogThread(
+        auto oldLogger = logger;
+        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
+        TRY_AWAIT(oldLogger->flush());
+        KJ_DEFER({
+            delete logger;
+            logger = oldLogger;
+        });
+
+        if (used) {
+            throw Error("build hooks builds are single-use items");
+        }
+        used = true;
+        co_await runImpl(context);
+        TRY_AWAIT(logger->flush());
+    } catch (...) {
+        RPC_FILL(context.getResults(), getResult, std::current_exception());
+    }
+}
+
+kj::Promise<void> AcceptedBuild::runImpl(RunContext context)
+{
+    try {
+        auto logHandler = builder.startLogThread(
             fmt("%s on '%s'",
                 rpc::to<std::string_view>(context.getParams().getDescription()),
                 builder.storeUri),
             store->printStorePath(drvPath)
         );
-        KJ_DEFER({
-            // drop any existing ssh connection so the log thread can exit
-            builder.sshStore = nullptr;
-            if (logThread.valid()) {
-                logThread.get();
-            }
-        });
 
         auto & sshStore = builder.sshStore;
         auto & storeUri = builder.storeUri;
@@ -601,6 +616,10 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
                 copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
             );
         }
+
+        // drop store connection, let log handler process any remaining input
+        builder.sshStore = nullptr;
+        TRY_AWAIT(logHandler);
 
         context.getResults().initResult().setGood();
     } catch (...) {

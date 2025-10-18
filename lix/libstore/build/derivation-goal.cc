@@ -24,12 +24,14 @@
 #include <boost/outcome/try.hpp>
 #include <capnp/rpc-twoparty.h>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <kj/array.h>
 #include <kj/async-unix.h>
 #include <kj/async.h>
 #include <kj/debug.h>
 #include <kj/exception.h>
+#include <kj/time.h>
 #include <kj/vector.h>
 #include <limits>
 #include <memory>
@@ -798,10 +800,7 @@ int DerivationGoal::getChildStatus()
     return hook->kill();
 }
 
-void DerivationGoal::closeReadPipes()
-{
-    hook->fromHook.reset();
-}
+void DerivationGoal::closeReadPipes() {}
 
 void DerivationGoal::cleanupHookFinally()
 {
@@ -1035,8 +1034,22 @@ try {
 }
 
 namespace {
-struct BuildHookLogger final : rpc::build_remote::HookInstance::BuildLogger::Server
-{};
+struct ActivityTrackingHookLogger final : HookInstance::HookLogger
+{
+    kj::TimePoint & tracker;
+
+    ActivityTrackingHookLogger(const Activity & act, FinishSink * logSink, kj::TimePoint & tracker)
+        : HookLogger(act, logSink)
+        , tracker(tracker)
+    {
+    }
+
+    kj::Promise<void> push(PushContext context) override
+    {
+        tracker = AIO().provider.getTimer().now();
+        return HookLogger::push(context);
+    }
+};
 }
 
 kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
@@ -1052,18 +1065,16 @@ try {
         hook = std::move(worker.hook.instances.front());
         worker.hook.instances.pop_front();
     } else {
-        hook = TRY_AWAIT(HookInstance::create());
+        hook = TRY_AWAIT(HookInstance::create(worker.act));
     }
 
     KJ_DEFER(hook = nullptr);
-    auto output = wrapChildHandler(handleRawChildStream());
 
     auto buildReq = hook->rpc->buildRequest();
     RPC_FILL(buildReq, setAmWilling, slotToken.valid());
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
     RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
-    buildReq.setBuildLogger(kj::heap<BuildHookLogger>());
     auto buildRespPromise = buildReq.send();
     auto buildResp = TRY_AWAIT_RPC(buildRespPromise);
 
@@ -1085,9 +1096,15 @@ try {
     // the build was accepted by the hook, we can free the slot for another build now
     hookSlot = {};
 
+    /* Create the log file and pipe. */
+    openLogFile();
+
     auto runReq = buildResp.getAccept().getMachine().runRequest();
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
+    runReq.setLogger(
+        kj::heap<ActivityTrackingHookLogger>(worker.act, logSink.get(), lastChildActivity)
+    );
     RPC_FILL(runReq, initInputs, inputPaths, worker.store);
 
     /* Tell the hooks the missing outputs that have to be copied back
@@ -1103,9 +1120,6 @@ try {
         RPC_FILL(runReq, setDescription, buildDescription());
     }
 
-    /* Create the log file and pipe. */
-    openLogFile();
-
     auto runPromise = runReq.send();
 
     // build via hook is now properly running. wait for it to finish
@@ -1113,21 +1127,30 @@ try {
     buildResult.startTime = time(0); // inexact
     mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 
-    auto result = co_await runPromise;
+    auto result = TRY_AWAIT(wrapChildHandler(
+        runPromise
+            .then(
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                [&](auto result) -> kj::Promise<Result<std::optional<WorkResult>>> {
+                    try {
+                        std::shared_ptr<Error> remoteError;
+                        if (result.getResult().isBad()) {
+                            remoteError =
+                                std::make_shared<Error>(from(result.getResult().getBad()));
+                            logErrorInfo(remoteError->info().level, remoteError->info());
+                        }
+                        // close the rpc connection to have the hook exit
+                        hook->rpc = nullptr;
+                        hook->wait();
+                        co_return TRY_AWAIT(buildDone(remoteError));
+                    } catch (...) {
+                        co_return result::current_exception();
+                    }
+                }
+            )
+    ));
 
-    // close the rpc connection to have the hook exit
-    hook->rpc = nullptr;
-
-    if (auto error = TRY_AWAIT(output)) {
-        co_return HookResult::Accept{std::move(*error)};
-    }
-
-    std::shared_ptr<Error> remoteError;
-    if (result.getResult().isBad()) {
-        remoteError = std::make_shared<Error>(from(result.getResult().getBad()));
-        logErrorInfo(remoteError->info().level, remoteError->info());
-    }
-    co_return HookResult::Accept{TRY_AWAIT(buildDone(remoteError))};
+    co_return HookResult::Accept{std::move(*result)};
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1223,65 +1246,6 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
         BuildResult::LogLimitExceeded, {},
         Error("%s killed after writing more than %d bytes of log output",
             getName(), settings.maxLogSize));
-}
-
-kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleRawChildStream() noexcept
-try {
-    assert(hook);
-
-    std::string currentHookLine;
-
-    AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());
-
-    auto buf = kj::heapArray<char>(4096);
-    while (true) {
-        const auto got = TRY_AWAIT(in.read(buf.begin(), buf.size()));
-        if (!got) {
-            co_return std::nullopt;
-        }
-
-        std::string_view data = {buf.begin(), *got};
-        lastChildActivity = AIO().provider.getTimer().now();
-
-        for (auto c : data)
-            if (c == '\n') {
-                auto json = parseJSONMessage(currentHookLine, "the derivation builder");
-                if (json) {
-                    auto s = handleJSONLogMessage(
-                        *json, worker.act, hook->activities, "the derivation builder"
-                    );
-                    // ensure that logs from a builder using `ssh-ng://` as protocol
-                    // are also available to `nix log`.
-                    if (s && logSink) {
-                        const auto type = (*json)["type"];
-                        const auto fields = (*json)["fields"];
-                        if (type == resBuildLogLine) {
-                            const std::string logLine =
-                                (fields.size() > 0 ? fields[0].get<std::string>() : "") + "\n";
-                            (*logSink)(logLine);
-                        } else if (type == resSetPhase && ! fields.is_null()) {
-                            const auto phase = fields[0];
-                            if (! phase.is_null()) {
-                                // nixpkgs' stdenv produces lines in the log to signal
-                                // phase changes.
-                                // We want to get the same lines in case of remote builds.
-                                // The format is:
-                                //   @nix { "action": "setPhase", "phase": "$curPhase" }
-                                const auto logLine = JSON::object({
-                                    {"action", "setPhase"},
-                                    {"phase", phase}
-                                });
-                                (*logSink)("@nix " + logLine.dump(-1, ' ', false, JSON::error_handler_t::replace) + "\n");
-                            }
-                        }
-                    }
-                }
-                currentHookLine.clear();
-            } else
-                currentHookLine += c;
-    }
-} catch (...) {
-    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
