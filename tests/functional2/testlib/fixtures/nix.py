@@ -116,7 +116,9 @@ class Nix:
         #  This is kinda ugly but what else can one do
         if sys.platform == "darwin":
             if build is True or (
-                build == "auto" and (argv[0] == "nix-build" or argv[1] == "build")
+                # argv[1:2] does not throw a key error on empty lists
+                # hence not crashing this check on an empty `nix.nix([])` call
+                build == "auto" and (argv[0] == "nix-build" or argv[1:2] == ["build"])
             ):
                 settings.store = None
                 settings.nix_store_dir = self.env.dirs.nix_store_dir
