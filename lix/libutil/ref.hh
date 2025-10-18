@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <compare>
+#include <concepts>
 #include <memory>
 #include <exception>
 #include <optional>
@@ -80,7 +81,8 @@ public:
     }
 
     template<typename T2>
-    operator ref<T2> () const
+        requires std::derived_from<T, T2>
+    operator ref<T2>() const
     {
         return ref<T2>::unsafeFromPtr((std::shared_ptr<T2>) p);
     }
