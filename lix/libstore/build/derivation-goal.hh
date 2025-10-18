@@ -210,14 +210,10 @@ struct DerivationGoal : public Goal
 
     NotifyingCounter<uint64_t>::Bump mcExpectedBuilds, mcRunningBuilds;
 
-    std::optional<Activity> act;
-
     /**
      * Activity that denotes waiting for a lock.
      */
     std::optional<Activity> actLock;
-
-    std::map<ActivityId, Activity> builderActivities;
 
     /** Witness type to say that the drvPath has already been added as a temp root */
     struct DrvHasRoot { explicit DrvHasRoot() = default; };

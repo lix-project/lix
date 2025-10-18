@@ -280,12 +280,6 @@ retry:
         /* Okay, we have to build. */
         TRY_AWAIT(startBuilder());
 
-        act = logger->startActivity(
-            lvlInfo,
-            actBuild,
-            buildDescription(),
-            Logger::Fields{worker.store.printStorePath(drvPath), "", 1, 1}
-        );
         mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
         if (auto error = TRY_AWAIT(handleChildOutput())) {
             co_return std::move(*error);
@@ -2699,12 +2693,20 @@ try {
 
     AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, builderOutPTY.get());
 
+    std::map<ActivityId, Activity> builderActivities;
     LogLineSplitter splitter;
     uint64_t logSize = 0;
 
+    auto act = logger->startActivity(
+        lvlInfo,
+        actBuild,
+        buildDescription(),
+        Logger::Fields{worker.store.printStorePath(drvPath), "", 1, 1}
+    );
+
     auto flushLine = [&](const std::string & line) {
         if (const auto state =
-                handleJSONLogMessage(line, *act, builderActivities, "the derivation builder"))
+                handleJSONLogMessage(line, act, builderActivities, "the derivation builder"))
         {
             return *state;
         } else {
@@ -2713,7 +2715,7 @@ try {
                 logTail.pop_front();
             }
 
-            return act->result(resBuildLogLine, line);
+            return act.result(resBuildLogLine, line);
         }
     };
 
@@ -2740,7 +2742,7 @@ try {
         if (data.empty()) {
             if (auto left = splitter.finish(); !left.empty()) {
                 if (flushLine(left) == Logger::BufferState::NeedsFlush) {
-                    TRY_AWAIT(act->getLogger().flush());
+                    TRY_AWAIT(act.getLogger().flush());
                 }
             }
             co_return std::nullopt;
@@ -2758,7 +2760,7 @@ try {
         while (!data.empty()) {
             if (auto line = splitter.feed(data)) {
                 if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
-                    TRY_AWAIT(act->getLogger().flush());
+                    TRY_AWAIT(act.getLogger().flush());
                 }
             }
         }

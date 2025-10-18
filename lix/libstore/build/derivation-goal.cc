@@ -134,11 +134,7 @@ Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::workImpl() noexcept
 {
-    KJ_DEFER({
-        act.reset();
-        actLock.reset();
-        builderActivities.clear();
-    });
+    KJ_DEFER({ actLock.reset(); });
 
     BOOST_OUTCOME_CO_TRY(auto result, co_await (useDerivation ? getDerivation() : haveDerivation()));
     result.storePath = drvPath;
