@@ -4,6 +4,7 @@
 #include "async-io.hh"
 #include "result.hh"
 #include <kj/async.h>
+#include <kj/exception.h>
 #include <type_traits>
 #include <utility>
 
@@ -79,6 +80,8 @@ inline auto deserializeFrom(AsyncBufferedInputStream & from, auto fn)
                 } else {
                     return fn(wrapped);
                 }
+            } catch (kj::CanceledException &) { // NOLINT(lix-foreign-exceptions)
+                throw; // NOLINT(lix-foreign-exceptions): fiber invariants require this
             } catch (...) {
                 return result::current_exception();
             }
