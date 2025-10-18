@@ -1,10 +1,13 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/types.hh"
 #include <cstdlib>
 #include <kj/async.h>
 #include <kj/common.h>
+#include <kj/exception.h>
+#include <kj/time.h>
 #include <list>
 #include <mutex>
 #include <condition_variable>
@@ -231,6 +234,41 @@ public:
             co_await pfp.promise;
 
             *this = co_await s->lock();
+        }
+
+        /**
+         * Releases the lock, waits for another promise to call `Sync::notify`,
+         * and reacquires the lock. If `timeout` elapses before another promise
+         * calls `notify` the lock is acquired again. Returns `true` if another
+         * promise called `notify` or `false` once the `notify` wait times out.
+         */
+        kj::Promise<bool> waitFor(kj::Duration timeout)
+        {
+            auto * s = static_cast<Sync *>(this->s);
+
+            {
+                auto unlock = std::move(*this);
+            }
+
+            auto pfp = kj::newPromiseAndCrossThreadFulfiller<void>();
+            {
+                std::lock_guard clk(s->conditionMutex);
+                s->conditionWaiters.push_back(std::move(pfp.fulfiller));
+            }
+            bool result = true;
+            try {
+                co_await AIO().provider.getTimer().timeoutAfter(timeout, std::move(pfp.promise));
+            } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
+                if (e.getType() == kj::Exception::Type::OVERLOADED) {
+                    result = false;
+                } else {
+                    // NOLINTNEXTLINE(lix-foreign-exceptions): these will be irrecoverable errors
+                    throw;
+                }
+            }
+
+            *this = co_await s->lock();
+            co_return result;
         }
     };
 
