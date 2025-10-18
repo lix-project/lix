@@ -75,6 +75,25 @@ struct InitialOutput {
 struct DerivationGoal : public Goal
 {
     /**
+     * A sink that only passes a limited amount of data and signals exhaustion through a promise.
+     */
+    struct LogSink : FinishSink
+    {
+        AutoCloseFD fd;
+        ref<BufferedSink> file, target;
+        const uint64_t limit;
+        uint64_t writtenSoFar = 0;
+
+        kj::PromiseFulfillerPair<bool> signal = kj::newPromiseAndFulfiller<bool>();
+
+        LogSink(AutoCloseFD fd, ref<BufferedSink> file, bool compress, uint64_t limit);
+        ~LogSink() noexcept;
+
+        void operator()(std::string_view data) override;
+        void finish() override;
+    };
+
+    /**
       * Whether this goal has completed. Completed goals can not be
       * asked for more outputs, a new goal must be created instead.
       */
@@ -186,10 +205,9 @@ struct DerivationGoal : public Goal
     BuildResult buildResult;
 
     /**
-     * File descriptor for the log file.
+     * Sink for the log file.
      */
-    AutoCloseFD fdLogFile;
-    std::shared_ptr<BufferedSink> logFileSink, logSink;
+    std::shared_ptr<LogSink> logSink;
 
     /**
      * The most recent log lines.

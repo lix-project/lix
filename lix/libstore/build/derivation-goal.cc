@@ -29,7 +29,10 @@
 #include <kj/async-unix.h>
 #include <kj/async.h>
 #include <kj/debug.h>
+#include <kj/exception.h>
 #include <kj/vector.h>
+#include <limits>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <sys/types.h>
@@ -1141,6 +1144,37 @@ kj::Promise<Result<SingleDrvOutputs>> DerivationGoal::registerOutputs()
     return assertPathValidity();
 }
 
+DerivationGoal::LogSink::LogSink(AutoCloseFD fd, ref<BufferedSink> file, bool compress, uint64_t limit)
+    : fd(std::move(fd))
+    , file(file)
+    , target(compress ? makeCompressionSink("bzip2", *file) : file)
+    , limit(limit)
+{
+}
+
+DerivationGoal::LogSink::~LogSink() noexcept
+{
+    signal.fulfiller->fulfill(false);
+}
+
+void DerivationGoal::LogSink::operator()(std::string_view data)
+{
+    writtenSoFar += data.size();
+    if (writtenSoFar <= limit) {
+        (*target)(data);
+    } else {
+        signal.fulfiller->fulfill(true);
+    }
+}
+
+void DerivationGoal::LogSink::finish()
+{
+    if (auto inner2 = dynamic_cast<FinishSink *>(&*target)) {
+        inner2->finish();
+    }
+    file->flush();
+}
+
 Path DerivationGoal::openLogFile()
 {
     if (!settings.keepLog) return "";
@@ -1159,26 +1193,26 @@ Path DerivationGoal::openLogFile()
     Path logFileName = fmt("%s/%s%s", dir, baseName.substr(2),
         settings.compressLog ? ".bz2" : "");
 
-    fdLogFile = sys::open(logFileName, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
+    auto fdLogFile = sys::open(logFileName, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0666);
     if (!fdLogFile) throw SysError("creating log file '%1%'", logFileName);
 
-    logFileSink = std::make_shared<FdSink>(fdLogFile.get());
+    auto logFileSink = make_ref<FdSink>(fdLogFile.get());
+    const auto logLimit =
+        settings.maxLogSize ? settings.maxLogSize.get() : std::numeric_limits<uint64_t>::max();
 
-    if (settings.compressLog)
-        logSink = std::shared_ptr<CompressionSink>(makeCompressionSink("bzip2", *logFileSink));
-    else
-        logSink = logFileSink;
+    logSink = std::make_unique<LogSink>(
+        std::move(fdLogFile), logFileSink, settings.compressLog, logLimit
+    );
 
     return logFileName;
 }
 
 void DerivationGoal::closeLogFile()
 {
-    auto logSink2 = std::dynamic_pointer_cast<CompressionSink>(logSink);
-    if (logSink2) logSink2->finish();
-    if (logFileSink) logFileSink->flush();
-    logSink = logFileSink = 0;
-    fdLogFile.reset();
+    if (logSink) {
+        logSink->finish();
+    }
+    logSink = 0;
 }
 
 
@@ -1195,7 +1229,6 @@ kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleRawCh
 try {
     assert(hook);
 
-    uint64_t logSize = 0;
     std::string currentHookLine;
 
     AsyncFdIoStream in(AsyncFdIoStream::shared_fd{}, hook->fromHook.get());
@@ -1225,10 +1258,6 @@ try {
                         if (type == resBuildLogLine) {
                             const std::string logLine =
                                 (fields.size() > 0 ? fields[0].get<std::string>() : "") + "\n";
-                            logSize += logLine.size();
-                            if (settings.maxLogSize && logSize > settings.maxLogSize) {
-                                co_return tooMuchLogs();
-                            }
                             (*logSink)(logLine);
                         } else if (type == resSetPhase && ! fields.is_null()) {
                             const auto phase = fields[0];
@@ -1273,6 +1302,22 @@ DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> 
                     );
                 })
         );
+    }
+
+    if (logSink) {
+        handler = handler.exclusiveJoin(logSink->signal.promise.then(
+            [&](bool limitReached) -> kj::Promise<Result<std::optional<WorkResult>>> {
+                try {
+                    if (limitReached) {
+                        return {tooMuchLogs()};
+                    } else {
+                        return kj::NEVER_DONE;
+                    }
+                } catch (...) {
+                    return {result::current_exception()};
+                }
+            }
+        ));
     }
 
     return handler;

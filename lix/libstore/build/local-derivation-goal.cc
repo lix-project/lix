@@ -2695,7 +2695,6 @@ try {
 
     std::map<ActivityId, Activity> builderActivities;
     LogLineSplitter splitter;
-    uint64_t logSize = 0;
 
     auto act = logger->startActivity(
         lvlInfo,
@@ -2746,11 +2745,6 @@ try {
                 }
             }
             co_return std::nullopt;
-        }
-
-        logSize += data.size();
-        if (settings.maxLogSize && logSize > settings.maxLogSize) {
-            co_return tooMuchLogs();
         }
 
         if (logSink) {
