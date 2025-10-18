@@ -19,24 +19,16 @@ struct HookInstance
      */
     AutoCloseFD fromHook;
 
-    kj::Own<kj::AsyncCapabilityStream> conn;
-    std::unique_ptr<capnp::TwoPartyClient> client;
-    rpc::build_remote::HookInstance::Client rpc;
+    kj::Own<rpc::build_remote::HookInstance::Client> rpc;
 
     std::map<ActivityId, Activity> activities;
 
     static kj::Promise<Result<std::unique_ptr<HookInstance>>> create();
 
     HookInstance(
-        AutoCloseFD fromHook,
-        kj::Own<kj::AsyncCapabilityStream> conn,
-        std::unique_ptr<capnp::TwoPartyClient> client,
-        rpc::build_remote::HookInstance::Client rpc,
-        Pid pid
+        AutoCloseFD fromHook, kj::Own<rpc::build_remote::HookInstance::Client> rpc, Pid pid
     )
         : fromHook(std::move(fromHook))
-        , conn(std::move(conn))
-        , client(std::move(client))
         , rpc(std::move(rpc))
         , pidOrStatus(std::move(pid))
     {

@@ -1055,7 +1055,7 @@ try {
     KJ_DEFER(hook = nullptr);
     auto output = handleChildOutput();
 
-    auto buildReq = hook->rpc.buildRequest();
+    auto buildReq = hook->rpc->buildRequest();
     RPC_FILL(buildReq, setAmWilling, slotToken.valid());
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
@@ -1114,8 +1114,6 @@ try {
 
     // close the rpc connection to have the hook exit
     hook->rpc = nullptr;
-    hook->client = nullptr;
-    hook->conn = nullptr;
 
     if (auto error = TRY_AWAIT(output)) {
         co_return HookResult::Accept{std::move(*error)};

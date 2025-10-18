@@ -7,6 +7,7 @@
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
+#include <kj/memory.h>
 #include <memory>
 
 namespace nix {
@@ -76,9 +77,7 @@ try {
 
     co_return std::make_unique<HookInstance>(
         std::move(fromHook_.readSide),
-        std::move(conn),
-        std::move(client),
-        std::move(rpc),
+        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)),
         std::move(pid)
     );
 } catch (...) {
