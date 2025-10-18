@@ -792,7 +792,7 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
 
 int DerivationGoal::getChildStatus()
 {
-    return hook->pid.kill();
+    return hook->kill();
 }
 
 void DerivationGoal::closeReadPipes()

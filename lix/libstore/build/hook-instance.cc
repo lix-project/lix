@@ -88,7 +88,7 @@ try {
 HookInstance::~HookInstance()
 {
     try {
-        if (pid) pid.kill();
+        kill();
     } catch (...) {
         ignoreExceptionInDestructor();
     }

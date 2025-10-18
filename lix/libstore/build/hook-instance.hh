@@ -23,11 +23,6 @@ struct HookInstance
     std::unique_ptr<capnp::TwoPartyClient> client;
     rpc::build_remote::HookInstance::Client rpc;
 
-    /**
-     * The process ID of the hook.
-     */
-    Pid pid;
-
     std::map<ActivityId, Activity> activities;
 
     static kj::Promise<Result<std::unique_ptr<HookInstance>>> create();
@@ -43,9 +38,41 @@ struct HookInstance
         , conn(std::move(conn))
         , client(std::move(client))
         , rpc(std::move(rpc))
-        , pid(std::move(pid))
+        , pidOrStatus(std::move(pid))
     {
     }
     ~HookInstance();
+
+    int wait()
+    {
+        return childStatusOr<&Pid::wait>();
+    }
+
+    int kill()
+    {
+        return childStatusOr<&Pid::kill>();
+    }
+
+private:
+    /**
+     * The process ID of the hook if it's running, or its exit status if not.
+     */
+    std::variant<Pid, int> pidOrStatus;
+
+    template<int (Pid::*fn)()>
+    int childStatusOr()
+    {
+        return std::visit(
+            overloaded{
+                [&](Pid & pid) {
+                    int status = (pid.*fn)();
+                    pidOrStatus = status;
+                    return status;
+                },
+                [](int status) { return status; },
+            },
+            pidOrStatus
+        );
+    }
 };
 }
