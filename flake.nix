@@ -262,12 +262,16 @@
           });
 
           capnproto = prev.capnproto.overrideAttrs (old: {
-            patches = old.patches or [ ] ++ [
-              # backport of https://github.com/capnproto/capnproto/pull/1810
-              ./misc/capnproto-promise-nodiscard.patch
-              # backport of https://github.com/capnproto/capnproto/pull/2296
-              ./misc/capnproto-monotonic-clocks-are-a-lie.patch
-            ];
+            patches =
+              old.patches or [ ]
+              ++ [
+                # backport of https://github.com/capnproto/capnproto/pull/1810
+                ./misc/capnproto-promise-nodiscard.patch
+              ]
+              ++ lib.optionals (lib.versionOlder old.version "1.2.0") [
+                # backport of https://github.com/capnproto/capnproto/pull/2296
+                ./misc/capnproto-monotonic-clocks-are-a-lie.patch
+              ];
           });
         };
     in
