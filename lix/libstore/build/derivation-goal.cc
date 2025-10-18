@@ -1127,30 +1127,25 @@ try {
     buildResult.startTime = time(0); // inexact
     mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 
-    auto result = TRY_AWAIT(wrapChildHandler(
-        runPromise
-            .then(
-                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-                [&](auto result) -> kj::Promise<Result<std::optional<WorkResult>>> {
-                    try {
-                        std::shared_ptr<Error> remoteError;
-                        if (result.getResult().isBad()) {
-                            remoteError =
-                                std::make_shared<Error>(from(result.getResult().getBad()));
-                            logErrorInfo(remoteError->info().level, remoteError->info());
-                        }
-                        // close the rpc connection to have the hook exit
-                        hook->rpc = nullptr;
-                        hook->wait();
-                        co_return TRY_AWAIT(buildDone(remoteError));
-                    } catch (...) {
-                        co_return result::current_exception();
-                    }
+    auto result = TRY_AWAIT(
+        wrapChildHandler(runPromise.then([&](auto result) -> kj::Promise<Result<WorkResult>> {
+            try {
+                std::shared_ptr<Error> remoteError;
+                if (result.getResult().isBad()) {
+                    remoteError = std::make_shared<Error>(from(result.getResult().getBad()));
+                    logErrorInfo(remoteError->info().level, remoteError->info());
                 }
-            )
-    ));
+                // close the rpc connection to have the hook exit
+                hook->rpc = nullptr;
+                hook->wait();
+                return buildDone(remoteError);
+            } catch (...) {
+                return {result::current_exception()};
+            }
+        }))
+    );
 
-    co_return HookResult::Accept{std::move(*result)};
+    co_return HookResult::Accept{std::move(result)};
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1248,8 +1243,8 @@ Goal::WorkResult DerivationGoal::tooMuchLogs()
             getName(), settings.maxLogSize));
 }
 
-kj::Promise<Result<std::optional<Goal::WorkResult>>>
-DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> handler) noexcept
+kj::Promise<Result<Goal::WorkResult>>
+DerivationGoal::wrapChildHandler(kj::Promise<Result<WorkResult>> handler) noexcept
 {
     if (respectsTimeouts() && settings.maxSilentTime != 0) {
         handler = handler.exclusiveJoin(monitorForSilence());
@@ -1260,7 +1255,7 @@ DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> 
             AIO()
                 .provider.getTimer()
                 .afterDelay(settings.buildTimeout.get() * kj::SECONDS)
-                .then([this]() -> Result<std::optional<WorkResult>> {
+                .then([this]() -> Result<WorkResult> {
                     return timedOut(
                         Error("%1% timed out after %2% seconds", name, settings.buildTimeout)
                     );
@@ -1269,8 +1264,8 @@ DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> 
     }
 
     if (logSink) {
-        handler = handler.exclusiveJoin(logSink->signal.promise.then(
-            [&](bool limitReached) -> kj::Promise<Result<std::optional<WorkResult>>> {
+        handler = handler.exclusiveJoin(
+            logSink->signal.promise.then([&](bool limitReached) -> kj::Promise<Result<WorkResult>> {
                 try {
                     if (limitReached) {
                         return {tooMuchLogs()};
@@ -1280,14 +1275,14 @@ DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> 
                 } catch (...) {
                     return {result::current_exception()};
                 }
-            }
-        ));
+            })
+        );
     }
 
     return handler;
 }
 
-kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::monitorForSilence() noexcept
+kj::Promise<Result<Goal::WorkResult>> DerivationGoal::monitorForSilence() noexcept
 {
     lastChildActivity = AIO().provider.getTimer().now();
 

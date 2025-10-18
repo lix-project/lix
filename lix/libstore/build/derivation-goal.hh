@@ -309,9 +309,9 @@ struct DerivationGoal : public Goal
 protected:
     kj::TimePoint lastChildActivity = kj::minValue;
 
-    kj::Promise<Result<std::optional<WorkResult>>>
-    wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> handler) noexcept;
-    kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
+    kj::Promise<Result<WorkResult>> wrapChildHandler(kj::Promise<Result<WorkResult>> handler
+    ) noexcept;
+    kj::Promise<Result<WorkResult>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
 
     virtual std::string buildErrorContents(const std::string & exitMsg, bool diskFull);

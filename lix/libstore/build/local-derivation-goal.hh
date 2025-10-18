@@ -324,6 +324,7 @@ protected:
      */
     virtual Pid startChild(std::function<void()> openSlave);
 
+    kj::Promise<Result<WorkResult>> handleRawChild() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
 
     /**

@@ -281,9 +281,7 @@ retry:
         TRY_AWAIT(startBuilder());
 
         mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
-        if (auto error = TRY_AWAIT(wrapChildHandler(handleRawChildStream()))) {
-            co_return std::move(*error);
-        }
+        co_return TRY_AWAIT(wrapChildHandler(handleRawChild()));
 
     } catch (BuildError & e) {
         outputLocks.reset();
@@ -292,8 +290,6 @@ retry:
         report.permanentFailure = true;
         co_return report;
     }
-
-    co_return co_await buildDone();
 } catch (...) {
     co_return result::current_exception();
 }
@@ -2682,6 +2678,16 @@ StorePath LocalDerivationGoal::makeFallbackPath(const StorePath & path)
     return worker.store.makeStorePath(
         "rewrite:" + std::string(drvPath.to_string()) + ":" + std::string(path.to_string()),
         Hash(HashType::SHA256), path.name());
+}
+
+kj::Promise<Result<Goal::WorkResult>> LocalDerivationGoal::handleRawChild() noexcept
+try {
+    if (auto error = TRY_AWAIT(handleRawChildStream())) {
+        co_return std::move(*error);
+    }
+    co_return TRY_AWAIT(buildDone());
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<std::optional<Goal::WorkResult>>>
