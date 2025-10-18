@@ -25,6 +25,7 @@ libutil_sources = files(
   'hilite.cc',
   'io-buffer.cc',
   'json-utils.cc',
+  'logging-rpc.cc',
   'logging.cc',
   'monitor-fd.cc',
   'mount.cc',
@@ -102,6 +103,7 @@ libutil_headers = files(
   'json-fwd.hh',
   'json.hh',
   'linear-map.hh',
+  'logging-rpc.hh',
   'logging.hh',
   'lru-cache.hh',
   'manually-drop.hh',
@@ -296,33 +298,35 @@ libutil_settings_headers += custom_target(
 
 libutil_rpc_headers = []
 libutil_rpc_sources = []
-libutil_rpc = []
 
-libutil_rpc += custom_target(
-  command : [
-    capnpc_wrapper,
-    '--language=c++',
-    '--src-prefix=@CURRENT_SOURCE_DIR@',
-    '--outdir=@OUTDIR@',
-    '--depfile=@DEPFILE@',
-    '-I@SOURCE_ROOT@',
-    '@INPUT@',
-  ],
-  input : files(
-    # keep-sorted start
-    'types.capnp',
-    # keep-sorted end
-  ),
-  output : [
-    '@PLAINNAME@.h',
-    '@PLAINNAME@.c++',
-  ],
-  install : true,
-  install_dir : [includedir / 'lix/libutil', false],
-  depfile : '@PLAINNAME@.d',
+libutil_rpc_schemas = files(
+  # keep-sorted start
+  'logging.capnp',
+  'types.capnp',
+  # keep-sorted end
 )
 
-foreach rpc : libutil_rpc
+foreach rpc : libutil_rpc_schemas
+  rpc = custom_target(
+    command : [
+      capnpc_wrapper,
+      '--language=c++',
+      '--src-prefix=@CURRENT_SOURCE_DIR@',
+      '--outdir=@OUTDIR@',
+      '--depfile=@DEPFILE@',
+      '-I@SOURCE_ROOT@',
+      '@INPUT@',
+    ],
+    input : rpc,
+    output : [
+      '@PLAINNAME@.h',
+      '@PLAINNAME@.c++',
+    ],
+    install : true,
+    install_dir : [includedir / 'lix/libutil', false],
+    depfile : '@PLAINNAME@.d',
+  )
+
   libutil_rpc_headers += rpc[0]
   libutil_rpc_sources += rpc[1]
 endforeach
@@ -332,6 +336,7 @@ dependencies = [
   brotli,
   cpuid,
   kj,
+  capnp_rpc,
   libarchive,
   nlohmann_json,
   openssl,
@@ -410,6 +415,7 @@ liblixutil = declare_dependency(
     # Everything has to link to kj if it uses libutil internally (ensured by
     # lix-base pkg-config externally)
     kj,
+    capnp_rpc,
     libarchive,
     nlohmann_json,
     libatomic,

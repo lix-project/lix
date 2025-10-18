@@ -375,7 +375,7 @@ struct curlFileTransfer : public FileTransfer
         {
             try {
                 if (act.progress(dlnow, dltotal) == Logger::BufferState::NeedsFlush) {
-                    act.getLogger().waitForSpace();
+                    act.getLogger().waitForSpace(); // NOLINT(lix-never-async)
                 }
             } catch (nix::Interrupted &) {
             }
@@ -409,7 +409,7 @@ struct curlFileTransfer : public FileTransfer
             else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
             {
                 if (act.progress(bodySize, bodySize) == Logger::BufferState::NeedsFlush) {
-                    act.getLogger().waitForSpace();
+                    act.getLogger().waitForSpace(); // NOLINT(lix-never-async)
                 }
                 auto state = downloadState.lock();
                 state->done = true;

@@ -3,6 +3,9 @@
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("nix::rpc");
 
+# many of our strings must be nul-safe :(
+using String = Data;
+
 enum Verbosity {
   error @0;
   warn @1;

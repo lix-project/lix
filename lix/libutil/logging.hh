@@ -167,7 +167,7 @@ public:
         return {result::success()};
     }
 
-    virtual void waitForSpace() {}
+    virtual void waitForSpace(NeverAsync = {}) {}
 
 protected:
     virtual BufferState startActivityImpl(
