@@ -1053,7 +1053,7 @@ try {
     }
 
     KJ_DEFER(hook = nullptr);
-    auto output = handleChildOutput();
+    auto output = wrapChildHandler(handleRawChildStream());
 
     auto buildReq = hook->rpc->buildRequest();
     RPC_FILL(buildReq, setAmWilling, slotToken.valid());
@@ -1255,12 +1255,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::handleChildOutput() noexcept
-try {
-    lastChildActivity = AIO().provider.getTimer().now();
-
-    auto handler = handleRawChildStream();
-
+kj::Promise<Result<std::optional<Goal::WorkResult>>>
+DerivationGoal::wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> handler) noexcept
+{
     if (respectsTimeouts() && settings.maxSilentTime != 0) {
         handler = handler.exclusiveJoin(monitorForSilence());
     }
@@ -1278,13 +1275,13 @@ try {
         );
     }
 
-    co_return TRY_AWAIT(handler);
-} catch (...) {
-    co_return result::current_exception();
+    return handler;
 }
 
 kj::Promise<Result<std::optional<Goal::WorkResult>>> DerivationGoal::monitorForSilence() noexcept
 {
+    lastChildActivity = AIO().provider.getTimer().now();
+
     while (true) {
         const auto stash = lastChildActivity;
         auto waitUntil = lastChildActivity + settings.maxSilentTime.get() * kj::SECONDS;

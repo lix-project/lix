@@ -281,7 +281,7 @@ retry:
         TRY_AWAIT(startBuilder());
 
         mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
-        if (auto error = TRY_AWAIT(handleChildOutput())) {
+        if (auto error = TRY_AWAIT(wrapChildHandler(handleRawChildStream()))) {
             co_return std::move(*error);
         }
 

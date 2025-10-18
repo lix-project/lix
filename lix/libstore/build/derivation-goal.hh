@@ -291,7 +291,8 @@ struct DerivationGoal : public Goal
 protected:
     kj::TimePoint lastChildActivity = kj::minValue;
 
-    kj::Promise<Result<std::optional<WorkResult>>> handleChildOutput() noexcept;
+    kj::Promise<Result<std::optional<WorkResult>>>
+    wrapChildHandler(kj::Promise<Result<std::optional<WorkResult>>> handler) noexcept;
     virtual kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> monitorForSilence() noexcept;
     WorkResult tooMuchLogs();
