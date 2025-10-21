@@ -18,7 +18,11 @@ from functional2.testlib.fixtures.file_helper import (
 # Things have to be resolved from top to bottom, because otherwise the tests behave flakey
 # due to the internal file structure
 
-functional2_base_folder = Path(__file__).parent.parent.absolute()
+testlib_folder = Path(__file__).parent.absolute()
+
+global_assets_folder = testlib_folder / "global_assets"
+
+functional2_base_folder = testlib_folder.parent
 """
 Resolves to `tests/functional2` folder
 """
@@ -150,14 +154,17 @@ def get_global_asset(name: str) -> Fileish:
     return CopyFile(functional2_base_folder / "testlib" / "global_assets" / name)
 
 
-def get_global_asset_pack(name: Literal["dependencies"]) -> FileDeclaration:
+def get_global_asset_pack(name: str) -> FileDeclaration:
+    def folder_to_assets(folder: str) -> FileDeclaration:
+        return {
+            f.name: get_global_asset(f"{folder}/{f.name}")
+            for f in (global_assets_folder / folder).iterdir()
+        }
+
     match name:
-        case "dependencies":
-            return {
-                "config.nix": get_global_asset("config.nix"),
-                "dependencies.nix": get_global_asset("dependencies.nix"),
-                "dependencies.builder0.sh": get_global_asset("dependencies.builder0.sh"),
-            }
+        # default case, if its just config.nix + folder content
+        case _ if (global_assets_folder / name).exists():
+            return {"config.nix": get_global_asset("config.nix")} | folder_to_assets(name)
         case _:
             msg = f"invalid pack name {name!r}"
             raise ValueError(msg)
