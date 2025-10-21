@@ -933,7 +933,7 @@ void LocalDerivationGoal::initTmpDir() {
 void LocalDerivationGoal::setupConfiguredCertificateAuthority()
 {
     if (settings.caFile != "") {
-        if (pathAccessible(settings.caFile)) {
+        if (pathAccessible(settings.caFile, true)) {
             auto prefix = useChroot ?
 #if __linux__
                                     chrootRootDir
