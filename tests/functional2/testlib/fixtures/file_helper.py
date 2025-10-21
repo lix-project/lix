@@ -1,3 +1,4 @@
+import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -107,6 +108,25 @@ class CopyTemplate(_ByContentFileish):
         return self.content
 
 
+class EnvTemplate(_ByContentFileish):
+    def __init__(self, template_content: str, mode: int | None = None):
+        """
+        Creates a File with the given content,
+        but replaces all @ENV_VARIABLE_NAME@ with the according value
+        :param template_content: String of the file content with placeholders
+        """
+        self.template_content = template_content
+        self.env = None
+        super().__init__(mode)
+
+    def set_env(self, env: ManagedEnv):
+        self.env = env
+
+    def get_content(self, _: Path) -> str:
+        keys = re.findall(r"@(\w+)@", self.template_content)
+        return BalancedTemplater(self.template_content).substitute({k: self.env[k] for k in keys})
+
+
 class Symlink(Fileish):
     def __init__(self, target: str):
         """
@@ -162,7 +182,9 @@ def merge_file_declaration(a: FileDeclaration, b: FileDeclaration) -> FileDeclar
     return result
 
 
-def _init_files(files: FileDeclaration, current_folder: Path, caller_path: Path) -> None:
+def _init_files(
+    files: FileDeclaration, current_folder: Path, caller_path: Path, env: ManagedEnv
+) -> None:
     """
     This internal function is needed because one cannot call a fixture directly since pytest 4.0
     """
@@ -170,11 +192,13 @@ def _init_files(files: FileDeclaration, current_folder: Path, caller_path: Path)
     for name, definition in files.items():
         destination = current_folder / name
         if isinstance(definition, Fileish):
+            if isinstance(definition, EnvTemplate):
+                definition.set_env(env)
             definition.copy_to(destination, caller_path)
         else:
             # Initialize subdirectory
             destination.mkdir()
-            _init_files(definition, destination, caller_path)
+            _init_files(definition, destination, caller_path, env)
 
 
 def with_files(*files: FileDeclaration) -> Callable[[Any], Callable[[Any], None]]:
@@ -201,5 +225,5 @@ def files(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     """
     home = env.dirs.home
     if hasattr(request, "param"):
-        _init_files(request.param, home, request.path.parent)
+        _init_files(request.param, home, request.path.parent, env)
     return home

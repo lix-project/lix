@@ -39,6 +39,7 @@ def test_hash(
         },
         files,
         Path(__file__).parent,
+        nix.env,
     )
 
     args = [format_flag, "--type", algo, files / "vector"]
