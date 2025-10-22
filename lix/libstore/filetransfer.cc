@@ -654,9 +654,10 @@ struct curlFileTransfer : public FileTransfer
                 }
             }
 
-            // only exit when all transfers are done (which will happen through the
-            // progress callback issuing an abort in the case of user interruption)
-            if (items.empty() && quit) {
+            // exit immediately and abort all running transfers. waiting for transfers to finish
+            // before exiting this loop may hang the shutdown procedure forever, e.g. if blocked
+            // transfers would be destroyed (thus aborted) after the curl thread for any reason.
+            if (quit) {
                 break;
             }
 
