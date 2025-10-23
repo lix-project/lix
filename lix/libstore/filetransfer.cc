@@ -22,6 +22,7 @@
 #include <kj/async.h>
 #include <kj/encoding.h>
 #include <kj/time.h>
+#include <memory>
 
 #if ENABLE_DTRACE
 #include "trace-probes.gen.hh"
@@ -553,7 +554,7 @@ struct TransferItem
     }
 };
 
-struct curlFileTransfer : public FileTransfer
+struct CurlMulti
 {
     std::unique_ptr<CURLM, decltype([](auto * m) { curl_multi_cleanup(m); })> curlm;
 
@@ -593,12 +594,12 @@ struct curlFileTransfer : public FileTransfer
 
     std::thread workerThread;
 
-    curlFileTransfer(unsigned int baseRetryTimeMs)
+    CurlMulti(unsigned int baseRetryTimeMs)
         : curlm(curl_multi_init())
         , baseRetryTimeMs(baseRetryTimeMs)
     {
         if (curlm == nullptr) {
-            throw FileTransferError(Misc, {}, "could not allocate curl handle");
+            throw FileTransferError(FileTransfer::Misc, {}, "could not allocate curl handle");
         }
 
         static std::once_flag globalInit;
@@ -614,7 +615,7 @@ struct curlFileTransfer : public FileTransfer
         });
     }
 
-    ~curlFileTransfer()
+    ~CurlMulti()
     {
         try {
             stopWorkerThread();
@@ -778,6 +779,21 @@ struct curlFileTransfer : public FileTransfer
             state->incoming.push_back(item);
         }
         wakeup();
+    }
+};
+
+struct curlFileTransfer : public FileTransfer
+{
+    std::shared_ptr<CurlMulti> multi;
+
+    curlFileTransfer(unsigned int baseRetryTimeMs)
+        : multi(std::make_shared<CurlMulti>(baseRetryTimeMs))
+    {
+    }
+
+    ~curlFileTransfer()
+    {
+        multi->stopWorkerThread();
     }
 
 #if ENABLE_S3
@@ -952,7 +968,7 @@ struct curlFileTransfer : public FileTransfer
 
     struct TransferStream : AsyncInputStream
     {
-        curlFileTransfer & parent;
+        std::shared_ptr<CurlMulti> parent;
         std::string uri;
         FileTransferOptions options;
         std::optional<std::string> data;
@@ -977,7 +993,7 @@ struct curlFileTransfer : public FileTransfer
             bool noBody,
             const Activity * context
         )
-            : parent(parent)
+            : parent(parent.multi)
             , uri(uri)
             , options(options)
             , data(std::move(data))
@@ -987,7 +1003,7 @@ struct curlFileTransfer : public FileTransfer
                   fileTransferSettings.tries,
                   std::chrono::seconds(fileTransferSettings.maxConnectTimeout.get()),
                   std::chrono::seconds(fileTransferSettings.initialConnectTimeout.get()),
-                  std::chrono::milliseconds(parent.baseRetryTimeMs)
+                  std::chrono::milliseconds(this->parent->baseRetryTimeMs)
               ))
         {
         }
@@ -997,7 +1013,7 @@ struct curlFileTransfer : public FileTransfer
             // wake up the download thread if it's still going and have it abort
             try {
                 if (transfer) {
-                    parent.cancel(transfer);
+                    parent->cancel(transfer);
                 }
             } catch (...) {
                 ignoreExceptionInDestructor();
@@ -1069,7 +1085,7 @@ struct curlFileTransfer : public FileTransfer
                 std::move(pfp.fulfiller),
                 timeout
             );
-            parent.enqueueItem(transfer);
+            parent->enqueueItem(transfer);
             co_return TRY_AWAIT(pfp.promise);
         } catch (...) {
             co_return result::current_exception();
@@ -1152,13 +1168,13 @@ struct curlFileTransfer : public FileTransfer
                     chunk = std::move(state->data);
                     buffered = chunk;
                     totalReceived += chunk.size();
-                    parent.unpause(transfer);
+                    parent->unpause(transfer);
                 } else if (state->exc) {
                     std::rethrow_exception(state->exc);
                 } else if (state->done) {
                     co_return false;
                 } else {
-                    parent.unpause(transfer);
+                    parent->unpause(transfer);
                     signal = state->wait();
                 }
             }
@@ -1246,8 +1262,9 @@ ref<FileTransfer> getFileTransfer()
 {
     static ref<curlFileTransfer> fileTransfer = makeCurlFileTransfer({});
 
-    if (fileTransfer->state_.lock()->quit)
+    if (fileTransfer->multi->state_.lock()->quit) {
         fileTransfer = makeCurlFileTransfer({});
+    }
 
     return fileTransfer;
 }

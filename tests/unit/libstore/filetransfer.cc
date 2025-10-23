@@ -470,4 +470,27 @@ TEST(FileTransfer, setupErrorsAreMetadata)
     ASSERT_THROW(aio.blockOn(ft->upload(fmt("http://[::1]:%d", port), "")), FileTransferError);
 }
 
+TEST(FileTransfer, shutdownKillsTransfers)
+{
+    auto [port, srv] = serveHTTP({
+        {"200 ok", "content-length: 999999999\r\n", [&](int) { return std::string(1024, 'X'); }},
+    });
+    AsyncIoRoot aio;
+    char buf;
+    std::optional<box_ptr<AsyncInputStream>> s;
+    {
+        auto ft = makeFileTransfer(0);
+        auto [_r, stream] = aio.blockOn(ft->download(fmt("http://[::1]:%d/index", port)));
+        ASSERT_EQ(aio.blockOn(stream->read(&buf, 1)), 1);
+        s = std::move(stream);
+    }
+    ASSERT_THROW(
+        {
+            while (true) {
+                aio.blockOn((*s)->drain());
+            }
+        },
+        FileTransferError
+    );
+}
 }
