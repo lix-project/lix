@@ -19,6 +19,8 @@
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libexpr/attr-path.hh"
 #include "lix/libcmd/legacy.hh"
+#include "lix/libutil/finally.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/shlex.hh"
 #include "nix-build.hh"
@@ -431,18 +433,17 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
 
         auto passAsFile = tokenizeString<StringSet>(getOr(drv.env, "passAsFile", ""));
 
-        bool keepTmp = false;
         int fileNr = 0;
 
         for (auto & var : drv.env)
             if (passAsFile.count(var.first)) {
-                keepTmp = true;
                 auto fn = ".attr-" + std::to_string(fileNr++);
                 Path p = (Path) tmpDir + "/" + fn;
                 writeFile(p, var.second);
                 env[var.first + "Path"] = p;
-            } else
+            } else {
                 env[var.first] = var.second;
+            }
 
         std::string structuredAttrsRC;
 
@@ -475,7 +476,6 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
 
                 env["NIX_ATTRS_SH_FILE"] = attrsSH;
                 env["NIX_ATTRS_JSON_FILE"] = attrsJSON;
-                keepTmp = true;
             }
         }
 
@@ -485,24 +485,13 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
            lose the current $PATH directories. */
         auto rcfile = (Path) tmpDir + "/rc";
         auto tz = getEnv("TZ");
-        std::string rc = fmt(
-            R"(_nix_shell_clean_tmpdir() { command rm -rf %1%; }; )"
-            "%2%"
-            "%3%"
-            // always clear PATH.
-            // when nix-shell is run impure, we rehydrate it with the `p=$PATH` above
-            "unset PATH;"
-            "dontAddDisableDepTrack=1;\n",
-            shellEscape(tmpDir),
-            (keepTmp
-                ? "trap _nix_shell_clean_tmpdir EXIT; "
-                  "exitHooks+=(_nix_shell_clean_tmpdir); "
-                  "failureHooks+=(_nix_shell_clean_tmpdir); "
-                : "_nix_shell_clean_tmpdir; "),
-            (pure
-                ? ""
-                : "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc; p=$PATH; ")
-        );
+        std::string rc =
+            fmt("%1%"
+                // always clear PATH.
+                // when nix-shell is run impure, we rehydrate it with the `p=$PATH` above
+                "unset PATH;"
+                "dontAddDisableDepTrack=1;\n",
+                (pure ? "" : "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc; p=$PATH; "));
         rc += structuredAttrsRC;
         rc += fmt(
             "\n[ -e $stdenv/setup ] && source $stdenv/setup; "
@@ -532,27 +521,38 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
         vomit("Sourcing nix-shell with file %s and contents:\n%s", rcfile, rc);
         writeFile(rcfile, rc);
 
-        Strings envStrs;
-        for (auto & i : env)
-            envStrs.push_back(i.first + "=" + i.second);
+        auto args = interactive ? Strings{"--rcfile", rcfile} : Strings{rcfile};
 
-        auto args = interactive
-            ? Strings{"bash", "--rcfile", rcfile}
-            : Strings{"bash", rcfile};
-
-        auto envPtrs = stringsToCharPtrs(envStrs);
-
-        environ = envPtrs.data();
-
-        restoreProcessContext();
-
+        // We are going to run an interactive command, do not let the logger send a line.
         logger->pause();
 
         printMsg(lvlChatty, "running shell: %s", concatMapStringsSep(" ", args, shellEscape));
 
-        sys::execvp(*shell, args);
+        RunningProgram proc = runProgram2(
+            {.program = *shell,
+             .searchPath = true,
+             .args = args,
+             .environment = env,
+             .dieWithParent = true}
+        );
 
-        throw SysError("executing shell '%s'", *shell);
+        // NOTE: we wait and return the status check immediately.
+        // If there's interruption, we will swallow it and wait again for termination.
+        auto toExitStatus = [](int waitRes) {
+            if (WIFEXITED(waitRes)) {
+                return WEXITSTATUS(waitRes);
+            } else if (WIFSIGNALED(waitRes)) {
+                return 128 + WTERMSIG(waitRes);
+            } else {
+                return 255;
+            }
+        };
+
+        try {
+            return toExitStatus(proc.wait());
+        } catch (Interrupted &) {
+            return toExitStatus(proc.wait());
+        }
     }
 
     else {

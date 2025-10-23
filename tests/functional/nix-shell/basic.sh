@@ -52,6 +52,32 @@ output=$(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo bar --run 'echo
 output=$(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --argstr fooContents baz --run 'echo "$(foo)"')
 [ "$output" = "baz" ]
 
+# Test nix-shell returns the valid exit codes
+[[ $(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --run 'false'; echo $?) -eq 1 ]] && echo "nix-shell correctly propagated the exit code of 'false'" || { echo "nix-shell did not propagate the exit code of 'false'"; exit 1; }
+
+# Test that nix-shell have a valid $TEMPDIR and $NIX_BUILD_TOP when $TMPDIR is unset.
+# We will make this test up to one nested nix shells.
+# NOTE: making it go to two nested nix shell is left as an exercise in Bash fun.
+(
+    unset TMPDIR
+    export NIX_PATH=nixpkgs="$shellDotNix"
+    nix-shell -p foo --run '
+      # Outer nix-shell validity check
+      [[ -n "$NIX_BUILD_TOP" && -d "$NIX_BUILD_TOP" && -n "$TEMPDIR" && -d "$TEMPDIR" ]] && echo "Outer nix-shell has a valid \$TEMPDIR and \$NIX_BUILD_TOP" || { echo "Outer nix-shell does not have a valid \$TEMPDIR or \$NIX_BUILD_TOP"; exit 1; }
+    ' || exit 1
+)
+
+# Test that nix-shell deletes the parent of $TEMPDIR which is the nix-shell directory
+# when $TMPDIR is unset.
+(
+    unset TMPDIR
+    IN_SHELL_TEMPDIR=$(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --run 'echo $TEMPDIR')
+    test ! -d "$(dirname $IN_SHELL_TEMPDIR)" && echo "nix-shell deleted the parent directory of \$TEMPDIR: clean up successful" || { echo "nix-shell did not delete the parent directory of \$TEMPDIR: clean up failure"; exit 1; }
+)
+
+# FIXME: testing that Ctrl-C to a (non-)interactive nix-shell stops it would be appreciated,
+# but it is hard to send accurately the signal to the right process group.
+
 # Test nix-shell shebang mode
 sed -e "s|@ENV_PROG@|$(type -P env)|" shell.shebang.sh > $TEST_ROOT/shell.shebang.sh
 chmod a+rx $TEST_ROOT/shell.shebang.sh
