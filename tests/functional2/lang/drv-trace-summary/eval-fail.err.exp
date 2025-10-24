@@ -1,0 +1,75 @@
+error:
+       … while calling the 'getAttr' builtin
+         at «internal»:1:500:
+       … while calling the 'derivationStrict' builtin
+         at «internal»:1:208:
+       … while evaluating derivation 'package-you-care-about'
+         whose name attribute is located at /pwd/in.nix:22:5
+         at /pwd/in.nix:22:5:
+           21|   package-you-care-about = derivation {
+           22|     name = "package-you-care-about";
+             |     ^
+           23|     __structuredAttrs = true;
+
+       … while evaluating attribute 'buildInputs' of derivation 'package-you-care-about'
+         at /pwd/in.nix:25:5:
+           24|
+           25|     buildInputs = [
+             |     ^
+           26|       direct-dependency
+
+       … while evaluating list element at index 0
+
+       … while calling the 'getAttr' builtin
+         at «internal»:1:500:
+       … while calling the 'derivationStrict' builtin
+         at «internal»:1:208:
+       … while evaluating derivation 'direct-dependency'
+         whose name attribute is located at /pwd/in.nix:15:5
+         at /pwd/in.nix:15:5:
+           14|   direct-dependency = derivation {
+           15|     name = "direct-dependency";
+             |     ^
+           16|     __structuredAttrs = true;
+
+       … while evaluating attribute 'libtrans' of derivation 'direct-dependency'
+         at /pwd/in.nix:18:5:
+           17|
+           18|     libtrans = transitive-dependency;
+             |     ^
+           19|   };
+
+       … while calling the 'getAttr' builtin
+         at «internal»:1:500:
+       … while calling the 'derivationStrict' builtin
+         at «internal»:1:208:
+       … while evaluating derivation 'transitive-dependency'
+         whose name attribute is located at /pwd/in.nix:4:5
+         at /pwd/in.nix:4:5:
+            3|   transitive-dependency = mkDerivation {
+            4|     name = "transitive-dependency";
+             |     ^
+            5|     __structuredAttrs = true;
+
+       … while evaluating attribute 'nativeBuildInputs' of derivation 'transitive-dependency'
+         at /pwd/in.nix:7:5:
+            6|
+            7|     nativeBuildInputs = [
+             |     ^
+            8|       null
+
+       … while evaluating list element at index 1
+
+       … caused by explicit throw
+         at /pwd/in.nix:9:8:
+            8|       null
+            9|       (throw "transitive dependency growls")
+             |        ^
+           10|     ];
+
+       error: transitive dependency growls
+
+       note: trace involved the following derivations:
+       derivation 'package-you-care-about'
+       derivation 'direct-dependency'
+       derivation 'transitive-dependency'

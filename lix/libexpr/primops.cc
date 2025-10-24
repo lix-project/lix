@@ -853,10 +853,12 @@ static void prim_derivationStrict(EvalState & state, Value * * args, Value & v)
          * often results from the composition of several functions
          * (derivationStrict, derivation, mkDerivation, mkPythonModule, etc.)
          */
-        e.addTrace(nullptr, HintFmt(
-                "while evaluating derivation '%s'\n"
-                "  whose name attribute is located at %s",
-                drvName, pos));
+
+        e.pushTrace(Trace::fromDrv(
+            state.ctx.positions[nameAttr->pos],
+            drvName
+        ));
+
         throw;
     }
 }
@@ -1082,8 +1084,11 @@ drvName, Bindings * attrs, Value & v)
             }
 
         } catch (Error & e) {
-            e.addTrace(state.ctx.positions[i->pos],
-                HintFmt("while evaluating attribute '%1%' of derivation '%2%'", key, drvName));
+            e.pushTrace(Trace::fromDrvAttr(
+                state.ctx.positions[i->pos],
+                std::string(drvName),
+                std::string(key)
+            ));
             throw;
         }
     }

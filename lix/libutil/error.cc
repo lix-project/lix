@@ -1,3 +1,4 @@
+#include "lix/libutil/concepts.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/logging.hh"
@@ -5,10 +6,12 @@
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/signals.hh"
+#include "lix/libutil/position.hh"
 
 #include <iostream>
 #include <optional>
 #include <sstream>
+#include <ranges>
 
 #include <boost/core/demangle.hpp>
 
@@ -36,6 +39,39 @@ const std::string & BaseError::calcWhat() const
 std::ostream & operator <<(std::ostream & os, const HintFmt & hf)
 {
     return os << hf.str();
+}
+
+Trace Trace::fromDrv(std::shared_ptr<Pos> pos, std::string drvName)
+{
+    DrvTrace dt(drvName);
+
+    HintFmt h(
+        "while evaluating derivation '%s'\n"
+        "  whose name attribute is located at %s",
+        dt.drvName,
+        *pos
+    );
+
+    return Trace{
+        .pos = pos,
+        .hint = h,
+        .drvTrace = dt,
+    };
+
+}
+
+Trace Trace::fromDrvAttr(std::shared_ptr<Pos> pos, std::string drvName, std::string attrOfDrv)
+{
+    DrvTrace dt(drvName);
+
+    HintFmt h("while evaluating attribute '%s' of derivation '%s'", attrOfDrv, dt.drvName);
+
+    return Trace{
+        .pos = pos,
+        .hint = h,
+        .drvTrace = dt,
+    };
+
 }
 
 /**
@@ -222,6 +258,29 @@ void printSkippedTracesMaybe(
     skippedTraces.clear();
 }
 
+template<ViewOf<DrvTrace const &> Range>
+    requires std::ranges::sized_range<Range>
+void printDerivationTracesMaybe(std::ostream & oss, Range && elems)
+{
+    if (std::ranges::empty(elems)) {
+        return;
+    }
+
+    std::set<std::reference_wrapper<DrvTrace const>> seen;
+
+    oss << "\n"
+        << ANSI_BLUE << "note:" << ANSI_NORMAL << " trace involved the following derivations: \n";
+
+    for (DrvTrace const & dt : elems) {
+        if (!seen.contains(dt)) {
+            oss << HintFmt("derivation '%s'", dt.drvName) << "\n";
+        }
+        seen.insert(dt);
+    }
+
+    oss << "\n";
+}
+
 std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool showTrace)
 {
     std::string prefix;
@@ -400,6 +459,13 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
     oss << einfo.msg << "\n";
 
     printPosMaybe(oss, "", einfo.pos);
+
+    // Summarize derivations involved in the trace.
+    auto const drvTraces = einfo.traces
+        | std::views::filter([](auto const & trace) { return trace.drvTrace.has_value(); })
+        | std::views::transform([](auto const & trace) { return *trace.drvTrace; })
+        | std::ranges::to<std::vector>();
+    printDerivationTracesMaybe(oss, drvTraces);
 
     auto suggestions = einfo.suggestions.trim();
     if (!suggestions.suggestions.empty()) {
