@@ -193,9 +193,14 @@ public:
         err.pos = pos;
     }
 
-    void pushTrace(Trace trace)
+    void pushTrace(Trace const & trace)
     {
         err.traces.push_front(trace);
+    }
+
+    void pushTrace(Trace && trace)
+    {
+        err.traces.emplace_front(trace);
     }
 
     template<typename... Args>
