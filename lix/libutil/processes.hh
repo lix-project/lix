@@ -96,7 +96,6 @@ struct RunOptions
     std::optional<std::map<std::string, std::string>> environment = {};
     bool dieWithParent = true;
     bool captureStdout = false;
-    bool isInteractive = false;
     std::vector<Redirection> redirections;
 #if __linux__
     std::set<long> caps;

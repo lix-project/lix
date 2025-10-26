@@ -8,6 +8,8 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/signals.hh"
+#include "manually-drop.hh"
+#include "sync.hh"
 
 #include <cerrno>
 #include <cstdlib>
@@ -19,6 +21,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <utility>
 
 #ifdef __APPLE__
 # include <sys/syscall.h>
@@ -233,8 +236,27 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
 kj::Promise<Result<std::string>>
 runProgram(Path program, bool searchPath, const Strings args, bool isInteractive)
 try {
+    // allow only one interactive program per unit time so they don't mess with each other.
+    //
+    // see https://git.lix.systems/lix-project/lix/issues/702 for why this is ManuallyDrop.
+    static ManuallyDrop<Sync<int, AsyncMutex>> interactiveMutex{std::in_place, 0};
+
+    std::optional<Sync<int, AsyncMutex>::Lock> interactiveLock;
+    KJ_DEFER({
+        if (interactiveLock) {
+            logger->resume();
+        }
+    });
+
+    if (isInteractive) {
+        interactiveLock = co_await interactiveMutex->lock();
+        logger->pause();
+    }
+
     auto res = TRY_AWAIT(runProgram(RunOptions{
-        .program = program, .searchPath = searchPath, .args = args, .isInteractive = isInteractive
+        .program = program,
+        .searchPath = searchPath,
+        .args = args,
     }));
 
     if (!statusOk(res.first)) {
@@ -323,16 +345,6 @@ RunningProgram runProgram2(const RunOptions & options)
     ProcessOptions processOptions {
         .dieWithParent = options.dieWithParent,
     };
-
-    std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
-    if (options.isInteractive) {
-        logger->pause();
-        resumeLoggerDefer.emplace(
-            []() {
-                logger->resume();
-            }
-        );
-    }
 
     printMsg(lvlChatty, "running command: %s", concatMapStringsSep(" ", options.args, shellEscape));
 

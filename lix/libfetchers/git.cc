@@ -21,6 +21,7 @@
 
 #include "lix/libfetchers/fetch-settings.hh"
 
+#include <optional>
 #include <regex>
 #include <string.h>
 #include <sys/time.h>
@@ -70,15 +71,13 @@ Path getCachePath(std::string_view key)
 //   ...
 static kj::Promise<Result<std::optional<std::string>>> readHead(const Path & path)
 try {
-    auto [status, output] = TRY_AWAIT(runProgram(RunOptions{
-        .program = "git",
+    auto output = TRY_AWAIT(runProgram(
+        "git",
+        true,
         // FIXME: use 'HEAD' to avoid returning all refs
-        .args = {"ls-remote", "--symref", path},
-        .isInteractive = true,
-    }));
-    if (status != 0) {
-        co_return std::nullopt;
-    }
+        {"ls-remote", "--symref", path},
+        true
+    ));
 
     std::string_view line = output;
     line = line.substr(0, line.find("\n"));
@@ -93,6 +92,8 @@ try {
         }
         co_return parseResult->target;
     }
+    co_return std::nullopt;
+} catch (ExecError &) {
     co_return std::nullopt;
 } catch (...) {
     co_return result::current_exception();
