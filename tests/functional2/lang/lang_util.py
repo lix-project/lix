@@ -8,8 +8,13 @@ from typing import Any, NamedTuple, ClassVar
 from collections.abc import Generator
 
 import tomllib
-from functional2.testlib.fixtures.file_helper import AssetSymlink, CopyFile, FileDeclaration
-from functional2.testlib.utils import is_value_of_type, test_base_folder
+from functional2.testlib.fixtures.file_helper import (
+    AssetSymlink,
+    CopyFile,
+    FileDeclaration,
+    Fileish,
+)
+from functional2.testlib.utils import is_value_of_type, test_base_folder, get_global_asset
 from tomllib import TOMLDecodeError
 
 LANG_TEST_ID_PATTERN = "{folder_name}:{test_name}"
@@ -84,6 +89,7 @@ class LangTest:
         in_file: InFile,
         flags: list[str] | None = None,
         extra_files: list[str] | None = None,
+        global_assets: list[str] | None = None,
     ):
         """
         Internal class to represent a lang test
@@ -99,6 +105,7 @@ class LangTest:
         self.flags = flags or []
         self.folder = folder_name
         self.extra_files = extra_files or []
+        self.global_assets = global_assets or []
         self.in_file_name = in_file.name
         self.suffix = in_file.suffix
         self.test_name = f"{name}{self.suffix}"
@@ -113,7 +120,7 @@ class LangTest:
         Internal function to turn the metadata into a FileDeclaration used for parametrization
         :return: FileDeclaration object containing all files required for the test
         """
-        files = {
+        files: dict[str, Fileish] = {
             "in.nix": CopyFile(f"{self.folder}/{self.in_file_name}"),
             "lib.nix": CopyFile("lib.nix"),
             "out.exp": AssetSymlink(f"{self.folder}/{self.test_name}.out.exp"),
@@ -122,6 +129,9 @@ class LangTest:
         for file in self.extra_files:
             # Make sure to add the extra-files requested by the test.toml
             files[file] = CopyFile(f"{self.folder}/{file}")
+        for asset in self.global_assets:
+            # Add required global assets like `config.nix`
+            files[asset] = get_global_asset(asset)
         return files
 
     def to_params(self) -> tuple[FileDeclaration, list[str], str]:
@@ -165,6 +175,7 @@ class LangTestDefinition:
     name: str
     flags: list[str]
     extra_files: list[str]
+    global_assets: list[str]
     matrix: bool
     in_: list[InFile]
 
@@ -187,7 +198,12 @@ class LangTestDefinition:
         extra_files = dict_.pop("extra-files", [])
         if not is_value_of_type(extra_files, list[str]):
             issues.append(
-                f"invalid value type for 'extra_files': {extra_files}, expected a list of strings"
+                f"invalid value type for 'extra-files': {extra_files}, expected a list of strings"
+            )
+        global_assets = dict_.pop("global-assets", [])
+        if not is_value_of_type(global_assets, list[str]):
+            issues.append(
+                f"invalid value type for 'global-assets': {global_assets}, expected a list of strings"
             )
 
         flags = dict_.pop("flags", [])
@@ -230,6 +246,7 @@ class LangTestDefinition:
             name=test_name,
             flags=flags,
             extra_files=extra_files,
+            global_assets=global_assets,
             matrix=is_matrix,
             in_=in_files,
         )
@@ -245,7 +262,15 @@ class LangTestDefinition:
         for file in self.in_:
             try:
                 tests.append(
-                    LangTest(self.name, folder, self.runner, file, self.flags, self.extra_files)
+                    LangTest(
+                        self.name,
+                        folder,
+                        self.runner,
+                        file,
+                        self.flags,
+                        self.extra_files,
+                        self.global_assets,
+                    )
                 )
             except ValueError as e:
                 id_, *reasons = e.args

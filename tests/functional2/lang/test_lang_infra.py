@@ -352,7 +352,7 @@ def test_toml_invalid_argument_types(pytest_command: Command):
     assert "test_invalid_configuration" in err
     assert "unexpected key(s) ['invalid_test']; expected only 'test'" in err
     assert "invalid value type for 'flags'" in err
-    assert "invalid value type for 'extra_files':" in err
+    assert "invalid value type for 'extra-files':" in err
 
 
 @pytest.mark.parametrize("pytest_command", [["-k", "toml_test"]], indirect=True)

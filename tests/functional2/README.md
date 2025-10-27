@@ -335,6 +335,7 @@ extra-files = ["./other_nix_file.nix"]
   - For matrix tests, it must be a list of file names and defaults to all available in files.
 - `flags` optionally specifies a list of additional CLI arguments to be passed to Nix
 - `extra-files` optionally describes a list of (relative) file paths for additional files to be copied into the test directory before execution.
+- `global-assets` optionally describes a list of global assets like `config.nix` to be copied into the test directory before execution.
 
 As before, the test folder contains an `in.nix` together with the expected output files.
 For these, the naming scheme is
