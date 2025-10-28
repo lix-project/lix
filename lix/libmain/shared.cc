@@ -313,8 +313,7 @@ void showManPage(const std::string & name)
     throw SysError("command 'man %1%' failed", name.c_str());
 }
 
-
-int handleExceptions(const std::string & programName, std::function<void()> fun)
+int handleExceptions(const std::string & programName, std::function<int()> fun)
 {
     ReceiveInterrupts receiveInterrupts; // FIXME: need better place for this
 
@@ -324,7 +323,7 @@ int handleExceptions(const std::string & programName, std::function<void()> fun)
     bool onlyForSubcommands = baseNameOf(programName) == "lix";
 
     try {
-        fun();
+        return fun();
     } catch (Exit & e) {
         return e.status;
     } catch (UsageError & e) {

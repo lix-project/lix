@@ -453,7 +453,7 @@ void registerNixHelp()
     registerCommand<CmdHelpStores>("help-stores");
 }
 
-void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
+int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 {
     savedArgv = argv;
 
@@ -461,7 +461,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
        started. */
     if (argc > 0 && argv[0] == chrootHelperName) {
         chrootHelper(argc, argv);
-        return;
+        return 0;
     }
 
     initNix();
@@ -493,7 +493,8 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         registerLegacyCommands();
         auto legacy = (*LegacyCommandRegistry::commands)[programName];
         if (legacy) {
-            return legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
+            legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
+            return 0;
         }
     }
 
@@ -516,7 +517,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
 
     if (argc == 2 && std::string(argv[1]) == "__dump-cli") {
         logger->cout(args.dumpCli());
-        return;
+        return 0;
     }
 
     if (argc == 2 && std::string(argv[1]) == "__dump-language") {
@@ -559,17 +560,17 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
             std::move(constantsJson);
         });
         logger->cout("%s", res);
-        return;
+        return 0;
     }
 
     if (argc == 2 && std::string(argv[1]) == "__dump-xp-features") {
         logger->cout(documentExperimentalFeatures().dump());
-        return;
+        return 0;
     }
 
     if (argc == 2 && std::string(argv[1]) == "__dump-dp-features") {
         logger->cout(documentDeprecatedFeatures().dump());
-        return;
+        return 0;
     }
 
     try {
@@ -589,7 +590,7 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         }
         for (auto & s : args.completions->completions)
             logger->cout(s.completion + "\t" + trim(s.description));
-        return;
+        return 0;
     }
 
     if (args.helpRequested) {
@@ -603,12 +604,12 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
                 break;
         }
         showHelp(aio, subcommand, args);
-        return;
+        return 0;
     }
 
     if (args.showVersion) {
         printVersion(programName);
-        return;
+        return 0;
     }
 
     if (!args.command)
@@ -643,6 +644,8 @@ void mainWrapped(AsyncIoRoot & aio, int argc, char * * argv)
         evalSettings.pureEval.setDefault(false);
     }
     args.run();
+
+    return 0;
 }
 
 }
@@ -660,6 +663,6 @@ int main(int argc, char * * argv)
 
     return nix::handleExceptions(argv[0], [&]() {
         nix::AsyncIoRoot aio;
-        nix::mainWrapped(aio, argc, argv);
+        return nix::mainWrapped(aio, argc, argv);
     });
 }

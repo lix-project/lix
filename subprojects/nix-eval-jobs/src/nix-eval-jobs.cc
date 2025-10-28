@@ -423,5 +423,7 @@ int main(int argc, char **argv) {
                 },
                 resolveNamedConstituents(state->jobs));
         }
+
+        return 0;
     });
 }

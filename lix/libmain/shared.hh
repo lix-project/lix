@@ -14,7 +14,7 @@
 
 namespace nix {
 
-int handleExceptions(const std::string & programName, std::function<void()> fun);
+int handleExceptions(const std::string & programName, std::function<int()> fun);
 
 /**
  * Don't forget to call initPlugins() after settings are initialized!
