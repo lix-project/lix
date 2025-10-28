@@ -9,7 +9,7 @@
 
 namespace nix {
 
-typedef std::function<void(AsyncIoRoot &, std::string, std::list<std::string>)> MainFunction;
+typedef std::function<int(AsyncIoRoot &, std::string, std::list<std::string>)> MainFunction;
 
 struct LegacyCommandRegistry
 {

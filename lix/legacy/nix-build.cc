@@ -30,7 +30,7 @@ namespace nix {
 
 using namespace std::string_literals;
 
-static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings argv)
+static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     auto dryRun = false;
     auto runEnv = std::regex_search(programName, regex::parse("nix-shell$"));
@@ -400,7 +400,9 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
         buildPaths(pathsToBuild);
 
-        if (dryRun) return;
+        if (dryRun) {
+            return 0;
+        }
 
         if (shellDrv) {
             auto shellDrvOutputs =
@@ -584,7 +586,9 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
 
         buildPaths(pathsToBuild);
 
-        if (dryRun) return;
+        if (dryRun) {
+            return 0;
+        }
 
         std::vector<StorePath> outPaths;
 
@@ -613,6 +617,8 @@ static void main_nix_build(AsyncIoRoot & aio, std::string programName, Strings a
         for (auto & path : outPaths)
             std::cout << store->printStorePath(path) << '\n';
     }
+
+    return 0;
 }
 
 void registerLegacyNixBuildAndNixShell() {
