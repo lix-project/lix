@@ -19,8 +19,12 @@ struct BinaryCacheStoreConfig : virtual StoreConfig
 {
     using StoreConfig::StoreConfig;
 
-    const Setting<std::string> compression{this, "xz", "compression",
-        "NAR compression method (`xz`, `bzip2`, `gzip`, `zstd`, or `none`)."};
+    const Setting<std::string> compression{
+        this,
+        "zstd",
+        "compression",
+        "NAR compression method (`xz`, `bzip2`, `gzip`, `zstd`, or `none`)."
+    };
 
     const Setting<bool> writeNARListing{this, false, "write-nar-listing",
         "Whether to write a JSON file that lists the files in each NAR."};
@@ -40,12 +44,19 @@ struct BinaryCacheStoreConfig : virtual StoreConfig
     const Setting<bool> parallelCompression{this, false, "parallel-compression",
         "Enable multi-threaded compression of NARs. This is currently only available for `xz` and `zstd`."};
 
-    const Setting<int> compressionLevel{this, -1, "compression-level",
+    const Setting<int> compressionLevel{
+        this,
+        -1,
+        "compression-level",
         R"(
           The *preset level* to be used when compressing NARs.
           The meaning and accepted values depend on the compression method selected.
           `-1` specifies that the default compression level should be used.
-        )"};
+
+          Note: when using zstd `-1` will select level 12 to approximately match xz compression
+          ratios at default settings rather than the zstd library default of 3.
+        )"
+    };
 };
 
 

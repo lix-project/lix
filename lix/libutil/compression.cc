@@ -465,6 +465,17 @@ ref<CompressionSink> makeCompressionSink(const std::string & method, Sink & next
     std::vector<std::string> la_supports = {
         "bzip2", "compress", "grzip", "gzip", "lrzip", "lz4", "lzip", "lzma", "lzop", "xz", "zstd"
     };
+
+    // NOTE: Lix overrides the default here because we want the default zstd behavior
+    // to perform well on compression ratios in the hopes to approach what xz provided in the past.
+    // We choose one that is much faster than xz while being in range of xz compression ratios.
+    //
+    // In our experience, further levels provides marginal benefits but makes the compression speed
+    // much slower in exchange.
+    if (level == COMPRESSION_LEVEL_DEFAULT && method == "zstd") {
+        level = 12;
+    }
+
     if (std::find(la_supports.begin(), la_supports.end(), method) != la_supports.end()) {
         return make_ref<ArchiveCompressionSink>(nextSink, method, parallel, level);
     }

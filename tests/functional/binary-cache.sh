@@ -73,10 +73,10 @@ basicDownloadTests
 # Test whether Lix notices if the NAR doesn't match the hash in the NAR info.
 clearStore
 
-nar=$(ls $cacheDir/nar/*.nar.xz | head -n1)
+nar=$(ls $cacheDir/nar/*.nar.zst | head -n1)
 mv $nar $nar.good
 mkdir -p $TEST_ROOT/empty
-nix-store --dump $TEST_ROOT/empty | xz > $nar
+nix-store --dump $TEST_ROOT/empty | zstd - --stdout > $nar
 
 expect 1 nix-build --substituters "file://$cacheDir" --no-require-sigs dependencies.nix -o $TEST_ROOT/result 2>&1 | tee $TEST_ROOT/log
 grepQuiet "hash mismatch" $TEST_ROOT/log

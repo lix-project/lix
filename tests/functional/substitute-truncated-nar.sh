@@ -15,13 +15,13 @@ path=$(build)
 nix copy --to "$BINARY_CACHE" "$path"
 nix-collect-garbage >/dev/null 2>&1
 
-nar=0bylmx35yjy2b1b4k7gjsl7i4vc03cpmryb41grfb1mp40n3hifl.nar.xz
+nar=0c3y7p42issm0ydjilwvk0drv958p4p4d2d6c7y5ksmzmbf7rfhg.nar.zst
 
 [ -e $cacheDir/nar/$nar ] || fail "long nar missing?"
 
-xzcat $cacheDir/nar/$nar > $TEST_HOME/tmp
+zstdcat $cacheDir/nar/$nar > $TEST_HOME/tmp
 truncate -s $(( $(stat -c %s $TEST_HOME/tmp) - 10 )) $TEST_HOME/tmp
-xz < $TEST_HOME/tmp > $cacheDir/nar/$nar
+zstd - --stdout < $TEST_HOME/tmp > $cacheDir/nar/$nar
 
 # Copying back '$path' from the binary cache. This should fail as it is truncated
 if build --option substituters "$BINARY_CACHE" --option require-sigs false -j0; then

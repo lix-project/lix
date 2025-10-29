@@ -61,6 +61,7 @@
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
   xz,
+  zstd,
   yq,
 
   busybox-sandbox-shell,
@@ -331,6 +332,7 @@ stdenv.mkDerivation (finalAttrs: {
     jq
     yq
     lsof
+    zstd
   ]
   ++ lib.optional hostPlatform.isLinux util-linuxMinimal
   ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
