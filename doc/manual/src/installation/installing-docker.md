@@ -60,3 +60,10 @@ Then:
 ```console
 $ docker run -ti lix
 ```
+
+# Known issues
+
+Lix in Docker is very sensitive to **functional** DNS resolution if you are running with [Pasta protections](../advanced-topics/pasta.md) which are enabled by default since Lix 2.93.0 on most distributions.
+If you notice failure to download things, double check whether your **first** DNS entry in `/etc/resolv.conf` is functional.
+
+Lix with [Pasta protections](../advanced-topics/pasta.md) does not support failing over the next entries.
