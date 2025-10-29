@@ -493,8 +493,7 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
         registerLegacyCommands();
         auto legacy = (*LegacyCommandRegistry::commands)[programName];
         if (legacy) {
-            legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
-            return 0;
+            return legacy(aio, std::string(baseNameOf(argv[0])), Strings(argv + 1, argv + argc));
         }
     }
 
