@@ -900,15 +900,9 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
 
     static constexpr auto flags = std::regex::ECMAScript | std::regex::multiline;
     static auto lineRegex = regex::parse("^nameserver\\s.*$", flags);
-    static auto v4Regex = regex::parse("^nameserver\\s+\\d{1,3}\\.", flags);
-    static auto v6Regex = regex::parse("^nameserver.*:", flags);
     std::string nsInSandbox = "\n";
-    if (std::regex_search(fromHost, v4Regex)) {
-        nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV4);
-    }
-    if (std::regex_search(fromHost, v6Regex)) {
-        nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV6);
-    }
+    nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV4);
+    nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV6);
     return std::regex_replace(fromHost, lineRegex, "") + nsInSandbox;
 }
 
