@@ -1,3 +1,4 @@
+#include <type_traits>
 #if ENABLE_S3
 
 #include "lix/libstore/s3.hh"
@@ -13,6 +14,7 @@
 #include "lix/libutil/strings.hh"
 
 #include <kj/async.h>
+#include <kj/debug.h>
 #include <memory>
 
 #include <aws/core/Aws.h>
@@ -45,6 +47,36 @@ struct S3Error : public Error
     S3Error(Aws::S3::S3Errors err, const Args & ... args)
         : Error(args...), err(err) { };
 };
+
+namespace {
+template<typename T>
+struct FulfillerWrapper
+{
+    kj::Own<kj::CrossThreadPromiseFulfiller<T>> wrapped;
+
+    explicit FulfillerWrapper(kj::Own<kj::CrossThreadPromiseFulfiller<T>> fulfiller)
+        : wrapped(std::move(fulfiller))
+    {
+    }
+
+    ~FulfillerWrapper() noexcept
+    {
+        wrapped->reject(KJ_EXCEPTION(FAILED, "async job finished without notification"));
+    }
+
+    template<typename... Args>
+    void fulfill(Args &&... args) const
+    {
+        wrapped->fulfill(std::forward<Args>(args)...);
+    }
+};
+
+template<typename T>
+std::shared_ptr<FulfillerWrapper<T>> wrap(kj::Own<kj::CrossThreadPromiseFulfiller<T>> fulfiller)
+{
+    return std::make_shared<FulfillerWrapper<T>>(std::move(fulfiller));
+}
+}
 
 /* Helper: given an Outcome<R, E>, return R in case of success, or
    throw an exception in case of an error. */
@@ -177,11 +209,12 @@ try {
         auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::GetObjectOutcome>();
         client->GetObjectAsync(
             request,
-            [&](const Aws::S3::S3Client *,
-                const Aws::S3::Model::GetObjectRequest &,
-                Aws::S3::Model::GetObjectOutcome res,
-                const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
-                pfp.fulfiller->fulfill(std::move(res));
+            [fulfiller{wrap(std::move(pfp.fulfiller))
+            }](const Aws::S3::S3Client *,
+               const Aws::S3::Model::GetObjectRequest &,
+               Aws::S3::Model::GetObjectOutcome res,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                fulfiller->fulfill(std::move(res));
             }
         );
         auto result = checkAws(fmt("AWS error fetching '%s'", key), co_await pfp.promise);
@@ -350,11 +383,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::HeadObjectOutcome>();
         s3Helper.client->HeadObjectAsync(
             Aws::S3::Model::HeadObjectRequest().WithBucket(bucketName).WithKey(path),
-            [&](const Aws::S3::S3Client *,
-                const Aws::S3::Model::HeadObjectRequest &,
-                const Aws::S3::Model::HeadObjectOutcome & res,
-                const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
-                pfp.fulfiller->fulfill(auto(res));
+            [fulfiller{wrap(std::move(pfp.fulfiller))
+            }](const Aws::S3::S3Client *,
+               const Aws::S3::Model::HeadObjectRequest &,
+               const Aws::S3::Model::HeadObjectOutcome & res,
+               const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                fulfiller->fulfill(auto(res));
             }
         );
         auto res = co_await pfp.promise;
@@ -395,9 +429,9 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 
         struct TransferContext : Aws::Client::AsyncCallerContext
         {
-            kj::CrossThreadPromiseFulfiller<void> * signal;
-            explicit TransferContext(kj::CrossThreadPromiseFulfiller<void> * signal)
-                : signal(signal)
+            FulfillerWrapper<void> signal;
+            explicit TransferContext(kj::Own<kj::CrossThreadPromiseFulfiller<void>> signal)
+                : signal(std::move(signal))
             {
             }
         };
@@ -425,9 +459,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                             auto context = std::static_pointer_cast<const TransferContext>(
                                 transferHandle->GetContext()
                             );
-                            if (context->signal) {
-                                context->signal->fulfill();
-                            }
+                            context->signal.fulfill();
                         }
                     };
 
@@ -449,7 +481,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                 path,
                 mimeType,
                 Aws::Map<Aws::String, Aws::String>(),
-                std::make_shared<TransferContext>(pfp.fulfiller.get()) /*, contentEncoding */
+                std::make_shared<TransferContext>(std::move(pfp.fulfiller)) /*, contentEncoding */
             );
 
             co_await pfp.promise;
@@ -480,11 +512,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
             auto pfp = kj::newPromiseAndCrossThreadFulfiller<Aws::S3::Model::PutObjectOutcome>();
             s3Helper.client->PutObjectAsync(
                 request,
-                [&](const Aws::S3::S3Client *,
-                    const Aws::S3::Model::PutObjectRequest &,
-                    const Aws::S3::Model::PutObjectOutcome & res,
-                    const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
-                    pfp.fulfiller->fulfill(auto(res));
+                [fulfiller{wrap(std::move(pfp.fulfiller))
+                }](const Aws::S3::S3Client *,
+                   const Aws::S3::Model::PutObjectRequest &,
+                   const Aws::S3::Model::PutObjectOutcome & res,
+                   const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                    fulfiller->fulfill(auto(res));
                 }
             );
             auto result = checkAws(fmt("AWS error uploading '%s'", path), co_await pfp.promise);
@@ -579,11 +612,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                     .WithBucket(bucketName)
                     .WithDelimiter("/")
                     .WithMarker(marker),
-                [&](const Aws::S3::S3Client *,
-                    const Aws::S3::Model::ListObjectsRequest &,
-                    const Aws::S3::Model::ListObjectsOutcome & res,
-                    const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
-                    pfp.fulfiller->fulfill(auto(res));
+                [fulfiller{wrap(std::move(pfp.fulfiller))
+                }](const Aws::S3::S3Client *,
+                   const Aws::S3::Model::ListObjectsRequest &,
+                   const Aws::S3::Model::ListObjectsOutcome & res,
+                   const std::shared_ptr<const Aws::Client::AsyncCallerContext> &) {
+                    fulfiller->fulfill(auto(res));
                 }
             );
             auto res =
