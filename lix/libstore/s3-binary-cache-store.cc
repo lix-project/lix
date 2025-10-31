@@ -159,11 +159,24 @@ class RetryStrategy : public Aws::Client::DefaultRetryStrategy
     bool ShouldRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>& error, long attemptedRetries) const override
     {
         auto retry = Aws::Client::DefaultRetryStrategy::ShouldRetry(error, attemptedRetries);
-        if (retry)
-            printError("AWS error '%s' (%s), will retry in %d ms",
-                error.GetExceptionName(),
-                error.GetMessage(),
-                CalculateDelayBeforeNextRetry(error, attemptedRetries));
+        if (retry) {
+            if (error.GetExceptionName() != "") {
+                printError(
+                    "AWS error '%s' (%s) on request ID '%s', will retry in %d ms",
+                    error.GetExceptionName(),
+                    error.GetMessage(),
+                    error.GetRequestId(),
+                    CalculateDelayBeforeNextRetry(error, attemptedRetries)
+                );
+            } else {
+                printError(
+                    "AWS error (error type: %d) on request ID '%s', will retry in %d ms",
+                    error.GetErrorType(),
+                    error.GetRequestId(),
+                    CalculateDelayBeforeNextRetry(error, attemptedRetries)
+                );
+            }
+        }
         return retry;
     }
 };
