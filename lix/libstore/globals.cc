@@ -116,7 +116,7 @@ Settings::Settings()
        you'll want to improve `getSelfExe()` to work on your platform.
      */
     std::string nixExePath = nixBinDir + "/nix";
-    if (!pathExists(nixExePath)) {
+    if (!pathAccessible(nixExePath)) {
         nixExePath = getSelfExe().value_or("nix");
     }
     buildHook.setDefault(Strings {
