@@ -79,7 +79,8 @@ struct CmdDoctor : StoreCommand
         PathSet dirs;
 
         for (auto & dir : tokenizeString<Strings>(getEnv("PATH").value_or(""), ":"))
-            if (pathExists(dir + "/nix-env"))
+            // Inaccessible-but-extant PATH elements can't be executed anyway.
+            if (pathAccessible(dir + "/nix-env"))
                 dirs.insert(dirOf(canonPath(dir + "/nix-env", true)));
 
         if (dirs.size() != 1) {
