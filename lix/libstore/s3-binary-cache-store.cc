@@ -312,6 +312,28 @@ struct S3BinaryCacheStoreConfig final : BinaryCacheStoreConfig
     }
 };
 
+namespace {
+struct TransferContext : Aws::Client::AsyncCallerContext
+{
+    FulfillerWrapper<void> signal;
+    explicit TransferContext(kj::Own<kj::CrossThreadPromiseFulfiller<void>> signal)
+        : signal(std::move(signal))
+    {
+    }
+};
+}
+
+static void notifyIfTransferFinished(const std::shared_ptr<const TransferHandle> & transferHandle)
+{
+    if (transferHandle->GetStatus() != TransferStatus::NOT_STARTED
+        && transferHandle->GetStatus() != TransferStatus::IN_PROGRESS)
+    {
+        auto context =
+            std::static_pointer_cast<const TransferContext>(transferHandle->GetContext());
+        context->signal.fulfill();
+    }
+}
+
 struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
 {
     S3BinaryCacheStoreConfig config_;
@@ -432,15 +454,6 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         static std::shared_ptr<Aws::Utils::Threading::PooledThreadExecutor>
             executor = std::make_shared<Aws::Utils::Threading::PooledThreadExecutor>(maxThreads);
 
-        struct TransferContext : Aws::Client::AsyncCallerContext
-        {
-            FulfillerWrapper<void> signal;
-            explicit TransferContext(kj::Own<kj::CrossThreadPromiseFulfiller<void>> signal)
-                : signal(std::move(signal))
-            {
-            }
-        };
-
         std::call_once(transferManagerCreated, [&]()
         {
             if (config().multipartUpload) {
@@ -458,14 +471,19 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
                             transferHandle->GetBytesTransferred(),
                             transferHandle->GetBytesTotalSize());
 
-                        if (transferHandle->GetStatus() != TransferStatus::NOT_STARTED
-                            && transferHandle->GetStatus() != TransferStatus::IN_PROGRESS)
-                        {
-                            auto context = std::static_pointer_cast<const TransferContext>(
-                                transferHandle->GetContext()
-                            );
-                            context->signal.fulfill();
-                        }
+                        notifyIfTransferFinished(transferHandle);
+                    };
+
+                transferConfig.transferStatusUpdatedCallback =
+                    [](const TransferManager * transferManager,
+                       const std::shared_ptr<const TransferHandle> & transferHandle) {
+                        debug(
+                            "transfer ('%s') status updated to '%s'",
+                            transferHandle->GetKey(),
+                            transferHandle->GetStatus()
+                        );
+
+                        notifyIfTransferFinished(transferHandle);
                     };
 
                 transferManager = TransferManager::Create(transferConfig);
