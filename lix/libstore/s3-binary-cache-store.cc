@@ -134,17 +134,22 @@ S3Helper::S3Helper(
     const std::string & profile,
     const std::string & region,
     const std::string & scheme,
-    const std::string & endpoint)
+    const std::string & endpoint
+)
     : config(makeConfig(region, scheme, endpoint))
     , client(make_ref<Aws::S3::S3Client>(
-            profile == ""
-            ? std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
-                std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>())
-            : std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
-                std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(profile.c_str())),
-            *config,
-            Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-            endpoint.empty()))
+          profile == "" ? std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
+                              std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>()
+                          )
+                        : std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
+                              std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+                                  profile.c_str()
+                              )
+                          ),
+          *config,
+          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::RequestDependent,
+          endpoint.empty()
+      ))
 {
 }
 
