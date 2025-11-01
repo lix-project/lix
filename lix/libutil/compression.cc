@@ -296,8 +296,10 @@ struct DecompressorPipes
 // but those few are unavoidable *anyway* (or we might starve other promises in the system)
 struct DecompressionStream : DecompressorPipes, AsyncInputStream
 {
+    // buffer size chosen by lifting the maximum from kj decompression wrappers
+    static constexpr size_t BUF_SIZE = 8192;
+
     box_ptr<AsyncInputStream> inner;
-    std::unique_ptr<FdSink> sink;
     std::unique_ptr<Source> decompressor;
     std::future<void> thread;
     std::exception_ptr feedExc;
@@ -309,7 +311,6 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
         makeNonBlocking(compressed.writeSide.get());
         makeNonBlocking(uncompressed.readSide.get());
 
-        sink = std::make_unique<FdSink>(uncompressed.writeSide.get());
         decompressor =
             makeDecompressionSource(method, std::make_unique<FdSource>(compressed.readSide.get()));
 
@@ -319,8 +320,33 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
                 uncompressed.writeSide.close();
                 compressed.readSide.close();
             });
-            decompressor->drainInto(*sink);
-            sink->flush();
+
+            IoBuffer buf{BUF_SIZE};
+            bool done = false;
+            while (!done) {
+                if (buf.used() == 0 && !done) {
+                    try {
+                        auto space = buf.getWriteBuffer();
+                        auto got = decompressor->read(space.data(), space.size());
+                        buf.added(got);
+                    } catch (EndOfFile &) {
+                        done = true;
+                    }
+                }
+
+                while (buf.used() > 0) {
+                    const auto available = buf.getReadBuffer();
+                    const auto wrote =
+                        ::write(uncompressed.writeSide.get(), available.data(), available.size());
+                    if (wrote >= 0) {
+                        buf.consumed(wrote);
+                    } else if (errno == EPIPE) {
+                        return;
+                    } else {
+                        throw SysError("returning decompressed data");
+                    }
+                }
+            }
         });
         feeder = feed().eagerlyEvaluate([&](auto e) {
             feedExc = std::make_exception_ptr(std::move(e));
@@ -338,6 +364,13 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
         uncompressed.readSide.close();
         // don't poll the decompressor future, we don't want the error.
         // we just want it to be gone so ~future doesn't block forever.
+        if (thread.valid()) {
+            try {
+                thread.get();
+            } catch (...) {
+                ignoreExceptionInDestructor();
+            }
+        }
     }
 
     kj::Promise<void> feed()
@@ -347,8 +380,7 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
             writeObserver.reset();
             compressed.writeSide.close();
         });
-        // buffer size chosen by lifting the maximum from kj decompression wrappers
-        IoBuffer buf{8192};
+        IoBuffer buf{BUF_SIZE};
         while (true) {
             if (buf.used() == 0) {
                 const auto space = buf.getWriteBuffer();
