@@ -15,6 +15,13 @@
 
 namespace nix {
 
+rlimit getOpenFilesLimit()
+{
+    struct rlimit lim;
+    getrlimit(RLIMIT_NOFILE, &lim);
+    return lim;
+}
+
 std::string readFile(int fd)
 {
     struct stat st;

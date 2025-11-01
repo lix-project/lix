@@ -3,11 +3,17 @@
 
 #include "lix/libutil/error.hh"
 #include "lix/libutil/generator.hh"
+#include <sys/resource.h>
 
 namespace nix {
 
 struct Sink;
 struct Source;
+
+/**
+ * Return the limit of open files on this system.
+ */
+rlimit getOpenFilesLimit();
 
 /**
  * Read a line from a file descriptor.

@@ -5,6 +5,7 @@
 #include "lix/libstore/nar-info-disk-cache.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/async-semaphore.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/c-calls.hh"
@@ -1123,6 +1124,17 @@ try {
         pathsMap.insert_or_assign(path, path);
 
     Store::PathsSource pathsToCopy;
+    std::shared_ptr<AsyncSemaphore> pathCopyRatelimiter = std::make_shared<AsyncSemaphore>(
+        // Our maximum amount of copies at the same time is
+        // max(25 % of max open files, number of CPUs cores)
+        // On a normal shell, getOpenFilesLimit().rlim_cur == 1024.
+        // Therefore, the capacity would be around 256 as long as it's not a
+        // >256 cores system.
+        std::max(
+            static_cast<uint32_t>(std::ceil(0.25 * getOpenFilesLimit().rlim_cur)),
+            std::thread::hardware_concurrency()
+        )
+    );
 
     auto computeStorePathForDst = [&](const ValidPathInfo & currentPathInfo) -> StorePath {
         auto storePathForSrc = currentPathInfo.path;
@@ -1154,20 +1166,26 @@ try {
         struct SinglePathStream : CopyPathStream
         {
             std::shared_ptr<Activity> act;
+            AsyncSemaphore::Token rateLimitToken;
 
             SinglePathStream(
                 const std::shared_ptr<Activity> & act,
+                AsyncSemaphore::Token && rateLimitToken,
                 size_t expected,
                 box_ptr<AsyncInputStream> inner
             )
                 : CopyPathStream(*act, expected, std::move(inner))
                 , act(act)
+                , rateLimitToken(std::move(rateLimitToken))
             {
             }
         };
 
-        auto source = [](auto & srcStore, auto & dstStore, auto missingPath, auto info
-                      ) -> kj::Promise<Result<box_ptr<AsyncInputStream>>> {
+        auto source = [](auto pathCopyRatelimiter,
+                         auto & srcStore,
+                         auto & dstStore,
+                         auto missingPath,
+                         auto info) -> kj::Promise<Result<box_ptr<AsyncInputStream>>> {
             try {
                 // We can reasonably assume that the copy will happen whenever we
                 // read the path, so log something about that at that point
@@ -1181,15 +1199,30 @@ try {
                     Logger::Fields{storePathS, srcUri, dstUri}
                 ));
 
+                // We prevent the copy process to overwhelm the I/O path.
+                // Certain store implementations may open files which will count
+                // towards the open files limit.
+                auto token = co_await pathCopyRatelimiter->acquire();
                 co_return make_box_ptr<SinglePathStream>(
-                    act, info->narSize, TRY_AWAIT(srcStore.narFromPath(missingPath, act.get()))
+                    act,
+                    std::move(token),
+                    info->narSize,
+                    TRY_AWAIT(srcStore.narFromPath(missingPath, act.get()))
                 );
             } catch (...) {
                 co_return result::current_exception();
             }
         };
         pathsToCopy.push_back(std::pair{
-            infoForDst, std::bind(source, std::ref(srcStore), std::ref(dstStore), missingPath, info)
+            infoForDst,
+            std::bind(
+                source,
+                pathCopyRatelimiter,
+                std::ref(srcStore),
+                std::ref(dstStore),
+                missingPath,
+                info
+            )
         });
     }
 
