@@ -41,15 +41,6 @@ struct Machine {
      */
     bool mandatoryMet(const std::set<std::string> & features) const;
 
-    Machine(decltype(storeUri) storeUri,
-        decltype(systemTypes) systemTypes,
-        decltype(sshKey) sshKey,
-        decltype(maxJobs) maxJobs,
-        decltype(speedFactor) speedFactor,
-        decltype(supportedFeatures) supportedFeatures,
-        decltype(mandatoryFeatures) mandatoryFeatures,
-        decltype(sshPublicHostKey) sshPublicHostKey);
-
     kj::Promise<Result<std::pair<ref<Store>, Pipe>>> openStore() const;
 };
 

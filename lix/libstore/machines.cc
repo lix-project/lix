@@ -8,41 +8,6 @@
 
 namespace nix {
 
-Machine::Machine(decltype(storeUri) storeUri,
-    decltype(systemTypes) systemTypes,
-    decltype(sshKey) sshKey,
-    decltype(maxJobs) maxJobs,
-    decltype(speedFactor) speedFactor,
-    decltype(supportedFeatures) supportedFeatures,
-    decltype(mandatoryFeatures) mandatoryFeatures,
-    decltype(sshPublicHostKey) sshPublicHostKey) :
-    storeUri(
-        // Backwards compatibility: if the URI is schemeless, is not a path,
-        // and is not one of the special store connection words, prepend
-        // ssh://.
-        storeUri.find("://") != std::string::npos
-        || storeUri.find("/") != std::string::npos
-        || storeUri == "auto"
-        || storeUri == "daemon"
-        || storeUri == "local"
-        || storeUri.starts_with("auto?")
-        || storeUri.starts_with("daemon?")
-        || storeUri.starts_with("local?")
-        || storeUri.starts_with("?")
-        ? storeUri
-        : "ssh://" + storeUri),
-    systemTypes(systemTypes),
-    sshKey(sshKey),
-    maxJobs(maxJobs),
-    speedFactor(speedFactor == 0.0f ? 1.0f : speedFactor),
-    supportedFeatures(supportedFeatures),
-    mandatoryFeatures(mandatoryFeatures),
-    sshPublicHostKey(sshPublicHostKey)
-{
-    if (speedFactor < 0.0)
-        throw UsageError("speed factor must be >= 0");
-}
-
 bool Machine::systemSupported(const std::string & system) const
 {
     return system == "builtin" || (systemTypes.count(system) > 0);
@@ -71,6 +36,7 @@ try {
 
     StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
+        // Remote builds become flakey, when having more than one ssh connection
         storeParams["max-connections"] = "1";
     }
 
@@ -166,15 +132,43 @@ static Machine parseBuilderLine(const std::string & line)
     if (!isSet(0))
         throw FormatError("bad machine specification: store URL was not found at the first column of a row: '%s'", line);
 
+    auto storeUri = tokens[0];
+    // Backwards compatibility: if the URI is schemeless, is not a path,
+    // and is not one of the special store connection words, prepend
+    // ssh://.
+    storeUri = storeUri.find("://") != std::string::npos || storeUri.find("/") != std::string::npos
+            || storeUri == "auto" || storeUri == "daemon" || storeUri == "local"
+            || storeUri.starts_with("auto?") || storeUri.starts_with("daemon?")
+            || storeUri.starts_with("local?") || storeUri.starts_with("?")
+        ? storeUri
+        : "ssh://" + storeUri;
+
+    auto systemTypes = isSet(1) ? tokenizeString<std::set<std::string>>(tokens[1], ",")
+                                : std::set<std::string>{settings.thisSystem};
+    auto sshKey = isSet(2) ? tokens[2] : "";
+    auto maxJobs = isSet(3) ? parseUnsignedIntField(3) : 1U;
+    auto speedFactor = isSet(4) ? parseFloatField(4) : 1.0f;
+
+    auto supportedFeatures =
+        isSet(5) ? tokenizeString<std::set<std::string>>(tokens[5], ",") : std::set<std::string>{};
+    auto mandatoryFeatures =
+        isSet(6) ? tokenizeString<std::set<std::string>>(tokens[6], ",") : std::set<std::string>{};
+    auto sshPublicHostKey = isSet(7) ? ensureBase64(7) : "";
+
+    speedFactor = speedFactor == 0.0f ? 1.0f : speedFactor;
+    if (speedFactor < 0.0) {
+        throw UsageError("speed factor must be >= 0");
+    }
+
     return {
-        tokens[0],
-        isSet(1) ? tokenizeString<std::set<std::string>>(tokens[1], ",") : std::set<std::string>{settings.thisSystem},
-        isSet(2) ? tokens[2] : "",
-        isSet(3) ? parseUnsignedIntField(3) : 1U,
-        isSet(4) ? parseFloatField(4) : 1.0f,
-        isSet(5) ? tokenizeString<std::set<std::string>>(tokens[5], ",") : std::set<std::string>{},
-        isSet(6) ? tokenizeString<std::set<std::string>>(tokens[6], ",") : std::set<std::string>{},
-        isSet(7) ? ensureBase64(7) : ""
+        storeUri,
+        systemTypes,
+        sshKey,
+        maxJobs,
+        speedFactor,
+        supportedFeatures,
+        mandatoryFeatures,
+        sshPublicHostKey
     };
 }
 
