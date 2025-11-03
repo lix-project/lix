@@ -66,6 +66,8 @@ try {
     co_return result::current_exception();
 }
 
+namespace machines_legacy_parsing {
+
 static std::vector<std::string> expandBuilderLines(const std::string & builders)
 {
     std::vector<std::string> result;
@@ -179,10 +181,12 @@ static Machines parseBuilderLines(const std::vector<std::string> & builders)
     return result;
 }
 
+}
+
 Machines getMachines()
 {
-    const auto builderLines = expandBuilderLines(settings.builders);
-    return parseBuilderLines(builderLines);
+    const auto builderLines = machines_legacy_parsing::expandBuilderLines(settings.builders);
+    return machines_legacy_parsing::parseBuilderLines(builderLines);
 }
 
 }
