@@ -417,7 +417,10 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
             if (const auto got = ::read(uncompressed.readSide.get(), buffer, size); got > 0) {
                 co_return got;
             } else if (got == 0) {
-                // decompresser must have finished, poll for any errors and return EOF
+                if (feedExc) {
+                    std::rethrow_exception(feedExc);
+                }
+                // decompresser must have finished, poll for any errors and return EOF.
                 thread.get();
                 co_return std::nullopt;
             } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
