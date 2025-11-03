@@ -2,6 +2,10 @@ source common.sh
 
 clearStore
 
+effectiveUser() {
+    whoami || id -u
+}
+
 withDaemonTrusting() {
     local trusting="$1"
     shift
@@ -24,10 +28,10 @@ trusted-users = $trusting
 )
 
 (
-    withDaemonTrusting "$(whoami)" --default-trust
+    withDaemonTrusting "$(effectiveUser)" --default-trust
     nix store ping --json | jq -e '.trusted'
 )
 (
-    withDaemonTrusting "$(whoami)" --force-untrusted
+    withDaemonTrusting "$(effectiveUser)" --force-untrusted
     nix store ping --json | jq -e '.trusted | not'
 )
