@@ -1,6 +1,7 @@
 import stat
 import sys
 import pytest
+import signal
 from pathlib import Path
 from textwrap import dedent
 from functional2.testlib.fixtures.env import ManagedEnv
@@ -127,3 +128,22 @@ def test_custom_sub_command_flag_handling(nix: Nix, tmp_path: Path):
     # `--` special flag
     # test positional arguments, but only `nix-copy-closure` implements some, and it's pesky to test here.
     ...
+
+
+@pytest.mark.usefixtures("path")
+def test_custom_sub_command_signals(nix: Nix, custom_sub_command_path: Path):
+    command = custom_sub_command_path / "lix-signals"
+    command.write_text(
+        dedent(f"""\
+            #!{sys.executable}
+            import signal
+            print(signal.pthread_sigmask(signal.SIG_BLOCK, []))
+        """)
+    )
+    command.chmod(stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR)
+
+    current_mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])
+    nix.settings.feature("lix-custom-sub-commands")
+    result = nix.nix(["signals"], nix_exe="lix").run()
+    result.ok()
+    assert result.stdout_s.strip() == str(current_mask)

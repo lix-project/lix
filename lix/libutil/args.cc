@@ -1,5 +1,6 @@
 #include "lix/libutil/args.hh"
 #include "c-calls.hh"
+#include "current-process.hh"
 #include "lix/libutil/args/root.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/strings.hh"
@@ -605,6 +606,7 @@ void ExternalCommand::run() {
         "running external command: %s",
         concatMapStringsSep(" ", externalArgv, shellEscape)
     );
+    restoreProcessContext();
     sys::execv(absoluteBinaryPath, externalArgv);
 
     throw SysError(errno, "failed to execute external command '%1%'", absoluteBinaryPath);
