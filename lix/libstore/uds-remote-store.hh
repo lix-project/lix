@@ -49,6 +49,16 @@ public:
         return LocalFSStore::narFromPath(path, context);
     }
 
+    kj::Promise<Result<void>> repairPath(const StorePath & path) override
+    try {
+        unsupported(
+            "repairPath",
+            HintFmt("This command must be run as %s with %s", "root", "--store local").str()
+        );
+    } catch (...) {
+        return {result::current_exception()};
+    }
+
     /**
      * Implementation of `IndirectRootStore::addIndirectRoot()` which
      * delegates to the remote store.

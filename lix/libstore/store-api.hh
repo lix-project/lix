@@ -27,6 +27,7 @@
 #include <atomic>
 #include <limits>
 #include <map>
+#include <optional>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -927,11 +928,17 @@ protected:
      * \todo Using this should be a last resort. It is better to make
      * the method "virtual pure" and/or move it to a subclass.
      */
-    [[noreturn]] void unsupported(const std::string & op)
+    [[noreturn]]
+    void
+    unsupported(const std::string & op, const std::optional<std::string_view> info = std::nullopt)
     {
-        throw Unsupported("operation '%s' is not supported by store '%s'", op, getUri());
+        throw Unsupported(
+            "operation '%s' is not supported by store '%s'%s",
+            op,
+            getUri(),
+            Uncolored(info ? fmt(". %s", *info) : "")
+        );
     }
-
 };
 
 
