@@ -39,6 +39,7 @@
 #include <sys/resource.h>
 #include <fstream>
 #include <functional>
+#include <ranges>
 
 #include <sys/resource.h>
 #include <boost/container/small_vector.hpp>
@@ -1303,112 +1304,139 @@ static std::string showAttrPath(EvalState & state, Env & env, const AttrPath & a
     return out.str();
 }
 
+/** Returns `nullptr` if we should be using a default instead. */
+Attr const * ExprSelect::selectSingleAttr(
+    EvalState & state, Env & env, AttrName const & attrName, Value & vCurrent
+)
+{
+    Symbol const attrSym = getName(attrName, state, env);
+
+    try {
+        state.forceValue(vCurrent, pos);
+    } catch (Error & e) {
+        // clang-format off
+        e.addTrace(state.ctx.positions[attrName.pos], HintFmt(
+            "while evaluating an expression to select '%s' on it", state.ctx.symbols[attrSym]
+        ));
+        // clang-format on
+        throw;
+    }
+
+    if (vCurrent.type() != nAttrs) {
+        // If we have an `or` provided default, then it doesn't have to be an attrset.
+        // Let the caller know there's no attr value here.
+        if (def != nullptr) {
+            return nullptr;
+        }
+
+        // Otherwise, we must type error.
+        // clang-format off
+        state.ctx.errors.make<TypeError>(
+            "expected a set but found %s: %s",
+            showType(vCurrent),
+            ValuePrinter(state, vCurrent, errorPrintOptions)
+        ).addTrace(
+            attrName.pos,
+            HintFmt("while selecting '%s'", state.ctx.symbols[attrSym])
+        ).debugThrow();
+        // clang-format on
+    }
+
+    // Now that we know it's an attrset, we can actually look for the name.
+
+    auto const attrIt = vCurrent.attrs()->get(attrSym);
+    if (!attrIt) {
+
+        // Again if we have an `or` provided default, then missing attr is not an error.
+        if (def != nullptr) {
+            return nullptr;
+        }
+
+        // Otherwise, we collect all attr names and throw an attr missing error.
+
+        std::set<std::string> const allAttrNames = *vCurrent.attrs()
+            | std::views::transform([&state](auto const & attr) {
+                  return std::string{state.ctx.symbols[attr.name]};
+              })
+            | std::ranges::to<std::set>();
+
+        auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[attrSym]);
+        state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[attrSym])
+            .atPos(attrName.pos)
+            .withSuggestions(suggestions)
+            .withFrame(env, *this)
+            .debugThrow();
+    }
+
+    // If we made it here, then we successfully found the attribute.
+    // Return it to our caller!
+
+    return attrIt;
+}
 
 void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 {
-    Value vFirst;
-
-    // Pointer to the current attrset Value in this select chain.
-    Value * vCurrent = &vFirst;
     // Position for the current attrset Value in this select chain.
     PosIdx posCurrent;
     // Position for the current selector in this select chain.
     PosIdx posCurrentSyntax;
 
+    Value baseSelectee;
     try {
-        e->eval(state, env, vFirst);
+        // Evaluate the original thing we're selecting on.
+        e->eval(state, env, baseSelectee);
     } catch (Error & e) {
-        assert(this->e != nullptr);
-        e.addTrace(
-            state.ctx.positions[getPos()],
+        // clang-format off
+        e.addTrace(state.ctx.positions[getPos()], HintFmt(
             "while evaluating an expression to select '%s' on it",
-            showAttrPath(state.ctx.symbols, this->attrPath)
-        );
+            showAttrPath(state.ctx.symbols, attrPath)
+        ));
+        // clang-format on
         throw;
     }
 
     try {
-        for (auto const & [partIdx, currentAttrName] : enumerate(attrPath)) {
+        // With the original selectee evaluated, we'll walk the selection path starting
+        // with the evaluated original selectee.
+        std::reference_wrapper<Value> curSelectee = std::ref(baseSelectee);
+        for (AttrName const & attrName : attrPath) {
             state.ctx.stats.nrLookups++;
 
-            Symbol const name = getName(currentAttrName, state, env);
-
-            try {
-                state.forceValue(*vCurrent, pos);
-            } catch (Error & e) {
-                e.addTrace(
-                    state.ctx.positions[currentAttrName.pos],
-                    "while evaluating an expression to select '%s' on it",
-                    state.ctx.symbols[name]
-                );
-                throw;
+            // Select `attrName` on `curSelectee`.
+            auto const attr = selectSingleAttr(state, env, attrName, curSelectee.get());
+            if (!attr) {
+                // Use default.
+                this->def->eval(state, env, v);
+                return;
             }
 
-            if (vCurrent->type() != nAttrs) {
+            // The selection worked. If we have another iteration, then we use `attr->value`
+            // as the thing to select on. If this is the last iteration, then `attr->value`
+            // is the final value this ExprSelect evaluated to.
+            curSelectee = std::ref(attr->value);
 
-                // If we have an `or` provided default,
-                // then this is allowed to not be an attrset.
-                if (def != nullptr) {
-                    this->def->eval(state, env, v);
-                    return;
-                }
-
-                // Otherwise, we must type error.
-                state.ctx.errors.make<TypeError>(
-                    "expected a set but found %s: %s",
-                    showType(*vCurrent),
-                    ValuePrinter(state, *vCurrent, errorPrintOptions)
-                ).addTrace(
-                    currentAttrName.pos,
-                    HintFmt("while selecting '%s'", state.ctx.symbols[name])
-                ).debugThrow();
+            posCurrent = attr->pos;
+            posCurrentSyntax = attrName.pos;
+            if (state.ctx.stats.countCalls) {
+                state.ctx.stats.attrSelects[posCurrent]++;
             }
-
-            // Now that we know this is actually an attrset, try to find an attr
-            // with the selected name.
-            auto attrIt = vCurrent->attrs()->get(name);
-            if (!attrIt) {
-
-                // If we have an `or` provided default, then we'll use that.
-                if (def != nullptr) {
-                    this->def->eval(state, env, v);
-                    return;
-                }
-
-                // Otherwise, missing attr error.
-                std::set<std::string> allAttrNames;
-                for (auto const & attr : *vCurrent->attrs()) {
-                    allAttrNames.emplace(state.ctx.symbols[attr.name]);
-                }
-                auto suggestions = Suggestions::bestMatches(allAttrNames, state.ctx.symbols[name]);
-                state.ctx.errors.make<EvalError>("attribute '%s' missing", state.ctx.symbols[name])
-                    .atPos(currentAttrName.pos)
-                    .withSuggestions(suggestions)
-                    .withFrame(env, *this)
-                    .debugThrow();
-            }
-
-            // If we're here, then we successfully found the attribute.
-            // Set our currently operated-on attrset to this one, and keep going.
-            vCurrent = &attrIt->value;
-            posCurrent = attrIt->pos;
-            posCurrentSyntax = currentAttrName.pos;
-            if (state.ctx.stats.countCalls) state.ctx.stats.attrSelects[posCurrent]++;
         }
 
-        state.forceValue(*vCurrent, (posCurrent ? posCurrent : posCurrentSyntax));
+        state.forceValue(curSelectee.get(), posCurrent ? posCurrent : posCurrentSyntax);
 
-    } catch (Error & e) {
-        auto pos2r = state.ctx.positions[posCurrent];
-        if (pos2r && !std::get_if<Pos::Hidden>(&pos2r.origin))
-            e.addTrace(pos2r, "while evaluating the attribute '%1%'",
-                showAttrPath(state, env, attrPath));
+        v = curSelectee.get();
+
+    } catch (Error & err) {
+        auto const & lastPos = state.ctx.positions[posCurrent];
+        if (lastPos && !std::get_if<Pos::Hidden>(&lastPos.origin)) {
+            err.addTrace(
+                lastPos, "while evaluating the attribute '%s'", showAttrPath(state, env, attrPath)
+            );
+        }
+
         throw;
     }
-
-    v = *vCurrent;
 }
-
 
 void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
 {

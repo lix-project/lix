@@ -289,6 +289,8 @@ struct ExprInheritFrom : Expr
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
+struct Attr;
+
 struct ExprSelect : Expr
 {
     /** The expression attributes are being selected on. e.g. `foo` in `foo.bar.baz`. */
@@ -307,6 +309,9 @@ struct ExprSelect : Expr
     JSON toJSON(const SymbolTable & symbols) const override;
     void eval(EvalState & state, Env & env, Value & v) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
+
+private:
+    Attr const * selectSingleAttr(EvalState & state, Env & env, AttrName const & attrName, Value & vCurrent);
 };
 
 struct ExprOpHasAttr : Expr
