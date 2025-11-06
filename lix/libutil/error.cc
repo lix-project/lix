@@ -1,6 +1,7 @@
 #include "lix/libutil/concepts.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/error-trace.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/position.hh"
 #include "lix/libutil/terminal.hh"
@@ -40,64 +41,6 @@ std::ostream & operator <<(std::ostream & os, const HintFmt & hf)
 {
     return os << hf.str();
 }
-
-Trace Trace::fromDrv(std::shared_ptr<Pos> pos, std::string drvName)
-{
-    DrvTrace dt(drvName);
-
-    HintFmt h(
-        "while evaluating derivation '%s'\n"
-        "  whose name attribute is located at %s",
-        dt.drvName,
-        *pos
-    );
-
-    return Trace{
-        .pos = pos,
-        .hint = h,
-        .drvTrace = dt,
-    };
-
-}
-
-Trace Trace::fromDrvAttr(std::shared_ptr<Pos> pos, std::string drvName, std::string attrOfDrv)
-{
-    DrvTrace dt(drvName);
-
-    HintFmt h("while evaluating attribute '%s' of derivation '%s'", attrOfDrv, dt.drvName);
-
-    return Trace{
-        .pos = pos,
-        .hint = h,
-        .drvTrace = dt,
-    };
-
-}
-
-/**
- * An arbitrarily defined value comparison for the purpose of using traces in the key of a sorted container.
- */
-inline bool operator<(const Trace& lhs, const Trace& rhs)
-{
-    // `std::shared_ptr` does not have value semantics for its comparison
-    // functions, so we need to check for nulls and compare the dereferenced
-    // values here.
-    if (lhs.pos != rhs.pos) {
-        if (!lhs.pos)
-            return true;
-        if (!rhs.pos)
-            return false;
-        if (*lhs.pos != *rhs.pos)
-            return *lhs.pos < *rhs.pos;
-    }
-    // This formats a freshly formatted hint string and then throws it away, which
-    // shouldn't be much of a problem because it only runs when pos is equal, and this function is
-    // used for trace printing, which is infrequent.
-    return lhs.hint.str() < rhs.hint.str();
-}
-inline bool operator> (const Trace& lhs, const Trace& rhs) { return rhs < lhs; }
-inline bool operator<=(const Trace& lhs, const Trace& rhs) { return !(lhs > rhs); }
-inline bool operator>=(const Trace& lhs, const Trace& rhs) { return !(lhs < rhs); }
 
 // print lines of code to the ostream, indicating the error column.
 void printCodeLines(std::ostream & out,
