@@ -22,21 +22,17 @@ struct Pos
 
     struct Stdin {
         ref<std::string> source;
-        bool operator==(const Stdin & rhs) const
-        { return *source == *rhs.source; }
-        bool operator!=(const Stdin & rhs) const
-        { return *source != *rhs.source; }
-        bool operator<(const Stdin & rhs) const
-        { return *source < *rhs.source; }
+        constexpr friend auto operator<=>(Stdin const & lhs, Stdin const & rhs)
+        {
+            return *lhs.source <=> *rhs.source;
+        }
     };
     struct String {
         ref<std::string> source;
-        bool operator==(const String & rhs) const
-        { return *source == *rhs.source; }
-        bool operator!=(const String & rhs) const
-        { return *source != *rhs.source; }
-        bool operator<(const String & rhs) const
-        { return *source < *rhs.source; }
+        constexpr friend auto operator<=>(String const & lhs, String const & rhs)
+        {
+            return *lhs.source <=> *rhs.source;
+        }
     };
     struct Hidden {
         auto operator<=>(const Hidden &) const = default;
