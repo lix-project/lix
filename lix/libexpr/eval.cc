@@ -1406,7 +1406,16 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             auto const attr = selectSingleAttr(state, env, attrName, curSelectee.get());
             if (!attr) {
                 // Use default.
-                this->def->eval(state, env, v);
+                try {
+                    this->def->eval(state, env, v);
+                } catch (Error & err) {
+                    err.addTrace(
+                        state.ctx.positions[this->def->pos],
+                        "while evaluating fallback for missing attribute '%s'",
+                        state.ctx.symbols[getName(attrName, state, env)]
+                    );
+                    throw;
+                }
                 return;
             }
 

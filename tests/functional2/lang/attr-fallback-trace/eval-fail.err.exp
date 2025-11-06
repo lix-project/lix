@@ -1,0 +1,23 @@
+error:
+       … while evaluating fallback for missing attribute 'toebeans'
+         at /pwd/in.nix:6:23:
+            5|
+            6| in catSet.toebeans or thisThrows
+             |                       ^
+            7|
+
+       … while evaluating thisThrows
+         at /pwd/in.nix:6:23:
+            5|
+            6| in catSet.toebeans or thisThrows
+             |                       ^
+            7|
+
+       … caused by explicit throw
+         at /pwd/in.nix:2:16:
+            1| let
+            2|   thisThrows = throw "meow";
+             |                ^
+            3|
+
+       error: meow
