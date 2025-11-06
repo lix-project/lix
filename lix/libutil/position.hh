@@ -38,7 +38,19 @@ struct Pos
         auto operator<=>(const Hidden &) const = default;
     };
 
-    typedef std::variant<std::monostate, Stdin, String, CheckedSourcePath, Hidden> Origin;
+    struct Origin : std::variant<std::monostate, Stdin, String, CheckedSourcePath, Hidden>
+    {
+        using variant = variant;
+
+        // Forward all construction to std::variant.
+        template<typename... Args>
+        constexpr Origin(Args &&... rhs) noexcept(noexcept(variant(std::forward<Args>(rhs)...)))
+            : variant(std::forward<Args>(rhs)...)
+        {
+        }
+
+        std::optional<std::string> getSource() const;
+    };
 
     Origin origin = std::monostate();
 

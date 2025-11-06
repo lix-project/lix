@@ -2,6 +2,35 @@
 
 namespace nix {
 
+std::optional<std::string> Pos::Origin::getSource() const
+{
+    using OptStr = std::optional<std::string>;
+
+    // clang-format off
+    return std::visit(overloaded {
+        [](std::monostate const &) -> OptStr {
+            return std::nullopt;
+        },
+        [](Pos::Stdin const & s) -> OptStr {
+            return *s.source;
+        },
+        [](Pos::String const & s) -> OptStr {
+            return *s.source;
+        },
+        [](CheckedSourcePath const & path) -> OptStr {
+            try {
+                return path.readFile();
+            } catch (Error const &) {
+                return std::nullopt;
+            }
+        },
+        [](Hidden const &) -> OptStr {
+            return std::nullopt;
+        },
+    }, *this);
+    // clang-format on
+}
+
 Pos::Pos(const Pos * other)
 {
     if (!other) {
@@ -44,29 +73,7 @@ std::optional<LinesOfCode> Pos::getCodeLines() const
 
 std::optional<std::string> Pos::getSource() const
 {
-    return std::visit(overloaded {
-        [](const std::monostate &) -> std::optional<std::string> {
-            return std::nullopt;
-        },
-        [](const Pos::Stdin & s) -> std::optional<std::string> {
-            // Get rid of the null terminators added by the parser.
-            return std::string(s.source->c_str());
-        },
-        [](const Pos::String & s) -> std::optional<std::string> {
-            // Get rid of the null terminators added by the parser.
-            return std::string(s.source->c_str());
-        },
-        [](const CheckedSourcePath & path) -> std::optional<std::string> {
-            try {
-                return path.readFile();
-            } catch (Error &) {
-                return std::nullopt;
-            }
-        },
-        [](Hidden) -> std::optional<std::string> {
-            return std::nullopt;
-        }
-    }, origin);
+    return this->origin.getSource();
 }
 
 void Pos::print(std::ostream & out, bool showOrigin) const
