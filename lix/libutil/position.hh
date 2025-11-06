@@ -67,9 +67,15 @@ struct Pos
 
     std::optional<LinesOfCode> getCodeLines() const;
 
-    bool operator==(const Pos & rhs) const = default;
-    bool operator!=(const Pos & rhs) const = default;
-    bool operator<(const Pos & rhs) const;
+    // Not defaulted because it's implicitly deleted because C++ is stupid.
+    constexpr friend auto operator<=>(Pos const & lhs, Pos const & rhs)
+    {
+        return std::forward_as_tuple(lhs.line, lhs.column, lhs.origin)
+            <=> std::forward_as_tuple(rhs.line, rhs.column, rhs.origin);
+    }
+
+    // operator<=> doesn't generate this because it's not defaulted.
+    constexpr friend bool operator==(Pos const & lhs, Pos const & rhs) = default;
 
     struct LinesIterator {
         using difference_type = size_t;
