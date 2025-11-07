@@ -40,6 +40,8 @@
   - [Verifying Build Reproducibility](advanced-topics/diff-hook.md)
   - [Using the `post-build-hook`](advanced-topics/post-build-hook.md)
   - [Pasta](advanced-topics/pasta.md)
+- [Known Issues](known-issues/known-issues.md)
+  - [Limitations around non-isolated builds](known-issues/non-isolated-build-limits.md)
 - [Command Reference](command-ref/command-ref.md)
   - [Common Options](command-ref/opt-common.md)
   - [Common Environment Variables](command-ref/env-common.md)
