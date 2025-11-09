@@ -2680,9 +2680,9 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             return true;
         }
 
-        /* Functions are incomparable. */
+        /* Functions are incomparable, except for identity (see note above about this nonsense). */
         case nFunction:
-            return false;
+            return pointerEq();
 
         case nExternal:
             if (pointerEq()) return true;
