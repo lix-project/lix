@@ -41,7 +41,7 @@ contains Nix.
 > If you are building via the Lix daemon (default on Linux and macOS), it is the Lix daemon user account (that is, `root`) that should have SSH access to a user (not necessarily `root`) on the remote machine.
 >
 > Furthermore, `root` needs to have the public host keys for the remote system in its `.ssh/known_hosts`.
-> To add them to `known_hosts` for root, do `ssh-keyscan USER@HOST | sudo tee -a ~root/.ssh/known_hosts`.
+> To add them to `known_hosts` for root, do `ssh-keyscan HOST | sudo tee -a ~root/.ssh/known_hosts`.
 >
 > If you can’t or don’t want to configure `root` to be able to access the remote machine, you can use a private Nix store instead by passing e.g. `--store ~/my-nix` when running a Nix command from the local machine.
 
