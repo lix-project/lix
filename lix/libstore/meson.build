@@ -55,6 +55,7 @@ file_transfer_setting_definitions = files(
   'file-transfer-settings/download-attempts.md',
   'file-transfer-settings/http-connections.md',
   'file-transfer-settings/http2.md',
+  'file-transfer-settings/http3.md',
   'file-transfer-settings/initial-connect-timeout.md',
   'file-transfer-settings/max-connect-timeout.md',
   'file-transfer-settings/stalled-download-timeout.md',

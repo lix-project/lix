@@ -197,7 +197,9 @@ struct TransferItem
                 .c_str()
         );
         curl_easy_setopt(req.get(), CURLOPT_PIPEWAIT, 1);
-        if (fileTransferSettings.enableHttp2) {
+        if (fileTransferSettings.enableHttp3) {
+            curl_easy_setopt(req.get(), CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_3);
+        } else if (fileTransferSettings.enableHttp2) {
             curl_easy_setopt(req.get(), CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
         } else {
             curl_easy_setopt(req.get(), CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
