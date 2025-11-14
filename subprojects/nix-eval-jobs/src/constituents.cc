@@ -170,6 +170,6 @@ void rewriteAggregates(std::map<std::string, nix::JSON> &jobs,
             job["error"] = ss.str();
         }
 
-        std::cout << job.dump() << "\n" << std::flush;
+        nix::logger->writeToStdout(job.dump());
     }
 }

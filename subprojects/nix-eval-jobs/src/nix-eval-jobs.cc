@@ -320,7 +320,7 @@ void collector(MyArgs &myArgs, Sync<State> &state_,
                 auto named = response.find("namedConstituents");
                 if (named == response.end() || named->empty()) {
                     response.erase("namedConstituents");
-                    std::cout << response.dump() << "\n" << std::flush;
+                    logger->writeToStdout(response.dump());
                 }
             }
 
@@ -421,14 +421,14 @@ int main(int argc, char **argv) {
                         state->jobs[e.a]["error"] = e.message();
                         state->jobs[e.b]["error"] = e.message();
 
-                        std::cout << state->jobs[e.a].dump() << "\n"
-                                  << state->jobs[e.b].dump() << "\n";
+                        logger->writeToStdout(state->jobs[e.a].dump());
+                        logger->writeToStdout(state->jobs[e.b].dump());
 
                         for (const auto &jobName : e.remainingAggregates) {
                             state->jobs[jobName]["error"] =
                                 "Skipping aggregate because of a dependency "
                                 "cycle";
-                            std::cout << state->jobs[jobName].dump() << "\n";
+                            logger->writeToStdout(state->jobs[jobName].dump());
                         }
                     },
                 },
