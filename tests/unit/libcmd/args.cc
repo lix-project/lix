@@ -13,7 +13,7 @@
 #include "lix/libutil/types.hh"
 
 constexpr std::string_view INVALID_CHANNEL = "channel:example";
-constexpr std::string_view CHANNEL_URL = "https://nixos.org/channels/example/nixexprs.tar.xz";
+constexpr std::string_view CHANNEL_URL = "https://channels.nixos.org/example/nixexprs.tar.xz";
 
 namespace nix
 {

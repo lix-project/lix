@@ -113,7 +113,7 @@ MixEvalArgs::MixEvalArgs()
 
   ```
   -I nixpkgs=channel:nixos-21.05
-  -I nixpkgs=https://nixos.org/channels/nixos-21.05/nixexprs.tar.xz
+  -I nixpkgs=https://channels.nixos.org/nixos-21.05/nixexprs.tar.xz
   ```
 
   You can also fetch source trees using [flake URLs](./nix3-flake.md#url-like-syntax) and add them to the

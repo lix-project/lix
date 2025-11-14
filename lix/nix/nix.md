@@ -222,7 +222,7 @@ $ nix build 'nixpkgs#firefox' # from flake.nix
 $ nix build -f flake:nixpkgs firefox # from default.nix in the flake directory; ignores flake.nix altogether
 ```
 
-Finally, for legacy reasons, if a *fileish* starts with `channel:`, the rest of the argument is interpreted as the name of a channel to fetch from `https://nixos.org/channels/$CHANNEL_NAME/nixexprs.tar.gz`.
+Finally, for legacy reasons, if a *fileish* starts with `channel:`, the rest of the argument is interpreted as the name of a channel to fetch from `https://channels.nixos.org/$CHANNEL_NAME/nixexprs.tar.gz`.
 This is a **hard coded URL** pattern and is *not* related to the subscribed channels managed by the [nix-channel](../nix-channel.md) command.
 
 <!-- XXX(jade): it is my understanding that although a lot of content here is duplicated from nix-build.md, THESE ARE NOT THE SAME BAD PARSER AAAAAAAAAAAA -->

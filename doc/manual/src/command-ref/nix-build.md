@@ -58,7 +58,7 @@ $ nix-build flake:nixpkgs -A firefox
 $ nix-build flake:github:NixOS/nixpkgs/release-23.11 -A firefox
 ```
 
-Finally, for legacy reasons, if a path starts with `channel:`, the rest of the argument is interpreted as the name of a *nixpkgs* channel tarball to fetch from `https://nixos.org/channels/$CHANNEL_NAME/nixexprs.tar.xz`.
+Finally, for legacy reasons, if a path starts with `channel:`, the rest of the argument is interpreted as the name of a *nixpkgs* channel tarball to fetch from `https://channels.nixos.org/$CHANNEL_NAME/nixexprs.tar.xz`.
 This is a **hard coded URL** pattern and is *not* related to the subscribed channels managed by the [nix-channel](./nix-channel.md) command.
 
 > **Note**: any of the special syntaxes may always be disambiguated by prefixing the path.

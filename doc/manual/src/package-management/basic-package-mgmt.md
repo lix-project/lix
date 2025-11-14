@@ -41,7 +41,7 @@ install Lix. If this is not the case for some reason, you can add it
 as follows:
 
 ```console
-$ nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+$ nix-channel --add https://channels.nixos.org/nixpkgs-unstable
 $ nix-channel --update
 ```
 
@@ -49,7 +49,7 @@ $ nix-channel --update
 >
 > On NixOS, you’re automatically subscribed to a NixOS channel
 > corresponding to your NixOS major release (e.g.
-> <http://nixos.org/channels/nixos-21.11>). A NixOS channel is identical
+> <https://channels.nixos.org/nixos-21.11>). A NixOS channel is identical
 > to the Nixpkgs channel, except that it contains only Linux binaries
 > and is updated only if a set of regression tests succeed.
 
