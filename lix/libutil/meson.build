@@ -163,7 +163,6 @@ experimental_feature_definitions = files(
   'experimental-features/flakes.md',
   'experimental-features/lix-custom-sub-commands.md',
   'experimental-features/nix-command.md',
-  'experimental-features/no-url-literals.md',
   'experimental-features/pipe-operator.md',
   'experimental-features/read-only-local-store.md',
   'experimental-features/repl-automation.md',
