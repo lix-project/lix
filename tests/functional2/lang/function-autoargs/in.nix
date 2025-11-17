@@ -12,4 +12,5 @@ in
 
 {
   result = lib.id (builtins.concatStringsSep "" [xyzzy xyzzy2 fb]);
+  result2 = { xyzzy }: xyzzy;
 }
