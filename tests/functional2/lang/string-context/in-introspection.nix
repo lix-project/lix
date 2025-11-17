@@ -6,7 +6,8 @@ let
     outputs = [ "out" "foo" ];
   };
 
-  path = "${./eval-okay-context-introspection.nix}";
+  # Note that this refers to ./in-introspection to nix, which will be copied as `in.nix` in the test environment
+  path = "${./in.nix}";
 
   desired-context = {
     "${builtins.unsafeDiscardStringContext path}" = {
