@@ -200,6 +200,7 @@
 - [Release Notes](release-notes/release-notes.md)
   - [Upcoming release](release-notes/rl-next.md)
     <!-- RELENG-AUTO-INSERTION-MARKER (see releng/release_notes.py) -->
+  - [Lix 2.94 (2025-11-17)](release-notes/rl-2.94.md)
   - [Lix 2.93 (2025-05-09)](release-notes/rl-2.93.md)
   - [Lix 2.92 (2025-01-18)](release-notes/rl-2.92.md)
   - [Lix 2.91 (2024-08-12)](release-notes/rl-2.91.md)
