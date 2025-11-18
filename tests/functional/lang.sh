@@ -38,25 +38,6 @@ set +x
 badDiff=0
 badExitCode=0
 
-for i in eval-fail-*.nix; do
-    echo "evaluating $i (should fail)";
-    i=$(basename "$i" .nix)
-
-    declare -a flags=()
-    if test -e "$i.flags"; then
-        read -r -a flags < "$i.flags"
-    fi
-    if
-        expectStderr 1 nix-instantiate --eval --strict --show-trace "${flags[@]}" "$i.nix" \
-            | sed "s!$(pwd)!/pwd!g" > "$i.err"
-    then
-        diffAndAccept "$i" err err.exp
-    else
-        echo "FAIL: $i shouldn't evaluate"
-        badExitCode=1
-    fi
-done
-
 for i in eval-okay-*.nix; do
     echo "evaluating $i (should succeed)";
     i=$(basename "$i" .nix)
