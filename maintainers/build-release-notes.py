@@ -68,12 +68,10 @@ class AuthorInfoDB:
 
 
 def format_link(ident: str, gh_part: str, fj_part: str) -> str:
-    # FIXME: deprecate github as default
     if ident.isdigit():
-        raise ValueError('Unprefixed issue numbers are disallowed until the Lix 2.95 cycle, when they will become Forgejo references instead of their previous state of CppNix GitHub issues.'
-            '\nIf you mean a Lix Forgejo reference, prefix with fj# or lix#'
-            '\nIf you mean a CppNix issue, prefix the number with gh# or nix#')
-    elif ident.startswith("gh#"):
+        ident = f"lix#{ident}"
+
+    if ident.startswith("gh#"):
         num, link, base = int(ident[3:]), ident, f"{GH_REPO_BASE}/{gh_part}"
     elif ident.startswith("nix#"):
         num, link, base = int(ident[4:]), ident, f"{GH_REPO_BASE}/{gh_part}"
