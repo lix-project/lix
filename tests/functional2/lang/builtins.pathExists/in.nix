@@ -1,32 +1,33 @@
-builtins.pathExists (./lib.nix)
-&& builtins.pathExists (builtins.toPath ./lib.nix)
-&& builtins.pathExists (builtins.toString ./lib.nix)
-&& !builtins.pathExists (builtins.toString ./lib.nix + "/")
-&& !builtins.pathExists (builtins.toString ./lib.nix + "/.")
+assert builtins.pathExists (./lib.nix);
+assert builtins.pathExists (builtins.toPath ./lib.nix);
+assert builtins.pathExists (builtins.toString ./lib.nix);
+assert !builtins.pathExists (builtins.toString ./lib.nix + "/");
+assert !builtins.pathExists (builtins.toString ./lib.nix + "/.");
 # FIXME
-# && !builtins.pathExists (builtins.toString ./lib.nix + "/..")
-# && !builtins.pathExists (builtins.toString ./lib.nix + "/a/..")
-# && !builtins.pathExists (builtins.toString ./lib.nix + "/../lib.nix")
-&& !builtins.pathExists (builtins.toString ./lib.nix + "/./")
-&& !builtins.pathExists (builtins.toString ./lib.nix + "/./.")
-&& builtins.pathExists (builtins.toString ./.. + "/test-home/lib.nix")
-&& !builtins.pathExists (builtins.toString ./.. + "test-home/lib.nix")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/lib.nix")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/./lib.nix")
-&& builtins.pathExists (builtins.toString ./.)
-&& builtins.pathExists (builtins.toString ./. + "/")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/.")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/./")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home//./")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/..")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/../")
-&& builtins.pathExists (builtins.toString ./. + "/../test-home/..//")
-&& builtins.pathExists (builtins.toPath (builtins.toString ./lib.nix))
-&& !builtins.pathExists (builtins.toPath (builtins.toString ./bla.nix))
-&& builtins.pathExists ./lib.nix
-&& !builtins.pathExists ./bla.nix
-&& builtins.pathExists ./symlink-resolution/foo/overlays/overlay.nix
-&& builtins.pathExists ./symlink-resolution/broken
-&& builtins.pathExists (builtins.toString ./symlink-resolution/foo/overlays + "/.")
+# assert !builtins.pathExists (builtins.toString ./lib.nix + "/..");
+# assert !builtins.pathExists (builtins.toString ./lib.nix + "/a/..");
+# assert !builtins.pathExists (builtins.toString ./lib.nix + "/../lib.nix");
+assert !builtins.pathExists (builtins.toString ./lib.nix + "/./");
+assert !builtins.pathExists (builtins.toString ./lib.nix + "/./.");
+assert builtins.pathExists (builtins.toString ./.. + "/test-home/lib.nix");
+assert !builtins.pathExists (builtins.toString ./.. + "test-home/lib.nix");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/lib.nix");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/./lib.nix");
+assert builtins.pathExists (builtins.toString ./.);
+assert builtins.pathExists (builtins.toString ./. + "/");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/.");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/./");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home//./");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/..");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/../");
+assert builtins.pathExists (builtins.toString ./. + "/../test-home/..//");
+assert builtins.pathExists (builtins.toPath (builtins.toString ./lib.nix));
+assert !builtins.pathExists (builtins.toPath (builtins.toString ./bla.nix));
+assert builtins.pathExists ./lib.nix;
+assert !builtins.pathExists ./bla.nix;
+assert builtins.pathExists ./symlink-resolution/foo/overlays/overlay.nix;
+assert builtins.pathExists ./symlink-resolution/broken;
+assert builtins.pathExists (builtins.toString ./symlink-resolution/foo/overlays + "/.");
+true

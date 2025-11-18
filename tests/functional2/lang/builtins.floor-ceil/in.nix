@@ -6,4 +6,4 @@ let
   n3 = builtins.floor 23;
   n4 = builtins.ceil 23;
 in
-  builtins.concatStringsSep ";" (map toString [ n1 n2 n3 n4 ])
+map toString [ n1 n2 n3 n4 ]

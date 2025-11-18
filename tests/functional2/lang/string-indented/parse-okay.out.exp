@@ -330,105 +330,47 @@ attrs:
         valueType: String
     isInterpolation: true
 body:
-  _type: ExprConcatStrings
-  es:
-    - _type: ExprConcatStrings
-      es:
-        - _type: ExprConcatStrings
-          es:
-            - _type: ExprConcatStrings
-              es:
-                - _type: ExprConcatStrings
-                  es:
-                    - _type: ExprConcatStrings
-                      es:
-                        - _type: ExprConcatStrings
-                          es:
-                            - _type: ExprConcatStrings
-                              es:
-                                - _type: ExprConcatStrings
-                                  es:
-                                    - _type: ExprConcatStrings
-                                      es:
-                                        - _type: ExprConcatStrings
-                                          es:
-                                            - _type: ExprConcatStrings
-                                              es:
-                                                - _type: ExprConcatStrings
-                                                  es:
-                                                    - _type: ExprConcatStrings
-                                                      es:
-                                                        - _type: ExprConcatStrings
-                                                          es:
-                                                            - _type: ExprConcatStrings
-                                                              es:
-                                                                - _type: ExprConcatStrings
-                                                                  es:
-                                                                    - _type: ExprConcatStrings
-                                                                      es:
-                                                                        - _type: ExprConcatStrings
-                                                                          es:
-                                                                            - _type: ExprConcatStrings
-                                                                              es:
-                                                                                - _type: ExprVar
-                                                                                  value: s1
-                                                                                - _type: ExprVar
-                                                                                  value: s2
-                                                                              isInterpolation: false
-                                                                            - _type: ExprVar
-                                                                              value: s3
-                                                                          isInterpolation: false
-                                                                        - _type: ExprVar
-                                                                          value: s4
-                                                                      isInterpolation: false
-                                                                    - _type: ExprVar
-                                                                      value: s5
-                                                                  isInterpolation: false
-                                                                - _type: ExprVar
-                                                                  value: s6
-                                                              isInterpolation: false
-                                                            - _type: ExprVar
-                                                              value: s7
-                                                          isInterpolation: false
-                                                        - _type: ExprVar
-                                                          value: s8
-                                                      isInterpolation: false
-                                                    - _type: ExprVar
-                                                      value: s9
-                                                  isInterpolation: false
-                                                - _type: ExprVar
-                                                  value: s10
-                                              isInterpolation: false
-                                            - _type: ExprVar
-                                              value: s11
-                                          isInterpolation: false
-                                        - _type: ExprVar
-                                          value: s12
-                                      isInterpolation: false
-                                    - _type: ExprVar
-                                      value: s13
-                                  isInterpolation: false
-                                - _type: ExprVar
-                                  value: s14
-                              isInterpolation: false
-                            - _type: ExprVar
-                              value: s15
-                          isInterpolation: false
-                        - _type: ExprVar
-                          value: s16
-                      isInterpolation: false
-                    - _type: ExprVar
-                      value: s17
-                  isInterpolation: false
-                - _type: ExprVar
-                  value: s18
-              isInterpolation: false
-            - _type: ExprVar
-              value: s19
-          isInterpolation: false
-        - _type: ExprVar
-          value: s20
-      isInterpolation: false
+  _type: ExprList
+  elems:
+    - _type: ExprVar
+      value: s1
+    - _type: ExprVar
+      value: s2
+    - _type: ExprVar
+      value: s3
+    - _type: ExprVar
+      value: s4
+    - _type: ExprVar
+      value: s5
+    - _type: ExprVar
+      value: s6
+    - _type: ExprVar
+      value: s7
+    - _type: ExprVar
+      value: s8
+    - _type: ExprVar
+      value: s9
+    - _type: ExprVar
+      value: s10
+    - _type: ExprVar
+      value: s11
+    - _type: ExprVar
+      value: s12
+    - _type: ExprVar
+      value: s13
+    - _type: ExprVar
+      value: s14
+    - _type: ExprVar
+      value: s15
+    - _type: ExprVar
+      value: s16
+    - _type: ExprVar
+      value: s17
+    - _type: ExprVar
+      value: s18
+    - _type: ExprVar
+      value: s19
+    - _type: ExprVar
+      value: s20
     - _type: ExprVar
       value: s21
-  isInterpolation: false

@@ -1,1 +1,1 @@
-builtins.concatStringsSep "" ["foo" "bar" "bla" "test"]
+["foo" "bar" "bla" "test"]

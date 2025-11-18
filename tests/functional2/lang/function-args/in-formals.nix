@@ -9,8 +9,10 @@ let
   j = {x, y, z, ...}: x + y + z;
 
 in
-  f {x = "a"; y = "b"; z = "c";} +
-  g {x = "x"; y = "y"; z = "z";} +
-  h {x = "D";} +
-  h {x = "D"; y = "E"; z = "F";} +
-  j {x = "i"; y = "j"; z = "k"; bla = "bla"; foo = "bar";}
+[
+  (f {x = "a"; y = "b"; z = "c";})
+  (g {x = "x"; y = "y"; z = "z";})
+  (h {x = "D";})
+  (h {x = "D"; y = "E"; z = "F";})
+  (j {x = "i"; y = "j"; z = "k"; bla = "bla"; foo = "bar";})
+]

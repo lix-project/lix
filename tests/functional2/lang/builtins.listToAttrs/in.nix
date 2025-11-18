@@ -7,4 +7,4 @@ let
   r = builtins.listToAttrs [ (asi "result" [ a b ]) ( asi "throw" (throw "this should not be thrown")) ];
   x = builtins.listToAttrs [ (asi "foo" "bar") (asi "foo" "bla") ];
 in
-builtins.concatStringsSep "" (map (x: x.a) r.result) + x.foo
+(map (x: x.a) r.result) ++ [ x.foo ]

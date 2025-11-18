@@ -11,9 +11,9 @@ let
     a = "bar";
   };
 
-  x = with as; a + b;
+  x = with as; [a b];
 
-  y = with as; with bs; a + b;
+  y = with as; with bs; [a b];
 
 in
-x + y
+[x y]

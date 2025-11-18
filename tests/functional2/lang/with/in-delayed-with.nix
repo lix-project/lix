@@ -26,4 +26,9 @@ let
 
   pkgs = pkgs_ // (packageOverrides pkgs_);
 
-in "${pkgs.a.b.name} ${pkgs.c.name} ${pkgs.b.a.name}"
+in
+[
+  pkgs.a.b.name
+  pkgs.c.name
+  pkgs.b.a.name
+]
