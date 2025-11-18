@@ -521,8 +521,7 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     if (argc == 2 && std::string(argv[1]) == "__dump-language") {
         experimentalFeatureSettings.experimentalFeatures.override(ExperimentalFeatures{}
-            | Xp::Flakes
-            | Xp::FetchClosure);
+            | Xp::Flakes);
         evalSettings.pureEval.override(false);
         Evaluator state(aio, {}, aio.blockOn(openStore("dummy://")));
         auto res = JSON::object();

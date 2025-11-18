@@ -401,7 +401,6 @@ I grepped `lix/` for `get[eE]nv\("` to find the mentions in Lix code.
 
   **Expected value**: the path to an executable shell
 - `PRINT_PATH` - Undocumented. Used by `nix-prefetch-url` as an alternative form of `--print-path`. Why???
-- `_NIX_IN_TEST` - If present with any value, makes `fetchClosure` accept file URLs in addition to HTTP ones. Why is this not `_NIX_FORCE_HTTP`??
 
   Not used anywhere else.
 - `NIX_ALLOW_EVAL` - Used by eval-cache tests to block evaluation if set to `0`.

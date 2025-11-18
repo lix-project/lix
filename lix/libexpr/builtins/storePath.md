@@ -13,5 +13,3 @@ in a new path (e.g. `/nix/store/ld01dnzc…-source-source`).
 
 Not available in [pure evaluation mode](@docroot@/command-ref/conf-file.md#conf-pure-eval).
 Lix may change this, tracking issue: <https://git.lix.systems/lix-project/lix/issues/402>
-
-See also [`builtins.fetchClosure`](#builtins-fetchClosure).
