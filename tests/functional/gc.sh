@@ -69,7 +69,7 @@ nix-store --delete --skip-live $(readLink $outPath/reference-to-input-2)
 
 rm "$NIX_STATE_DIR"/gcroots/foo
 # with the dependent unrooted, we should be able to remove input2...
-nix-store --delete --delete-closure $input2 > delete-output
+nix-store --delete --delete-closure $input2 &> delete-output
 # which should remove input0, since only input2 and top depended on it and we passed --delete-closure
 ! test -e $input0
 # but fod should be unaffected, since it's not part of input-2's closure

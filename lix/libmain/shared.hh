@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libstore/gc-store.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libutil/args/root.hh"
 #include "lix/libmain/common-args.hh"
@@ -99,10 +100,14 @@ struct GCResults;
 
 struct PrintFreed
 {
-    bool show;
+    GCOptions::GCAction action;
+
     const GCResults & results;
-    PrintFreed(bool show, const GCResults & results)
-        : show(show), results(results) { }
+    PrintFreed(GCOptions::GCAction action, const GCResults & results)
+        : action(action)
+        , results(results)
+    {
+    }
     ~PrintFreed();
 };
 

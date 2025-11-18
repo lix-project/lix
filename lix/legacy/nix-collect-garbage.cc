@@ -64,7 +64,7 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
     {
         bool removeOld = false;
 
-        GCOptions options;
+        GCOptions options = {.action = GCOptions::gcDeleteDead};
 
         LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--help")
@@ -75,12 +75,13 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
             else if (*arg == "--delete-older-than") {
                 removeOld = true;
                 deleteOlderThan = getArg(*arg, arg, end);
-            }
-            else if (*arg == "--dry-run") dryRun = true;
-            else if (*arg == "--max-freed")
+            } else if (*arg == "--dry-run") {
+                options.action = GCOptions::gcReturnDead;
+            } else if (*arg == "--max-freed") {
                 options.maxFreed = std::max(getIntArg<int64_t>(*arg, arg, end, true), (int64_t) 0);
-            else
+            } else {
                 return false;
+            }
             return true;
         }).parseCmdline(argv);
 
@@ -92,23 +93,11 @@ static int main_nix_collect_garbage(AsyncIoRoot & aio, std::string programName, 
         }
 
         // Run the actual garbage collector.
-        if (!dryRun) {
-            options.action = GCOptions::gcDeleteDead;
-        } else {
-            options.action = GCOptions::gcReturnDead;
-        }
         auto store = aio.blockOn(openStore());
         auto & gcStore = require<GcStore>(*store);
         GCResults results;
-        PrintFreed freed(true, results);
+        PrintFreed freed(options.action, results);
         aio.blockOn(gcStore.collectGarbage(options, results));
-
-        if (dryRun) {
-            // Only print results for dry run; when !dryRun, paths will be printed as they're deleted.
-            for (auto & i : results.paths) {
-                printInfo("%s", Uncolored(i));
-            }
-        }
 
         return 0;
     }

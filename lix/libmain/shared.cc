@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/c-calls.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libmain/loggers.hh"
@@ -403,13 +404,34 @@ RunPager::~RunPager()
     }
 }
 
-
 PrintFreed::~PrintFreed()
 {
-    if (show)
-        std::cout << fmt("%d store paths deleted, %s freed\n",
-            results.paths.size(),
-            showBytes(results.bytesFreed));
-}
+    // When in dry-run mode, print the paths on stdout
+    if (action == GCOptions::gcReturnLive || action == GCOptions::gcReturnDead) {
+        for (auto & i : results.paths) {
+            logger->cout("%s", i);
+        };
+    }
 
+    switch (action) {
+    case GCOptions::gcReturnLive: {
+        notice("%1% store paths would be kept\n", results.paths.size());
+        break;
+    }
+    case GCOptions::gcReturnDead: {
+        notice("%1% store paths would be deleted\n", results.paths.size());
+        break;
+    }
+    case GCOptions::gcDeleteDead:
+    case GCOptions::gcDeleteSpecific:
+    case GCOptions::gcTryDeleteSpecific: {
+        notice(
+            "%1% store paths deleted, %2% freed\n",
+            results.paths.size(),
+            showBytes(results.bytesFreed)
+        );
+        break;
+    }
+    }
+}
 }

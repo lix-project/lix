@@ -711,12 +711,8 @@ static void opGC(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlag
     }
 
     else {
-        PrintFreed freed(options.action == GCOptions::gcDeleteDead, results);
+        PrintFreed freed(options.action, results);
         aio.blockOn(gcStore.collectGarbage(options, results));
-
-        if (options.action != GCOptions::gcDeleteDead)
-            for (auto & i : results.paths)
-                cout << i << std::endl;
     }
 }
 
@@ -749,7 +745,7 @@ opDelete(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
     auto & gcStore = require<GcStore>(*store);
 
     GCResults results;
-    PrintFreed freed(true, results);
+    PrintFreed freed(options.action, results);
     aio.blockOn(gcStore.collectGarbage(options, results));
 }
 
