@@ -1,7 +1,7 @@
 error:
        … while evaluating a path segment
-         at /pwd/eval-fail-coerce-integers-without-xp.nix:1:2:
-            1| "${42}" == 42
+         at /pwd/in.nix:1:2:
+            1| "${42}" == "42"
              |  ^
             2|
 

@@ -1,0 +1,15 @@
+[[test]]
+runner = "eval-okay"
+flags = ["--extra-experimental-features", "coerce-integers"]
+in = "in.nix"
+
+[[test]]
+runner = "eval-fail"
+flags = ["--extra-experimental-features", "coerce-integers"]
+matrix = true
+in = ["in-accidental-coerce.nix", "in-coerce-substring.nix"]
+
+[[test]]
+name = "no-xp"
+runner = "eval-fail"
+in = "in.nix"
