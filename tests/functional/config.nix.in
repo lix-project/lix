@@ -16,6 +16,12 @@ rec {
 
   shared = builtins.getEnv "_NIX_TEST_SHARED";
 
+  hasSuffix = ext: fileName:
+    let lenFileName = builtins.stringLength fileName;
+        lenExt = builtins.stringLength ext;
+    in !(builtins.lessThan lenFileName lenExt) &&
+       builtins.substring (builtins.sub lenFileName lenExt) lenFileName fileName == ext;  id = x: x;
+
   mkDerivation = args:
     derivation ({
       inherit system;

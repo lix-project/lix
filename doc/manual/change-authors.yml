@@ -61,6 +61,11 @@ cole-h:
   display_name: Cole Helbling
   github: cole-h
 
+commentator2.0:
+  display_name: Commentator2.0 (Rutile)
+  forgejo: commentatorforall
+  github: CommentatorForAll
+
 delan:
   display_name: delan
   forgejo: delan

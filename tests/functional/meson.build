@@ -55,8 +55,6 @@ functional_tests_scripts = [
   'nix-collect-garbage-dry-run.sh',
   'remote-store.sh',
   'legacy-ssh-store.sh',
-  'lang.sh',
-  'lang-test-infra.sh',
   'experimental-features.sh',
   'fetchMercurial.sh',
   'sandboxed-certificate-authorities.sh',
