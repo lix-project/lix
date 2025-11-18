@@ -779,6 +779,11 @@ static void prim_warn(EvalState & state, Value ** args, Value & v)
 
     printTaggedWarning("%s", Uncolored(msg));
 
+    if (evalSettings.abortOnWarn) {
+        state.ctx.errors.make<Abort>("evaluation aborted (abort-on-warn)")
+            .debugThrow();
+    }
+
     if (evalSettings.debuggerOnWarn) {
         if (auto const trace = state.ctx.nextDebugTrace()) {
             auto const error = EvalError(ErrorInfo{

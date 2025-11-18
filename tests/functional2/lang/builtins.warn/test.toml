@@ -4,3 +4,8 @@ runner = "eval-okay"
 [[test]]
 runner = "eval-fail"
 in = "in-reject-non-string.nix"
+
+[[test]]
+runner = "eval-fail"
+flags = ["--option", "abort-on-warn", "true"]
+in = "in-abort.nix"

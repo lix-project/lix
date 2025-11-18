@@ -15,6 +15,7 @@ subdir('flake')
 
 libexpr_setting_definitions = files(
   # keep-sorted start
+  'settings/abort-on-warn.md',
   'settings/allow-import-from-derivation.md',
   'settings/allow-unsafe-native-code-during-evaluation.md',
   'settings/allowed-uris.md',
