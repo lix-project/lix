@@ -177,6 +177,7 @@ TEST_F(ReplSessionTest, tidy)
     }
 
 REPL_TEST(basic_repl);
+REPL_TEST(builtins_warn)
 REPL_TEST(no_nested_debuggers);
 REPL_TEST(regression_9917);
 REPL_TEST(regression_9918);

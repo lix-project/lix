@@ -779,6 +779,17 @@ static void prim_warn(EvalState & state, Value ** args, Value & v)
 
     printTaggedWarning("%s", Uncolored(msg));
 
+    if (evalSettings.debuggerOnWarn) {
+        if (auto const trace = state.ctx.nextDebugTrace()) {
+            auto const error = EvalError(ErrorInfo{
+                .level = lvlWarn,
+                .msg = HintFmt("builtins.warn reached"),
+            });
+
+            state.ctx.debug->onEvalError(&error, (*trace)->env, (*trace)->expr);
+        }
+    }
+
     state.forceValue(*args[1], noPos);
     v = *args[1];
 }

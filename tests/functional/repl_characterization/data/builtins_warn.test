@@ -1,0 +1,12 @@
+@args --debugger --option debugger-on-warn true
+Enter debugger with debugger-on-warn set.
+
+  nix-repl> let inspect = v: builtins.warn "inspect is deprecated" (throw "this happens after"); in inspect { }
+
+  warning: inspect is deprecated!
+  warning: builtins.warn reached!
+
+  nix-repl> :c
+
+  { }
+  error: this happens after
