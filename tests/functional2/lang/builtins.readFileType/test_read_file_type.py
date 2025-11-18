@@ -23,6 +23,7 @@ from functional2.testlib.fixtures.snapshot import Snapshot
         },
         "in.nix": CopyFile("in.nix"),
         "out.exp": AssetSymlink("eval-okay.out.exp"),
+        "err.exp": AssetSymlink("eval-okay.err.exp"),
     }
 )
 def test_read_file_type(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
