@@ -176,6 +176,11 @@ midnightveil:
   forgejo: midnightveil
   github: midnightveil
 
+milibopp:
+  display_name: Emilia Bopp
+  forgejo: milibopp
+  github: milibopp
+
 nan-git:
   display_name: NaN-git
   github: NaN-git

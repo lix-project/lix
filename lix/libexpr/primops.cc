@@ -768,6 +768,19 @@ static void prim_trace(EvalState & state, Value * * args, Value & v)
     v = *args[1];
 }
 
+static void prim_warn(EvalState & state, Value ** args, Value & v)
+{
+    // We only accept a string argument for now. The use case for pretty printing a value is covered
+    // by `trace`. By rejecting non-strings we allow future versions to add more features without
+    // breaking existing code.
+    auto const msg =
+        state.forceString(*args[0], noPos, "while evaluating message for builtins.warn");
+
+    printTaggedWarning("%s", Uncolored(msg));
+
+    state.forceValue(*args[1], noPos);
+    v = *args[1];
+}
 
 /* Takes two arguments and evaluates to the second one. Used as the
  * builtins.traceVerbose implementation when --trace-verbose is not enabled

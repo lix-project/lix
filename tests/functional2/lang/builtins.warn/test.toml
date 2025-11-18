@@ -1,0 +1,6 @@
+[[test]]
+runner = "eval-okay"
+
+[[test]]
+runner = "eval-fail"
+in = "in-reject-non-string.nix"

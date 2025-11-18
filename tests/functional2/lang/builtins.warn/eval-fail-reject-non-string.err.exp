@@ -1,0 +1,10 @@
+error:
+       … while calling the 'warn' builtin
+         at /pwd/in.nix:1:1:
+            1| builtins.warn { cat = "girl"; } 1337
+             | ^
+            2|
+
+       … while evaluating message for builtins.warn
+
+       error: expected a string but found a set: { cat = "girl"; }

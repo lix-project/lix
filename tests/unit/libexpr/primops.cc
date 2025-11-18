@@ -121,6 +121,14 @@ namespace nix {
         ASSERT_NE(text.find("test string 123"), std::string::npos);
     }
 
+    TEST_F(PrimOpTest, warn) {
+        CaptureLogging l;
+        auto const v = eval("builtins.warn \"test string 123\" 123");
+        ASSERT_THAT(v, IsIntEq(123));
+        auto const text = l.get();
+        ASSERT_NE(text.find("test string 123"), std::string::npos);
+    }
+
     TEST_F(PrimOpTest, placeholder) {
         auto v = eval("builtins.placeholder \"out\"");
         ASSERT_THAT(v, IsStringEq("/1rz4g4znpzjwh1xymhjpm42vipw92pr73vdgl6xs1hycac8kf2n9"));
