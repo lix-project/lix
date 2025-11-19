@@ -251,13 +251,6 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
     }
 }
 
-static RegisterPrimOp primop_scopedImport(PrimOp{
-    {.name = "scopedImport",
-     .arity = 2,
-     .fun = [](EvalState & state, Value ** args, Value & v) { import(state, *args[1], args[0], v); }
-    }
-});
-
 static void prim_import(EvalState & state, Value * * args, Value & v)
 {
     import(state, *args[0], nullptr, v);

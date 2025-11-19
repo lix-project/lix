@@ -125,6 +125,7 @@ builtin_definitions = files(
   'builtins/readFileType.md',
   'builtins/removeAttrs.md',
   'builtins/replaceStrings.md',
+  'builtins/scopedImport.md',
   'builtins/seq.md',
   'builtins/sort.md',
   'builtins/split.md',
