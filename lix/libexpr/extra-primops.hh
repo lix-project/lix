@@ -14,6 +14,7 @@ void prim_fetchGit(EvalState & state, Value * * args, Value & v);
 void prim_fetchTarball(EvalState & state, Value * * args, Value & v);
 void prim_fetchurl(EvalState & state, Value * * args, Value & v);
 void prim_fromTOML(EvalState & state, Value * * args, Value & v);
+void prim_appendContext(EvalState & state, Value ** args, Value & v);
 void prim_getContext(EvalState & state, Value * * args, Value & v);
 void prim_hasContext(EvalState & state, Value * * args, Value & v);
 void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value & v);

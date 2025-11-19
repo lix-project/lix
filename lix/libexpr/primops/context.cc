@@ -165,7 +165,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
    See the commentary above unsafeGetContext for details of the
    context representation.
 */
-static void prim_appendContext(EvalState & state, Value * * args, Value & v)
+void prim_appendContext(EvalState & state, Value ** args, Value & v)
 {
     NixStringContext context;
     auto orig = state.forceString(*args[0], context, noPos, "while evaluating the first argument passed to builtins.appendContext");
@@ -241,11 +241,4 @@ static void prim_appendContext(EvalState & state, Value * * args, Value & v)
 
     v.mkString(orig, context);
 }
-
-static RegisterPrimOp primop_appendContext({
-    .name = "__appendContext",
-    .arity = 2,
-    .fun = prim_appendContext
-});
-
 }

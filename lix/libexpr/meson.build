@@ -56,6 +56,7 @@ builtin_definitions = files(
   'builtins/addErrorContext.md',
   'builtins/all.md',
   'builtins/any.md',
+  'builtins/appendContext.md',
   'builtins/attrNames.md',
   'builtins/attrValues.md',
   'builtins/baseNameOf.md',
