@@ -673,12 +673,6 @@ static void prim_addErrorContext(EvalState & state, Value * * args, Value & v)
     }
 }
 
-static RegisterPrimOp primop_addErrorContext(PrimOp{{
-    .name = "__addErrorContext",
-    .arity = 2,
-    .fun = prim_addErrorContext,
-}});
-
 static void prim_ceil(EvalState & state, Value * * args, Value & v)
 {
     auto value = state.forceFloat(*args[0], noPos,

@@ -51,6 +51,7 @@ builtin_definitions = files(
   'builtins/abort.md',
   'builtins/add.md',
   'builtins/addDrvOutputDependencies.md',
+  'builtins/addErrorContext.md',
   'builtins/all.md',
   'builtins/any.md',
   'builtins/attrNames.md',
