@@ -5,7 +5,7 @@
 FIXME(Lix): This section does not document the most common modern practices in terms of avoiding channels, pinning, declarative software installation (see flakey-profile or home-manager or NixOS), or using flakes, etc.
 It is, however, likely correct at a technical level.
 
-For more information on modern practices, see the [resources](https://lix.systems/resources) page on the Lix site.
+For more information on modern practices, see the [resources](https://wiki.lix.systems/books/lix-users/page/nix-resources) page on the Lix site.
 
 </div>
 
