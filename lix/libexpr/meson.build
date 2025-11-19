@@ -68,6 +68,7 @@ builtin_definitions = files(
   'builtins/concatMap.md',
   'builtins/concatStringsSep.md',
   'builtins/deepSeq.md',
+  'builtins/derivationStrict.md',
   'builtins/dirOf.md',
   'builtins/div.md',
   'builtins/elem.md',

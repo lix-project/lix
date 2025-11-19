@@ -1227,12 +1227,6 @@ drvName, Bindings * attrs, Value & v)
     v.mkAttrs(result);
 }
 
-static RegisterPrimOp primop_derivationStrict(PrimOp{{
-    .name = "derivationStrict",
-    .arity = 1,
-    .fun = prim_derivationStrict,
-}});
-
 /* Return a placeholder string for the specified output that will be
    substituted by the corresponding output path at build time. For
    example, 'placeholder "out"' returns the string
