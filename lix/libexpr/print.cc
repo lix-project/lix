@@ -281,16 +281,13 @@ private:
 
     void printAttrs(Value & v, size_t depth)
     {
-        if (options.force && options.derivationPaths && state.isDerivation(v)) {
+        bool shouldSimplifyDerivations = options.force && depth >= options.derivationPathDepth;
+        bool isDerivation = state.isDerivation(v);
+        if (shouldSimplifyDerivations && isDerivation) {
             printDerivation(v);
         } else if (seen && !v.attrs()->empty() && !seen->insert(v.attrs()).second) {
             printRepeated();
         } else if (depth < options.maxDepth || v.attrs()->empty()) {
-            bool isPrintingReplDerivation = depth == 0 && options.replDerivation && state.isDerivation(v);
-            if (isPrintingReplDerivation) {
-                // Switch back to eliding paths if it was initially off.
-                options.derivationPaths = true;
-            }
             increaseIndent();
             output << "{";
 
@@ -331,7 +328,7 @@ private:
                 output << " = ";
 
                 // Elide repeated drvAttrs attribute.
-                if (isPrintingReplDerivation && i.first == "drvAttrs") {
+                if (!shouldSimplifyDerivations && isDerivation && i.first == "drvAttrs") {
                     state.forceValue(i.second->value, noPos);
                     if (i.second->value.type() == ValueType::nAttrs) {
                         printElided(i.second->value.attrs()->size(), "attribute", "attributes");

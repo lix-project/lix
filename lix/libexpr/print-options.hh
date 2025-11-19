@@ -48,16 +48,12 @@ struct PrintOptions
     bool force = false;
 
     /**
-     * If true and `force` is set, print derivations as
-     * `«derivation /nix/store/...»` instead of as attribute sets.
+     * Determines at what depth derivations start getting printed as paths.
+     * When `force` is true and our print depth is greater than or equal to
+     * this value, print derivations as `«derivation /nix/store/...»`
+     * instead of as attribute sets.
      */
-    bool derivationPaths = false;
-
-    /**
-     * If true, we are interactively printing a full derivation and should
-     * switch back to printing paths as desired normally after the first entry.
-     */
-    bool replDerivation = false;
+    size_t derivationPathDepth = std::numeric_limits<size_t>::max();
 
     /**
      * If true, track which values have been printed and skip them on

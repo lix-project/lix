@@ -110,7 +110,7 @@ struct CmdEval : MixJSON, InstallableCommand, MixReadOnlyOption
                     v,
                     PrintOptions{
                         .force = true,
-                        .derivationPaths = true,
+                        .derivationPathDepth = 0,
                         .errors = ErrorPrintBehavior::ThrowTopLevel,
                     }
                 )

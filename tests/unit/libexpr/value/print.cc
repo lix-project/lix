@@ -450,7 +450,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
          PrintOptions {
              .ansiColors = true,
              .force = true,
-             .derivationPaths = true
+             .derivationPathDepth = 0
          });
 
     test(vAttrs,
@@ -507,7 +507,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivationError)
          PrintOptions {
              .ansiColors = true,
              .force = true,
-             .derivationPaths = true,
+             .derivationPathDepth = 0,
          });
 }
 

@@ -210,13 +210,12 @@ struct NixRepl
     void printValue(std::ostream & str,
                               Value & v,
                               unsigned int maxDepth = std::numeric_limits<unsigned int>::max(),
-                              bool replDerivation = false)
+                              unsigned int derivationPathDepth = 0)
     {
         ::nix::printValue(state, str, v, PrintOptions {
             .ansiColors = true,
             .force = true,
-            .derivationPaths = !replDerivation,
-            .replDerivation = replDerivation,
+            .derivationPathDepth = derivationPathDepth,
             .maxDepth = maxDepth,
             .prettyIndent = 2,
             .errors = ErrorPrintBehavior::ThrowTopLevel,
@@ -796,9 +795,9 @@ ProcessLineResult NixRepl::processLine(std::string line)
         if (v.type() == nString) {
             std::cout << v.str();
         } else if (v.type() == nAttrs && state.isDerivation(v)) {
-            printValue(std::cout, v, 2, true);
+            printValue(std::cout, v, 2, 1);
         } else {
-            printValue(std::cout, v, std::numeric_limits<unsigned int>::max());
+            printValue(std::cout, v, std::numeric_limits<unsigned int>::max(), 0);
         }
         std::cout << std::endl;
     }
