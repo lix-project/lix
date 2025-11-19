@@ -18,6 +18,7 @@ void prim_appendContext(EvalState & state, Value ** args, Value & v);
 void prim_getContext(EvalState & state, Value * * args, Value & v);
 void prim_hasContext(EvalState & state, Value * * args, Value & v);
 void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value & v);
+void prim_unsafeDiscardStringContext(EvalState & state, Value ** args, Value & v);
 
 namespace flake {
 

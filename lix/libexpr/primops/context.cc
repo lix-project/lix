@@ -7,19 +7,12 @@
 
 namespace nix {
 
-static void prim_unsafeDiscardStringContext(EvalState & state, Value * * args, Value & v)
+void prim_unsafeDiscardStringContext(EvalState & state, Value ** args, Value & v)
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardStringContext");
     v.mkString(*s);
 }
-
-static RegisterPrimOp primop_unsafeDiscardStringContext({
-    .name = "__unsafeDiscardStringContext",
-    .arity = 1,
-    .fun = prim_unsafeDiscardStringContext
-});
-
 
 void prim_hasContext(EvalState & state, Value * * args, Value & v)
 {

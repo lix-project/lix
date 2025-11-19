@@ -151,6 +151,7 @@ builtin_definitions = files(
   'builtins/tryEval.md',
   'builtins/typeOf.md',
   'builtins/unsafeDiscardOutputDependency.md',
+  'builtins/unsafeDiscardStringContext.md',
   'builtins/unsafeGetAttrPos.md',
   'builtins/warn.md',
   'builtins/zipAttrsWith.md',
