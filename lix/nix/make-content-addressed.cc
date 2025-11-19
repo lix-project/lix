@@ -12,6 +12,7 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
     CmdMakeContentAddressed()
     {
         realiseMode = Realise::Outputs;
+        requireStore = false;
     }
 
     std::string description() override
@@ -28,7 +29,7 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
 
     void run(ref<Store> srcStore, StorePaths && storePaths) override
     {
-        auto dstStore = aio().blockOn(dstUri.empty() ? openStore() : openStore(dstUri));
+        auto dstStore = getDstStore();
 
         auto remappings = aio().blockOn(makeContentAddressed(*srcStore, *dstStore,
             StorePathSet(storePaths.begin(), storePaths.end())));

@@ -75,6 +75,15 @@ CopyCommand::CopyCommand()
     });
 }
 
+void CopyCommand::run()
+{
+    if (requireStore && srcUri.empty() && dstUri.empty()) {
+        throw UsageError("you must pass '--from' and/or '--to'");
+    }
+
+    StoreCommand::run();
+}
+
 ref<Store> CopyCommand::createStore(AsyncIoRoot & in)
 {
     return srcUri.empty() ? StoreCommand::createStore(in) : in.blockOn(openStore(srcUri));
@@ -82,9 +91,6 @@ ref<Store> CopyCommand::createStore(AsyncIoRoot & in)
 
 ref<Store> CopyCommand::getDstStore()
 {
-    if (srcUri.empty() && dstUri.empty())
-        throw UsageError("you must pass '--from' and/or '--to'");
-
     return aio().blockOn(dstUri.empty() ? openStore() : openStore(dstUri));
 }
 

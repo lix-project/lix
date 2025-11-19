@@ -56,9 +56,11 @@ private:
 struct CopyCommand : virtual StoreCommand
 {
     std::string srcUri, dstUri;
+    bool requireStore = true;
 
     CopyCommand();
 
+    void run() override;
     ref<Store> createStore(AsyncIoRoot & in) override;
 
     ref<Store> getDstStore();
