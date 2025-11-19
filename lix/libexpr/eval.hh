@@ -568,6 +568,9 @@ public:
      */
     void evalLazily(Expr & e, Value & v);
 
+    /** If debugging is enabled, returns the next trace. Otherwise, std::nullopt. */
+    std::optional<DebugTrace const *> nextDebugTrace() const;
+
 private:
     Expr * parse(
         char * text,

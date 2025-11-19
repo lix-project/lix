@@ -1,6 +1,6 @@
 ---
 name: debugger-on-trace
-internalName: builtinsTraceDebugger
+internalName: debuggerOnTrace
 type: bool
 default: false
 ---

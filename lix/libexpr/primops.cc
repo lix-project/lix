@@ -629,7 +629,7 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
 
 static void prim_break(EvalState & state, Value * * args, Value & v)
 {
-    if (auto trace = state.ctx.debug ? state.ctx.debug->traces().next() : std::nullopt) {
+    if (auto const trace = state.ctx.nextDebugTrace()) {
         auto error = EvalError(ErrorInfo {
             .level = lvlInfo,
             .msg = HintFmt("breakpoint reached"),
@@ -758,12 +758,13 @@ static void prim_trace(EvalState & state, Value * * args, Value & v)
         printError("trace: %1%", Uncolored(args[0]->str()));
     else
         printError("trace: %1%", Uncolored(ValuePrinter(state, *args[0])));
-    if (auto last = evalSettings.builtinsTraceDebugger && state.ctx.debug
-            ? state.ctx.debug->traces().next()
-            : std::nullopt)
-    {
-        state.ctx.debug->onEvalError(nullptr, (*last)->env, (*last)->expr);
+
+    if (evalSettings.debuggerOnTrace) {
+        if (auto const trace = state.ctx.nextDebugTrace()) {
+            state.ctx.debug->onEvalError(nullptr, (*trace)->env, (*trace)->expr);
+        }
     }
+
     state.forceValue(*args[1], noPos);
     v = *args[1];
 }

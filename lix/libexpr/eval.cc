@@ -2924,6 +2924,15 @@ Expr & Evaluator::parseStdin()
     );
 }
 
+std::optional<DebugTrace const *> Evaluator::nextDebugTrace() const
+{
+    if (!debug) {
+        return std::nullopt;
+    }
+
+    return debug->traces().next();
+}
+
 
 kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
 EvalPaths::findFile(const std::string_view path)
