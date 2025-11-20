@@ -11,6 +11,7 @@ struct Value;
 void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v);
 void prim_fetchTree(EvalState & state, Value * * args, Value & v);
 void prim_fetchGit(EvalState & state, Value * * args, Value & v);
+void prim_fetchMercurial(EvalState & state, Value ** args, Value & v);
 void prim_fetchTarball(EvalState & state, Value * * args, Value & v);
 void prim_fetchurl(EvalState & state, Value * * args, Value & v);
 void prim_fromTOML(EvalState & state, Value * * args, Value & v);

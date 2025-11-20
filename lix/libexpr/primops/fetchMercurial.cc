@@ -5,7 +5,7 @@
 
 namespace nix {
 
-static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
+void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
 {
     std::string url;
     std::optional<Hash> rev;
@@ -102,11 +102,4 @@ static void prim_fetchMercurial(EvalState & state, Value * * args, Value & v)
 
     state.ctx.paths.allowPath(tree.storePath);
 }
-
-static RegisterPrimOp r_fetchMercurial({
-    .name = "fetchMercurial",
-    .arity = 1,
-    .fun = prim_fetchMercurial
-});
-
 }

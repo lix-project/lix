@@ -77,6 +77,7 @@ builtin_definitions = files(
   'builtins/elem.md',
   'builtins/elemAt.md',
   'builtins/fetchGit.md',
+  'builtins/fetchMercurial.md',
   'builtins/fetchTarball.md',
   'builtins/fetchTree.md',
   'builtins/fetchurl.md',
