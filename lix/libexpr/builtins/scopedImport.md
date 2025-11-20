@@ -5,7 +5,12 @@ args: [scope, path]
 renameInGlobalScope: false
 ---
 
-Functions like [`import`](#builtins-import) with the exceptions that
+> **Warning**
+>
+> This builtin's use is heavily discouraged, it has many drawbacks and may be removed
+> in a future version of Lix.
+
+Functions like [`import`](#builtins-import) with the exception that
 it takes a `scope`, which is a set of attributes to be added to the
 lexical scope of the expression.
 
@@ -24,29 +29,6 @@ scopedImport { x = 1; } ./foo.nix
 ```
 
 will evaluate to `1`.
-
-This allows removing function arguments specifications in nix expressions,
-for example, a package definition `bar.nix`:
-
-```nix
-{ stdenv, fetchurl, libfoo }:
-
-stdenv.mkDerivation { ... buildInputs = [ libfoo ]; }
-```
-
-can be rewritten as:
-
-```nix
-stdenv.mkDerivation { ... buildInputs = [ libfoo ]; }
-```
-
-and imported via:
-
-```nix
-bar = scopedImport pkgs ./bar.nix;
-```
-
-which remove some duplication of code.
 
 Another application is overriding builtin functions or constants, e.g. to
 trace all calls to `map`, one can do:
@@ -68,13 +50,10 @@ let
 in scopedImport overrides ./bla.nix
 ```
 
-Similarly, one can simply extend the set of builtin functions.
+Similarly, it can be used to extend the set of builtin functions.
 
 > **Warning**
 >
-> A downside of using `scopedImport` is that it bypasses the evaluation cache.
-> This means that importing a file multiple times will lead to multiple parsings
-> and evaluations.
->
-> Please note also that the files imported via `scopedImport` contain free variables
-> and thus cannot be imported using the regular `import`.
+> One of the downsides of `scopedImport` is that it bypasses the evaluation cache.
+> This means that importing a file multiple times will lead to multiple expensive
+> parsings and evaluations.
