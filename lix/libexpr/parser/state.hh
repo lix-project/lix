@@ -177,7 +177,7 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
                 for (auto & ad : ae->attrs) {
                     auto j2 = jAttrs->attrs.find(ad.first);
                     if (j2 != jAttrs->attrs.end()) // Attr already defined in iAttrs, error.
-                        return dupAttr(ad.first, j2->second.pos, ad.second.pos);
+                        return dupAttr(ad.first, ad.second.pos, j2->second.pos);
                     if (ad.second.kind == ExprAttrs::AttrDef::Kind::InheritedFrom) {
                         auto & sel = dynamic_cast<ExprSelect &>(*ad.second.e);
                         auto & from = dynamic_cast<ExprInheritFrom &>(*sel.e);
