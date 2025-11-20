@@ -230,6 +230,7 @@ void registerNixRun()
 
 void chrootHelper(int argc, char * * argv)
 {
+#if __linux__
     int p = 1;
     std::string storeDir = argv[p++];
     std::string realStoreDir = argv[p++];
@@ -239,7 +240,6 @@ void chrootHelper(int argc, char * * argv)
     while (p < argc)
         args.push_back(argv[p++]);
 
-#if __linux__
     uid_t uid = getuid();
     uid_t gid = getgid();
 
@@ -310,6 +310,7 @@ void chrootHelper(int argc, char * * argv)
     throw SysError("unable to exec '%s'", cmd);
 
 #else
+    std::string storeDir = argv[1];
     throw Error("mounting the Nix store on '%s' is not supported on this platform", storeDir);
 #endif
 }
