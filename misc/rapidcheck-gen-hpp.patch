@@ -1,0 +1,13 @@
+diff --git i/include/rapidcheck/Gen.hpp w/include/rapidcheck/Gen.hpp
+index 0c48004..2eb143f 100644
+--- i/include/rapidcheck/Gen.hpp
++++ w/include/rapidcheck/Gen.hpp
+@@ -2,6 +2,8 @@
+ 
+ #include <cassert>
+ 
++#include <exception>
++
+ #include "rapidcheck/detail/Any.h"
+ #include "rapidcheck/detail/ImplicitParam.h"
+ #include "rapidcheck/gen/detail/GenerationHandler.h"

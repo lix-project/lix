@@ -95,6 +95,8 @@ try {
         std::vector<const StorePath *> willSubstituteSorted = {};
         std::for_each(willSubstitute.begin(), willSubstitute.end(),
                    [&](const StorePath &p) { willSubstituteSorted.push_back(&p); });
+        // NOTE: this sort uses a total order, so the iteration over pointers is not an issue
+        // NOLINTNEXTLINE(bugprone-nondeterministic-pointer-iteration-order)
         std::sort(willSubstituteSorted.begin(), willSubstituteSorted.end(),
                   [](const StorePath *lhs, const StorePath *rhs) {
                     if (lhs->name() == rhs->name())

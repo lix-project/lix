@@ -116,6 +116,8 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
     typedef const decltype(attrs)::value_type * Attr;
     std::vector<Attr> sorted;
     for (auto & i : attrs) sorted.push_back(&i);
+    // NOTE: this sort uses a total order, so the iteration over pointers is not an issue
+    // NOLINTNEXTLINE(bugprone-nondeterministic-pointer-iteration-order)
     std::sort(sorted.begin(), sorted.end(), [&](Attr a, Attr b) {
         std::string_view sa = symbols[a->first], sb = symbols[b->first];
         return sa < sb;

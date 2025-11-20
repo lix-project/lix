@@ -18,6 +18,7 @@
 #include <kj/async.h>
 #include <queue>
 #include <regex>
+#include <thread>
 
 #include <errno.h>
 #include <fcntl.h>

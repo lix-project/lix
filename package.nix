@@ -287,7 +287,9 @@ stdenv.mkDerivation (finalAttrs: {
     # musl doesn't support fibers, and we can't detect this with meson alone.
     ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
-    ++ lib.optional lintInsteadOfBuild "-Dlix-clang-tidy-checks-path=${lix-clang-tidy}/lib/liblix-clang-tidy.so"
+    ++ lib.optional lintInsteadOfBuild "-Dlix-clang-tidy-checks-path=${lix-clang-tidy}/lib/liblix-clang-tidy.${
+      if hostPlatform.isDarwin then "dylib" else "so"
+    }"
     ++ [
       # mesonConfigurePhase automatically passes -Dauto_features=enabled,
       # so we must explicitly enable or disable features that we are not passing
@@ -383,7 +385,9 @@ stdenv.mkDerivation (finalAttrs: {
 
   checkInputs = [
     gtest
-    rapidcheck
+    (rapidcheck.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [ ./misc/rapidcheck-gen-hpp.patch ];
+    }))
   ];
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;

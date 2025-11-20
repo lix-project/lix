@@ -97,6 +97,8 @@ public:
         res.reserve(size_);
         for (Size n = 0; n < size_; n++)
             res.emplace_back(&attrs[n]);
+        // NOTE: this sort uses a total order, so the iteration over pointers is not an issue
+        // NOLINTNEXTLINE(bugprone-nondeterministic-pointer-iteration-order)
         std::sort(res.begin(), res.end(), [&](const Attr * a, const Attr * b) {
             std::string_view sa = symbols[a->name], sb = symbols[b->name];
             return sa < sb;

@@ -222,7 +222,10 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
-          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
+          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy {
+            # FIXME: To be removed when switching to nixos-25.11-small
+            llvmPackages = final.llvmPackages_20;
+          };
 
           nix-eval-jobs = final.callPackage ./subprojects/nix-eval-jobs {
             srcDir = ./subprojects/nix-eval-jobs;
@@ -427,17 +430,20 @@
               '';
 
             # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin
-            clang-tidy =
+            clang-tidy = forAllSystems (
+              system:
               let
-                nixpkgs = nixpkgsFor.x86_64-linux.native;
-                inherit (nixpkgs) pkgs;
+                pkgs = nixpkgsFor.${system}.native;
               in
               pkgs.callPackage ./package.nix {
                 # Required since we don't support gcc stdenv
                 stdenv = pkgs.clangStdenv;
+                # FIXME: To be removed when switching to nixos-25.11-small
+                llvmPackages = pkgs.llvmPackages_20;
                 versionSuffix = "";
                 lintInsteadOfBuild = true;
-              };
+              }
+            );
 
             # Make sure that nix-env still produces the exact same result
             # on a particular version of Nixpkgs.
