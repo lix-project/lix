@@ -203,6 +203,14 @@ struct sep : sor<
 
 using seps = star<t::sep>;
 
+// Delimiters.
+namespace d {
+    // Terminators.
+    namespace t {
+        struct inherit : one<';'> { };
+    }
+}
+
 
 // marker for semantic rules. not handling one of these in an action that cares about
 // semantics is probably an error.
@@ -411,7 +419,7 @@ struct inherit : _inherit, seq<
     t::kw_inherit, seps,
     opt<one<'('>, seps, _inherit::from, seps, must<one<')'>>, seps>,
     opt<_inherit::attrs, seps>,
-    must<one<';'>>
+    must<d::t::inherit>
 > {};
 
 struct _binding {

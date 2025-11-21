@@ -1,0 +1,6 @@
+error: syntax error, expecting ';' to end 'inherit' bindings
+       at /pwd/in.nix:7:5:
+            6|   inherit c b
+            7|   d = 5;
+             |     ^
+            8| }
