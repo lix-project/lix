@@ -12,40 +12,47 @@ because the run-clang-tidy UX is so questionable.
 # https://github.com/mesonbuild/meson/issues/1564
 
 import multiprocessing
-import subprocess
 import os
 import sys
 from pathlib import Path
 
 
 def default_concurrency():
-    return min(multiprocessing.cpu_count(),
-               int(os.environ.get("NIX_BUILD_CORES", "16")))
+    return min(
+        multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16"))
+    )
 
 
-def go(exe: str, plugin_path: Path, compile_commands_json_dir: Path, jobs: int,
-       paths: list[Path], werror: bool, fix: bool):
+def go(
+    exe: str,
+    plugin_path: Path,
+    compile_commands_json_dir: Path,
+    jobs: int,
+    paths: list[Path],
+    werror: bool,
+    fix: bool,
+):
     args = [
         # XXX: This explicitly invokes it with python because of a nixpkgs bug
         # where clang-unwrapped does not patch interpreters in run-clang-tidy.
         # However, making clang-unwrapped depend on python is also silly, so idk.
         sys.executable,
         exe,
-        '-quiet',
-        '-load',
+        "-quiet",
+        "-load",
         plugin_path,
-        '-p',
+        "-p",
         compile_commands_json_dir,
-        '-j',
+        "-j",
         str(jobs),
-        '-header-filter',
-        r'lix/[^/]+/.*\.hh'
+        "-header-filter",
+        r"lix/[^/]+/.*\.hh",
     ]
     if werror:
-        args += ['-warnings-as-errors', '*']
+        args += ["-warnings-as-errors", "*"]
     if fix:
-        args += ['-fix']
-    args += ['--']
+        args += ["-fix"]
+    args += ["--"]
     args += paths
     os.execvp(sys.executable, args)
 
@@ -53,37 +60,43 @@ def go(exe: str, plugin_path: Path, compile_commands_json_dir: Path, jobs: int,
 def main():
     import argparse
 
-    ap = argparse.ArgumentParser(description='Runs run-clang-tidy for you')
-    ap.add_argument('--jobs',
-                    '-j',
-                    type=int,
-                    default=default_concurrency(),
-                    help='Parallel linting jobs to run')
-    ap.add_argument('--plugin-path',
-                    type=Path,
-                    help='Path to the Lix clang-tidy plugin')
+    ap = argparse.ArgumentParser(description="Runs run-clang-tidy for you")
+    ap.add_argument(
+        "--jobs",
+        "-j",
+        type=int,
+        default=default_concurrency(),
+        help="Parallel linting jobs to run",
+    )
+    ap.add_argument(
+        "--plugin-path", type=Path, help="Path to the Lix clang-tidy plugin"
+    )
     # FIXME: maybe we should integrate this so it just fixes the compdb for you and throws it in a tempdir?
     ap.add_argument(
-        '--compdb-path',
+        "--compdb-path",
         type=Path,
-        help=
-        'Path to the directory containing the fixed-up compilation database from clean_compdb'
+        help="Path to the directory containing the fixed-up compilation database from clean_compdb",
     )
-    ap.add_argument('--werror',
-                    action='store_true',
-                    help='Warnings get turned into errors')
-    ap.add_argument('--fix',
-                    action='store_true',
-                    help='Apply fixes for warnings')
-    ap.add_argument('--run-clang-tidy-path',
-                    default='run-clang-tidy',
-                    help='Path to run-clang-tidy')
-    ap.add_argument('paths', nargs='*', help='Source paths to check')
+    ap.add_argument(
+        "--werror", action="store_true", help="Warnings get turned into errors"
+    )
+    ap.add_argument("--fix", action="store_true", help="Apply fixes for warnings")
+    ap.add_argument(
+        "--run-clang-tidy-path", default="run-clang-tidy", help="Path to run-clang-tidy"
+    )
+    ap.add_argument("paths", nargs="*", help="Source paths to check")
     args = ap.parse_args()
 
-    go(args.run_clang_tidy_path, args.plugin_path, args.compdb_path, args.jobs,
-       args.paths, args.werror, args.fix)
+    go(
+        args.run_clang_tidy_path,
+        args.plugin_path,
+        args.compdb_path,
+        args.jobs,
+        args.paths,
+        args.werror,
+        args.fix,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
