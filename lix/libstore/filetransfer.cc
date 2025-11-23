@@ -1113,7 +1113,7 @@ struct curlFileTransfer : public FileTransfer
                     "%s; retrying from offset %d in %d ms (attempt %d/%d)",
                     Uncolored(context),
                     totalReceived,
-                    waitTime,
+                    waitTime.count(),
                     Uncolored(attempt),
                     Uncolored(tries)
                 );
@@ -1121,7 +1121,7 @@ struct curlFileTransfer : public FileTransfer
                 printTaggedWarning(
                     "%s; retrying in %d ms (attempt %d/%d)",
                     Uncolored(context),
-                    waitTime,
+                    waitTime.count(),
                     Uncolored(attempt),
                     Uncolored(tries)
                 );
