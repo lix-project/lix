@@ -5,6 +5,10 @@
 // can i make it any more obvious?
 #include "lix/libutil/result.hh"
 
+// Without this, Perl defines NDEBUG, which makes the assertions
+// ineffective and might break Lix
+#define DEBUGGING
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"

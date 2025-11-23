@@ -11,6 +11,14 @@
 #include <span>
 #include <stdint.h> // IWYU pragma: keep (this is used literally everywhere)
 
+// NOTE: This check is load-bearing, c.f.
+//       https://git.lix.systems/lix-project/lix/commit/96a36833084f66b79ba778e719862b8219557773
+//       It is put here so that every consumer of our headers are prohibited from
+//       compiling with NDEBUG as some asserts are used in inline code
+#ifdef NDEBUG
+#error "Lix may not be built with assertions disabled (i.e. with -DNDEBUG)."
+#endif
+
 namespace nix {
 
 typedef std::list<std::string> Strings;
