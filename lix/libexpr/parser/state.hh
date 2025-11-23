@@ -214,11 +214,20 @@ inline void State::mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * t
         target->inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
     }
     for (auto & [insertKey, insertDef] : source->attrs) {
-        if (auto collision = target->attrs.find(insertKey);
-            collision != target->attrs.end()) // Attr already defined in target, error.
-        {
+        if (auto collision = target->attrs.find(insertKey); collision != target->attrs.end()) {
+            // Attr already defined in target, recurse merge if possible otherwise error.
+            auto * collisionInsert = dynamic_cast<ExprSet *>(insertDef.e.get());
+            auto * collisionTarget = dynamic_cast<ExprSet *>(collision->second.e.get());
+            if (!collisionInsert || !collisionTarget) {
+                attrPath.push_back(AttrName(insertDef.pos, insertKey));
+                return dupAttr(attrPath, insertDef.pos, collision->second.pos);
+            }
+
+            // Push insertKey to the attrPath for error propagation (pop afterwards), then recurse
+            // merge
             attrPath.push_back(AttrName(insertDef.pos, insertKey));
-            return dupAttr(attrPath, insertDef.pos, collision->second.pos);
+            mergeAttrs(attrPath, collisionInsert, collisionTarget);
+            attrPath.pop_back();
         }
         if (insertDef.kind == ExprAttrs::AttrDef::Kind::InheritedFrom) {
             auto & sel = dynamic_cast<ExprSelect &>(*insertDef.e);
