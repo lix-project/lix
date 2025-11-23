@@ -217,7 +217,8 @@ inline void State::mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * t
         if (auto collision = target->attrs.find(insertKey);
             collision != target->attrs.end()) // Attr already defined in target, error.
         {
-            return dupAttr(insertKey, insertDef.pos, collision->second.pos);
+            attrPath.push_back(AttrName(insertDef.pos, insertKey));
+            return dupAttr(attrPath, insertDef.pos, collision->second.pos);
         }
         if (insertDef.kind == ExprAttrs::AttrDef::Kind::InheritedFrom) {
             auto & sel = dynamic_cast<ExprSelect &>(*insertDef.e);
