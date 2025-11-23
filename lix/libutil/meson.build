@@ -172,6 +172,7 @@ deprecated_feature_definitions = files(
   # keep-sorted start
   'deprecated-features/ancient-let.md',
   'deprecated-features/cr-line-endings.md',
+  'deprecated-features/nix-path-shadow.md',
   'deprecated-features/nul-bytes.md',
   'deprecated-features/rec-set-overrides.md',
   'deprecated-features/shadow-internal-symbols.md',

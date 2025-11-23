@@ -1,0 +1,3 @@
+warning: The prefix 'nix' is reserved for internal use by Lix in the Nix search path, its usage is deprecated and will be forbidden in the future.
+         Use --extra-deprecated-features nix-path-shadow to silence this warning.
+         This is due to adding 'nix=nix-shadow' in the Nix search path, either through the environment variable 'NIX_PATH' or by passing the flag -I to the nix invocation.

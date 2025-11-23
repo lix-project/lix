@@ -1,0 +1,3 @@
+warning: Shadowing '<nix/...>' by configuring the nix-path is deprecated and will be forbidden in the future.
+         Use --extra-deprecated-features nix-path-shadow to silence this warning.
+         This is due to adding 'nix-shadow' to the nix-path without a prefix, either by passing the flag '-I nix-shadow' to the nix invocation or by adding this path to the environment variable 'NIX_PATH'.

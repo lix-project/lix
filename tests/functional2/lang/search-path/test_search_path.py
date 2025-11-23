@@ -2,7 +2,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from functional2.lang.test_lang import test_eval as nix_eval
-from functional2.testlib.fixtures.file_helper import with_files, CopyTree, CopyFile, AssetSymlink
+from functional2.testlib.fixtures.file_helper import AssetSymlink, CopyFile, CopyTree, with_files
 from functional2.testlib.fixtures.nix import Nix
 from functional2.testlib.fixtures.snapshot import Snapshot
 
@@ -36,3 +36,39 @@ def test_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot])
         ],
         snapshot,
     )
+
+
+@with_files(
+    {
+        "nix-shadow": CopyTree("nix-shadow"),
+        "in.nix": CopyFile("in-fetchurl.nix"),
+        "out.exp": AssetSymlink("eval-okay-prefixed.out.exp"),
+        "err.exp": AssetSymlink("eval-okay-prefixed.err.exp"),
+    }
+)
+def test_prefixed_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
+    nix.env.set_env("NIX_PATH", "nix=nix-shadow")
+    nix_eval(files, nix, [], snapshot)
+
+
+@with_files(
+    {
+        "nix-shadow": CopyTree("nix-shadow"),
+        "in.nix": CopyFile("in-fetchurl.nix"),
+        "out.exp": AssetSymlink("eval-okay-prefixless.out.exp"),
+        "err.exp": AssetSymlink("eval-okay-prefixless.err.exp"),
+    }
+)
+def test_prefixless_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
+    nix_eval(files, nix, ["-I", "nix-shadow"], snapshot)
+
+
+@with_files(
+    {
+        "in.nix": CopyFile("in-fetchurl.nix"),
+        "out.exp": AssetSymlink("eval-okay-fetchurl.out.exp"),
+        "err.exp": AssetSymlink("eval-okay-fetchurl.err.exp"),
+    }
+)
+def test_empty_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
+    nix_eval(files, nix, [], snapshot)

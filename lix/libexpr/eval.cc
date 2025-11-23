@@ -4,12 +4,14 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/deprecated-features.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/english.hh"
 #include "lix/libutil/fmt.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libexpr/print-options.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/suggestions.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libstore/store-api.hh"
@@ -345,6 +347,61 @@ EvalPaths::EvalPaths(
                 }
             } else
                 allowPath(path);
+        }
+    }
+
+#if LIX_MAJOR >= 3 || (LIX_MAJOR == 2 && LIX_MINOR >= 96)
+#warning \
+    "The feature nix-path-shadow was deprecated in 2.95 with a warning, which needs to be turned into an error in 2.96"
+#endif
+    if (!featureSettings.isEnabled(DeprecatedFeature::NixPathShadow)) {
+        for (auto & [prefix, path] : searchPath_.elements) {
+            // Match on the 'nix' prefix
+            if (prefix.s == "nix") {
+                logWarning(
+                    {.msg = HintFmt(
+                         "The prefix '%s' is reserved for internal use by Lix in the Nix search "
+                         "path, its usage is deprecated and will be forbidden in the future.\n"
+                         "Use %s to silence this warning.\n"
+                         "This is due to adding '%s=%s' in the Nix search path, either through the "
+                         "environment variable '%s' or by passing the flag %s to the nix "
+                         "invocation.",
+                         "nix",
+                         "--extra-deprecated-features nix-path-shadow",
+                         prefix.s,
+                         path.s,
+                         "NIX_PATH",
+                         "-I"
+                     )}
+                );
+            } else
+                // Match prefixless paths that contain a `nix` directory
+                if (auto res =
+                        prefix.suffixIfPotentialMatch("nix").and_then([&](std::string_view s) {
+                            return aio.blockOn(resolveSearchPathPath(path))
+                                .and_then([&](std::string r) {
+                                    Path res = s.length() ? concatStrings(r, "/", s): r;
+
+                                    return pathExists(res) ? std::optional(res) : std::nullopt;
+                                });
+                        }))
+                {
+                    logWarning(
+                        {.msg = HintFmt(
+                             "Shadowing '%s' by configuring the nix-path is deprecated and "
+                             "will be forbidden in the future.\n"
+                             "Use %s to silence this warning.\n"
+                             "This is due to adding '%s' to the nix-path without a prefix, "
+                             "either by passing the flag '-I %s' to the nix invocation or by "
+                             "adding this path to the environment variable '%s'.",
+                             "<nix/...>",
+                             "--extra-deprecated-features nix-path-shadow",
+                             path.s,
+                             path.s,
+                             "NIX_PATH"
+                         )}
+                    );
+                }
         }
     }
 }
