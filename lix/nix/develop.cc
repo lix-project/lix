@@ -257,6 +257,10 @@ try {
         output.second = DerivationOutput::InputAddressed { .path = StorePath::dummy };
         drv.env[output.first] = "";
     }
+
+    // outputs default to [ "out" ]
+    drv.env.try_emplace("outputs", "out");
+
     auto hashesModulo = TRY_AWAIT(hashDerivationModulo(*evalStore, drv, true));
 
     for (auto & output : drv.outputs) {
