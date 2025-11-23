@@ -32,6 +32,11 @@ struct AttrName
     std::unique_ptr<Expr> expr;
     AttrName(PosIdx pos, Symbol s);
     AttrName(PosIdx pos, std::unique_ptr<Expr> e);
+
+    inline bool isDynamic()
+    {
+        return !symbol;
+    }
 };
 
 typedef std::vector<AttrName> AttrPath;

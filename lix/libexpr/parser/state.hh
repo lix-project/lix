@@ -6,7 +6,6 @@
 #include "lix/libutil/logging.hh"
 
 namespace nix::parser {
-
 struct IndStringLine {
     // String containing only the leading whitespace of the line. May be empty.
     std::string_view indentation;
@@ -40,6 +39,7 @@ struct State
     void badLineEndingFound(const PosIdx pos, bool warnOnly);
     void nulFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
+    void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
     std::unique_ptr<Expr> stripIndentation(const PosIdx pos, std::vector<IndStringLine> && line);
 
@@ -132,81 +132,103 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
     AttrPath::iterator i;
     // All attrpaths have at least one attr
     assert(!attrPath.empty());
-    // Checking attrPath validity.
-    // ===========================
+
+    // Walk the attrpath up to the parent of the attribute we want to insert, moving `attrs` along
+    // and creating new empty intermediate attrsets as necessary.
     for (i = attrPath.begin(); i + 1 < attrPath.end(); i++) {
-        if (i->symbol) {
-            ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(i->symbol);
-            if (j != attrs->attrs.end()) {
-                if (j->second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
-                    ExprSet * attrs2 = dynamic_cast<ExprSet *>(j->second.e.get());
-                    if (!attrs2) {
-                        attrPath.erase(i + 1, attrPath.end());
-                        dupAttr(attrPath, pos, j->second.pos);
-                    }
-                    attrs = attrs2;
-                } else {
-                    attrPath.erase(i + 1, attrPath.end());
-                    dupAttr(attrPath, pos, j->second.pos);
-                }
-            } else {
-                auto next = attrs->attrs.emplace(std::piecewise_construct,
-                    std::tuple(i->symbol),
-                    std::tuple(std::make_unique<ExprSet>(), pos));
-                attrs = static_cast<ExprSet *>(next.first->second.e.get());
-            }
-        } else {
+        AttrName & attr = *i;
+
+        if (attr.isDynamic()) {
+            // Simply insert an empty attrset (but dynamic)
             auto & next = attrs->dynamicAttrs.emplace_back(std::move(i->expr), std::make_unique<ExprSet>(), pos);
             attrs = static_cast<ExprSet *>(next.valueExpr.get());
+        } else if (ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(i->symbol);
+                   j != attrs->attrs.end())
+        {
+            // Try to walk down the next attribute, throw duplicate error if not possible
+            auto & [foundName, foundDef] = *j;
+            if (foundDef.kind == ExprAttrs::AttrDef::Kind::Inherited) {
+                attrPath.erase(i + 1, attrPath.end());
+                return dupAttr(attrPath, pos, foundDef.pos);
+            }
+            ExprSet * foundAttrs = dynamic_cast<ExprSet *>(foundDef.e.get());
+            if (!foundAttrs) {
+                attrPath.erase(i + 1, attrPath.end());
+                return dupAttr(attrPath, pos, foundDef.pos);
+            }
+            attrs = foundAttrs;
+        } else {
+            // Simply insert an empty attrset
+            auto next = attrs->attrs.emplace(
+                std::piecewise_construct,
+                std::tuple(attr.symbol),
+                std::tuple(std::make_unique<ExprSet>(), pos)
+            );
+            attrs = static_cast<ExprSet *>(next.first->second.e.get());
         }
     }
+
     // Expr insertion.
     // ==========================
-    if (i->symbol) {
-        ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(i->symbol);
-        if (j != attrs->attrs.end()) {
-            // This attr path is already defined. However, if both
-            // e and the expr pointed by the attr path are two attribute sets,
-            // we want to merge them.
-            // Otherwise, throw an error.
-            auto * ae = dynamic_cast<ExprSet *>(e.get());
-            auto * jAttrs = dynamic_cast<ExprSet *>(j->second.e.get());
-            if (jAttrs && ae) {
-                if (ae->inheritFromExprs && !jAttrs->inheritFromExprs)
-                    jAttrs->inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
-                for (auto & ad : ae->attrs) {
-                    auto j2 = jAttrs->attrs.find(ad.first);
-                    if (j2 != jAttrs->attrs.end()) // Attr already defined in iAttrs, error.
-                        return dupAttr(ad.first, ad.second.pos, j2->second.pos);
-                    if (ad.second.kind == ExprAttrs::AttrDef::Kind::InheritedFrom) {
-                        auto & sel = dynamic_cast<ExprSelect &>(*ad.second.e);
-                        auto & from = dynamic_cast<ExprInheritFrom &>(*sel.e);
-                        from.displ += jAttrs->inheritFromExprs->size();
-                    }
-                    jAttrs->attrs.emplace(ad.first, std::move(ad.second));
-                }
-                std::ranges::move(ae->dynamicAttrs, std::back_inserter(jAttrs->dynamicAttrs));
-                if (ae->inheritFromExprs)
-                    std::ranges::move(*ae->inheritFromExprs, std::back_inserter(*jAttrs->inheritFromExprs));
-            } else {
-                dupAttr(attrPath, pos, j->second.pos);
-            }
-        } else {
-            // Before inserting new attrs, check for __override and throw an error
-            // (the error will initially be a warning to ease migration)
-            if (!featureSettings.isEnabled(Dep::RecSetOverrides) && i->symbol == s.overrides) {
-                if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive)
-                    overridesFound(pos);
-            }
+    AttrName & attr = *i;
 
-            // This attr path is not defined. Let's create it.
-            e->setName(i->symbol);
-            attrs->attrs.emplace(std::piecewise_construct,
-                std::tuple(i->symbol),
-                std::tuple(std::move(e), pos));
+    if (attr.isDynamic()) {
+        attrs->dynamicAttrs.emplace_back(std::move(attr.expr), std::move(e), pos);
+    } else if (ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(attr.symbol);
+               j != attrs->attrs.end())
+    {
+        // This attr path is already defined. However, if both
+        // e and the expr pointed by the attr path are two attribute sets,
+        // we want to merge them.
+        // Otherwise, throw an error.
+        auto & [foundName, foundDef] = *j;
+
+        auto * insertAttrs = dynamic_cast<ExprSet *>(e.get());
+        auto * foundAttrs = dynamic_cast<ExprSet *>(foundDef.e.get());
+        if (!foundAttrs || !insertAttrs) {
+            return dupAttr(attrPath, pos, foundDef.pos);
         }
+        mergeAttrs(attrPath, insertAttrs, foundAttrs);
     } else {
-        attrs->dynamicAttrs.emplace_back(std::move(i->expr), std::move(e), pos);
+        // This attr path is not defined. Let's create it.
+
+        // Before inserting new attrs, check for __override and throw an error
+        // (the error will initially be a warning to ease migration)
+        if (!featureSettings.isEnabled(Dep::RecSetOverrides) && attr.symbol == s.overrides) {
+            if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive) {
+                overridesFound(pos);
+            }
+        }
+
+        e->setName(attr.symbol);
+        attrs->attrs.emplace(
+            std::piecewise_construct, std::tuple(attr.symbol), std::tuple(std::move(e), pos)
+        );
+    }
+}
+
+/* mutably merge source into target. attrPath is only for error messages */
+inline void State::mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target)
+{
+    if (source->inheritFromExprs && !target->inheritFromExprs) {
+        target->inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
+    }
+    for (auto & [insertKey, insertDef] : source->attrs) {
+        if (auto collision = target->attrs.find(insertKey);
+            collision != target->attrs.end()) // Attr already defined in target, error.
+        {
+            return dupAttr(insertKey, insertDef.pos, collision->second.pos);
+        }
+        if (insertDef.kind == ExprAttrs::AttrDef::Kind::InheritedFrom) {
+            auto & sel = dynamic_cast<ExprSelect &>(*insertDef.e);
+            auto & from = dynamic_cast<ExprInheritFrom &>(*sel.e);
+            from.displ += target->inheritFromExprs->size();
+        }
+        target->attrs.emplace(insertKey, std::move(insertDef));
+    }
+    std::ranges::move(source->dynamicAttrs, std::back_inserter(target->dynamicAttrs));
+    if (source->inheritFromExprs) {
+        std::ranges::move(*source->inheritFromExprs, std::back_inserter(*target->inheritFromExprs));
     }
 }
 
