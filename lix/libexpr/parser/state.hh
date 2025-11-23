@@ -40,6 +40,7 @@ struct State
     void badSingleLineIndStringFound(const PosIdx pos);
     void badEscapeFound(const PosIdx pos, char found, std::string escape);
     void nulFound(const PosIdx pos);
+    void recSetMergeFound(const AttrPath & attrPath, const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
@@ -168,6 +169,20 @@ inline void State::nulFound(const PosIdx pos)
         .pos = positions[pos],
     });
 }
+// Added 2025-11-23
+inline void State::recSetMergeFound(const AttrPath & attrPath, const PosIdx pos)
+{
+    throw ParseError({
+        .msg = HintFmt(
+            "attribute '%s' cannot be merged, because one set is marked as recursive and the other "
+            "isn't. Use %s to disable this error and make the expression parse as-is with "
+            "implementation-defined semantics.",
+            showAttrPath(symbols, attrPath),
+            "--extra-deprecated-features rec-set-merges"
+        ),
+        .pos = positions[pos],
+    });
+}
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)
 {
@@ -248,6 +263,16 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
                 overridesFound(pos);
             }
         }
+        // Also check for recursive sets to insert into and throw an error
+        // We check on the attrpath length because `x = null;` in `rec { x = null; }` is allowed but
+        // not `{ x = rec {}; x.y = null; }`.
+        // (Note that `rec { x.y = null; }` is not affected by this condition because `attrs`
+        // currently points to `x` (non-rec`) and not to the outer set.)
+        if (!featureSettings.isEnabled(Dep::RecSetMerges) && attrPath.size() > 1) {
+            if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive) {
+                recSetMergeFound(attrPath, e->pos);
+            }
+        }
 
         e->setName(attr.symbol);
         attrs->attrs.emplace(
@@ -259,6 +284,12 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
 /* mutably merge source into target. attrPath is only for error messages */
 inline void State::mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target)
 {
+    // Before merging, we check that either both or neither are marked as `rec` and throw an error
+    // otherwise
+    if (!featureSettings.isEnabled(Dep::RecSetMerges) && source->recursive != target->recursive) {
+        recSetMergeFound(attrPath, source->pos);
+    }
+
     if (source->inheritFromExprs && !target->inheritFromExprs) {
         target->inheritFromExprs = std::make_unique<std::list<std::unique_ptr<Expr>>>();
     }

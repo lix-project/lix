@@ -1,0 +1,6 @@
+error: undefined variable 'x'
+       at /pwd/in.nix:9:9:
+            8|     x = 1;
+            9|     y = x;
+             |         ^
+           10|   };

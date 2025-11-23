@@ -1,0 +1,6 @@
+error: attribute 'foo' cannot be merged, because one set is marked as recursive and the other isn't. Use --extra-deprecated-features rec-set-merges to disable this error and make the expression parse as-is with implementation-defined semantics.
+       at /pwd/in.nix:4:9:
+            3|   #   ^~~  we are implicitly creating a non-recursive attrset
+            4|   foo = rec {
+             |         ^
+            5|     # merging this attrset to foo.bar, discards the `rec` modifier

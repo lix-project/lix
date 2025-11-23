@@ -1,0 +1,28 @@
+[[test]]
+runner = "parse-fail"
+matrix = true
+
+[[test]]
+name = "depr"
+runner = "parse-fail"
+flags = ["--extra-deprecated-features", "rec-set-merges"]
+in = ["in.nix", "in-2.nix"]
+matrix = true
+
+[[test]]
+name = "depr"
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "rec-set-merges"]
+in = "in-3.nix"
+
+[[test]]
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "rec-set-merges"]
+in = "in-3.nix"
+
+[[test]]
+name = "eval-depr"
+runner = "eval-fail"
+flags = ["--extra-deprecated-features", "rec-set-merges"]
+in = ["in.nix", "in-2.nix"]
+matrix = true

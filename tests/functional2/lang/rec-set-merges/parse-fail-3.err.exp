@@ -1,0 +1,6 @@
+error: attribute 'foo.bar' cannot be merged, because one set is marked as recursive and the other isn't. Use --extra-deprecated-features rec-set-merges to disable this error and make the expression parse as-is with implementation-defined semantics.
+       at /pwd/in.nix:6:13:
+            5|   };
+            6|   foo.bar = y;
+             |             ^
+            7| }

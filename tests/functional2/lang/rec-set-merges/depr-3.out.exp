@@ -1,0 +1,18 @@
+_type: ExprSet
+attrs:
+  foo:
+    _type: ExprSet
+    attrs:
+      bar:
+        _type: ExprVar
+        value: y
+      x:
+        _type: ExprLiteral
+        value: 1
+        valueType: Int
+      y:
+        _type: ExprLiteral
+        value: 2
+        valueType: Int
+    recursive: true
+recursive: false

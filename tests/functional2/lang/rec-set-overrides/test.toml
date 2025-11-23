@@ -1,11 +1,12 @@
 [[test]]
 runner = "parse-okay"
-flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
+flags = [ "--extra-deprecated-features", "rec-set-overrides", "--extra-deprecated-features", "rec-set-merges" ]
 
 # Same as above but with deprecation warning
 [[test]]
 name = "parse-okay-deprecation-warning"
 runner = "parse-okay"
+flags = [ "--extra-deprecated-features", "rec-set-merges" ]
 
 [[test]]
 runner = "eval-fail"

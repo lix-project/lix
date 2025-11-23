@@ -22,6 +22,7 @@ let
   deprecatedFeatures = [
     "broken-string-indentation"
     "broken-string-escape"
+    "rec-set-merges"
   ];
 
   env.NIX_CONFIG = "extra-deprecated-features = ${concatStringsSep " " deprecatedFeatures}";
