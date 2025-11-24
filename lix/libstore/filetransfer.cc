@@ -1093,15 +1093,6 @@ struct curlFileTransfer : public FileTransfer
             co_return result::current_exception();
         }
 
-        void throwChangedTarget(std::string_view what, std::string_view from, std::string_view to)
-        {
-            if (!from.empty() && from != to) {
-                throw FileTransferError(
-                    Misc, {}, "uri %s changed %s from %s to %s during transfer", uri, what, from, to
-                );
-            }
-        }
-
         kj::Promise<Result<void>> prepareRetry(
             const std::string & context,
             const std::chrono::milliseconds & waitTime,
@@ -1135,17 +1126,41 @@ struct curlFileTransfer : public FileTransfer
 
         kj::Promise<Result<void>> restartTransfer(const std::chrono::milliseconds & timeout)
         try {
+            auto onChange =
+                [&](std::string_view what, std::string_view from, std::string_view to, bool throw_
+                ) -> void {
+                if (!from.empty() && from != to) {
+                    FileTransferError e = FileTransferError(
+                        Misc,
+                        {},
+                        "uri %s changed %s from %s to %s during transfer",
+                        uri,
+                        what,
+                        from,
+                        to
+                    );
+
+                    if (throw_) {
+                        throw e;
+                    }
+
+                    logWarning(e.info());
+                }
+            };
+
             // use the effective URI of the previous transfer for retries. this avoids
             // some silent corruption if a redirect changes between starting and retry
             const auto & uri = metadata.effectiveUri.empty() ? this->uri : metadata.effectiveUri;
 
             auto newMeta = TRY_AWAIT(startTransfer(uri, timeout, totalReceived));
-            throwChangedTarget("final destination", metadata.effectiveUri, newMeta.effectiveUri);
-            throwChangedTarget("ETag", metadata.etag, newMeta.etag);
-            throwChangedTarget(
+
+            onChange("final destination", metadata.effectiveUri, newMeta.effectiveUri, false);
+            onChange("ETag", metadata.etag, newMeta.etag, true);
+            onChange(
                 "immutable url",
                 metadata.immutableUrl.value_or(""),
-                newMeta.immutableUrl.value_or("")
+                newMeta.immutableUrl.value_or(""),
+                true
             );
             co_return result::success();
         } catch (...) {
