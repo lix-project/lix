@@ -63,6 +63,7 @@
   xz,
   zstd,
   yq,
+  wrapBintoolsWith,
 
   busybox-sandbox-shell,
 
@@ -83,6 +84,8 @@
   werror ? false,
 
   lintInsteadOfBuild ? false,
+
+  useLld ? false,
 
   # FIXME(jade): figure out if it is possible to support non-linux systems for dtrace probes
   withDtrace ?
@@ -217,6 +220,12 @@ let
     ./tests/unit
     (fileset.fileFilter (f: lib.strings.hasPrefix "nix-profile" f.name) ./scripts)
   ];
+
+  # Nixpkgs only provides an lld wrapper if the entire Nixpkgs is instantiated with "linker = lld",
+  # but we can just make one ourselves.
+  lldBintools = wrapBintoolsWith {
+    bintools = llvmPackages.bintools;
+  };
 in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
 stdenv.mkDerivation (finalAttrs: {
@@ -283,6 +292,10 @@ stdenv.mkDerivation (finalAttrs: {
       "-Dbuild-test-shell=${pkgsStatic.busybox}/bin"
       "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
+    ++ lib.optionals useLld [
+      "-Dc_link_args=-fuse-ld=lld"
+      "-Dcpp_link_args=-fuse-ld=lld"
+    ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
     # musl doesn't support fibers, and we can't detect this with meson alone.
     ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"
@@ -336,6 +349,7 @@ stdenv.mkDerivation (finalAttrs: {
     lsof
     zstd
   ]
+  ++ lib.optional useLld lldBintools
   ++ lib.optional hostPlatform.isLinux util-linuxMinimal
   ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
   ++ lib.optional internalApiDocs doxygen

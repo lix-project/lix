@@ -588,6 +588,8 @@
                 inherit stdenv versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = false;
+                # Use LLD in the dev shell by default for faster link times.
+                useLld = stdenv.hostPlatform.isLinux;
               };
               pre-commit = self.hydraJobs.pre-commit.${pkgs.system} or { };
             in
