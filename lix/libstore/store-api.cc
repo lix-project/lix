@@ -1537,7 +1537,10 @@ try {
             try {
                 (*lk)->push_back(TRY_AWAIT(openStore(uri)));
             } catch (Error & e) {
-                logWarning(e.info());
+                logWarning(
+                    {.msg = HintFmt("Failed to setup the substituter at URI '%s': %s", uri, e.msg())
+                    }
+                );
             }
         }
 
