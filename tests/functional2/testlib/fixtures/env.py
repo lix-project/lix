@@ -199,7 +199,7 @@ class ManagedEnv:
             # Darwin / Apple behaves differently and requires _NIX_TEST_NO_SANDBOX to be set for whatever reason
             self._env |= {"_NIX_TEST_NO_SANDBOX": "1"}
             # copy global path to maintain features usually provided by busybox
-            [self.path.append(p) for p in global_path.split(":")]
+            [self.path.append(p) for p in global_path.split(":") if Path(p).exists()]
 
     def set_env(self, name: str, value: str):
         if name in self.dirs.get_env_keys():
