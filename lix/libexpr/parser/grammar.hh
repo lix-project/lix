@@ -208,6 +208,7 @@ namespace d {
     // Terminators.
     namespace t {
         struct inherit : one<';'> { };
+        struct binding : one<';'> { };
     }
 }
 
@@ -438,7 +439,7 @@ struct bindings : opt<
     list<
         sor<
             inherit,
-            seq<binding, seps, must<one<';'>>>
+            seq<binding, seps, must<d::t::binding>>
         >,
         seps
     >
@@ -447,9 +448,9 @@ struct bindings : opt<
 struct repl_binding : binding {};
 
 struct repl_bindings : seq<
-    list<repl_binding, one<';'>, t::sep>,
+    list<repl_binding, d::t::binding, t::sep>,
     /* Optional semicolon at the end for convenience */
-    opt<seps, one<';'>>
+    opt<seps, d::t::binding>
 > {};
 
 struct op {

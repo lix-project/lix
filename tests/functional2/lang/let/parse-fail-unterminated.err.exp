@@ -1,0 +1,6 @@
+error: syntax error, expecting ';' to end binding
+       at /pwd/in.nix:3:1:
+            2|   a = ""
+            3| in a
+             | ^
+            4|
