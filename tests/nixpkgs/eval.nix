@@ -14,6 +14,7 @@ let
     "broken-string-indentation"
     "broken-string-escape"
     "rec-set-merges"
+    "rec-set-dynamic-attrs"
   ];
 in
 

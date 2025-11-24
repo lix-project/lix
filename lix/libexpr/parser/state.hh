@@ -41,6 +41,7 @@ struct State
     void badEscapeFound(const PosIdx pos, char found, std::string escape);
     void nulFound(const PosIdx pos);
     void recSetMergeFound(const AttrPath & attrPath, const PosIdx pos);
+    void recSetDynamicAttrFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
@@ -183,6 +184,19 @@ inline void State::recSetMergeFound(const AttrPath & attrPath, const PosIdx pos)
         .pos = positions[pos],
     });
 }
+// Added 2025-11-24
+inline void State::recSetDynamicAttrFound(const PosIdx pos)
+{
+    throw ParseError({
+        .msg = HintFmt(
+            "dynamic attributes are not allowed within recursive attrsets, because they would be "
+            "evaluated separately from the other recursive attributes. Use %s to disable this "
+            "error.",
+            "--extra-deprecated-features rec-set-dynamic-attrs"
+        ),
+        .pos = positions[pos],
+    });
+}
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)
 {
@@ -196,6 +210,14 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
         AttrName & attr = *i;
 
         if (attr.isDynamic()) {
+            /* We don't want to insert dynamic attributes into recursive sets, because that has
+             * fucky semantics */
+            if (ExprSet * set = dynamic_cast<ExprSet *>(attrs);
+                !featureSettings.isEnabled(Dep::RecSetDynamicAttrs) && set && set->recursive)
+            {
+                recSetDynamicAttrFound(pos);
+            }
+
             // Simply insert an empty attrset (but dynamic)
             auto & next = attrs->dynamicAttrs.emplace_back(std::move(i->expr), std::make_unique<ExprSet>(), pos);
             attrs = static_cast<ExprSet *>(next.valueExpr.get());
@@ -237,6 +259,14 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
     AttrName & attr = *i;
 
     if (attr.isDynamic()) {
+        /* We don't want to insert dynamic attributes into recursive sets, because that has
+         * fucky semantics */
+        if (ExprSet * set = dynamic_cast<ExprSet *>(attrs);
+            !featureSettings.isEnabled(Dep::RecSetDynamicAttrs) && set && set->recursive)
+        {
+            recSetDynamicAttrFound(pos);
+        }
+
         attrs->dynamicAttrs.emplace_back(std::move(attr.expr), std::move(e), pos);
     } else if (ExprAttrs::AttrDefs::iterator j = attrs->attrs.find(attr.symbol);
                j != attrs->attrs.end())

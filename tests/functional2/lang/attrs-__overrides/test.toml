@@ -1,9 +1,10 @@
 [[test]]
 name = "warning"
 runner = "eval-okay"
+flags = ["--extra-deprecated-features", "rec-set-dynamic-attrs"]
 matrix = true
 
 [[test]]
 runner = "eval-okay"
-flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
+flags = [ "--extra-deprecated-features", "rec-set-overrides rec-set-dynamic-attrs" ]
 matrix = true

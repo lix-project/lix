@@ -1,0 +1,6 @@
+error: dynamic attributes are not allowed within recursive attrsets, because they would be evaluated separately from the other recursive attributes. Use --extra-deprecated-features rec-set-dynamic-attrs to disable this error.
+       at /pwd/in.nix:4:5:
+            3|     foo = yep;
+            4|     ${foo} = "awa";
+             |     ^
+            5| }

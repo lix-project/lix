@@ -1,0 +1,18 @@
+_type: ExprSet
+attrs:
+  foo:
+    _type: ExprVar
+    value: yep
+  yep:
+    _type: ExprLiteral
+    value: bar
+    valueType: String
+dynamicAttrs:
+  - name:
+      _type: ExprVar
+      value: foo
+    value:
+      _type: ExprLiteral
+      value: awa
+      valueType: String
+recursive: true

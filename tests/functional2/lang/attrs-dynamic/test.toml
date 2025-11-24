@@ -1,0 +1,10 @@
+[[test]]
+runner = "eval-okay"
+flags = ["--extra-deprecated-features", "rec-set-dynamic-attrs"]
+matrix = true
+in = ["in.nix", "in-2.nix", "in-bare.nix", "in-merge.nix", "in-null.nix"]
+
+[[test]]
+runner = "eval-fail"
+matrix = true
+in = ["in-duplicate.nix", "in-incomplete-state.nix", "in-infrec.nix"]
