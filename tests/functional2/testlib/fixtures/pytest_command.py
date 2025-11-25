@@ -22,9 +22,9 @@ def _pytest_command(env: ManagedEnv, request: FixtureRequest, do_snapshot_update
     else:
         flags = params
         propagate_update = True
-    env.path.add_program("pytest")
-    cwd = env.get_env("HOME") / "functional2"
-    cmd = Command(argv=["pytest", "--basetemp", "../pytest_files", *flags], _env=env, cwd=cwd)
     if propagate_update and do_snapshot_update:
         flags.append("--accept-tests")
-    return cmd
+
+    env.path.add_program("pytest")
+    cwd = env.get_env("HOME") / "functional2"
+    return Command(argv=["pytest", "--basetemp", "../pytest_files", *flags], _env=env, cwd=cwd)
