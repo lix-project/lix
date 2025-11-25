@@ -147,7 +147,7 @@ The development shell on Linux uses LLD by default for faster link times.
 This is set using `mesonFlags`, so to override it, you can simplify re-specify the linker to Meson:
 
 ```bash
-$ just setup-custom -Dc_link_args=-fuse-ld=ld -Dc_link_args=-fuse-ld=ld
+$ just setup-custom -Dc_link_args=-fuse-ld=ld -Dcpp_link_args=-fuse-ld=ld
 ```
 
 While using LLD, you may find it helpful to use ThinLTO for even further improvements to link times for incremental builds:
