@@ -1,0 +1,5 @@
+error: syntax error, unexpected end of file, expecting '}' to end attribute set
+       at /pwd/in.nix:3:1:
+            2|   a = "b";
+            3|
+             | ^

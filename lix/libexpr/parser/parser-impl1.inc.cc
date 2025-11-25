@@ -58,6 +58,7 @@ error_message_for(grammar::v1::t::kw_else) = "expecting 'else'";
 error_message_for(grammar::v1::t::kw_in) = "expecting 'in'";
 error_message_for(grammar::v1::d::t::binding) = "expecting ';' to end binding";
 error_message_for(grammar::v1::d::t::inherit) = "expecting ';' to end 'inherit' bindings";
+error_message_for(grammar::v1::d::t::attrs) = "expecting '}' to end attribute set";
 
 struct SyntaxErrors
 {

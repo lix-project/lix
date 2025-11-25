@@ -209,6 +209,7 @@ namespace d {
     namespace t {
         struct inherit : one<';'> { };
         struct binding : one<';'> { };
+        struct attrs : one<'}'> { };
     }
 }
 
@@ -401,7 +402,7 @@ struct _attr {
     struct expr : semantic, seq<
         TAO_PEGTL_STRING("${"), seps,
         must<grammar::v1::expr>, seps,
-        must<one<'}'>>
+        must<d::t::attrs>
     > {};
 };
 struct attr : _attr, sor<
@@ -505,7 +506,7 @@ struct _expr {
         Init...,
         OpenMod<one<'{'>>, seps,
         bindings, seps,
-        must<one<'}'>>
+        must<d::t::attrs>
     > {};
 
     struct select;

@@ -1,4 +1,4 @@
-error: syntax error, unexpected end of file, expecting '}'
+error: syntax error, unexpected end of file, expecting '}' to end attribute set
        at /pwd/in.nix:1:2:
             1| {
              |  ^
