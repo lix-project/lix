@@ -243,6 +243,7 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals finalAttrs.doCheck [
       (dontWrapPython p.pytest)
       p.pytest-xdist
+      p.pytest-timeout
       p.ruff
       p.aiohttp
     ]
@@ -573,6 +574,7 @@ stdenv.mkDerivation (finalAttrs: {
             # wrapped python instead of build inputs for its python inputs
             (dontWrapPython p.pytest)
             p.pytest-xdist
+            p.pytest-timeout
             p.ruff
             p.aiohttp
             p.python-frontmatter
