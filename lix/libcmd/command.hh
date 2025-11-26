@@ -171,7 +171,7 @@ struct RawInstallablesCommand : virtual Args, SourceExprCommand
 
     std::vector<FlakeRef> getFlakeRefsForCompletion() override;
 
-private:
+protected:
 
     std::vector<std::string> rawInstallables;
 };

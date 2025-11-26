@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/gc-store.hh"
+#include "lix/libutil/file-system.hh"
 #include "store-delete.hh"
 
 namespace nix {
@@ -12,6 +13,7 @@ struct CmdStoreDelete : StorePathsCommand
 {
     GCOptions options { .action = GCOptions::gcDeleteSpecific };
     bool deleteClosure = false;
+    bool unlink = false;
 
     CmdStoreDelete()
     {
@@ -29,6 +31,11 @@ struct CmdStoreDelete : StorePathsCommand
             .longName = "delete-closure",
             .description = "Also attempt to delete all paths in the given paths' closures.",
             .handler = {&deleteClosure, true}
+        });
+        addFlag({
+            .longName = "unlink",
+            .description = "Unlink specified GC roots before deleting them",
+            .handler = {&unlink, true},
         });
         realiseMode = Realise::Nothing;
     }
@@ -49,7 +56,16 @@ struct CmdStoreDelete : StorePathsCommand
     {
         auto & gcStore = require<GcStore>(*store);
 
-        for (auto & path : storePaths) {
+        // If the user specified --unlink, try to remove any store-pointing symlinks specified
+        // on the command-line.
+        if (this->unlink) {
+            for (auto const & path : parsePathsToUnlink(store)) {
+                printTalkative("unlinking '%s'", path);
+                deletePath(path);
+            }
+        }
+
+        for (auto const & path : storePaths) {
             if (deleteClosure) {
                 aio().blockOn(store->computeFSClosure(path, options.pathsToDelete));
             } else {
@@ -61,6 +77,29 @@ struct CmdStoreDelete : StorePathsCommand
         PrintFreed freed(options.action, results);
         aio().blockOn(gcStore.collectGarbage(options, results));
     }
+
+    std::unordered_set<Path> parsePathsToUnlink(ref<Store> store) const
+    {
+        // Reaching into a distant base class because this C++ inheritance-centric command API can bite me.
+        return this->rawInstallables
+            | std::views::filter([store](std::string const & rawInst) {
+                // Installables are never parsed as paths unless there's a slash.
+                // We also only care about paths that aren't actually in the store...
+                if (!rawInst.contains('/') || !isLink(rawInst) || store->isInStore(rawInst)) {
+                    return false;
+                }
+
+                // ...just paths that *point* to the store.
+                try {
+                    [[maybe_unused]] Path const resolved = store->followLinksToStore(rawInst);
+                    return true;
+                } catch (BadStorePath const &) {
+                    return false;
+                }
+            })
+            | std::ranges::to<std::unordered_set>();
+    }
+
 };
 
 void registerNixStoreDelete()
