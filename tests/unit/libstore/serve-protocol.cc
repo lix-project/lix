@@ -212,13 +212,11 @@ VERSIONED_CHARACTERIZATION_TEST(
                 },
                 .startTime = 30,
                 .stopTime = 50,
-#if 0
                 // These fields are not yet serialized.
                 // FIXME Include in next version of protocol or document
                 // why they are skipped.
-                .cpuUser = std::chrono::milliseconds(500s),
-                .cpuSystem = std::chrono::milliseconds(604s),
-#endif
+                // .cpuUser = std::chrono::milliseconds(500s),
+                // .cpuSystem = std::chrono::milliseconds(604s),
             },
         };
         t;
