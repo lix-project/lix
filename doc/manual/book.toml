@@ -22,20 +22,21 @@ fold.level = 30
 # not want to disable the links preprocessor entirely though because that requires
 # disabling *all* built-in preprocessors and selectively reenabling those we want.
 [preprocessor.substitute]
-command = "python3 doc/manual/substitute.py"
+command = "python3 substitute.py"
 before = ["anchors", "links"]
 
 [preprocessor.anchors]
 renderers = ["html"]
-command = "jq --from-file doc/manual/anchors.jq"
+command = "jq --from-file anchors.jq"
 
 [output.markdown]
 
-[output.linkcheck]
+# XXX FUTURE: may be reenabled once mdBook 0.5.0 or above and matching mdbook-linkchecker are in nixpkgs
+#[output.linkcheck]
 # no Internet during the build (in the sandbox)
-follow-web-links = false
+#follow-web-links = false
 
 # mdbook-linkcheck does not understand [foo]{#bar} style links, resulting in
 # excessive "Potential incomplete link" warnings. No other kind of warning was
 # produced at the time of writing.
-warning-policy = "ignore"
+#warning-policy = "ignore"

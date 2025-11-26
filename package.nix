@@ -335,7 +335,10 @@ stdenv.mkDerivation (finalAttrs: {
   ]
   ++ [
     (lib.getBin lowdown-unsandboxed)
-    mdbook
+    (lib.warnIf (lib.versionAtLeast mdbook.version "0.5.0")
+      "Workarounds for mdbook 0.4.x/0.5.x interoperability can be removed when 0.5.0 or above is in nixpkgs-stable"
+      mdbook
+    )
     mdbook-linkcheck
   ]
   ++ [

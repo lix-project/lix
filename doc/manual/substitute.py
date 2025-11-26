@@ -70,9 +70,10 @@ def do_include(content: str, relative_md_path: Path, source_root: Path, search_p
 
 def recursive_replace(data, book_root, search_path):
     match data:
-        case {'sections': sections}:
+        # XXX FUTURE: drop sections once mdBook is at 0.5.0 or above in nixpkgs
+        case {'sections': items} | {'items': items}:
             return data | dict(
-                sections = [recursive_replace(section, book_root, search_path) for section in sections],
+                items = [recursive_replace(item, book_root, search_path) for item in items],
             )
         case {'Chapter': chapter}:
             path_to_chapter = Path(chapter['path'])
@@ -119,10 +120,10 @@ def main():
     context, book = json.load(sys.stdin)
 
     # book_root is the directory where book contents leave (ie, src/)
-    book_root = Path(context['root']) / context['config']['book']['src']
+    book_root = Path(context['root']) / context['config']['book'].get('src', 'src')
 
     # includes pointing into @generated@ will look here
-    search_path = Path(os.environ['MDBOOK_SUBSTITUTE_SEARCH'])
+    search_path = Path(os.environ['MANUAL_SUBSTITUTE_SEARCH'])
 
     # Find @var@ in all parts of our recursive book structure.
     replaced_content = recursive_replace(book, book_root, search_path)

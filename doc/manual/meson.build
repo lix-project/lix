@@ -42,8 +42,9 @@ manual = custom_target(
     '-c',
     '''
         @0@ @INPUT0@ @CURRENT_SOURCE_DIR@ > @DEPFILE@
+        cd @3@
+        @1@ build . -d @2@ | { grep -Fv "because fragment resolution isn't implemented" || :; }
         cd @SOURCE_ROOT@
-        @1@ build doc/manual -d @2@ | { grep -Fv "because fragment resolution isn't implemented" || :; }
         rm -rf @2@/manual
         mv @2@/html @2@/manual
         find @2@/manual -iname meson.build -delete
@@ -51,6 +52,7 @@ manual = custom_target(
       python.full_path(),
       mdbook.full_path(),
       meson.current_build_dir(),
+      meson.current_source_dir()
     ),
   ],
   input : [
@@ -81,7 +83,7 @@ manual = custom_target(
   depfile : 'manual.d',
   env : {
     'RUST_LOG': 'info',
-    'MDBOOK_SUBSTITUTE_SEARCH': meson.current_build_dir() / 'src',
+    'MANUAL_SUBSTITUTE_SEARCH': meson.current_build_dir() / 'src',
   },
 )
 manual_md = manual[1]
