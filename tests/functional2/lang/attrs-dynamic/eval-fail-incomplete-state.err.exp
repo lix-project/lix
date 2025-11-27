@@ -1,0 +1,20 @@
+error:
+       … while evaluating a
+         at /pwd/in.nix:1:84:
+            1| let b = builtins.toJSON a; a = { foo = "bar"; "${builtins.seq b "baz"}" = b; }; in a
+             |                                                                                    ^
+            2|
+
+       … while calling the 'seq' builtin
+         at /pwd/in.nix:1:50:
+            1| let b = builtins.toJSON a; a = { foo = "bar"; "${builtins.seq b "baz"}" = b; }; in a
+             |                                                  ^
+            2|
+
+       … while calling the 'toJSON' builtin
+         at /pwd/in.nix:1:9:
+            1| let b = builtins.toJSON a; a = { foo = "bar"; "${builtins.seq b "baz"}" = b; }; in a
+             |         ^
+            2|
+
+       error: infinite recursion encountered

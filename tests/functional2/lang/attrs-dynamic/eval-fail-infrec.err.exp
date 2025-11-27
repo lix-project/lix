@@ -1,0 +1,50 @@
+error:
+       … from call site
+         at /pwd/in.nix:4:11:
+            3|   b = { ${lenName a} = null; };
+            4|   a = { ${lenName b} = null; };
+             |           ^
+            5|
+
+       … while calling 'lenName'
+         at /pwd/in.nix:2:13:
+            1| let
+            2|   lenName = x: toString (builtins.length (builtins.attrNames x));
+             |             ^
+            3|   b = { ${lenName a} = null; };
+
+       … while calling the 'toString' builtin
+         at /pwd/in.nix:2:16:
+            1| let
+            2|   lenName = x: toString (builtins.length (builtins.attrNames x));
+             |                ^
+            3|   b = { ${lenName a} = null; };
+
+       … while calling the 'length' builtin
+         at /pwd/in.nix:2:26:
+            1| let
+            2|   lenName = x: toString (builtins.length (builtins.attrNames x));
+             |                          ^
+            3|   b = { ${lenName a} = null; };
+
+       … while evaluating the first argument passed to builtins.length
+
+       … while calling the 'attrNames' builtin
+         at /pwd/in.nix:2:43:
+            1| let
+            2|   lenName = x: toString (builtins.length (builtins.attrNames x));
+             |                                           ^
+            3|   b = { ${lenName a} = null; };
+
+       … while evaluating the argument passed to builtins.attrNames
+
+       … from call site
+         at /pwd/in.nix:3:11:
+            2|   lenName = x: toString (builtins.length (builtins.attrNames x));
+            3|   b = { ${lenName a} = null; };
+             |           ^
+            4|   a = { ${lenName b} = null; };
+
+       (6 duplicate frames omitted)
+
+       error: infinite recursion encountered

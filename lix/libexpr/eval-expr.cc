@@ -158,13 +158,22 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
 
     /* Dynamic attrs apply *after* rec and __overrides. */
     for (auto & i : dynamicAttrs) {
+        /* Before evaluating dynamic attrs, we blackhole the output attrset and only restore it after the operation.
+         * This is to avoid exposing the partially constructed set as a value, see
+         * http://github.com/NixOS/nix/issues/7012. Any accesses to the output attrset will thus infrec.
+         */
+        Value vBackup = v;
         Value nameVal;
-        i.nameExpr->eval(state, *dynamicEnv, nameVal);
-        state.forceValue(nameVal, i.pos);
-        if (nameVal.type() == nNull) {
-            continue;
+        {
+            KJ_DEFER(v = vBackup);
+            v = Value{NewValueAs::blackhole};
+            i.nameExpr->eval(state, *dynamicEnv, nameVal);
+            state.forceValue(nameVal, i.pos);
+            if (nameVal.type() == nNull) {
+                continue;
+            }
+            state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
         }
-        state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
         auto nameSym = state.ctx.symbols.create(nameVal.str());
         auto j = v.attrs()->get(nameSym);
         if (j) {
