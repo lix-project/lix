@@ -25,6 +25,7 @@
 #include "lix/libutil/shlex.hh"
 #include "nix-build.hh"
 #include "lix/libstore/temporary-dir.hh"
+#include "lix/libutil/strings.hh"
 
 extern char * * environ __attribute__((weak)); // Man what even is this
 
@@ -424,6 +425,14 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
             // NixOS hack: prevent /etc/bashrc from sourcing /etc/profile.
             env["__ETC_PROFILE_SOURCED"] = "1";
         }
+
+        // Set NIX_SHELL_LEVEL
+        env["NIX_SHELL_LEVEL"] = std::to_string(
+            getEnvNonEmpty("NIX_SHELL_LEVEL")
+                .and_then([](std::string lvl) { return string2Int<size_t>(lvl); })
+                .value_or(0)
+            + 1
+        );
 
         // Don't use defaultTempDir() here! We want to preserve the user's TMPDIR for the shell
         env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] =

@@ -150,6 +150,17 @@ struct CmdShell : InstallablesCommand, MixEnvironment
         auto unixPathString = concatStringsSep(":", unixPath);
         (void) sys::setenv("PATH", unixPathString, 1);
         (void) sys::setenv("IN_NIX_SHELL", ignoreEnvironment ? "pure" : "impure", 1);
+        // Set NIX_SHELL_LEVEL
+        (void) sys::setenv(
+            "NIX_SHELL_LEVEL",
+            std::to_string(
+                getEnvNonEmpty("NIX_SHELL_LEVEL")
+                    .and_then([](std::string lvl) { return string2Int<size_t>(lvl); })
+                    .value_or(0)
+                + 1
+            ),
+            1
+        );
 
         Strings args;
         for (auto & arg : command) args.push_back(arg);

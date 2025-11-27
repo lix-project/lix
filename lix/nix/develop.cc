@@ -356,6 +356,10 @@ struct Common : InstallableCommand, MixProfile
 
         buildEnvironment.toBash(out, ignoreVars);
 
+        // Add NIX_SHELL_LEVEL
+        out << "printf -v NIX_SHELL_LEVEL \"%d\" \"${NIX_SHELL_LEVEL:-0}\" || NIX_SHELL_LEVEL=0\n";
+        out << "export NIX_SHELL_LEVEL=$(( NIX_SHELL_LEVEL + 1 ))\n";
+
         for (auto & var : savedVars)
             out << fmt("%s=\"$%s${nix_saved_%s:+:$nix_saved_%s}\"\n", var, var, var, var);
 
