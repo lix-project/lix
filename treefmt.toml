@@ -12,5 +12,5 @@ priority = 0
 [formatter.ruff]
 command = "ruff"
 options = ["check"]
-includes = ["tests/functional2/**/*.py", "meson/clang-tidy/*.py", "maintainers/*.py"]
+includes = ["tests/functional2/**/*.py", "meson/clang-tidy/*.py", "maintainers/*.py", "lix/code-generation/*.py"]
 priority = 1
