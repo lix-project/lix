@@ -15,12 +15,11 @@ import multiprocessing
 import os
 import sys
 from pathlib import Path
+import argparse
 
 
-def default_concurrency():
-    return min(
-        multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16"))
-    )
+def default_concurrency() -> int:
+    return min(multiprocessing.cpu_count(), int(os.environ.get("NIX_BUILD_CORES", "16")))
 
 
 def go(
@@ -33,7 +32,7 @@ def go(
     fix: bool,
 ):
     args = [
-        # XXX: This explicitly invokes it with python because of a nixpkgs bug
+        # XXX(Jade): This explicitly invokes it with python because of a nixpkgs bug
         # where clang-unwrapped does not patch interpreters in run-clang-tidy.
         # However, making clang-unwrapped depend on python is also silly, so idk.
         sys.executable,
@@ -58,28 +57,18 @@ def go(
 
 
 def main():
-    import argparse
-
     ap = argparse.ArgumentParser(description="Runs run-clang-tidy for you")
     ap.add_argument(
-        "--jobs",
-        "-j",
-        type=int,
-        default=default_concurrency(),
-        help="Parallel linting jobs to run",
+        "--jobs", "-j", type=int, default=default_concurrency(), help="Parallel linting jobs to run"
     )
-    ap.add_argument(
-        "--plugin-path", type=Path, help="Path to the Lix clang-tidy plugin"
-    )
-    # FIXME: maybe we should integrate this so it just fixes the compdb for you and throws it in a tempdir?
+    ap.add_argument("--plugin-path", type=Path, help="Path to the Lix clang-tidy plugin")
+    # FIXME(Jade): maybe we should integrate this so it just fixes the compdb for you and throws it in a tempdir?
     ap.add_argument(
         "--compdb-path",
         type=Path,
         help="Path to the directory containing the fixed-up compilation database from clean_compdb",
     )
-    ap.add_argument(
-        "--werror", action="store_true", help="Warnings get turned into errors"
-    )
+    ap.add_argument("--werror", action="store_true", help="Warnings get turned into errors")
     ap.add_argument("--fix", action="store_true", help="Apply fixes for warnings")
     ap.add_argument(
         "--run-clang-tidy-path", default="run-clang-tidy", help="Path to run-clang-tidy"

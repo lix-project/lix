@@ -1,0 +1,174 @@
+[project]
+name = "lix"
+version = "0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+# unless --fix or --no-fix is provided, automatically fix fixable violations
+fix = true
+# don't fix stuff that could break things
+unsafe-fixes = false
+
+# we might want to switch it up for some integration stuff to "json" or "gitlab"
+output-format = "grouped"
+
+# ignore files, which are ignored in the .gitignore file
+respect-gitignore = true
+
+# show what violations have been fixed
+show-fixes = true
+
+# need to test if "." or ".." is correct, as we assume functional2 to be the root directory for imports
+src = [".."]
+
+[tool.ruff.lint]
+
+preview = true
+
+# do not allow characters like the minus sign, asterix oparator etc
+# which can be confused with dash (-) and star (*) respectively
+allowed-confusables = []
+
+# ignore "unused variable" rules, for identifiers like `_`, `__`, `_var` etc
+# but NOT for `_var_` etc
+#
+# could be replaced by `^_$` if we only want to ignore `_` but nothing else
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# we do not use custom logger objects for now
+logger-objects = []
+
+# Comments to be ignored by commented-out code detection
+task-tags = ["TODO", "FIXME", "XXX"]
+# In order:
+# E: pycodestyle error violations
+#   E4: import styles
+#   E7: multi statements and semicolon uses as well as comparasion styles
+#   E9: check for development setup issues (io errors while reading py files)
+# F: pyflakes violations; all enabled
+#   F4: import style (unused; star imports)
+#   F5: format style violations (% formatting, .format, fstrings)
+#   F6: dictionary and variable unpacking
+#   F7: loop and function keyword issues (return, yield, break, continue etc)
+#   F8: undefined variables
+#   F9: NotImplementedError stuff
+## Non-defaults:
+# ERA: commented-out-code
+# ASYNC: asyncio related things
+# ANN: Annotation stuff
+#   ANN0: argument annotations
+#       disabled: ANN002: annotation for *args
+#       disabled: ANN002: annotation for **kwargs
+#   removed: ANN1
+#   ANN2: return type annotation
+#   disabled: ANN4: no any type; not enabled as we support anys in multiple places
+# A: builtin shadowing
+# C4: list and generator comprehensions
+# EM: don't pass strings directly into exceptions, but use a variable; avoids duplicate printing of the message
+# ISC: implicit string concatination
+# INP: require __init__.py in all packages
+# LOG: creation of logger objects
+# G: style of logging messages
+# PIE: unnecessary providing of stuff (placeholders, definitions, duplicates etc)
+# T20: disallow prints in favor of using a logger
+# PT: pytest formatting things; fixtures, asserts, parametrizastions etc
+# Q: quote styling
+# RSE: check on raise statements
+# RET: return and continue conventions
+# SIM: code simplifications (double negation etc); all enabled
+#   SIM1: collapsable if and bool things
+#   SIM2: double negation in comparasions (`not a == b` instead of `a != b` etc)
+#   SIM3: yoda conditions use `foo == "Foo"` instead of `"Foo" == foo`
+#   SIM9: defaults for get and zip
+# TID: banning of certain imports
+#   TID251: ban certain APIs
+# TD: enforce TODO comment style
+#   disabled TD001: allow FIXME and XXX comments
+#   disabled TD003: todos don't require an explicit issue link for us
+# ARG: disallow unused arguments
+# PTH: use pathlib instead of os calls
+# N: enforce PEP-8 naming
+# PERF: performance things about lists and iterators
+# DOC: docstyling requirements
+# PL: general linting things
+#   PLC: Conventions
+#       PLC01: type mismatches
+#       PLC02: iteration of dicts and sets
+#       PLC04: minor import things
+#       PLC1: bad compares
+#       PLC2: non-ascii characters and dunder calls
+#       PLC3: lambda things
+#   PLE: Error
+#       PLE01: non-local and init things
+#       PLE03: invalid dunder returns
+#       PLE06: index errors and __all__ things
+#       disabled: PLE1: covered by other checks
+#       PLE2: invalid escape sequences
+#   disabled: PLR: Refactoring; covered by other rule sets
+#   disabled: PLW: Warnings; covered by other rule stets
+# UP: use modern python features instead of by now depracated ones
+# RUF: Ambiguity and other general linting things
+#
+#
+#
+# Notincluded rule sets:
+# FAST: we don't use FAST Api
+# YTT: things about sys.version; not relevant here
+# S: conflicts with testing things and is used for production code, not test code
+# BLE: except without defining what to expect, covered by pytest
+# FBT: boolean arguments to functions
+# B: general codestyle things; covered by other rulesets
+# COM: trailing commas; covered by other rulesets
+# CPY: we don't need/have copyright notices in each file
+# DTZ: datetime things and formatting; not a usecase for us
+# T10: debugger things
+# DJ: we don't use django
+# EXE: we don't build an executable
+# FIX: we do carry around fixmes and other thigns to be done in separate commits
+# FA: things about future annotations
+# INT: we don't use gettext (translation interface)
+# ICN: import alias and import from banning
+# PYI: things for pyi files
+# SLF: accessing of private members
+# SLOT: subclassing of builtin-types (str, tuple, namedtuple) related issues
+# TC: typechecking imports (typechecking imports required to be inside of a `if TYPECHECKING` block
+# FLY: string joins
+# I: import sorting; covered by other rulesets
+# C90: we don't use mccable
+# NPY: we don't use numpy
+# PD: we don't use pandas
+# D: doesn't support sphinx style docstyles as of 2025-05-01; see https://github.com/astral-sh/ruff/pull/13286
+# PGH: things about pygrep, we don't use
+# FURB: covered by other rule sets
+# TRY: try and raise related things, not helpful as we only do testing
+select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "EM", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
+ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005"]
+
+[tool.ruff.lint.per-file-ignores]
+# ignore open() and os.path.join() calls in test_evil_nars, as that file is working with raw bytes
+# which pathlib does not support
+"**/store/test_evil_nars.py" = ["PTH118", "PTH123"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+# allow for `def test(a,b):` style declarators and don't force arguments to all have a separate line
+skip-magic-trailing-comma = true
+
+line-ending = "lf"
+
+# if code within docstrings should be formatted too
+docstring-code-format = true
+# takes into acount indentation of code within docstrings
+docstring-code-line-length = "dynamic"
+
+## Rule specific
+[tool.ruff.lint.flake8-annotations]
+# no return type requirement, if a function will only ever return `None`
+suppress-none-returning = true
+
+[tool.ruff.lint.flake8-errmsg]
+# Allow raw strings to be up to 10 characters in error messages
+max-string-length = 10

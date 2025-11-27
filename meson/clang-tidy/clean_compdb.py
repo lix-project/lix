@@ -5,6 +5,7 @@
 
 import json
 import shlex
+import argparse
 
 
 def process_compdb(compdb: list[dict]) -> list[dict]:
@@ -15,7 +16,7 @@ def process_compdb(compdb: list[dict]) -> list[dict]:
             if arg in ["-fpch-preprocess", "-fpch-instantiate-templates"]:
                 # -fpch-preprocess as used with gcc, -fpch-instantiate-templates as used by clang
                 continue
-            elif arg == "-include-pch" or (
+            if arg == "-include-pch" or (
                 arg == "-include" and args[i + 1] == "precompiled-headers.hh"
             ):
                 # -include-pch some-pch (clang), or -include some-pch (gcc)
@@ -39,11 +40,7 @@ def process_compdb(compdb: list[dict]) -> list[dict]:
 
 
 def main():
-    import argparse
-
-    ap = argparse.ArgumentParser(
-        description="Delete pch arguments from compilation database"
-    )
+    ap = argparse.ArgumentParser(description="Delete pch arguments from compilation database")
     ap.add_argument("input", type=argparse.FileType("r"), help="Input json file")
     ap.add_argument("output", type=argparse.FileType("w"), help="Output json file")
     args = ap.parse_args()
