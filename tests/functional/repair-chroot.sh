@@ -1,5 +1,6 @@
 source common.sh
 
+requireSandboxSupport # diverted store requires sandboxing
 if [[ $(uname) == Darwin ]]; then skipTest "Darwin does not have diverted stores"; fi
 needLocalStore "--repair needs a local store"
 
