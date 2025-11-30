@@ -229,6 +229,9 @@ retry:
     auto & localStore = getLocalStore();
     if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
         #if __linux__
+            if (!useChroot) {
+                printTaggedWarning("auto-enabling the sandbox due to using a diverted store");
+            }
             useChroot = true;
         #else
             throw Error("building using a diverted store is not supported on this platform");
