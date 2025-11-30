@@ -142,6 +142,13 @@ static void expect(StringViewStream & str, std::string_view s)
     str.remaining.remove_prefix(s.size());
 }
 
+static void expectWithErrorMsg(StringViewStream & str, std::string_view s, const char * errorMsg)
+{
+    if (!str.remaining.starts_with(s)) {
+        throw FormatError(errorMsg);
+    }
+    str.remaining.remove_prefix(s.size());
+}
 
 /* Read a C-style string from stream `str'. */
 static BackedStringView parseString(StringViewStream & str)
@@ -276,13 +283,16 @@ Derivation parseDerivation(
     drv.name = name;
 
     StringViewStream str{s};
-    expect(str, "D");
+
+    const char * genericErrorMsg = "derivation does not start with 'Derive' or 'DrvWithVersion'";
+
+    expectWithErrorMsg(str, "D", genericErrorMsg);
     switch (str.peek()) {
     case 'e':
-        expect(str, "erive(");
+        expectWithErrorMsg(str, "erive(", genericErrorMsg);
         break;
     case 'r': {
-        expect(str, "rvWithVersion(");
+        expectWithErrorMsg(str, "rvWithVersion(", genericErrorMsg);
         auto versionS = parseString(str);
         throw FormatError("Unknown derivation ATerm format version '%s'", *versionS);
     }
