@@ -263,7 +263,7 @@ retry:
         if (!mountAndPidNamespacesSupported()) {
             if (!settings.sandboxFallback)
                 throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing. Pass --debug for diagnostics on what is broken.");
-            debug("auto-disabling sandboxing because the prerequisite namespaces are not available");
+            printTaggedWarning("auto-disabling sandboxing because the prerequisite namespaces are not available");
             useChroot = false;
         }
 
