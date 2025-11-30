@@ -227,12 +227,14 @@ retry:
     }
 
     auto & localStore = getLocalStore();
+    bool sandboxFallbackAllowed = true;
     if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
         #if __linux__
             if (!useChroot) {
                 printTaggedWarning("auto-enabling the sandbox due to using a diverted store");
             }
             useChroot = true;
+            sandboxFallbackAllowed = false;
         #else
             throw Error("building using a diverted store is not supported on this platform");
         #endif
@@ -266,6 +268,8 @@ retry:
         if (!mountAndPidNamespacesSupported()) {
             if (!settings.sandboxFallback)
                 throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing. Pass --debug for diagnostics on what is broken.");
+            if (!sandboxFallbackAllowed)
+                throw Error("Sandboxing is enabled due to using a diverted store, but this system does not support the kernel namespaces that are required. Pass --debug for diagnostics on what is broken.");
             printTaggedWarning("auto-disabling sandboxing because the prerequisite namespaces are not available");
             useChroot = false;
         }
