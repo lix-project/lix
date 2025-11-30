@@ -1338,7 +1338,19 @@ try {
             Derivation::nameFromPath(drvPath)
         );
     } catch (FormatError & e) {
-        throw Error("error parsing derivation '%s': %s", store.printStorePath(drvPath), e.msg());
+        auto drvPathS = store.printStorePath(drvPath);
+        throw Error(
+            fmt("error parsing derivation '%1%': %2%\n"
+                "This can occur when the derivation is corrupted.\n"
+                "You can check this with `nix-store --verify-path %1%` and possibly repair with "
+                "`nix-store --repair-path %1%`.\n"
+                "In case the repair cannot be done, `nix-store --delete %1%` may be able "
+                "to remove the broken path.\n"
+                "We would appreciate a bug report at "
+                "https://git.lix.systems/lix-project/lix/issues if you think this is a bug.",
+                drvPathS,
+                e.msg())
+        );
     }
 } catch (...) {
     co_return result::current_exception();
