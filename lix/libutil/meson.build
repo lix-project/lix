@@ -81,6 +81,7 @@ libutil_headers = files(
   'chunked-vector.hh',
   'closure.hh',
   'comparator.hh',
+  'compile-time-features.hh',
   'compression.hh',
   'compute-levels.hh',
   'concepts.hh',

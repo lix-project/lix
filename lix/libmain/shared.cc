@@ -21,6 +21,7 @@
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/exit.hh"
+#include "lix/libutil/compile-time-features.hh"
 
 #include <algorithm>
 #include <exception>
@@ -302,14 +303,9 @@ bool LegacyArgs::processArgs(const Strings & args, bool finish)
 void printVersion(const std::string & programName)
 {
     std::cout << fmt("%1% (Lix, like Nix) %2%", programName, nixVersion) << std::endl;
-    Strings cfg;
-#if HAVE_BOEHMGC
-    cfg.push_back("gc");
-#endif
-    cfg.push_back("signed-caches");
     std::cout << "System type: " << settings.thisSystem << "\n";
     std::cout << "Additional system types: " << concatStringsSep(", ", settings.extraPlatforms.get()) << "\n";
-    std::cout << "Features: " << concatStringsSep(", ", cfg) << "\n";
+    std::cout << "Features: " << concatStringsSep(", ", getNixFeatures()) << "\n";
     std::cout << "System configuration file: " << settings.nixConfDir + "/nix.conf" << "\n";
     std::cout << "User configuration files: " <<
         concatStringsSep(":", settings.nixUserConfFiles)
