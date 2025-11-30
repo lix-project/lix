@@ -2,6 +2,7 @@
 #include <sys/utsname.h>
 
 #include "lix/libcmd/command.hh"
+#include "lix/libexpr/eval-settings.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/serve-protocol.hh"
 #include "lix/libmain/shared.hh"
@@ -10,6 +11,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/exit.hh"
 #include "lix/libutil/systemd.hh"
+#include "lix/libutil/compile-time-features.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libstore/profiles.hh"
 #include "doctor.hh"
@@ -67,6 +69,8 @@ struct CmdDoctor : StoreCommand
     {
         printInfo("Collecting general system information");
         printGeneralSystemInfo();
+        printInfo("Collecting general Nix configuration information");
+        printGeneralNixInfo();
         printInfo("Running checks against store uri %1%", store->getUri());
 
         if (store.try_cast_shared<LocalFSStore>()) {
@@ -131,6 +135,27 @@ struct CmdDoctor : StoreCommand
 
         return true;
     }
+
+    bool printGeneralNixInfo()
+    {
+        checkInfo(fmt("Sandbox mode: %1%", settings.sandboxMode.to_string()));
+        checkInfo(fmt("Version: %1%", nixVersion));
+        checkInfo(fmt(
+            "Additional system types: %1%", concatStringsSep(", ", settings.extraPlatforms.get())
+        ));
+        checkInfo(fmt("System configuration file: %1%", settings.nixConfDir + "/nix.conf"));
+        checkInfo(
+            fmt("User configuration files: %1%", concatStringsSep(":", settings.nixUserConfFiles))
+        );
+        checkInfo(fmt("Store directory: %1%", settings.nixStore));
+        checkInfo(fmt("State directory: %1%", settings.nixStateDir));
+        checkInfo(fmt("Data directory: %1%", settings.nixDataDir));
+        // look into --version
+        checkInfo(fmt("Features: %1%", concatStringsSep(", ", getNixFeatures())));
+
+        return true;
+    }
+
     bool checkNixInPath()
     {
         PathSet dirs;
