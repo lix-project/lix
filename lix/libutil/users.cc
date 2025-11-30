@@ -73,8 +73,24 @@ Path getHome()
 
 Path getCacheDir()
 {
-    auto cacheDir = getEnv("XDG_CACHE_HOME");
-    return cacheDir ? *cacheDir : getHome() + "/.cache";
+    // We follow systemd semantics here:
+    // https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#RuntimeDirectory=
+    static auto cacheDir = [] {
+        auto userCacheDir = getEnv("XDG_CACHE_HOME");
+        auto serviceCacheDir = getEnv("CACHE_DIRECTORY");
+
+        if (serviceCacheDir) {
+            return *serviceCacheDir;
+        }
+
+        if (userCacheDir) {
+            return *userCacheDir;
+        }
+
+        return getHome() + "/.cache";
+    }();
+
+    return cacheDir;
 }
 
 
