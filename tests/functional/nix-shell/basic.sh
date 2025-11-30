@@ -75,6 +75,44 @@ output=$(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --argstr fooCon
     test ! -d "$(dirname $IN_SHELL_TEMPDIR)" && echo "nix-shell deleted the parent directory of \$TEMPDIR: clean up successful" || { echo "nix-shell did not delete the parent directory of \$TEMPDIR: clean up failure"; exit 1; }
 )
 
+# Test whether the added length w.r.t. base directories is reasonable enough.
+# This prevents regressions that can affect negatively things like opening UNIX
+# domain sockets in non-isolated builds.
+(
+    unset TMPDIR
+    BASE_DIR="$(realpath /tmp)"
+
+    LENGTH_RESULT=$(
+      NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --run "
+        BASE_DIR_ENV=\"$BASE_DIR\"
+        ADDED_LENGTH=\$(( \${#NIX_BUILD_TOP} - \${#BASE_DIR_ENV} ))
+        echo \"\$ADDED_LENGTH:\$NIX_BUILD_TOP\"
+      "
+    )
+
+    ADDED_LENGTH="${LENGTH_RESULT%%:*}"
+    IN_SHELL_NIX_BUILD_TOP="${LENGTH_RESULT#*:}"
+
+    # The idea of this value is len("nix-shell-$hash/build-top") + ≤5 chars of margin.
+    MAX_ALLOWED=50
+    # The added length must be minimum 2 chars.
+    MIN_ALLOWED=2
+
+    if (( ADDED_LENGTH < MIN_ALLOWED )); then
+        echo "Added length ($ADDED_LENGTH) is impossibly low. The test is not correct."
+        exit 1
+    fi
+
+    if (( ADDED_LENGTH <= MAX_ALLOWED )); then
+        echo "Added length to \$NIX_BUILD_TOP in shells ($ADDED_LENGTH chars) is within acceptable limit ($MAX_ALLOWED chars)."
+    else
+        echo "ERROR: Added length too large ($ADDED_LENGTH chars > $MAX_ALLOWED chars)."
+        echo "Base: $BASE_DIR"
+        echo "NIX_BUILD_TOP: $IN_SHELL_NIX_BUILD_TOP"
+        exit 1
+    fi
+)
+
 # FIXME: testing that Ctrl-C to a (non-)interactive nix-shell stops it would be appreciated,
 # but it is hard to send accurately the signal to the right process group.
 

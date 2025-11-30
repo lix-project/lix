@@ -192,7 +192,11 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
         throw UsageError("'-p' and '-E' are mutually exclusive");
 
     AutoDelete tmpDir(createTempDir(myName));
-    AutoDelete buildTopTmpDir(createTempSubdir(tmpDir, "build-top"));
+    // NOTE: we assume there's no `build-top` directory created inside of `tmpDir` and we have
+    // ownership of this.
+    auto buildTopTmpDir = tmpDir + "/build-top";
+    createDirs(buildTopTmpDir);
+
     if (outLink.empty())
         outLink = (Path) tmpDir + "/result";
 
