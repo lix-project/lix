@@ -29,9 +29,9 @@ in {
     ];
   };
 
-  nodes.s3 = { pkgs, ... }: {
+  nodes.s3 = { config, pkgs, ... }: {
     services.garage.enable = true;
-    services.garage.package = pkgs.garage_1_x;
+    services.garage.package = pkgs.garage_2;
     services.garage.settings = {
       replication_factor = 1;
 
@@ -55,7 +55,8 @@ in {
     };
 
     environment.systemPackages = [
-      pkgs.garage_1_x
+      config.services.garage.package
+
       pkgs.git
       pkgs.build-release-notes
       pkgs.jq

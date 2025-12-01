@@ -6,7 +6,7 @@
 }:
 let
   releng = ./..;
-  this-garage = pkgs.garage_1_x;
+  this-garage = pkgs.garage_2;
   garage-ephemeral-key = pkgs.callPackage ../garage-ephemeral-key {
     inherit (pkgs.writers) writePython3Bin;
   };

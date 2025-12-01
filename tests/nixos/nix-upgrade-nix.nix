@@ -8,10 +8,10 @@
 let
   pkgs = config.nodes.machine.nixpkgs.pkgs;
 
-  lix = pkgs.nix;
+  lix = pkgs.lixPackageSets.stable.lix;
   lixVersion = lib.getVersion lix;
 
-  newNix = pkgs.nixVersions.latest;
+  newNix = pkgs.nix;
   newNixVersion = lib.getVersion newNix;
 
 in {
@@ -25,6 +25,7 @@ in {
       nix.settings.experimental-features = [ "nix-command" "flakes" ];
       services.getty.autologinUser = "root";
 
+      nix.package = lix;
     };
   };
 
@@ -35,7 +36,7 @@ in {
 
     machine.succeed("nix --version >&2")
 
-    # Use Lix to install CppNix into the default profile, overriding /run/current-system/sw/bin/nix
+    # Use Lix to install newNix into the default profile, overriding /run/current-system/sw/bin/nix
     machine.succeed("nix-env --install '${lib.getBin newNix}' --profile /nix/var/nix/profiles/default")
 
     # Make sure that correctly got inserted into our PATH.
@@ -48,7 +49,7 @@ in {
     default_profile_version = machine.succeed("nix --version")
     assert "${newNixVersion}" in default_profile_version, f"${newNixVersion} not in {default_profile_version}"
 
-    # Now upgrade to Lix, and make sure that worked.
+    # Now upgrade to latest Lix, and make sure that worked.
     machine.succeed("${lib.getExe lix} upgrade-nix --debug --store-path ${lix} 2>&1")
     default_profile_version = machine.succeed("nix --version")
     print(default_profile_version)

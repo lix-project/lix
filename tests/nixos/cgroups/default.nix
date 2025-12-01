@@ -13,7 +13,10 @@
               extra-experimental-features = nix-command auto-allocate-uids cgroups
               extra-system-features = uid-range
             '';
-          nix.settings.use-cgroups = true;
+          nix.settings = {
+            download-attempts = 1;
+            use-cgroups = true;
+          };
           nix.nixPath = [ "nixpkgs=${nixpkgs}" ];
         };
     };

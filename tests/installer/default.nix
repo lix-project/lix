@@ -31,7 +31,7 @@ let
   };
 
   mockChannel = pkgs:
-    pkgs.runCommandNoCC "mock-channel" {} ''
+    pkgs.runCommand "mock-channel" {} ''
       mkdir nixexprs
       mkdir -p $out/channel
       echo -n 'someContent' > nixexprs/someFile

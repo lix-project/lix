@@ -1,11 +1,17 @@
-{ self, lib, nixpkgs, nixpkgsFor }:
+{
+  self,
+  lib,
+  nixpkgs,
+  nixpkgsFor,
+}:
 
 let
 
   nixos-lib = import (nixpkgs + "/nixos/lib") { };
 
   # https://nixos.org/manual/nixos/unstable/index.html#sec-calling-nixos-tests
-  runNixOSTestFor = system: test:
+  runNixOSTestFor =
+    system: test:
     (nixos-lib.runTest {
       imports = [ test ];
       hostPkgs = nixpkgsFor.${system}.native;
@@ -23,21 +29,27 @@ let
       # allow running tests against older nix versions via `nix eval --apply`
       # Example:
       #   nix build "$(nix eval --raw --impure .#hydraJobs.tests.fetch-git --apply 't: (t.forNix "2.19.2").drvPath')^*"
-      forNix = nixVersion: runNixOSTestFor system {
-        imports = [test];
-        defaults.nixpkgs.overlays = [(curr: prev: {
-          nix = (builtins.getFlake "nix/${nixVersion}").packages.${system}.nix;
-        })];
-      };
+      forNix =
+        nixVersion:
+        runNixOSTestFor system {
+          imports = [ test ];
+          defaults.nixpkgs.overlays = [
+            (curr: prev: {
+              nix = (builtins.getFlake "nix/${nixVersion}").packages.${system}.nix;
+            })
+          ];
+        };
     };
 
   # Checks that a NixOS configuration does not contain any references to our
   # locally defined Nix version.
-  checkOverrideNixVersion = { pkgs, lib, ... }: {
-    # pkgs.nix: The new Nix in this repo
-    # We disallow it, to make sure we don't accidentally use it.
-    system.forbiddenDependenciesRegexes = [ (lib.strings.escapeRegex "nix-${pkgs.nix.version}") ];
-  };
+  checkOverrideNixVersion =
+    { pkgs, lib, ... }:
+    {
+      # pkgs.nix: The new Nix in this repo
+      # We disallow it, to make sure we don't accidentally use it.
+      system.forbiddenDependenciesRegexes = [ (lib.strings.escapeRegex "nix-${pkgs.nix.version}") ];
+    };
 in
 
 {
@@ -51,61 +63,63 @@ in
 
   # Test our Nix as a client against remotes that are older
 
-  remoteBuilds_remote_2_3 = runNixOSTestFor "x86_64-linux" {
-    name = "remoteBuilds_remote_2_3";
-    imports = [ ./remote-builds.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  };
-
-  remoteBuilds_remote_2_18 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_remote_2_18";
-    imports = [ ./remote-builds.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
-    };
-  });
+  remoteBuilds_remote_2_18 = runNixOSTestFor "x86_64-linux" (
+    { lib, pkgs, ... }:
+    {
+      name = "remoteBuilds_remote_2_18";
+      imports = [ ./remote-builds.nix ];
+      builders.config =
+        { lib, pkgs, ... }:
+        {
+          imports = [ checkOverrideNixVersion ];
+          nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
+        };
+    }
+  );
 
   # Let's ensure that reasonably popular shells are tested for remote building.
 
-  remoteBuildsNushell = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_nushell";
-    imports = [ ./remote-builds.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      users.users.root.shell = pkgs.nushell;
-    };
-  });
+  remoteBuildsNushell = runNixOSTestFor "x86_64-linux" (
+    { lib, pkgs, ... }:
+    {
+      name = "remoteBuilds_nushell";
+      imports = [ ./remote-builds.nix ];
+      builders.config =
+        { lib, pkgs, ... }:
+        {
+          users.users.root.shell = pkgs.nushell;
+        };
+    }
+  );
 
-  remoteBuildsBusybox = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_busybox";
-    imports = [ ./remote-builds.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      users.users.root.shell = pkgs.busybox;
-    };
-  });
+  remoteBuildsBusybox = runNixOSTestFor "x86_64-linux" (
+    { lib, pkgs, ... }:
+    {
+      name = "remoteBuilds_busybox";
+      imports = [ ./remote-builds.nix ];
+      builders.config =
+        { lib, pkgs, ... }:
+        {
+          users.users.root.shell = pkgs.busybox;
+        };
+    }
+  );
 
   # Test our Nix as a builder for clients that are older
 
-  remoteBuilds_local_2_3 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_local_2_3";
-    imports = [ ./remote-builds.nix ];
-    nodes.client = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  });
-
-  remoteBuilds_local_2_18 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuilds_local_2_18";
-    imports = [ ./remote-builds.nix ];
-    nodes.client = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
-    };
-  });
+  remoteBuilds_local_2_18 = runNixOSTestFor "x86_64-linux" (
+    { lib, pkgs, ... }:
+    {
+      name = "remoteBuilds_local_2_18";
+      imports = [ ./remote-builds.nix ];
+      nodes.client =
+        { lib, pkgs, ... }:
+        {
+          imports = [ checkOverrideNixVersion ];
+          nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
+        };
+    }
+  );
 
   # End remoteBuilds tests
 
@@ -129,27 +143,15 @@ in
   remoteBuildsSshNg_remote_2_18 = runNixOSTestFor "x86_64-linux" {
     name = "remoteBuildsSshNg_remote_2_18";
     imports = [ ./remote-builds-ssh-ng.nix ];
-    builders.config = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
-    };
+    builders.config =
+      { lib, pkgs, ... }:
+      {
+        imports = [ checkOverrideNixVersion ];
+        nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
+      };
   };
 
   # Test our Nix as a builder for clients that are older
-
-  # FIXME: these tests don't work yet
-  /*
-  remoteBuildsSshNg_local_2_3 = runNixOSTestFor "x86_64-linux" ({ lib, pkgs, ... }: {
-    name = "remoteBuildsSshNg_local_2_3";
-    imports = [ ./remote-builds-ssh-ng.nix ];
-    nodes.client = { lib, pkgs, ... }: {
-      imports = [ checkOverrideNixVersion ];
-      nix.package = lib.mkForce pkgs.nixVersions.nix_2_3;
-    };
-  });
-
-  # TODO: (nixpkgs update) remoteBuildsSshNg_local_2_18 = ...
-  */
 
   nix-copy-closure = runNixOSTestFor "x86_64-linux" ./nix-copy-closure.nix;
 
@@ -169,9 +171,9 @@ in
 
   cgroups = runNixOSTestFor "x86_64-linux" ./cgroups;
 
-  setuid = lib.genAttrs
-    ["i686-linux" "x86_64-linux"]
-    (system: runNixOSTestFor system ./setuid/setuid.nix);
+  setuid = lib.genAttrs [ "i686-linux" "x86_64-linux" ] (
+    system: runNixOSTestFor system ./setuid/setuid.nix
+  );
 
   fetch-git = runNixOSTestFor "x86_64-linux" ./fetch-git;
 

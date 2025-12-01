@@ -2,7 +2,7 @@
   description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
 
     # Required because Nix 2.18 is not in Nixpkgs ≥ 25.05 anymore.
@@ -177,11 +177,6 @@
           nixStable = prev.nix;
 
           nixVersions = prev.nixVersions // {
-            nix_2_3 = prev.nixVersions.nix_2_3.overrideAttrs (old: {
-              meta = old.meta // {
-                knownVulnerabilities = [ ];
-              };
-            });
             # Nix 2.18 has been removed from Nixpkgs ≥ 25.05, so we need to reintroduce it ourselves for our tests.
             nix_2_18 = nix_2_18.outputs.packages.${currentStdenv.hostPlatform.system}.default;
           };
@@ -222,10 +217,7 @@
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
           };
 
-          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy {
-            # FIXME: To be removed when switching to nixos-25.11-small
-            llvmPackages = final.llvmPackages_20;
-          };
+          lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
 
           nix-eval-jobs = final.callPackage ./subprojects/nix-eval-jobs {
             stdenv = currentStdenv;
@@ -249,23 +241,9 @@
           # And same thing for our build-release-notes package.
           build-release-notes = final.nix.passthru.build-release-notes;
 
-          lowdown_1_3 =
-            # If the stable channel we are using ships lowdown >= 1.4, we need
-            # to swap this around, take the default lowdown from the stable
-            # channel and add an overridden one for the legacy version.
-            assert lib.versionOlder prev.lowdown.version "1.4.0";
+          lowdown =
+            assert lib.versionAtLeast prev.lowdown.version "2.0.0";
             prev.lowdown;
-          lowdown = prev.lowdown.overrideAttrs (prevAttrs: rec {
-            version = "2.0.2";
-            src = final.fetchurl {
-              url = "https://kristaps.bsd.lv/lowdown/snapshots/lowdown-${version}.tar.gz";
-              sha512 = "2a4d0rqh8gkw4ca3gkzddp0hjpmmw74cbks8k0inhh0vizmgbn188zdv6m1kgmr019b99g7insli8js3ci1ji7y4n5nk704bswf3z3i";
-            };
-            nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.buildPackages.bmake ];
-            postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] (
-              prevAttrs.postInstall or ""
-            );
-          });
 
           capnproto = prev.capnproto.overrideAttrs (old: {
             patches =
@@ -306,14 +284,6 @@
               mkdir -p "$out"
               exit 0
             '';
-          }
-        );
-
-        # Ensure support for lowdown < 1.4 doesn't regress
-        build-lowdown_1_3 = forAllSystems (
-          system:
-          self.packages.${system}.nix.override {
-            lowdown = nixpkgsFor.${system}.native.lowdown_1_3;
           }
         );
 
@@ -441,8 +411,6 @@
               pkgs.callPackage ./package.nix {
                 # Required since we don't support gcc stdenv
                 stdenv = pkgs.clangStdenv;
-                # FIXME: To be removed when switching to nixos-25.11-small
-                llvmPackages = pkgs.llvmPackages_20;
                 versionSuffix = "";
                 lintInsteadOfBuild = true;
               }
@@ -485,10 +453,10 @@
                 paths = [
                   testWithNix
                 ]
-                # NOTE: nixpkgs 25.05 is being ... *creative*, and requires this dance to override
+                # NOTE: nixpkgs 25.11 is being ... *creative*, and requires this dance to override
                 # the evaluator used for the test. it will break again in the future, don't worry.
                 ++ lib.optionals pkgs.stdenv.isLinux [
-                  ((pkgs.callPackage "${nixpkgs}/ci/eval" { inherit nix; }).attrpathsSuperset {
+                  ((pkgs.callPackage "${nixpkgs}/ci/eval" { inherit nix; } { }).attrpathsSuperset {
                     evalSystem = system;
                   })
                 ];
@@ -540,7 +508,6 @@
           # devShells and packages already get checked by nix flake check, so
           # this is just jobs that are special
 
-          build-lowdown_1_3 = self.hydraJobs.build-lowdown_1_3.${system};
           binaryTarball = self.hydraJobs.binaryTarball.${system};
           perlBindings = self.hydraJobs.perlBindings.${system};
           nix-eval-jobs = self.hydraJobs.nix-eval-jobs.${system};
@@ -607,7 +574,7 @@
                 # Use LLD in the dev shell by default for faster link times.
                 useLld = stdenv.hostPlatform.isLinux;
               };
-              pre-commit = self.hydraJobs.pre-commit.${pkgs.system} or { };
+              pre-commit = self.hydraJobs.pre-commit.${pkgs.stdenv.hostPlatform.system} or { };
             in
             pkgs.callPackage nix.mkDevShell {
               pre-commit-checks = pre-commit;

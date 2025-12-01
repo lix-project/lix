@@ -381,7 +381,7 @@ image
     pkgs.buildPackages.runCommand "docker-image-tarball-${pkgs.nix.version}"
       {
         nativeBuildInputs = [ pkgs.buildPackages.bubblewrap ];
-        meta.description = "Docker image tarball with Lix for ${pkgs.system}";
+        meta.description = "Docker image tarball with Lix for ${pkgs.stdenv.hostPlatform.system}";
       }
       ''
         mkdir -p $out/nix-support
