@@ -1,70 +1,102 @@
+import dataclasses
+from enum import Enum
+from textwrap import dedent, indent
 from typing import NamedTuple
 
-from frontmatter import Post
 
-from common import cxx_literal, generate_file, load_data
-import argparse
+from common import cxx_literal, generate_file, load_data, get_argument_parser
 
-KNOWN_KEYS = {"name", "type", "constructorArgs", "implementation", "impure", "renameInGlobalScope"}
+IMPURE_NOTE = """
+> **Note**
+>
+> Not available in [pure evaluation mode](@docroot@/command-ref/conf-file.md#conf-pure-eval).
+
+"""
 
 
-class BuiltinConstant(NamedTuple):
-    name: str
-    type: str
-    implementation: str
-    impure: bool
-    rename_in_global_scope: bool
-    documentation: str
+class TypeName(NamedTuple):
+    human: str
+    code: str
+
+
+class BuiltinType(TypeName, Enum):
+    attrs = TypeName("set", "nAttrs")
+    boolean = TypeName("boolean", "nBool")
+    integer = TypeName("integer", "nInt")
+    list = TypeName("list", "nList")
+    null = TypeName("null", "nNull")
+    string = TypeName("string", "nString")
 
     @classmethod
-    def parse(cls, datum: Post) -> "BuiltinConstant":
-        unknown_keys = set(datum.keys()) - KNOWN_KEYS
-        if unknown_keys:
-            msg = f"unknown keys: {unknown_keys!r}"
-            raise ValueError(msg)
-        if (constructor_args := datum.get("constructorArgs")) is not None:
-            args = [f"NewValueAs::{datum['type']}"] + constructor_args  # type: ignore
-            impl = f"{{{','.join(args)}}}"
-        else:
-            impl = datum["implementation"]
-
-        return BuiltinConstant(
-            name=datum["name"],  # type: ignore
-            type=datum["type"],  # type: ignore
-            implementation=impl,
-            impure=datum.get("impure", False),  # type: ignore
-            rename_in_global_scope=datum.get("renameInGlobalScope", True),  # type: ignore
-            documentation=datum.content,
-        )
+    def from_string(cls, t_name: str) -> "BuiltinType":
+        for t in cls:
+            if t_name == t.name:
+                return t
+        msg = f"Invalid builtin type: {t_name}"
+        raise ValueError(msg)
 
 
-VALUE_TYPES = {
-    "attrs": "nAttrs",
-    "boolean": "nBool",
-    "integer": "nInt",
-    "list": "nList",
-    "null": "nNull",
-    "string": "nString",
-}
+@dataclasses.dataclass
+class BuiltinConstant:
+    name: str
+    documentation: str
 
-HUMAN_TYPES = {
-    "attrs": "set",
-    "boolean": "Boolean",
-    "integer": "integer",
-    "list": "list",
-    "null": "null",
-    "string": "string",
-}
+    # Fields with different name in the Post than in here
+    # our fields
+    type: BuiltinType = dataclasses.field(init=False)
+
+    # Post fields
+    type_str: dataclasses.InitVar[str]
+    constructor_args: dataclasses.InitVar[list[str] | None] = None
+
+    implementation: str = ""
+    impure: bool = False
+    rename_in_global_scope: bool = True
+
+    def __post_init__(self, type_str: str, constructor_args: list[str] | None):
+        self.type = BuiltinType.from_string(type_str)
+        if constructor_args is not None:
+            args = [f"NewValueAs::{type_str}"] + constructor_args
+            self.implementation = f"{{{','.join(args)}}}"
+
+    @property
+    def code(self) -> str:
+        cond = "if (!evalSettings.pureEval) " if self.impure else ""
+        return dedent(f"""
+            {cond} {{
+                addConstant(
+                    {cxx_literal(("__" if self.rename_in_global_scope else "") + self.name)},
+                    {self.implementation},
+                    {{
+                        .type = {self.type.code},
+                        .doc = {cxx_literal(self.documentation)},
+                        .impureOnly = {cxx_literal(self.impure)},
+                    }}
+                );
+            }}
+        """)
+
+    @property
+    def docs(self) -> str:
+        indentation = "    " * 3
+        return dedent(f"""
+            <dt id="builtins-{self.name}">
+              <a href="#builtins-{self.name}"><code>{self.name}</code></a> ({self.type.human})
+            </dt>
+            <dd>
+
+            {indent(self.documentation, indentation)}
+            {indent(IMPURE_NOTE, indentation) if self.impure else ""}
+
+            </dd>
+
+        """)
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--header", help="Path of the header to generate")
-    ap.add_argument("--docs", help="Path of the documentation file to generate")
-    ap.add_argument("defs", help="Builtin definition files", nargs="+")
-    args = ap.parse_args()
+    args = get_argument_parser().parse_args()
 
-    builtin_constants = load_data(args.defs, BuiltinConstant.parse)
+    builtin_constants = load_data(args.defs, BuiltinConstant)
 
     generate_file(
         args.header,
@@ -72,40 +104,9 @@ def main():
         lambda constant:
         # `builtins` is magic and must come first
         "" if constant.name == "builtins" else constant.name,
-        lambda constant: f"""{"if (!evalSettings.pureEval) " if constant.impure else ""}{{
-    addConstant({cxx_literal(("__" if constant.rename_in_global_scope else "") + constant.name)}, {constant.implementation}, {{
-        .type = {VALUE_TYPES[constant.type]},
-        .doc = {cxx_literal(constant.documentation)},
-        .impureOnly = {cxx_literal(constant.impure)},
-    }});
-}}
-""",
+        lambda b: b.code,
     )
-    generate_file(
-        args.docs,
-        builtin_constants,
-        lambda constant: constant.name,
-        lambda constant: f"""<dt id="builtins-{constant.name}">
-  <a href="#builtins-{constant.name}"><code>{constant.name}</code></a> ({HUMAN_TYPES[constant.type]})
-</dt>
-<dd>
-
-{constant.documentation}
-
-"""
-        + (
-            """> **Note**
->
-> Not available in [pure evaluation mode](@docroot@/command-ref/conf-file.md#conf-pure-eval).
-
-"""
-            if constant.impure
-            else ""
-        )
-        + """</dd>
-
-""",
-    )
+    generate_file(args.docs, builtin_constants, lambda constant: constant.name, lambda b: b.docs)
 
 
 if __name__ == "__main__":

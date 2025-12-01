@@ -187,11 +187,11 @@ deprecated_feature_definitions = files(
 experimental_features_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/lix/code-generation/build_experimental_features.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_extra_features.py',
     '--header', '@OUTPUT0@',
     '--impl-header', '@OUTPUT1@',
     '--shortlist', '@OUTPUT2@',
-    '--descriptions', '@OUTPUT3@',
+    '--docs', '@OUTPUT3@',
     '@INPUT@',
   ],
   input : experimental_feature_definitions,
@@ -219,12 +219,12 @@ experimental_feature_descriptions_md = experimental_features_gen[3]
 deprecated_features_gen = custom_target(
   command : [
     python.full_path(),
-    '@SOURCE_ROOT@/lix/code-generation/build_experimental_features.py',
+    '@SOURCE_ROOT@/lix/code-generation/build_extra_features.py',
     '--deprecated',
     '--header', '@OUTPUT0@',
     '--impl-header', '@OUTPUT1@',
     '--shortlist', '@OUTPUT2@',
-    '--descriptions', '@OUTPUT3@',
+    '--docs', '@OUTPUT3@',
     '@INPUT@',
   ],
   input : deprecated_feature_definitions,

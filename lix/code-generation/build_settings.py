@@ -1,64 +1,106 @@
-from typing import NamedTuple, Any
+import dataclasses
+from textwrap import dedent
+from typing import Any
 
-from frontmatter import Post
-
-from build_experimental_features import ExperimentalFeature
-from common import cxx_literal, generate_file, load_data
-import argparse
-
-KNOWN_KEYS = {
-    "name",
-    "internalName",
-    "platforms",
-    "type",
-    "settingType",
-    "default",
-    "defaultExpr",
-    "defaultText",
-    "aliases",
-    "experimentalFeature",
-    "deprecated",
-}
+from common import (
+    cxx_literal,
+    generate_file,
+    load_data,
+    get_experimental_features,
+    get_argument_parser,
+)
 
 
-class Setting(NamedTuple):
+PLATFORM_WARNING = """
+  > **Note**
+  > This setting is only available on {platforms} systems.
+
+"""
+
+XP_WARNING = """
+  > **Warning**
+  > This setting is part of an
+  > [experimental feature](@docroot@/contributing/experimental-features.md).
+
+  To change this setting, you need to make sure the corresponding experimental feature,
+  [`{feature}`](@docroot@/contributing/experimental-features.md#xp-feature-{feature}),
+  is enabled.
+  For example, include the following in [`nix.conf`](#):
+
+  ```
+  extra-experimental-features = {feature}
+  {name} = ...
+  ```
+
+"""
+
+DEPR_WARNING = """
+  > **Warning**
+  > This setting is deprecated and will be removed in a future version of Lix.
+
+"""
+
+
+@dataclasses.dataclass
+class Setting:
     name: str
     internal_name: str
-    description: str
-    platforms: list[str] | None
-    setting_type: str
-    default_expr: str
-    default_text: str
-    aliases: list[str]
-    experimental_feature: str | None
-    deprecated: bool
+    documentation: str
 
-    @classmethod
-    def parse(cls, datum: Post) -> "Setting":
-        unknown_keys = set(datum.keys()) - KNOWN_KEYS
-        if unknown_keys:
-            msg = f"unknown keys: {unknown_keys!r}"
-            raise ValueError(msg)
-        default_text = (
-            f"`{nix_conf_literal(datum['default'])}`"
-            if "default" in datum
-            else datum["defaultText"]
-        )
-        if default_text == "``":
-            default_text = "*empty*"
-        return Setting(
-            name=datum["name"],  # type: ignore
-            internal_name=datum["internalName"],  # type: ignore
-            description=datum.content,
-            platforms=datum.get("platforms", None),  # type: ignore
-            setting_type=f"Setting<{datum['type']}>" if "type" in datum else datum["settingType"],
-            default_expr=cxx_literal(datum["default"])
-            if "default" in datum
-            else datum["defaultExpr"],
-            default_text=default_text,
-            aliases=datum.get("aliases", []),  # type: ignore
-            experimental_feature=datum.get("experimentalFeature", None),  # type: ignore
-            deprecated=datum.get("deprecated", False),  # type: ignore
+    default_text: str = ""
+    setting_type: str = ""
+    default_expr: str = ""
+    platforms: list[str] = dataclasses.field(default_factory=list)
+    aliases: list[str] = dataclasses.field(default_factory=list)
+    experimental_feature: str | None = None
+    deprecated: bool = False
+
+    default: dataclasses.InitVar[str | None] = None
+    type_str: dataclasses.InitVar[str | None] = None
+
+    def __post_init__(self, default: Any, type_str: str | None):
+        if default is not None:  # is not None nor an empty String
+            self.default_text = f"`{nix_conf_literal(default)}`"
+        self.default_expr = self.default_expr or cxx_literal(default)
+        self.default_text = self.default_text or "*empty*"
+
+        if type_str is not None:
+            self.setting_type = f"Setting<{type_str}>"
+
+    def generate_code(self, experimental_features: dict[str | None, str]) -> str:
+        indentation = "    " * 4
+        expr = (indent(indentation, self.default_expr) + indentation) if "\n" in self.default_expr else self.default_expr
+        return dedent(f"""
+            {self.setting_type} {self.internal_name} {{
+                this,
+                {expr},
+                {cxx_literal(self.name)},
+                {cxx_literal(self.documentation)},
+                {cxx_literal(self.aliases)},
+                true,
+                {experimental_features[self.experimental_feature]},
+                {cxx_literal(self.deprecated)}
+            }};
+        """)
+
+    @property
+    def docs(self) -> str:
+        indentation = "    " * 3
+        platforms = [p.capitalize() for p in self.platforms]
+        aliases = [f"`{item}`" for item in self.aliases]
+        description = dedent(f"""
+
+            {indent(indentation, self.documentation)}
+
+            {indent(indentation, PLATFORM_WARNING.format(platforms=str(platforms)[1:-1])) if self.platforms else ""}
+            {indent(indentation, XP_WARNING.format(feature=self.experimental_feature, name=self.name)) if self.experimental_feature is not None else ""}
+            {indent(indentation, DEPR_WARNING) if self.deprecated else ""}
+            **Default:** {self.default_text}
+            {f"**Deprecated alias:** {str(aliases)[1:-1]}\n" if self.aliases else ""}
+        """)
+        return f'- <span id="conf-{self.name}">[`{self.name}`](#conf-{self.name})</span>' + indent(
+            "  ",  # indent by two space to make it part of the list point
+            description,
         )
 
 
@@ -87,103 +129,28 @@ def indent(prefix: str, body: str) -> str:
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = get_argument_parser()
     ap.add_argument("--kernel", help="Name of the kernel Lix will run on")
-    ap.add_argument("--header", help="Path of the header to generate")
-    ap.add_argument("--docs", help="Path of the documentation file to generate")
     ap.add_argument(
         "--experimental-features", help="Directory containing the experimental feature definitions"
     )
-    ap.add_argument("defs", help="Setting definition files", nargs="+")
     args = ap.parse_args()
 
-    settings = load_data(args.defs, Setting.parse)
+    settings = load_data(args.defs, Setting)
 
-    experimental_feature_names = {setting.experimental_feature for (_, setting) in settings}
-    experimental_feature_names.discard(None)
-    experimental_feature_files = [
-        f"{args.experimental_features}/{name}.md" for name in experimental_feature_names
-    ]
-    experimental_features = load_data(experimental_feature_files, ExperimentalFeature.parse)
-    experimental_features = {
-        path_and_feature[1].name: f"Xp::{path_and_feature[1].internal_name}"
-        for path_and_feature in experimental_features
-    }
-    experimental_features[None] = "std::nullopt"
+    experimental_features = get_experimental_features(
+        args.experimental_features, [s.experimental_feature for (_, s) in settings]
+    )
 
     generate_file(
         args.header,
         settings,
         lambda setting: setting.name,
-        lambda setting: f"""{setting.setting_type} {setting.internal_name} {{
-    this,
-    {setting.default_expr},
-    {cxx_literal(setting.name)},
-    {cxx_literal(setting.description)},
-    {cxx_literal(setting.aliases)},
-    true,
-    {experimental_features[setting.experimental_feature]},
-    {cxx_literal(setting.deprecated)}
-}};
-
-"""
-        if setting.platforms is None or args.kernel in setting.platforms
+        lambda setting: setting.generate_code(experimental_features)
+        if not setting.platforms or args.kernel in setting.platforms
         else "",
     )
-    generate_file(
-        args.docs,
-        settings,
-        lambda setting: setting.name,
-        lambda setting: f"""- <span id="conf-{setting.name}">[`{setting.name}`](#conf-{setting.name})</span>
-
-{indent("  ", setting.description)}
-"""
-        + (
-            f"""  > **Note**
-  > This setting is only available on {", ".join([platform_names[platform] for platform in setting.platforms])} systems.
-
-"""
-            if setting.platforms is not None
-            else ""
-        )
-        + (
-            f"""  > **Warning**
-  > This setting is part of an
-  > [experimental feature](@docroot@/contributing/experimental-features.md).
-
-  To change this setting, you need to make sure the corresponding experimental feature,
-  [`{setting.experimental_feature}`](@docroot@/contributing/experimental-features.md#xp-feature-{setting.experimental_feature}),
-  is enabled.
-  For example, include the following in [`nix.conf`](#):
-
-  ```
-  extra-experimental-features = {setting.experimental_feature}
-  {setting.name} = ...
-  ```
-
-"""
-            if setting.experimental_feature is not None
-            else ""
-        )
-        + (
-            """  > **Warning**
-  > This setting is deprecated and will be removed in a future version of Lix.
-
-"""
-            if setting.deprecated
-            else ""
-        )
-        + f"""  **Default:** {setting.default_text}
-
-"""
-        + (
-            f"""  **Deprecated alias:** {", ".join([f"`{item}`" for item in setting.aliases])}
-
-"""
-            if setting.aliases != []
-            else ""
-        ),
-    )
+    generate_file(args.docs, settings, lambda setting: setting.name, lambda setting: setting.docs)
 
 
 if __name__ == "__main__":
