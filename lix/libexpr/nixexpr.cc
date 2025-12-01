@@ -35,6 +35,24 @@ AttrName::AttrName(PosIdx pos, std::unique_ptr<Expr> e) : pos(pos), expr(std::mo
 {
 }
 
+static JSON stringToJSON(std::string_view s)
+{
+    try {
+        JSON value = s;
+        // dump it now to catch invalid utf8 strings early. this code path is not
+        // hot, so the extra memory allocation and encoding is not worth avoiding
+        (void) value.dump();
+        return value;
+    } catch (nlohmann::json::type_error & e) { // NOLINT(lix-foreign-exceptions)
+        if (e.id == 316) {
+            // invalid utf8 in string! serialize as byte array instead
+            return s | std::ranges::to<std::vector<unsigned char>>();
+        } else {
+            throw; // NOLINT(lix-foreign-exceptions)
+        }
+    }
+}
+
 JSON Expr::toJSON(const SymbolTable & symbols) const
 {
     abort();
@@ -57,7 +75,7 @@ JSON ExprLiteral::toJSON(const SymbolTable & symbols) const
             break;
         case nString:
             valueType = "String";
-            value = v.str();
+            value = stringToJSON(v.str());
             break;
         case nPath:
             valueType = "Path";
@@ -77,10 +95,7 @@ JSON ExprLiteral::toJSON(const SymbolTable & symbols) const
 
 JSON ExprVar::toJSON(const SymbolTable & symbols) const
 {
-    return {
-        {"_type", "ExprVar"},
-        {"value", symbols[name]}
-    };
+    return {{"_type", "ExprVar"}, {"value", stringToJSON(symbols[name])}};
 }
 
 JSON ExprInheritFrom::toJSON(SymbolTable const & symbols) const
@@ -126,11 +141,19 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
     for (auto & i : sorted) {
         switch (i->second.kind) {
         case AttrDef::Kind::Plain:
-            out["attrs"][std::string(symbols[i->first])] = i->second.e->toJSON(symbols);
+        case AttrDef::Kind::Inherited: {
+            const auto key = i->second.kind == AttrDef::Kind::Plain ? "attrs" : "inherit";
+            auto name = stringToJSON(symbols[i->first]);
+            if (name.is_string()) {
+                out[key][name] = i->second.e->toJSON(symbols);
+            } else {
+                out[fmt("binary_%s", key)][key].push_back({
+                    {"name", name},
+                    {"value", i->second.e->toJSON(symbols)},
+                });
+            }
             break;
-        case AttrDef::Kind::Inherited:
-            out["inherit"][std::string(symbols[i->first])] = i->second.e->toJSON(symbols);
-            break;
+        }
         case AttrDef::Kind::InheritedFrom: {
             auto & select = i->second.e->cast<ExprSelect>();
             auto & from = select.e->cast<ExprInheritFrom>();
@@ -150,7 +173,7 @@ void ExprAttrs::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
     for (const auto & [from, syms] : inheritsFrom) {
         JSON attrs = JSON::array();
         for (auto sym : syms)
-            attrs.push_back(symbols[sym]);
+            attrs.push_back(stringToJSON(symbols[sym]));
         out["inheritFrom"].push_back({
             {"from", inheritFromExprs[from]->toJSON(symbols)},
             {"attrs", attrs}
@@ -188,11 +211,13 @@ JSON ExprList::toJSON(const SymbolTable & symbols) const
 
 void SimplePattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
 {
+    // name must be alphanumeric
     out["arg"] = symbols[name];
 }
 
 void AttrsPattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) const
 {
+    // name must be alphanumeric
     if (name)
         out["arg"] = symbols[name];
 
@@ -200,6 +225,7 @@ void AttrsPattern::addBindingsToJSON(JSON & out, const SymbolTable & symbols) co
     // same expression being printed in two different ways depending on its
     // context. always use lexicographic ordering to avoid this.
     for (const Formal & i : lexicographicOrder(symbols)) {
+        // names must be alphanumeric
         if (i.def)
             out["formals"][std::string(symbols[i.name])] = i.def->toJSON(symbols);
         else
@@ -313,7 +339,7 @@ JSON printAttrPathToJson(const SymbolTable & symbols, const AttrPath & attrPath)
     JSON out = JSON::array();
     for (auto & i : attrPath) {
         if (i.symbol)
-            out.push_back(symbols[i.symbol]);
+            out.push_back(stringToJSON(symbols[i.symbol]));
         else
             out.push_back(i.expr->toJSON(symbols));
     }

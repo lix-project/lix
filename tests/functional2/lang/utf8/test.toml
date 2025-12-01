@@ -1,0 +1,6 @@
+[[test]]
+runner = "parse-fail"
+
+[[test]]
+runner = "parse-okay"
+in = "in-invalid-utf8-string.nix"

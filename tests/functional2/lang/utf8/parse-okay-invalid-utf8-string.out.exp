@@ -1,0 +1,118 @@
+_type: ExprSet
+attrs:
+  invalidAttrPath:
+    _type: ExprLambda
+    arg: x
+    body:
+      _type: ExprSelect
+      attrs:
+        - a
+        - - 97
+          - 255
+          - 98
+        - c
+      e:
+        _type: ExprVar
+        value: x
+  invalidInherit:
+    _type: ExprLambda
+    arg: x
+    body:
+      _type: ExprWith
+      attrs:
+        _type: ExprVar
+        value: x
+      body:
+        _type: ExprSet
+        binary_inherit:
+          inherit:
+            - name:
+                - 97
+                - 255
+                - 98
+              value:
+                _type: ExprVar
+                value:
+                  - 97
+                  - 255
+                  - 98
+        recursive: false
+  invalidInheritFrom:
+    _type: ExprLambda
+    arg: x
+    body:
+      _type: ExprSet
+      inheritFrom:
+        - attrs:
+            - - 97
+              - 255
+              - 98
+          from:
+            _type: ExprVar
+            value: x
+      recursive: false
+  invalidLet:
+    _type: ExprLet
+    binary_attrs:
+      attrs:
+        - name:
+            - 97
+            - 255
+            - 98
+          value:
+            _type: ExprLiteral
+            value: 1
+            valueType: Int
+    body:
+      _type: ExprLiteral
+      value: 1
+      valueType: Int
+  invalidString:
+    _type: ExprLiteral
+    value:
+      - 118
+      - 195
+      - 164
+      - 108
+      - 105
+      - 100
+      - 32
+      - 98
+      - 105
+      - 116
+      - 32
+      - 255
+      - 32
+      - 109
+      - 111
+      - 114
+      - 195
+      - 169
+      - 32
+      - 118
+      - 195
+      - 165
+      - 108
+      - 105
+      - 100
+    valueType: String
+binary_attrs:
+  attrs:
+    - name:
+        - 105
+        - 110
+        - 118
+        - 97
+        - 108
+        - 105
+        - 100
+        - 255
+        - 78
+        - 97
+        - 109
+        - 101
+      value:
+        _type: ExprLiteral
+        value: 1
+        valueType: Int
+recursive: false
