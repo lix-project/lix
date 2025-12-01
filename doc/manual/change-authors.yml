@@ -130,6 +130,11 @@ jade:
 just1602:
   forgejo: just1602
 
+k900:
+  display_name: K900
+  forgejo: K900
+  github: K900
+
 kasimeka:
   display_name: ورد
   forgejo: janw4ld

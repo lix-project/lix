@@ -499,8 +499,8 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     evalSettings.pureEval.setDefault(true);
 
-    setLogFormat(LogFormat::bar);
-    settings.verboseBuild = false;
+    setLogFormat(LogFormat::barWithLogs);
+
     // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
         verbosity = lvlNotice;
