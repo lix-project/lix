@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/config.hh"
 #include "lix/libutil/fmt.hh"
 #include "lix/libutil/json-fwd.hh"
 
@@ -155,6 +156,30 @@ template<>
 struct json::is_integral_enum<nix::LogFormat> : std::true_type {};
 template<>
 struct json::is_integral_enum<nix::LogFormatValue> : std::true_type {};
+
+/** Note: you'll have to include `config-impl.hh` when you want to use methods from this type. */
+struct LogFormatSetting : public BaseSetting<LogFormat>
+{
+    // I hate global state, man.
+    LogFormat autoValue = LogFormat::RawWithLogs;
+
+    LogFormatSetting(
+        Config * options,
+        const LogFormat & def,
+        const std::string & name,
+        const std::string & description,
+        const std::set<std::string> & aliases = {},
+        bool documentDefault = true,
+        std::optional<ExperimentalFeature> experimentalFeature = std::nullopt,
+        bool deprecated = false
+    ) : BaseSetting<LogFormat>(def, true, name, description, aliases, experimentalFeature, deprecated)
+    {
+        options->addSetting(this);
+    }
+};
+
+void to_json(JSON & j, const LogFormat & self);
+void from_json(const JSON & j, LogFormat & self);
 
 }
 

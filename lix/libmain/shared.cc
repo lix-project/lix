@@ -200,7 +200,10 @@ LegacyArgs::LegacyArgs(AsyncIoRoot & aio, const std::string & programName,
         .longName = "no-build-output",
         .shortName = 'Q',
         .description = "Do not show build output.",
-        .handler = {[&]() {setLogFormat(LogFormat::Raw); }},
+        .handler = {[&]() {
+            loggerSettings.logFormat.setDefault(loggerSettings.logFormat.get().withoutLogs());
+            loggerSettings.logFormat.autoValue = loggerSettings.logFormat.get().withoutLogs();
+        }},
     });
 
     addFlag({

@@ -228,7 +228,9 @@ struct NixArgs : virtual MultiCommand, virtual MixCommonArgs, virtual RootArgs
                 .shortName = 'L',
                 .description = "Print full build logs on standard error.",
                 .category = loggingCategory,
-                .handler = {[&]() { logger->setPrintBuildLogs(true); }},
+                .handler = {[&]() {
+                    loggerSettings.logFormat.setDefault(loggerSettings.logFormat.get().withLogs());
+                }},
                 .experimentalFeature = Xp::NixCommand,
             });
 
@@ -500,7 +502,7 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     evalSettings.pureEval.setDefault(true);
 
-    setLogFormat(LogFormat::BarWithLogs);
+    loggerSettings.logFormat.autoValue = LogFormat::BarWithLogs;
 
     // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
@@ -577,6 +579,9 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
     } catch (UsageError &) {
         if (!args.helpRequested && !args.completions) throw;
     }
+
+    // HACK: after args.parseCmdline() we re-create the default logger, to apply --option flags.
+    createDefaultLogger();
 
     if (args.completions) {
         switch (args.completions->type) {

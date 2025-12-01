@@ -1,29 +1,17 @@
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libmain/loggers.hh"
 #include "lix/libmain/progress-bar.hh"
+#include "lix/libutil/log-format.hh"
+#include "lix/libutil/config-impl.hh" // IWYU pragma: keep
 
 namespace nix {
 
-LogFormat defaultLogFormat = LogFormat::Auto;
-
-[[deprecated]]
-LogFormat parseLogFormat(const std::string & logFormatStr) {
-    if (auto const parsed = LogFormat::parse(logFormatStr)) {
-        return *parsed;
-    }
-    throw Error("setting 'log-format' has an invalid value '%s'", logFormatStr);
-}
-
-Logger * makeDefaultLogger() {
-    return getLoggerByFormat(defaultLogFormat);
-}
-
-void setLogFormat(const std::string & logFormatStr) {
-    setLogFormat(parseLogFormat(logFormatStr));
+static Logger * makeDefaultLogger() {
+    return getLoggerByFormat(loggerSettings.logFormat);
 }
 
 void setLogFormat(const LogFormat & logFormat) {
-    defaultLogFormat = logFormat;
+    loggerSettings.logFormat.override(logFormat);
     createDefaultLogger();
 }
 
@@ -36,7 +24,7 @@ Logger * getLoggerByFormat(LogFormat logFormat)
     using enum LogFormatValue;
     switch (logFormat) {
     case LogFormat::Auto:
-        return getLoggerByFormat(defaultLogFormat);
+        return getLoggerByFormat(loggerSettings.logFormat.autoValue);
     case LogFormat::Raw:
         return makeSimpleLogger(false);
     case LogFormat::RawWithLogs:

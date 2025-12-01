@@ -133,6 +133,7 @@ DECLARE_CONFIG_SERIALISER(StringSet)
 DECLARE_CONFIG_SERIALISER(StringMap)
 DECLARE_CONFIG_SERIALISER(ExperimentalFeatures)
 DECLARE_CONFIG_SERIALISER(DeprecatedFeatures)
+DECLARE_CONFIG_SERIALISER(LogFormat)
 
 template<typename T>
 T BaseSetting<T>::parse(const std::string & str, const ApplyConfigOptions & options) const

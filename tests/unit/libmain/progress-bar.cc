@@ -3,6 +3,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libmain/progress-bar.hh"
 #include "lix/libmain/loggers.hh"
+#include "lix/libutil/config-impl.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libmain/shared.hh"
 

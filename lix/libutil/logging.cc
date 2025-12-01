@@ -1,4 +1,5 @@
 #include "c-calls.hh"
+#include "lix/libutil/config-impl.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"

@@ -282,7 +282,10 @@ libutil_settings_headers += custom_target(
 )
 
 logging_setting_definitions = files(
+  # keep-sorted start
+  'logging-settings/log-format.md',
   'logging-settings/show-trace.md',
+  # keep-sorted end
 )
 libutil_settings_headers += custom_target(
   command : [

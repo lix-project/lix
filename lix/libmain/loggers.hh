@@ -8,9 +8,7 @@ namespace nix {
 
 class Logger;
 
-[[deprecated]]
-void setLogFormat(const std::string & logFormatStr);
-[[deprecated]]
+/** Overrides the current log format, and re-creates the current logger. */
 void setLogFormat(const LogFormat & logFormat);
 
 void createDefaultLogger();

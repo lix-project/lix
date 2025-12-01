@@ -131,9 +131,9 @@ def test_completions_flake_update(nix: Nix, files: Path):
 
 def test_flag_completion(nix: Nix):
     nix.env["NIX_GET_COMPLETIONS"] = "2"
-    res = nix.nix(["build", "--log-form"]).run().ok()
-    assert "--log-format" in res.stdout_plain
-    assert "Set the format of log output; one of" in res.stdout_plain
+    res = nix.nix(["build", "--dry"]).run().ok()
+    assert "--dry-run" in res.stdout_plain
+    assert "Show what this command would do without doing it" in res.stdout_plain
 
 
 def test_option_completion(nix: Nix):

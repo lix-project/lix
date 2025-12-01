@@ -1,8 +1,8 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libutil/args/root.hh"
+#include "lix/libutil/config-impl.hh" // IWYU pragma: keep
 #include "lix/libutil/error.hh"
 #include "lix/libstore/globals.hh"
-#include "lix/libmain/loggers.hh"
 #include "lix/libutil/logging.hh"
 
 namespace nix {
@@ -62,7 +62,9 @@ MixCommonArgs::MixCommonArgs(const std::string & programName)
         .description = "Set the format of log output; one of `raw`, `internal-json`, `bar`, `bar-with-logs`, `multiline` or `multiline-with-logs`.",
         .category = loggingCategory,
         .labels = {"format"},
-        .handler = {[](std::string format) { setLogFormat(format); }},
+        .handler = {[&](std::string format) {
+            loggerSettings.logFormat.set(format);
+        }},
     });
 
     addFlag({
