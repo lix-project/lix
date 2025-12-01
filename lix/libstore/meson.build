@@ -471,6 +471,6 @@ configure_file(
     'libdir' : libdir,
     'includedir' : includedir,
     'PACKAGE_VERSION' : meson.project_version(),
-    'AWS_SDK_IF_FOUND' : aws_sdk.found() ? 'aws-cpp-sdk-core aws-cpp-sdk-s3 aws-cpp-std-transfer' : '',
+    'AWS_SDK_IF_FOUND' : aws_sdk.found() ? 'aws-cpp-sdk-core aws-cpp-sdk-s3 aws-cpp-sdk-transfer' : '',
   },
 )
