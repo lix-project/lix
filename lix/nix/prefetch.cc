@@ -189,7 +189,7 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             throw UsageError("too many arguments");
 
         if (isOutputARealTerminal(StandardOutputStream::Stderr))
-            setLogFormat(LogFormat::bar);
+            setLogFormat(LogFormat::Bar);
 
         auto store = aio.blockOn(openStore());
         auto evaluator = std::make_unique<Evaluator>(aio, myArgs.searchPath, store);

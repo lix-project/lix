@@ -4,55 +4,18 @@
 
 namespace nix {
 
-LogFormat defaultLogFormat = LogFormat::raw;
+LogFormat defaultLogFormat = LogFormat::Auto;
 
+[[deprecated]]
 LogFormat parseLogFormat(const std::string & logFormatStr) {
-    if (logFormatStr == "raw")
-        return LogFormat::raw;
-    else if (logFormatStr == "raw-with-logs")
-        return LogFormat::rawWithLogs;
-    else if (logFormatStr == "internal-json")
-        return LogFormat::internalJSON;
-    else if (logFormatStr == "bar")
-        return LogFormat::bar;
-    else if (logFormatStr == "bar-with-logs")
-        return LogFormat::barWithLogs;
-    else if (logFormatStr == "multiline")
-        return LogFormat::multiline;
-    else if (logFormatStr == "multiline-with-logs")
-        return LogFormat::multilineWithLogs;
-    throw Error("option 'log-format' has an invalid value '%s'", logFormatStr);
+    if (auto const parsed = LogFormat::parse(logFormatStr)) {
+        return *parsed;
+    }
+    throw Error("setting 'log-format' has an invalid value '%s'", logFormatStr);
 }
 
 Logger * makeDefaultLogger() {
-    switch (defaultLogFormat) {
-    case LogFormat::raw:
-        return makeSimpleLogger(false);
-    case LogFormat::rawWithLogs:
-        return makeSimpleLogger(true);
-    case LogFormat::internalJSON:
-        return makeJSONLogger(*makeSimpleLogger(true));
-    case LogFormat::bar:
-        return makeProgressBar();
-    case LogFormat::barWithLogs: {
-        auto logger = makeProgressBar();
-        logger->setPrintBuildLogs(true);
-        return logger;
-    }
-    case LogFormat::multiline: {
-        auto logger = makeProgressBar();
-        logger->setPrintMultiline(true);
-        return logger;
-    }
-    case LogFormat::multilineWithLogs: {
-        auto logger = makeProgressBar();
-        logger->setPrintMultiline(true);
-        logger->setPrintBuildLogs(true);
-        return logger;
-    }
-    default:
-        abort();
-    }
+    return getLoggerByFormat(defaultLogFormat);
 }
 
 void setLogFormat(const std::string & logFormatStr) {
@@ -66,6 +29,41 @@ void setLogFormat(const LogFormat & logFormat) {
 
 void createDefaultLogger() {
     logger = makeDefaultLogger();
+}
+
+Logger * getLoggerByFormat(LogFormat logFormat)
+{
+    using enum LogFormatValue;
+    switch (logFormat) {
+    case LogFormat::Auto:
+        return getLoggerByFormat(defaultLogFormat);
+    case LogFormat::Raw:
+        return makeSimpleLogger(false);
+    case LogFormat::RawWithLogs:
+        return makeSimpleLogger(true);
+    case LogFormat::InternalJson:
+        return makeJSONLogger(*makeSimpleLogger(true));
+    case LogFormat::Bar:
+        return makeProgressBar();
+    case LogFormat::BarWithLogs: {
+        auto logger = makeProgressBar();
+        logger->setPrintBuildLogs(true);
+        return logger;
+    }
+    case LogFormat::Multiline: {
+        auto logger = makeProgressBar();
+        logger->setPrintMultiline(true);
+        return logger;
+    }
+    case LogFormat::MultilineWithLogs: {
+        auto logger = makeProgressBar();
+        logger->setPrintMultiline(true);
+        logger->setPrintBuildLogs(true);
+        return logger;
+    }
+    default:
+        assert(false && "unreachable");
+    }
 }
 
 }

@@ -4,6 +4,7 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/config.hh"
+#include "lix/libutil/log-format.hh"
 #include "result.hh"
 #include "serialise.hh"
 #include <kj/async.h>

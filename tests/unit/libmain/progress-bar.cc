@@ -24,7 +24,7 @@ namespace nix
         initNix();
         initLibExpr();
 
-        setLogFormat(LogFormat::bar);
+        setLogFormat(LogFormat::Bar);
         ASSERT_NE(dynamic_cast<ProgressBar *>(logger), nullptr);
         ProgressBar & progressBar = dynamic_cast<ProgressBar &>(*logger);
 

@@ -502,7 +502,7 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     evalSettings.pureEval.setDefault(true);
 
-    setLogFormat(LogFormat::barWithLogs);
+    setLogFormat(LogFormat::BarWithLogs);
 
     // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
