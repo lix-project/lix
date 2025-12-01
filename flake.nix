@@ -262,7 +262,9 @@
               sha512 = "2a4d0rqh8gkw4ca3gkzddp0hjpmmw74cbks8k0inhh0vizmgbn188zdv6m1kgmr019b99g7insli8js3ci1ji7y4n5nk704bswf3z3i";
             };
             nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.buildPackages.bmake ];
-            postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] prevAttrs.postInstall;
+            postInstall = lib.replaceStrings [ "lowdown.so.1" ] [ "lowdown.so.2" ] (
+              prevAttrs.postInstall or ""
+            );
           });
 
           capnproto = prev.capnproto.overrideAttrs (old: {
