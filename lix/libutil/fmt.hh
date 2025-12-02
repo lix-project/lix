@@ -4,12 +4,36 @@
 #include <iostream>
 #include <string>
 #include <boost/format.hpp>
+#include <format>
 #include "lix/libutil/ansicolor.hh"
 
 // Explicit instantiation in fmt.cc
 extern template class boost::basic_format<char>;
 
 namespace nix {
+
+/** Sentinel template struct to mark if a type should automatically generate
+ * an ostream operator<< based on std::format().
+ *
+ * This template should be specialized to inherit from @ref std::true_type for any type
+ * that has an @ref std::formatter<> implementation, but not an operator<< implementation.
+ */
+template<typename T>
+struct LegacyFormat : std::false_type
+{};
+
+/** Automatically generated ostream operator<< based on @ref std::formatter<> impls.
+ *
+ * Only enabled for `T` where @ref std::formatter<T> is specialized,
+ * @ref nix::LegacyFormat<T>::value is true-ish.
+ */
+template<std::formattable<char> T>
+    requires LegacyFormat<T>::value
+std::ostream & operator<<(std::ostream & out, T const & self)
+{
+    out << std::format("{}", self);
+    return out;
+}
 
 /** Gets a C++ stack trace using boost stacktrace */
 std::string getStackTrace();
