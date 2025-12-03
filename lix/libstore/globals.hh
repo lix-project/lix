@@ -1,12 +1,10 @@
 #pragma once
 ///@file
 
-#include "lix/libutil/environment-variables.hh"
+// libstore-settings.gen.inc uses getEnv().
+#include "lix/libutil/environment-variables.hh" // IWYU pragma: keep
 #include "lix/libutil/types.hh"
 #include "lix/libutil/config.hh"
-
-#include <map>
-#include <limits>
 
 #include <sys/types.h>
 
