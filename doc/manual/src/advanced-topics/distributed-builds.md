@@ -172,6 +172,10 @@ speed-factor = 2.0
 supported-features = ["kvm", "benchmark"]
 ssh-key = "/home/deepslate/.ssh/id_ed25519"
 
+[machines.legacy]
+uri = "ssh://nix@nix-15-11.nixos.org"
+enable = false
+
 ```
 
 > **Note**
@@ -182,6 +186,13 @@ ssh-key = "/home/deepslate/.ssh/id_ed25519"
 For testing purposes, one can also define a builder ad hoc on the CLI as follows:
 `--builders 'machines.andesite = {uri = "ssh://lix@andesite.lix.systems", jobs = 8}'`
 
+
+#### Special handling of fields
+ - `enable` (**optional**)
+    If set to false, the declared machine will not be loaded.
+    This allows one to statically disable machines.
+
+    Defaults to true
 
 ### Using the legacy format
 > **Warning**

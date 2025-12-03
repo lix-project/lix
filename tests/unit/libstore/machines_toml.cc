@@ -233,6 +233,21 @@ TEST(machines, getMachinesTOMLWithIncorrectTyping)
 
     settings.builders.override("machines.a = \"lix@andesite.lix.sytems\"\n");
     EXPECT_MESSAGE_THROW(getMachines(), UsageError, "Each machine must be a table");
+
+    settings.builders.override(
+        "version = \"1\"\n"
+        "[machines.scratchy]\n"
+        "uri = \"nix@scratchy.labs.cs.uu.nl\"\n"
+    );
+    EXPECT_MESSAGE_THROW(getMachines(), UsageError, "bad_cast to integer");
+
+    settings.builders.override(
+        "version = 1\n"
+        "[machines.legacy]\n"
+        "uri = \"ssh://nix@nix-15-11.nixos.org\"\n"
+        "enable = 0\n"
+    );
+    EXPECT_MESSAGE_THROW(getMachines(), UsageError, "bad_cast to boolean");
 }
 
 TEST(machines, getMachinesTOMLBadVersion)
@@ -280,6 +295,22 @@ TEST(machines, getMachinesTOMLInvalidSyntaxButClearlyTOML)
         " = 5\n"
     );
     EXPECT_MESSAGE_THROW(getMachines(), UsageError, "invalid Machines TOML syntax:");
+}
+
+TEST(machines, getMachinesTOMLOneDisabled)
+{
+    settings.builders.override(
+        "version = 1\n"
+        "[machines.a]\n"
+        "uri = \"ssh://test\"\n"
+        "enable = false\n"
+        "\n"
+        "[machines.b]\n"
+        "uri = \"ssh://test2\"\n"
+    );
+    auto actual = getMachines();
+    ASSERT_THAT(actual, SizeIs(1));
+    EXPECT_THAT(actual[0], Field(&Machine::storeUri, EndsWith("test2")));
 }
 
 #undef EXPECT_MESSAGE_THROW

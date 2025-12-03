@@ -242,6 +242,7 @@ static const std::set<std::string> EXPECTED_KEYS = {
     "supported-features",
     "mandatory-features",
     "ssh-public-host-key",
+    "enable",
 };
 
 static toml::result<float, std::string> getSpeedFactor(const toml::value & data)
@@ -408,8 +409,17 @@ static toml::result<Machines, std::vector<std::string>> parseToml(const toml::va
             auto err = res.as_err();
             parserErrors.push_back(fmt("for machine %s:", name));
             parserErrors.insert(parserErrors.end(), err.begin(), err.end());
+            continue;
+        }
+        auto enable = parse<bool>(machine, "enable", true);
+        if (enable.is_ok()) {
+            if (enable.unwrap()) {
+                // Check if it hasn't been statically disabled
+                // But still throw parsing errors if it was
+                machines.push_back(res.unwrap());
+            }
         } else {
-            machines.push_back(res.unwrap());
+            parserErrors.push_back(enable.as_err());
         }
     }
 
