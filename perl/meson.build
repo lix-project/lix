@@ -1,7 +1,7 @@
 project('lix-perl', 'cpp',
   version : run_command('bash', '-c', 'echo -n $(jq -r .version < ../version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
-    'cpp_std=c++2a',
+    'cpp_std=c++23',
     # TODO(Qyriad): increase the warning level
     'debug=true',
     # FIXME(Qyriad): should this be -O2? The main nix build was switched to -O2 in 3c5234430
