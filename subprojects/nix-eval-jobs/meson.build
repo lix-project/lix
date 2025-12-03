@@ -4,7 +4,7 @@ project('nix-eval-jobs', 'cpp',
   default_options : [
     'debug=true',
     'optimization=2',
-    'cpp_std=c++20',
+    'cpp_std=c++23',
   ],
 )
 
