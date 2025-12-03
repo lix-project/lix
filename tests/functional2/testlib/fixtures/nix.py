@@ -160,6 +160,34 @@ class Nix:
         self._settings = orig
         return cmd.run()
 
+    @property
+    def store_dir(self) -> Path:
+        """
+        The actual NIX_STORE_DIR this Nix command uses.
+        """
+        assert self.env.dirs.nix_store_dir is not None, "bug in ManagedEnv"
+        return self.env.dirs.nix_store_dir
+
+    def physical_store_path_for(self, path: str | Path) -> Path:
+        """
+        Takes a /nix/store/… path and rewrites it to be relative to this Nix's NIX_STORE_DIR.
+
+        Nix accepts and returns store paths as `/nix/store` even when that's not where `NIX_STORE_DIR`
+        physically is on the filesystem. Since we move the conceptual root for Nix to `test_root`,
+        these "virtual" paths differ from the physical ones. So this function will convert `/nix/store`
+        "virtual" paths to their real, physical location on the system.
+
+        Basically, if you're passing it to `nix build` or `nix-store` or whatever, you want the
+        `/nix/store` version. If you're passing it to a Python API (like pathlib.Path.exists()) or a
+        command that operates on arbitrary files instead of store paths, you want the output of this
+        function.
+
+
+        :param path: a string or Path to convert
+        :return: a Path object holding the rewritten, physical system path to the store entry
+        """
+        return Path(str(path).replace("/nix/store", self.store_dir.as_posix()))
+
 
 @pytest.fixture
 def nix(tmp_path: Path, env: ManagedEnv) -> Generator[Nix, Any, None]:
