@@ -113,6 +113,9 @@ output=$(NIX_PATH=nixpkgs="$shellDotNix" nix-shell --pure -p foo --argstr fooCon
     fi
 )
 
+# Test $NIX_LOG_FD
+expectStderr 0 nix-shell --pure $shellDotNix -A shellDrv --run 'echo hello > $NIX_LOG_FD' |& grepQuiet 'hello'
+
 # FIXME: testing that Ctrl-C to a (non-)interactive nix-shell stops it would be appreciated,
 # but it is hard to send accurately the signal to the right process group.
 

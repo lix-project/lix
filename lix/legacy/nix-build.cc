@@ -438,6 +438,10 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
             + 1
         );
 
+        // We re-export similarly to what occurs inside of a derivation goal `NIX_LOG_FD` to stderr.
+        // So that stdenv hooks that logs information can be observed inside this debugging tool.
+        env["NIX_LOG_FD"] = "2";
+
         // Don't use defaultTempDir() here! We want to preserve the user's TMPDIR for the shell
         env["NIX_BUILD_TOP"] = env["TMPDIR"] = env["TEMPDIR"] = env["TMP"] = env["TEMP"] =
             getEnvNonEmpty("TMPDIR").value_or(buildTopTmpDir);
