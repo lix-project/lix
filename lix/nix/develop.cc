@@ -364,6 +364,9 @@ struct Common : InstallableCommand, MixProfile
             out << fmt("%s=\"$%s${nix_saved_%s:+:$nix_saved_%s}\"\n", var, var, var, var);
 
         out << "export NIX_BUILD_TOP=\"$(mktemp -d -t nix-shell.XXXXXX)\"\n";
+        // We re-export similarly to what occurs inside of a derivation goal `NIX_LOG_FD` to stderr.
+        // So that stdenv hooks that logs information can be observed inside this debugging tool.
+        out << "export NIX_LOG_FD=2\n";
         for (auto & i : {"TMP", "TMPDIR", "TEMP", "TEMPDIR"})
             out << fmt("export %s=\"$NIX_BUILD_TOP\"\n", i);
 

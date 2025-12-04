@@ -173,6 +173,9 @@ shellDrv=$(nix-instantiate "$shellDotNix" -A shellDrv.out)
 
 nix develop $shellDrv -c bash -c '[[ -n $stdenv ]]'
 
+# Test $NIX_LOG_FD
+expectStderr 0 nix develop $shellDrv -c bash -c 'echo hello > $NIX_LOG_FD' |& grepQuiet 'hello'
+
 nix print-dev-env $shellDrv > $TEST_ROOT/dev-env2.sh
 nix print-dev-env $shellDrv --json > $TEST_ROOT/dev-env2.json
 
