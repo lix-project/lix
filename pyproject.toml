@@ -66,7 +66,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 #   disabled: ANN4: no any type; not enabled as we support anys in multiple places
 # A: builtin shadowing
 # C4: list and generator comprehensions
-# EM: don't pass strings directly into exceptions, but use a variable; avoids duplicate printing of the message
+# disabled: EM: don't pass strings directly into exceptions, but use a variable; avoids duplicate printing of the message
 # ISC: implicit string concatination
 # INP: require __init__.py in all packages
 # LOG: creation of logger objects
@@ -143,7 +143,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # PGH: things about pygrep, we don't use
 # FURB: covered by other rule sets
 # TRY: try and raise related things, not helpful as we only do testing
-select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "EM", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
+select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
 ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005"]
 
 [tool.ruff.lint.per-file-ignores]
