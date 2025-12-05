@@ -93,6 +93,7 @@ libstore_setting_definitions = files(
   'settings/diff-hook.md',
   'settings/download-speed.md',
   'settings/enable-core-dumps.md',
+  'settings/extra-local-jobs.md',
   'settings/extra-platforms.md',
   'settings/fallback.md',
   'settings/fsync-metadata.md',

@@ -205,10 +205,31 @@ retry:
 
     if (!slotToken.valid()) {
         outputLocks.reset();
-        if (worker.localBuilds.capacity() > 0) {
-            slotToken = co_await worker.localBuilds.acquire();
+
+        // NOTE: we prioritize preferLocalBuilds jobs on the localJobs slot pool.
+        // Once we cannot anymore, we eat towards the builds slot pool.
+        if (parsedDrv->willBuildLocally(worker.store)) {
+            if (auto token = worker.localJobs.tryAcquire()) {
+                slotToken = std::move(*token);
+                co_return co_await tryToBuild();
+            }
+
+            if (auto token = worker.builds.tryAcquire()) {
+                slotToken = std::move(*token);
+                co_return co_await tryToBuild();
+            }
+
+            if (worker.localJobs.capacity() > 0) {
+                slotToken = co_await worker.localJobs.acquire();
+                co_return co_await tryToBuild();
+            }
+        }
+
+        if (worker.builds.capacity() > 0) {
+            slotToken = co_await worker.builds.acquire();
             co_return co_await tryToBuild();
         }
+
         if (getMachines().empty()) {
             throw Error(
                 "unable to start any build; either set '--max-jobs' to a non-zero value or enable "

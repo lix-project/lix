@@ -106,10 +106,6 @@ bool ParsedDerivation::canBuildLocally(Store & localStore) const
         && !drv.isBuiltin())
         return false;
 
-    if (settings.maxBuildJobs.get() == 0
-        && !drv.isBuiltin())
-        return false;
-
     for (auto & feature : getRequiredSystemFeatures())
         if (!localStore.config().systemFeatures.get().count(feature)) return false;
 

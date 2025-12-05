@@ -35,7 +35,10 @@ Worker::Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces)
     /* Make sure that we are always allowed to run at least one substitution.
        This prevents infinite waiting. */
     , substitutions(std::max<unsigned>(1, settings.maxSubstitutionJobs))
-    , localBuilds(settings.maxBuildJobs)
+    , builds(settings.maxBuildJobs)
+    // We allow local job to progress if there's no build job slot.
+    // See https://git.lix.systems/lix-project/lix/issues/855 for details.
+    , localJobs(settings.extraLocalJobs.get().value_or(settings.maxBuildJobs == 0U ? 1U : 0U))
     , children(errorHandler)
     , namespaces(namespaces)
 {
