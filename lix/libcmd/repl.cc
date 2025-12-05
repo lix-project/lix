@@ -1354,6 +1354,11 @@ void NixRepl::initEnv()
 
 void NixRepl::reloadFiles()
 {
+    if (loaded.empty() && getValues().empty()) {
+        notice("No file to reload, skipping");
+        return;
+    }
+
     initEnv();
 
     loadFiles();
