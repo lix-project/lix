@@ -57,5 +57,10 @@ perl.pkgs.toPerlModule (
     postUnpack = "sourceRoot=$sourceRoot/perl";
 
     passthru = { inherit perl; };
+
+    doInstallCheck = true;
+    installCheckPhase = ''
+      env PERL5LIB="$PERL5LIB:$out/${perl.libPrefix}" perl -e 'use Nix::Store'
+    '';
   }
 )
