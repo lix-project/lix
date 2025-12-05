@@ -188,6 +188,17 @@ class Nix:
         """
         return Path(str(path).replace("/nix/store", self.store_dir.as_posix()))
 
+    def hash_path(self, store_path: str | Path, *args: str) -> str:
+        """
+        Shortcut to use `nix hash path {store_path}`, converting "virtual" store paths returned
+        from Nix to their physical system paths including the test root.
+
+        :param store_path: store path of the derivation or entry to hash
+        """
+        actual_path = self.physical_store_path_for(store_path).as_posix()
+        res = self.nix(["hash", "path", actual_path, *args], flake=True).run().ok()
+        return res.stdout_plain
+
 
 @pytest.fixture
 def nix(tmp_path: Path, env: ManagedEnv) -> Generator[Nix, Any, None]:
