@@ -1289,12 +1289,21 @@ void NixRepl::loadFile(const Path & path)
         .spec = path,
         .kind = ReplLoadKind::File,
     };
-    loaded.remove(loadable);
-    loaded.push_back(loadable);
-    Value v, v2;
-    state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses), v);
-    state.autoCallFunction(*autoArgs, v, v2, noPos);
-    addAttrsToScope(v2);
+    try {
+        loaded.remove(loadable);
+        loaded.push_back(loadable);
+        Value v, v2;
+        state.evalFile(
+            state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses), v
+        );
+        state.autoCallFunction(*autoArgs, v, v2, noPos);
+        addAttrsToScope(v2);
+    } catch (...) {
+        // In case of failure, do not keep the loaded path.
+        // Let the user reload it again later.
+        loaded.remove(loadable);
+        throw;
+    }
 }
 
 void NixRepl::loadFlake(const std::string & flakeRefS)
