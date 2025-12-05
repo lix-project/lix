@@ -49,6 +49,19 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
         });
     }
 
+    // NOTE(Raito): we override the store creation
+    // to prevent any store daemon connection.
+    //
+    // An upgrade, by nature, requires a direct store access
+    // to avoid having the daemon die in the middle of changing the binary.
+    //
+    // If more commands needs that, we can move it into a mixin. This was deliberately not done
+    // here.
+    virtual ref<Store> createStore(AsyncIoRoot & aio) override
+    {
+        return aio.blockOn(openStore(settings.storeUri.get(), {}, AllowDaemon::Disallow));
+    }
+
     /**
      * This command is stable before the others
      */
