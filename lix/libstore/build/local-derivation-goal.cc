@@ -1832,15 +1832,18 @@ try {
             );
         }
 
+        outputGraph[scratchOutputs.at(name)] = StorePathSet{};
         std::visit(
             overloaded{/* Since we'll use the already installed versions of these, we
                                    can treat them as leaves and ignore any references they
                                    have. */
-                       [&](const AlreadyRegistered &) {
-                           outputGraph[scratchOutputs.at(name)] = StorePathSet{};
-                       },
+                       [&](const AlreadyRegistered &) {},
                        [&](const PerhapsNeedToRegister & refs) {
-                           outputGraph[scratchOutputs.at(name)] = refs.refs;
+                           for (auto & ref : refs.refs) {
+                               if (inverseOutputMap.find(ref) != inverseOutputMap.end()) {
+                                   outputGraph[scratchOutputs.at(name)].insert(ref);
+                               }
+                           }
                        }
             },
             *orifu
@@ -1851,10 +1854,8 @@ try {
         topoSort(outputsToSort, {[&](const std::string & name) {
                      StringSet dependencies;
                      for (auto & path : outputGraph.at(scratchOutputs.at(name))) {
-                         auto outputName = inverseOutputMap.find(path);
-                         if (outputName != inverseOutputMap.end()) {
-                             dependencies.insert(outputName->second);
-                         }
+                         auto outputName = inverseOutputMap.at(path);
+                         dependencies.insert(outputName);
                      }
                      return dependencies;
                  }});

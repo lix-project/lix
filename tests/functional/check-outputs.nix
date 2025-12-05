@@ -15,6 +15,18 @@ rec {
     '';
   };
 
+  cycle-with-deps = mkDerivation {
+    name = "cycle-with-deps";
+    inherit dep;
+    outputs = [ "foo" "bar" ];
+    builder = builtins.toFile "builder.sh" ''
+      mkdir -p $foo/bin $bar/lib
+      ln -sf $dep $bar/lib
+      echo $foo > $bar/txt
+      echo $bar > $foo/txt
+    '';
+  };
+
   as_dependency = mkDerivation {
     name = "depends-on-cycle";
     inherit cycle;

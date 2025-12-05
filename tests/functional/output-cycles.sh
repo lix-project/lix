@@ -16,3 +16,14 @@ error="$(! nix-build check-outputs.nix -A as_dependency 2>&1)"
 
 grepQuiet "cycle detected in build of '.*' in the references of output 'bar' from output 'foo'" <<<"$error"
 grepQuiet "error: 1 dependencies of derivation" <<<"$error"
+
+error="$(! nix-build check-outputs.nix -A cycle-with-deps 2>&1)"
+grepQuiet "cycle detected in build of '.*' in the references of output 'bar' from output 'foo'" <<<"$error"
+
+if [[ "$(uname -s)" = Linux ]]; then
+    echo "$error"
+    <<<"$error" grepQuiet "/store/.*-cycle-with-deps-bar"
+    <<<"$error" grepQuiet "└───txt: ….*cycle-with-deps-foo.*"
+    <<<"$error" grepQuiet "    →.*/store/.*-cycle-with-deps-foo"
+    <<<"$error" grepQuiet "    └───txt:.*-cycle-with-deps-bar.*"
+fi

@@ -265,7 +265,7 @@ static std::map<StorePath, Node> mkGraph(
 
     for (auto & node : graph_data) {
         for (auto & ref : node.second.dependencies) {
-            graph_data.find(ref)->second.dependents.insert(node.first);
+            graph_data.at(ref).dependents.insert(node.first);
         }
     }
 
