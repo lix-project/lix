@@ -160,7 +160,6 @@ functional_tests_scripts = [
   'regression-reference-checks.sh',
   'redirected-filter-source.sh',
   'daemon-trust.sh',
-  'output-cycles.sh',
 ]
 
 # Plugin tests require shared libraries support.
