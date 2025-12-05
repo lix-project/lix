@@ -121,7 +121,6 @@ public:
 
 private:
     Bindings * bindings;
-    EvalMemory & mem;
     SymbolTable & symbols;
     Size capacity;
 
@@ -129,9 +128,8 @@ public:
     // needed by std::back_inserter
     using value_type = Attr;
 
-    BindingsBuilder(EvalMemory & mem, SymbolTable & symbols, Bindings * bindings, Size capacity)
+    BindingsBuilder(SymbolTable & symbols, Bindings * bindings, Size capacity)
         : bindings(bindings)
-        , mem(mem)
         , symbols(symbols)
         , capacity(capacity)
     {

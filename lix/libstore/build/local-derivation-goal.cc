@@ -227,18 +227,20 @@ retry:
     }
 
     auto & localStore = getLocalStore();
-    bool sandboxFallbackAllowed = true;
-    if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
-        #if __linux__
+    const bool sandboxFallbackAllowed = [&]() {
+        if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
+#if __linux__
             if (!useChroot) {
                 printTaggedWarning("auto-enabling the sandbox due to using a diverted store");
             }
             useChroot = true;
-            sandboxFallbackAllowed = false;
-        #else
+            return false;
+#else
             throw Error("building using a diverted store is not supported on this platform");
-        #endif
-    }
+#endif
+        }
+        return true;
+    }();
 
     if (useBuildUsers()) {
         if (!buildUser)

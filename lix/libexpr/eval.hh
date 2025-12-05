@@ -216,7 +216,7 @@ public:
 
     BindingsBuilder buildBindings(SymbolTable & symbols, size_t capacity)
     {
-        return BindingsBuilder(*this, symbols, allocBindings(capacity), capacity);
+        return BindingsBuilder(symbols, allocBindings(capacity), capacity);
     }
 
     const Statistics getStats() const { return stats; }

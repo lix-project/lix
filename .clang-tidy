@@ -35,3 +35,5 @@ Checks:
 CheckOptions:
   bugprone-reserved-identifier.AllowedIdentifiers: '__asan_default_options'
   bugprone-unused-return-value.AllowCastToVoid: true
+
+ExtraArgs: ["-Werror=unnecessary-virtual-specifier"]

@@ -46,7 +46,7 @@ public:
      *
      * This function logs but ignores errors from readline's write_history().
      */
-    virtual void writeHistory();
+    void writeHistory();
     virtual ~ReadlineLikeInteracter() override;
 };
 
