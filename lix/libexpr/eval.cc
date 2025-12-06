@@ -291,14 +291,14 @@ EvalMemory::EvalMemory()
 {
     assert(libexprInitialised);
 #if HAVE_BOEHMGC
-    GC_add_roots(gcCache, gcCache + CACHES);
+    GC_add_roots(static_cast<void *>(gcCache), static_cast<void *>(gcCache + CACHES));
 #endif
 }
 
 EvalMemory::~EvalMemory()
 {
 #if HAVE_BOEHMGC
-    GC_remove_roots(gcCache, gcCache + CACHES);
+    GC_remove_roots(static_cast<void *>(gcCache), static_cast<void *>(gcCache + CACHES));
 #endif
 }
 

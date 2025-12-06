@@ -48,7 +48,7 @@ char ** copyCompletions(const StringSet& possible)
             if (vp) {
                 while (--ac >= 0)
                     free(vp[ac]);
-                free(vp);
+                free(static_cast<void *>(vp));
             }
             throw Error("allocation failure");
         }

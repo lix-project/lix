@@ -14,8 +14,6 @@ Checks:
   - -bugprone-unchecked-optional-access
     # many warnings, seems like a questionable lint
   - -bugprone-branch-clone
-    # extremely noisy before clang 19: https://github.com/llvm/llvm-project/issues/93959
-  - -bugprone-multi-level-implicit-pointer-conversion
     # we don't compile out our asserts
   - -bugprone-assert-side-effect
     # FIXME(jade): figure out if this warning is any good
