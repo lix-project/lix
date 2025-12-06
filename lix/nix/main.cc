@@ -455,8 +455,6 @@ void registerNixHelp()
 
 int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 {
-    savedArgv = argv;
-
     /* The chroot helper needs to be run before any threads have been
        started. */
     if (argc > 0 && argv[0] == chrootHelperName) {
@@ -645,7 +643,6 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     return 0;
 }
-
 }
 
 int main(int argc, char * * argv)

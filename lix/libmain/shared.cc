@@ -33,8 +33,6 @@
 
 namespace nix {
 
-char * * savedArgv;
-
 static bool gcWarning = true;
 
 void printGCWarning()
