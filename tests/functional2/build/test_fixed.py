@@ -46,8 +46,7 @@ def test_good(nix: Nix):
 @with_files(get_global_asset_pack("fixed"))
 def test_check(nix: Nix):
     res = nix.nix_build(["fixed.nix", "-A", "check", "--check"]).run().expect(1)
-    assert "some outputs of " in res.stderr_plain
-    assert "are not valid, so checking is not possible" in res.stderr_plain
+    assert "has no valid outputs registered in the store" in res.stderr_plain
 
 
 @with_files(get_global_asset_pack("fixed"))

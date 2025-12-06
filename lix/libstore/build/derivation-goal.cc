@@ -353,9 +353,25 @@ try {
     if (buildMode == bmRepair && allValid) {
         co_return TRY_AWAIT(repairClosure());
     }
-    if (buildMode == bmCheck && !allValid)
-        throw Error("some outputs of '%s' are not valid, so checking is not possible",
-            worker.store.printStorePath(drvPath));
+
+    if (buildMode == bmCheck && validOutputs.empty()) {
+        throw Error(
+            "'%s' has no valid outputs registered in the store, build it first and re-run the "
+            "check command after that",
+            worker.store.printStorePath(drvPath)
+        );
+    } else if (buildMode == bmCheck && !allValid) {
+        auto wantedOutputsStr = wantedOutputs.to_string();
+        auto validOutputsNames = concatStringsSep(", ", std::views::keys(validOutputs));
+        throw Error(
+            "Not all outputs of '%s' are registered and valid in this store ('%s' are available, "
+            "'%s' are missing). "
+            "Rebuild the derivation normally and re-run the check command after that",
+            worker.store.printStorePath(drvPath),
+            validOutputsNames == "" ? "none" : validOutputsNames,
+            wantedOutputsStr == "*" ? "all" : wantedOutputsStr
+        );
+    }
 
     /* Nothing to wait for; tail call */
     co_return TRY_AWAIT(gaveUpOnSubstitution());
