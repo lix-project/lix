@@ -107,8 +107,8 @@ struct RpcLogger : Logger
         }
         buffer->sizeEstimate += sizeof(e) + extraSize;
         buffer->items.emplace_back(std::move(e));
-        return buffer->sizeEstimate >= 1024 * 1024 ? BufferState::NeedsFlush
-                                                   : BufferState::HasSpace;
+        return buffer->sizeEstimate >= static_cast<size_t>(1024 * 1024) ? BufferState::NeedsFlush
+                                                                        : BufferState::HasSpace;
     }
 
     BufferState log(Verbosity lvl, std::string_view s) override

@@ -48,7 +48,7 @@ void detectStackOverflow()
        requires an alternative stack, otherwise the signal cannot be
        delivered when we're out of stack space. */
     stack_t stack;
-    stack.ss_size = 4096 * 4 + MINSIGSTKSZ;
+    stack.ss_size = 4096ul * 4 + MINSIGSTKSZ;
     static auto stackBuf = std::make_unique<std::vector<char>>(stack.ss_size);
     stack.ss_sp = stackBuf->data();
     if (!stack.ss_sp) throw Error("cannot allocate alternative stack");

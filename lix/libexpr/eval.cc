@@ -210,9 +210,9 @@ void initLibExpr()
        (resident) memory to be allocated.  This might be a problem on
        systems that don't overcommit. */
     if (!getEnv("GC_INITIAL_HEAP_SIZE")) {
-        int64_t size = 32 * 1024 * 1024;
+        int64_t size = 32l * 1024 * 1024;
 #if HAVE_SYSCONF && defined(_SC_PAGESIZE) && defined(_SC_PHYS_PAGES)
-        int64_t maxSize = 384 * 1024 * 1024;
+        int64_t maxSize = 384l * 1024 * 1024;
         int64_t pageSize = sysconf(_SC_PAGESIZE);
         int64_t pages = sysconf(_SC_PHYS_PAGES);
         if (pageSize != -1) {

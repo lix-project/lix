@@ -19,7 +19,7 @@ class IoBuffer
     std::unique_ptr<char[]> buffer;
 
 public:
-    explicit IoBuffer(size_t bufSize = 32 * 1024) : bufSize(bufSize) {}
+    explicit IoBuffer(size_t bufSize = 32ul * 1024) : bufSize(bufSize) {}
 
     size_t size() const
     {

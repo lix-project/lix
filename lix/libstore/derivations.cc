@@ -352,7 +352,7 @@ Derivation parseDerivation(
  */
 static void printString(std::string & res, std::string_view s)
 {
-    boost::container::small_vector<char, 64 * 1024> buffer;
+    boost::container::small_vector<char, 64ul * 1024> buffer;
     buffer.reserve(s.size() * 2 + 2);
     char * buf = buffer.data();
     char * p = buf;

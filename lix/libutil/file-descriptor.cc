@@ -133,7 +133,7 @@ Generator<Bytes> drainFDSource(int fd, bool block)
         }
     });
 
-    std::array<unsigned char, 64 * 1024> buf;
+    std::array<unsigned char, 64ul * 1024> buf;
     while (1) {
         checkInterrupt();
         ssize_t rd = read(fd, buf.data(), buf.size());

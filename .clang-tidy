@@ -8,8 +8,6 @@ Checks:
   - -bugprone-narrowing-conversions
     # kind of nonsense
   - -bugprone-easily-swappable-parameters
-    # too many warnings for now
-  - -bugprone-implicit-widening-of-multiplication-result
     # Lix's exception handling is Questionable
   - -bugprone-empty-catch
     # many warnings

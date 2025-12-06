@@ -253,7 +253,7 @@ time_t parseOlderThanTimeSpec(std::string_view timeSpec)
 
     time_t curTime = time(0);
     auto strDays = timeSpec.substr(0, timeSpec.size() - 1);
-    auto days = string2Int<int>(strDays);
+    auto days = string2Int<time_t>(strDays);
 
     if (!days || *days < 1)
         throw UsageError("invalid number of days specifier '%1%'", timeSpec);

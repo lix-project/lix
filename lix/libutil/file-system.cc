@@ -443,7 +443,7 @@ void writeFile(const Path & path, Source & source, mode_t mode)
 {
     AutoCloseFD fd = openForWrite(path, mode);
 
-    std::vector<char> buf(64 * 1024);
+    std::vector<char> buf(64ul * 1024);
 
     try {
         while (true) {
@@ -463,7 +463,7 @@ void writeFileExcl(const Path & path, Source & source, mode_t mode)
 {
     AutoCloseFD fd = openForWriteExcl(path, mode);
 
-    std::vector<char> buf(64 * 1024);
+    std::vector<char> buf(64ul * 1024);
 
     try {
         while (true) {
@@ -483,7 +483,7 @@ kj::Promise<Result<void>> writeFile(const Path & path, AsyncInputStream & source
 try {
     AutoCloseFD fd = openForWrite(path, mode);
 
-    std::vector<char> buf(64 * 1024);
+    std::vector<char> buf(64ul * 1024);
 
     try {
         while (true) {

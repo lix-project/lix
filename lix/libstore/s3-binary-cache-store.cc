@@ -195,8 +195,8 @@ ref<Aws::Client::ClientConfiguration> S3Helper::makeConfig(
     if (!endpoint.empty()) {
         res->endpointOverride = endpoint;
     }
-    res->requestTimeoutMs = 600 * 1000;
-    res->connectTimeoutMs = 5 * 1000;
+    res->requestTimeoutMs = 600l * 1000;
+    res->connectTimeoutMs = 5l * 1000;
     res->retryStrategy = std::make_shared<RetryStrategy>();
     res->caFile = settings.caFile;
     // Use the system proxy env-vars in curl for s3, which is off by default for some reason
@@ -312,8 +312,11 @@ struct S3BinaryCacheStoreConfig final : BinaryCacheStoreConfig
         "Whether to use multi-part uploads."};
 
     const Setting<uint64_t> bufferSize{
-        this, 5 * 1024 * 1024, "buffer-size",
-        "Size (in bytes) of each part in multi-part uploads."};
+        this,
+        5ul * 1024 * 1024,
+        "buffer-size",
+        "Size (in bytes) of each part in multi-part uploads."
+    };
 
     const std::string name() override { return "S3 Binary Cache Store"; }
 

@@ -121,7 +121,7 @@ public:
     {
     }
 
-    AsyncBufferedInputStream(AsyncInputStream & inner, size_t bufSize = 32 * 1024)
+    AsyncBufferedInputStream(AsyncInputStream & inner, size_t bufSize = 32ul * 1024)
         : AsyncBufferedInputStream(inner, make_ref<IoBuffer>(bufSize))
     {
     }
@@ -173,7 +173,7 @@ public:
     {
     }
 
-    AsyncBufferedOutputStream(AsyncOutputStream & inner, size_t bufSize = 32 * 1024)
+    AsyncBufferedOutputStream(AsyncOutputStream & inner, size_t bufSize = 32ul * 1024)
         : AsyncBufferedOutputStream(inner, make_ref<IoBuffer>(bufSize))
     {
     }

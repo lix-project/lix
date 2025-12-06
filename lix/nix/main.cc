@@ -659,7 +659,7 @@ int main(int argc, char * * argv)
 
     // Increase the default stack size for the evaluator and for
     // libstdc++'s std::regex.
-    nix::setStackSize(64 * 1024 * 1024);
+    nix::setStackSize(64ul * 1024 * 1024);
 
     return nix::handleExceptions(argv[0], [&]() {
         nix::AsyncIoRoot aio;

@@ -53,7 +53,7 @@ struct BufferedSink : virtual Sink
 {
     ref<IoBuffer> buffer;
 
-    BufferedSink(size_t bufSize = 32 * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
+    BufferedSink(size_t bufSize = 32ul * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
     explicit BufferedSink(ref<IoBuffer> buffer) : buffer(std::move(buffer)) {}
 
     void operator () (std::string_view data) override;
@@ -105,7 +105,7 @@ struct BufferedSource : Source
 {
     ref<IoBuffer> buffer;
 
-    BufferedSource(size_t bufSize = 32 * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
+    BufferedSource(size_t bufSize = 32ul * 1024) : buffer(make_ref<IoBuffer>(bufSize)) {}
     explicit BufferedSource(ref<IoBuffer> buffer) : buffer(std::move(buffer)) {}
 
     size_t read(char * data, size_t len) override;

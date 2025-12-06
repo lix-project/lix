@@ -191,9 +191,8 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
         };
 
         for (unsigned int i = 0; i < hashSize; i++) {
-            hash[i] =
-                parseHexDigit(rest[i * 2]) << 4
-                | parseHexDigit(rest[i * 2 + 1]);
+            const size_t j = i << 1;
+            hash[i] = parseHexDigit(rest[j]) << 4 | parseHexDigit(rest[j + 1]);
         }
     }
 

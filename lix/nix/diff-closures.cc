@@ -152,7 +152,7 @@ void renderDiffInfo(
     const std::string_view indent)
 {
     for (auto & [name, item] : diff) {
-        auto showDelta = std::abs(item.sizeDelta) >= 8 * 1024;
+        auto showDelta = std::abs(item.sizeDelta) >= 8l * 1024;
 
         std::vector<std::string> line;
         if (!item.removedVersions.empty() || !item.addedVersions.empty())

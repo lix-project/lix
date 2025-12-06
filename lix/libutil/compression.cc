@@ -38,7 +38,7 @@ static const int COMPRESSION_LEVEL_DEFAULT = -1;
 // Don't feed brotli too much at once.
 struct ChunkedCompressionSink : CompressionSink
 {
-    uint8_t outbuf[32 * 1024];
+    uint8_t outbuf[32ul * 1024];
 
     void writeUnbuffered(std::string_view data) override
     {
@@ -167,7 +167,7 @@ struct NoneSink : CompressionSink
 
 struct BrotliDecompressionSource : Source
 {
-    static constexpr size_t BUF_SIZE = 32 * 1024;
+    static constexpr size_t BUF_SIZE = 32ul * 1024;
     std::unique_ptr<char[]> buf;
     size_t avail_in = 0;
     const uint8_t * next_in;

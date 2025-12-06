@@ -256,7 +256,7 @@ TEST(FileTransfer, NOT_ON_DARWIN(defersFailures))
         // initial wait for header data will also wait for the the response to
         // complete (the source is only woken when curl returns data, and curl
         // might only do so once its internal buffer has already been filled.)
-        return std::string(1024 * 1024, ' ');
+        return std::string(static_cast<size_t>(1024 * 1024), ' ');
     });
     AsyncIoRoot aio;
     auto ft = makeFileTransfer(0);

@@ -333,7 +333,7 @@ struct TransferItem
 
             // when the buffer is full (as determined by a historical magic value) we
             // pause the transfer and wait for the receiver to unpause it when ready.
-            if (successfulStatuses.count(getHTTPStatus()) && state->data.size() > 1024 * 1024) {
+            if (successfulStatuses.count(getHTTPStatus()) && state->data.size() > 1024ul * 1024) {
                 return CURL_WRITEFUNC_PAUSE;
             }
 
