@@ -29,7 +29,7 @@
     # Start build in background
     host.execute("nix build --use-cgroups --auto-allocate-uids --file ${./hang.nix} >&2 &")
     pid = int(host.succeed("pgrep nix"))
-    service = "/sys/fs/cgroup/system.slice/nix-daemon.service"
+    service = "/sys/fs/cgroup/system.slice/system-nix\\\\x2ddaemon.slice/nix-daemon@*.service"
 
     # Wait for cgroups to be created
     host.succeed(f"until [ -e {service}/supervisor ]; do sleep 1; done", timeout=30)

@@ -1,4 +1,4 @@
-foreach config : [ 'nix-daemon.socket', 'nix-daemon.service' ]
+foreach config : [ 'nix-daemon.socket', 'nix-daemon.service', 'nix-daemon@.service' ]
   configure_file(
     input : config + '.in',
     output : config,

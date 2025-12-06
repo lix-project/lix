@@ -1,11 +1,13 @@
 [Unit]
 Description=Nix Daemon Socket
 Before=multi-user.target
+Conflicts=nix-daemon.service
 RequiresMountsFor=@storedir@
 ConditionPathIsReadWrite=@localstatedir@/nix/daemon-socket
 
 [Socket]
 ListenStream=@localstatedir@/nix/daemon-socket/socket
+Accept=yes
 
 [Install]
 WantedBy=sockets.target

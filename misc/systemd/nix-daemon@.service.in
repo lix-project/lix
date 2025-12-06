@@ -1,16 +1,14 @@
 [Unit]
-Description=Nix Daemon
+Description=Nix Daemon instance
 Documentation=man:nix-daemon https://docs.lix.systems/manual/lix/stable
-Conflicts=nix-daemon.socket
+CollectMode=inactive-or-failed
 RequiresMountsFor=@storedir@
 RequiresMountsFor=@localstatedir@
 RequiresMountsFor=@localstatedir@/nix/db
-ConditionPathIsReadWrite=@localstatedir@/nix/daemon-socket
 
 [Service]
-ExecStart=@@bindir@/nix-daemon nix-daemon --daemon
+ExecStart=@@bindir@/nix-daemon nix-daemon --for-socket-activation
 CacheDirectory=nix
-KillMode=process
 LimitNOFILE=1048576
 TasksMax=1048576
 Delegate=yes

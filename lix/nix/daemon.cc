@@ -290,22 +290,8 @@ try {
     if (chdir("/") == -1)
         throw SysError("cannot change current directory");
 
-    AutoCloseFD fdSocket;
-
-    //  Handle socket-based activation by systemd.
-    auto listenFds = getEnv("LISTEN_FDS");
-    if (listenFds) {
-        if (getEnv("LISTEN_PID") != std::to_string(getpid()) || listenFds != "1")
-            throw Error("unexpected systemd environment variables");
-        fdSocket = AutoCloseFD{SD_LISTEN_FDS_START};
-        closeOnExec(fdSocket.get());
-    }
-
-    //  Otherwise, create and bind to a Unix domain socket.
-    else {
-        createDirs(dirOf(settings.nixDaemonSocketFile));
-        fdSocket = createUnixDomainSocket(settings.nixDaemonSocketFile, 0666);
-    }
+    createDirs(dirOf(settings.nixDaemonSocketFile));
+    auto fdSocket = createUnixDomainSocket(settings.nixDaemonSocketFile, 0666);
 
     //  Get rid of children automatically; don't let them become zombies.
     setSigChldAction(true);
@@ -391,11 +377,41 @@ try {
     co_return result::current_exception();
 }
 
-static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt)
+static void
+daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt, char * peerPidArg)
 {
-    PeerInfo peer = getPeerInfo(SUBDAEMON_CONNECTION_FD);
+    //  Handle socket-based activation by systemd.
+    const auto [launchedByManager, connectionFd] = []() -> std::pair<bool, int> {
+        auto listenFds = getEnv("LISTEN_FDS");
+        if (listenFds) {
+            if (getEnv("LISTEN_PID") != std::to_string(getpid()) || listenFds != "1") {
+                throw Error("unexpected systemd environment variables");
+            }
+            closeOnExec(SD_LISTEN_FDS_START);
+            // these unsets are not critical, we never did this for accept=no sockets either
+            (void) sys::unsetenv("LISTEN_FDS");
+            (void) sys::unsetenv("LISTEN_PID");
+            (void) sys::unsetenv("LISTEN_FDNAMES");
+            return {true, SD_LISTEN_FDS_START};
+        } else {
+            return {false, SUBDAEMON_CONNECTION_FD};
+        }
+    }();
+
+    PeerInfo peer = getPeerInfo(connectionFd);
     TrustedFlag trusted;
     std::string user;
+
+    // replace peerPidArg contents with the peer pid if possible. the forking daemon does
+    // this as a debugging aid and it is easy enough to do it here also, so we just do it
+    if (peerPidArg && peer.pidKnown) {
+        auto pidForArgv = std::to_string(peer.pid);
+        if (pidForArgv.size() < strlen(peerPidArg)) {
+            memset(peerPidArg, ' ', strlen(peerPidArg));
+            peerPidArg[0] = '\0';
+            memcpy(peerPidArg + 1, pidForArgv.c_str(), pidForArgv.size());
+        }
+    }
 
     if (forceTrustClientOpt) {
         trusted = *forceTrustClientOpt;
@@ -412,12 +428,9 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
     );
 
     //  Background the daemon.
-    if (setsid() == -1) {
+    if (!launchedByManager && setsid() == -1) {
         throw SysError("creating a new session");
     }
-
-    //  Restore normal handling of SIGCHLD.
-    setSigChldAction(false);
 
     auto store = aio.blockOn(openUncachedStore(AllowDaemon::Disallow));
     if (auto local = dynamic_cast<LocalStore *>(&*store); local && peer.uidKnown && peer.gidKnown) {
@@ -425,8 +438,8 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
     }
 
     //  Handle the connection.
-    FdSource from(SUBDAEMON_CONNECTION_FD);
-    FdSink to(SUBDAEMON_CONNECTION_FD);
+    FdSource from(connectionFd);
+    FdSink to(connectionFd);
     processConnection(aio, store, from, to, trusted);
 }
 
@@ -504,12 +517,14 @@ runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustCl
     }
 }
 
-static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv)
+static int
+main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::span<char *> rawArgv)
 {
     {
         auto stdio = false;
         std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
         bool isInstance = false;
+        char * peerPidArg = nullptr;
         Verbosity subdaemonLogLevel = lvlInfo;
 
         LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
@@ -533,6 +548,17 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
             } else if (*arg == "--for") {
                 isInstance = true;
                 getArg(*arg, arg, end);
+            } else if (*arg == "--for-socket-activation") {
+                isInstance = true;
+                // HACK: too many copies and rewrites happen by the time we get here to
+                // be able to calculate a rawArgv offset. instead we will search for an
+                // exact match and blindly assume that it's the one we want to rewrite.
+                for (auto [i, rawArg] : enumerate(rawArgv)) {
+                    if (rawArg == *arg) {
+                        peerPidArg = rawArg + strlen("--for");
+                        break;
+                    }
+                }
             } else if (*arg == "--log-level") {
                 if (auto level = string2Int<int>(getArg(*arg, arg, end)); level) {
                     subdaemonLogLevel = static_cast<Verbosity>(std::min<int>(lvlVomit, *level));
@@ -547,7 +573,7 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
 
         if (isInstance) {
             verbosity = Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit));
-            daemonInstance(aio, isTrustedOpt);
+            daemonInstance(aio, isTrustedOpt, peerPidArg);
         } else {
             runDaemon(aio, stdio, isTrustedOpt);
         }
@@ -557,7 +583,7 @@ static int main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings a
 }
 
 void registerLegacyNixDaemon() {
-    LegacyCommandRegistry::add("nix-daemon", main_nix_daemon);
+    LegacyCommandRegistry::addWithRaw("nix-daemon", main_nix_daemon);
 }
 
 struct CmdDaemon : StoreCommand

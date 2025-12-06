@@ -15,11 +15,21 @@ let
     (nixos-lib.runTest {
       imports = [ test ];
       hostPkgs = nixpkgsFor.${system}.native;
-      defaults = {
+      defaults = { config, ... }: {
         nixpkgs.pkgs = nixpkgsFor.${system}.native;
         nix.checkAllErrors = false;
         # nixos-option fails to build with lix and no tests use any of the tools
         system.disableInstallerTools = true;
+        # FIXME: remove this once the nixos module sets these overrides
+        systemd.services."nix-daemon@" =
+          let prev = config.systemd.services.nix-daemon;
+          in
+            {
+              path = prev.path;
+              environment = lib.filterAttrs (n: v: n != "PATH") prev.environment;
+              serviceConfig = prev.serviceConfig;
+              unitConfig = prev.unitConfig;
+            };
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;
