@@ -29,9 +29,6 @@ Checks:
     # crimes must be appropriately declared as crimes
   - cppcoreguidelines-pro-type-cstyle-cast
   - lix-*
-    # This can not yet be applied to Lix itself since we need to do source
-    # reorganization so that lix/ include paths work.
-  - -lix-fixincludes
     # This lint is included as an example, but the lib function it replaces is
     # already gone.
   - -lix-hasprefixsuffix
