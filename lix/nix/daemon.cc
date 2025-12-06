@@ -55,7 +55,6 @@
 #endif
 
 static constexpr int SUBDAEMON_CONNECTION_FD = 0;
-static constexpr int SUBDAEMON_SETTINGS_FD = 3;
 
 namespace nix {
 
@@ -346,9 +345,6 @@ try {
                 peer.pidKnown ? fmt("pid %1%", peer.pid) : "unknown peer"
             );
 
-            Pipe settings;
-            settings.create();
-
             // Fork a child to handle the connection. make sure it's called with
             // argv0 `nix-daemon` so we don't try to run `nix --for` when called
             // from more modern scripts that assume nix-command being available.
@@ -363,11 +359,7 @@ try {
                         fmt("%1%", int(verbosity)),
                     },
                 .dieWithParent = false,
-                .redirections =
-                    {
-                        {.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()},
-                        {.dup = SUBDAEMON_SETTINGS_FD, .from = settings.readSide.get()},
-                    }
+                .redirections = {{.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()}}
             };
             if (forceTrustClientOpt) {
                 options.args.push_back(
@@ -375,15 +367,6 @@ try {
                 );
             }
             runProgram2(options).release();
-
-            FdSink sink(settings.writeSide.get());
-            std::map<std::string, Config::SettingInfo> overriddenSettings;
-            globalConfig.getSettings(overriddenSettings, true);
-            for (auto & setting : overriddenSettings) {
-                sink << 1 << setting.first << setting.second.value;
-            }
-            sink << 0;
-            sink.flush();
         } catch (Error & error) {
             auto ei = error.info();
             // FIXME: add to trace?
@@ -416,21 +399,6 @@ static void daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTr
         trusted ? "trusted" : "untrusted",
         forceTrustClientOpt ? " by override" : ""
     );
-
-    {
-        FdSource source(SUBDAEMON_SETTINGS_FD);
-
-        /* Read the parent's settings. */
-        while (readNum<unsigned>(source)) {
-            auto name = readString(source);
-            auto value = readString(source);
-            settings.set(name, value);
-        }
-
-        if (close(SUBDAEMON_SETTINGS_FD) < 0) {
-            throw SysError("preparing subdaemon connection");
-        }
-    }
 
     //  Background the daemon.
     if (setsid() == -1) {
