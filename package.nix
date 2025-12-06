@@ -358,6 +358,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optional (!officialRelease && buildUnreleasedNotes) build-release-notes
   ++ lib.optional internalApiDocs doxygen
   ++ lib.optionals lintInsteadOfBuild [
+    llvmPackages.libllvm
     # required for a wrapped clang-tidy
     llvmPackages.clang-tools
     # load-bearing order (just as below); the actual stdenv wrapped clang
