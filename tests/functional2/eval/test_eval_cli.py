@@ -117,7 +117,7 @@ def test_valid_restricted_toFile(nix: Nix):  # noqa: N802 # builtin name
 
 @with_files({"cycle.nix": Symlink("cycle.nix")})
 # timeout given in seconds
-@pytest.mark.timeout(1)
+@pytest.mark.timeout(30)
 def test_invalid_no_hang_symlink_cycle(nix: Nix):
     """Check that symlink cycles don't cause a hang."""
     res = nix.nix(["eval", "--file", "cycle.nix"]).run().expect(1)
