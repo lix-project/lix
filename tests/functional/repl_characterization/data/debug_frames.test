@@ -2,7 +2,7 @@
 
 :c at the root repl is not allowed since no debugger is running yet
   nix-repl> :c
-  error: unknown command ':c'
+  error: command 'c' can only be used when the debugger is active
 
 :c and other commands become available once a debugger starts
   nix-repl> with {}; a
@@ -14,38 +14,37 @@
   nix-repl> :?
   The following commands are available:
 
-    <expr>                       Evaluate and print expression
-    <x> = <expr>                 Bind expression to variable
-    :a, :add <expr>              Add attributes from resulting set to scope
-    :b <expr>                    Build a derivation
-    :bl <expr>                   Build a derivation, creating GC roots in the
-                                 working directory
-    :e, :edit <expr>             Open package or function in $EDITOR
-    :i <expr>                    Build derivation, then install result into
-                                 current profile
-    :l, :load <path>             Load Nix expression and add it to scope
-    :lf, :load-flake <ref>       Load Nix flake and add it to scope
-    :p, :print <expr>            Evaluate and print expression recursively
-                                 Strings are printed directly, without escaping.
-    :q, :quit                    Exit nix-repl
-    :r, :reload                  Reload all files
-    :sh <expr>                   Build dependencies of derivation, then start
-                                 nix-shell
-    :t <expr>                    Describe result of evaluation
-    :u <expr>                    Build derivation, then start nix-shell
-    :doc <expr>                  Show documentation for the provided function (experimental lambda support)
-    :log <expr | .drv path>      Show logs for a derivation
-    :te, :trace-enable [bool]    Enable, disable or toggle showing traces for
-                                 errors
-    :?, :help                    Brings up this help menu
+    <expr>                                Evaluate and print expression
+    <x> = <expr>                          Bind expression to variable
+    :?, :help                             Print help about all commands (this content)
+    :a, :add <expr>                       Add attributes from resulting set to scope
+    :b, :build <expr>                     Build a derivation
+    :bl, :build-with-gc-roots <expr>      Build a derivation, creating GC roots in the working directory
+    :doc <expr>                           Show documentation for the provided function (experimental lambda support)
+    :e, :edit <expr>                      Open package or function in $EDITOR
+    :env                                  Show environment stack
+    :i, :build-and-install <expr>         Build derivation, then install result into current profile
+    :l, :load <path>                      Load Nix expression and add it to scope
+    :log <expr | .drv path>               Show logs for a derivation
+    :p, :print <expr>                     Evaluate and print expression recursively
+                                          Strings are printed directly, without escaping.
+    :q, :quit                             Exit the REPL
+    :r, :reload                           Reload all files successfully loaded
+    :sh, :shell <expr>                    Build dependencies of derivation, then start nix-shell
+    :t, :type <expr>                      Describe result of evaluation
+    :te, :trace-enable [bool]             Enable, disable, or toggle showing traces for errors
+    :u, :use <expr>                       Build derivation, then start nix-shell
 
-          Debug mode commands
-    :env             Show env stack
-    :bt, :backtrace  Show trace stack
-    :st              Show current trace
-    :st <idx>        Change to another trace in the stack
-    :c, :continue    Go until end of program, exception, or builtins.break
-    :s, :step        Go one step
+      Debug mode commands
+
+    :bt, :backtrace                       Show trace stack
+    :c, :continue                         Go until end of program, exception or builtins.break
+    :s, :step                             Go one step
+    :st, :show-trace [integer index]      Show current trace. If an integer is provided, this switches to that stack beforehand.
+
+      Flakes commands
+
+    :lf, :load-flake <flakeref>           Load Nix flake and add it to the scope
 
 we can now inspect state
   nix-repl> :bt
@@ -70,7 +69,7 @@ and resume execution
 
 the debugger is once again disabled
   nix-repl> :c
-  error: unknown command ':c'
+  error: command 'c' can only be used when the debugger is active
 
 leaving the debugger from a toplevel error and entering it again doesn't leave old frames visible
   nix-repl> with {}; a

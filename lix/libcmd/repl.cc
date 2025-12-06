@@ -83,6 +83,49 @@ enum class ProcessLineResult {
 
 using namespace std::literals::string_view_literals;
 
+struct NixRepl;
+using ReplFunction = std::function<ProcessLineResult(NixRepl &, const std::string &)>;
+using PrintDerivationOutputFunction =
+    std::function<std::string(const std::string &, const StorePath &)>;
+
+struct CommandArgumentSpecifier
+{
+    std::string placeholderText;
+    bool optional = false;
+};
+
+static const CommandArgumentSpecifier argExpr = {.placeholderText = "expr"};
+static const CommandArgumentSpecifier argPath = {.placeholderText = "path"};
+
+struct CommandAttributes
+{
+    std::list<std::string> aliases;
+    /**
+     * Whether this command can only be used inside of the debugger.
+     */
+    bool debugModeOnly;
+    std::optional<std::string> help;
+    std::optional<std::string> section;
+    std::list<CommandArgumentSpecifier> positionalArgsSpecifiers;
+};
+
+struct REPLCommand
+{
+    ReplFunction handler;
+    CommandAttributes attributes;
+};
+
+struct UnexpectedArgument : Error
+{
+    std::string argValue;
+
+    UnexpectedArgument(const std::string & argValue)
+        : Error("unexpected argument")
+        , argValue(argValue)
+    {
+    }
+};
+
 struct NixRepl
     : AbstractNixRepl
     , detail::ReplCompleterMixin
@@ -90,40 +133,12 @@ struct NixRepl
     , gc
     #endif
 {
-    /* clang-format: off */
-    static constexpr std::array COMMANDS = {
-        "add"sv, "a"sv,
-        "load"sv, "l"sv,
-        "load-flake"sv, "lf"sv,
-        "reload"sv, "r"sv,
-        "edit"sv, "e"sv,
-        "t"sv,
-        "u"sv,
-        "b"sv,
-        "bl"sv,
-        "i"sv,
-        "sh"sv,
-        "log"sv,
-        "print"sv, "p"sv,
-        "quit"sv, "q"sv,
-        "doc"sv,
-        "te"sv,
-    };
-
-    static constexpr std::array DEBUG_COMMANDS = {
-        "env"sv,
-        "bt"sv, "backtrace"sv,
-        "st"sv,
-        "c"sv, "continue"sv,
-        "s"sv, "step"sv,
-    };
-    /* clang-format: on */
-
     Evaluator & evaluator;
     size_t debugTraceIndex;
 
     Strings loadedFiles;
     std::function<AnnotatedValues()> getValues;
+    std::map<std::string, std::shared_ptr<REPLCommand>> registeredCommands;
 
     // Uses 8MiB of memory. It's fine.
     const static int envSize = 1 << 20;
@@ -141,6 +156,9 @@ struct NixRepl
     ReplExitStatus mainLoop() override;
     void initEnv() override;
 
+    void initDebugBuiltinCommands();
+    void initBuiltinCommands();
+
     virtual StringSet completePrefix(const std::string & prefix) override;
 
     /**
@@ -149,9 +167,19 @@ struct NixRepl
      */
     StorePath getDerivationPath(Value & v);
     /**
-     * Build a path and show a progress bar for it.
+     * Evaluate a string argument into a store path.
+     */
+    StorePath evalIntoDerivationPath(const std::string & drvArg);
+    /**
+     * Build a derivation path and show a progress bar for it.
      */
     Derivation buildWithProgressBar(const StorePath & drvPath);
+    /**
+     * Print the derivation outputs produced by a derivation.
+     * A function that should return the string for each output can be passed
+     * to customize the formatting and perform additional actions such as adding permanent roots.
+     */
+    void printDerivationOutputs(const StorePath & drvPath, PrintDerivationOutputFunction printFn);
 
     ProcessLineResult processLine(std::string line);
 
@@ -164,6 +192,13 @@ struct NixRepl
     void loadFlake(const std::string & flakeRef);
     void loadFiles();
     void reloadFiles();
+
+    void addCommand(
+        const std::string & name,
+        ReplFunction && function,
+        const CommandAttributes & attributes = {}
+    );
+    void generateHelpCommand();
 
     template<typename T, typename NameFn, typename ValueFn>
     void addToScope(T && things, NameFn nameFn, ValueFn valueFn);
@@ -257,6 +292,7 @@ NixRepl::NixRepl(const SearchPath & searchPath, nix::ref<Store> store, EvalState
     , staticEnv(new StaticEnv(nullptr, evaluator.builtins.staticEnv.get()))
     , interacter(makeInteracter())
 {
+    initBuiltinCommands();
 }
 
 void runNix(Path program, const Strings & args)
@@ -379,17 +415,9 @@ StringSet NixRepl::completePrefix(const std::string &prefix)
     // Luckily, editline provides a global variable for its current buffer, so we can
     // check for the presence of a colon there.
     if (rl_line_buffer != nullptr && rl_line_buffer[0] == ':') {
-        for (auto const & colonCmd : this->COMMANDS) {
-            if (colonCmd.starts_with(prefix)) {
+        for (auto const & [colonCmd, cmd] : registeredCommands) {
+            if ((!cmd->attributes.debugModeOnly || inDebugger()) && colonCmd.starts_with(prefix)) {
                 completions.insert(std::string(colonCmd));
-            }
-        }
-
-        if (evaluator.debug && evaluator.debug->inDebugger) {
-            for (auto const & colonCmd : this->DEBUG_COMMANDS) {
-                if (colonCmd.starts_with(prefix)) {
-                    completions.insert(std::string(colonCmd));
-                }
             }
         }
 
@@ -501,6 +529,14 @@ StorePath NixRepl::getDerivationPath(Value & v) {
     return *drvPath;
 }
 
+StorePath NixRepl::evalIntoDerivationPath(const std::string & drvArg)
+{
+    Value v;
+    evalString(drvArg, v);
+
+    return getDerivationPath(v);
+}
+
 Derivation NixRepl::buildWithProgressBar(const StorePath & drvPath)
 {
     // TODO: this only shows a progress bar for explicitly initiated builds,
@@ -520,6 +556,18 @@ Derivation NixRepl::buildWithProgressBar(const StorePath & drvPath)
     return drv;
 }
 
+void NixRepl::printDerivationOutputs(
+    const StorePath & drvPath, PrintDerivationOutputFunction printFn
+)
+{
+    logger->cout("\nThis derivation produced the following outputs:");
+    for (auto & [outputName, outputPath] :
+         state.aio.blockOn(evaluator.store->queryDerivationOutputMap(drvPath)))
+    {
+        logger->cout(printFn(outputName, outputPath));
+    }
+}
+
 void NixRepl::loadDebugTraceEnv(const DebugTrace & dt)
 {
     initEnv();
@@ -533,6 +581,30 @@ void NixRepl::loadDebugTraceEnv(const DebugTrace & dt)
     }
 }
 
+void NixRepl::addCommand(
+    const std::string & name, ReplFunction && handler, const CommandAttributes & attributes
+)
+{
+    if (registeredCommands.contains(name)) {
+        throw Error("Command '%s' is already registered: commands cannot be shadowed", name);
+    }
+
+    registeredCommands[name] = std::make_shared<REPLCommand>(std::move(handler), attributes);
+
+    for (auto & alias : attributes.aliases) {
+        if (registeredCommands.contains(alias)) {
+            throw Error(
+                "Command '%s' is already registered: alias (original command '%s') cannot shadow other "
+                "commands",
+                name,
+                alias
+            );
+        }
+
+        registeredCommands[alias] = registeredCommands[name];
+    }
+}
+
 ProcessLineResult NixRepl::processLine(std::string line)
 {
     line = trim(line);
@@ -543,364 +615,657 @@ ProcessLineResult NixRepl::processLine(std::string line)
 
     if (line[0] == ':') {
         size_t p = line.find_first_of(" \n\r\t");
-        command = line.substr(0, p);
+        command = line.substr(1, p - 1);
         if (p != std::string::npos) arg = removeWhitespace(line.substr(p));
     } else {
         arg = line;
     }
 
-    bool inDebugger = evaluator.debug && evaluator.debug->inDebugger;
-
-    if (command == ":?" || command == ":help") {
-        // FIXME: convert to Markdown, include in the 'nix repl' manpage.
-        std::cout
-             << "The following commands are available:\n"
-             << "\n"
-             << "  <expr>                       Evaluate and print expression\n"
-             << "  <x> = <expr>                 Bind expression to variable\n"
-             << "  :a, :add <expr>              Add attributes from resulting set to scope\n"
-             << "  :b <expr>                    Build a derivation\n"
-             << "  :bl <expr>                   Build a derivation, creating GC roots in the\n"
-             << "                               working directory\n"
-             << "  :e, :edit <expr>             Open package or function in $EDITOR\n"
-             << "  :env                         Show env stack\n"
-             << "  :i <expr>                    Build derivation, then install result into\n"
-             << "                               current profile\n"
-             << "  :l, :load <path>             Load Nix expression and add it to scope\n"
-             << "  :lf, :load-flake <ref>       Load Nix flake and add it to scope\n"
-             << "  :p, :print <expr>            Evaluate and print expression recursively\n"
-             << "                               Strings are printed directly, without escaping.\n"
-             << "  :q, :quit                    Exit nix-repl\n"
-             << "  :r, :reload                  Reload all files\n"
-             << "  :sh <expr>                   Build dependencies of derivation, then start\n"
-             << "                               nix-shell\n"
-             << "  :t <expr>                    Describe result of evaluation\n"
-             << "  :u <expr>                    Build derivation, then start nix-shell\n"
-             << "  :doc <expr>                  Show documentation for the provided function (experimental lambda support)\n"
-             << "  :log <expr | .drv path>      Show logs for a derivation\n"
-             << "  :te, :trace-enable [bool]    Enable, disable or toggle showing traces for\n"
-             << "                               errors\n"
-             << "  :?, :help                    Brings up this help menu\n"
-             ;
-        if (inDebugger) {
-             std::cout
-             << "\n"
-             << "        Debug mode commands\n"
-             << "  :bt, :backtrace  Show trace stack\n"
-             << "  :st              Show current trace\n"
-             << "  :st <idx>        Change to another trace in the stack\n"
-             << "  :c, :continue    Go until end of program, exception, or builtins.break\n"
-             << "  :s, :step        Go one step\n"
-             ;
-        }
-
-    }
-
-    else if (command == ":bt" || command == ":backtrace") {
-        if (!inDebugger)
-            throw Error("backtrace command is only available in debug mode (see %s)", "--debugger");
-        auto traces = evaluator.debug->traces();
-        for (const auto & [idx, i] : enumerate(traces)) {
-            std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-            showDebugTrace(std::cout, evaluator.positions, *i);
-        }
-    }
-
-    else if (command == ":env") {
-        if (inDebugger) {
-            auto traces = evaluator.debug->traces();
-            for (const auto & [idx, i] : enumerate(traces)) {
-                if (idx == debugTraceIndex) {
-                    printEnvBindings(state, i->expr, i->env);
-                    break;
-                }
-            }
-        } else {
-            printEnvBindings(state.ctx.symbols, *staticEnv, *env, 0);
-        }
-    }
-
-    else if (command == ":st") {
-        if (!inDebugger)
-            throw Error("trace command is only available in debug mode (see %s)", "--debugger");
+    if (registeredCommands.contains(command)) {
+        auto registeredCommand = registeredCommands[command];
         try {
-            // change the DebugTrace index.
-            debugTraceIndex = stoi(arg);
-        } catch (...) { }
-
-        auto traces = evaluator.debug->traces();
-        for (const auto & [idx, i] : enumerate(traces)) {
-             if (idx == debugTraceIndex) {
-                 std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-                 showDebugTrace(std::cout, evaluator.positions, *i);
-                 std::cout << std::endl;
-                 printEnvBindings(state, i->expr, i->env);
-                 loadDebugTraceEnv(*i);
-                 break;
-             }
-        }
-    }
-
-    else if (command == ":s" || command == ":step") {
-        if (!inDebugger)
-            throw Error("step command is only available in debug mode (see %s)", "--debugger");
-        // set flag to stop at next DebugTrace; exit repl.
-        evaluator.debug->stop = true;
-        return ProcessLineResult::Continue;
-    }
-
-    else if (command == ":c" || command == ":continue") {
-        if (!inDebugger)
-            throw Error("continue command is only available in debug mode (see %s)", "--debugger");
-        // set flag to run to next breakpoint or end of program; exit repl.
-        evaluator.debug->stop = false;
-        return ProcessLineResult::Continue;
-    }
-
-    else if (command == ":a" || command == ":add") {
-        Value v;
-        evalString(arg, v);
-        addAttrsToScope(v);
-    }
-
-    else if (command == ":l" || command == ":load") {
-        state.resetFileCache();
-        loadFile(arg);
-    }
-
-    else if (command == ":lf" || command == ":load-flake") {
-        loadFlake(arg);
-    }
-
-    else if (command == ":r" || command == ":reload") {
-        state.resetFileCache();
-        reloadFiles();
-    }
-
-    else if (command == ":e" || command == ":edit") {
-        Value v;
-        evalString(arg, v);
-
-        const auto [path, line] = [&] () -> std::pair<SourcePath, uint32_t> {
-            if (v.type() == nPath || v.type() == nString) {
-                NixStringContext context;
-                auto path = state.coerceToPath(noPos, v, context, "while evaluating the filename to edit");
-                return {path, 0};
-            } else if (v.isLambda()) {
-                auto pos = evaluator.positions[v.lambda().fun->pos];
-                if (auto path = std::get_if<CheckedSourcePath>(&pos.origin))
-                    return {*path, pos.line};
-                else
-                    throw Error("'%s' cannot be shown in an editor", pos);
-            } else {
-                // assume it's a derivation
-                return findPackageFilename(state, v, arg);
-            }
-        }();
-
-        // Open in EDITOR
-        auto args = editorFor(path, line);
-        auto editor = args.front();
-        args.pop_front();
-
-        // runProgram redirects stdout to a StringSink,
-        // using runProgram2 to allow editors to display their UI
-        runProgram2(RunOptions { .program = editor, .searchPath = true, .args = args }).waitAndCheck();
-
-        // Reload right after exiting the editor if path is not in store
-        // Store is immutable, so there could be no changes, so there's no need to reload
-        if (!evaluator.store->isInStore(canonPath(path.canonical().abs(), true))) {
-            state.resetFileCache();
-            reloadFiles();
-        }
-    }
-
-    else if (command == ":t") {
-        Value v;
-        evalString(arg, v);
-        logger->cout(showType(v));
-    }
-
-    else if (command == ":u") {
-        Value v, f, result;
-        evalString(arg, v);
-        evalString("drv: (import <nixpkgs> {}).runCommand \"shell\" { buildInputs = [ drv ]; } \"\"", f);
-        state.callFunction(f, v, result, PosIdx());
-
-        StorePath drvPath = getDerivationPath(result);
-        runNix("nix-shell", {evaluator.store->printStorePath(drvPath)});
-    }
-
-    else if (command == ":log") {
-        if (arg.empty())
-            throw Error("cannot use ':log' without a specifying a derivation");
-        StorePath drvPath = ([&] {
-            auto maybeDrvPath = evaluator.store->maybeParseStorePath(arg);
-            if (maybeDrvPath && maybeDrvPath->isDerivation()) {
-                return std::move(*maybeDrvPath);
-            } else {
-                Value v;
-                evalString(arg, v);
-                return getDerivationPath(v);
-            }
-        })();
-        Path drvPathRaw = evaluator.store->printStorePath(drvPath);
-
-        settings.readOnlyMode = true;
-        Finally roModeReset([&]() {
-            settings.readOnlyMode = false;
-        });
-        auto subs = state.aio.blockOn(getDefaultSubstituters());
-
-        subs.push_front(evaluator.store);
-
-        bool foundLog = false;
-        RunPager pager;
-        for (auto & sub : subs) {
-            auto * logSubP = dynamic_cast<LogStore *>(&*sub);
-            if (!logSubP) {
-                printInfo("Skipped '%s' which does not support retrieving build logs", sub->getUri());
-                continue;
-            }
-            auto & logSub = *logSubP;
-
-            auto log = state.aio.blockOn(logSub.getBuildLog(drvPath));
-            if (log) {
-                printInfo("got build log for '%s' from '%s'", drvPathRaw, logSub.getUri());
-                logger->writeToStdout(*log);
-                foundLog = true;
-                break;
-            }
-        }
-        if (!foundLog) throw Error("build log of '%s' is not available", drvPathRaw);
-    }
-
-    else if (command == ":b" || command == ":bl" || command == ":i" || command == ":sh") {
-        Value v;
-        evalString(arg, v);
-        StorePath drvPath = getDerivationPath(v);
-        Path drvPathRaw = evaluator.store->printStorePath(drvPath);
-
-        if (command == ":b" || command == ":bl") {
-            auto drv = buildWithProgressBar(drvPath);
-            logger->cout("\nThis derivation produced the following outputs:");
-            for (auto & [outputName, outputPath] :
-                 state.aio.blockOn(evaluator.store->queryDerivationOutputMap(drvPath)))
-            {
-                auto localStore = evaluator.store.try_cast_shared<LocalFSStore>();
-                if (localStore && command == ":bl") {
-                    std::string symlink = "repl-result-" + outputName;
-                    state.aio.blockOn(localStore->addPermRoot(outputPath, absPath(symlink)));
-                    logger->cout("  ./%s -> %s", symlink, evaluator.store->printStorePath(outputPath));
-                } else {
-                    logger->cout("  %s -> %s", outputName, evaluator.store->printStorePath(outputPath));
-                }
-            }
-        } else if (command == ":i") {
-            runNix("nix-env", {"-i", drvPathRaw});
-        } else {
-            runNix("nix-shell", {drvPathRaw});
-        }
-    }
-
-    else if (command == ":p" || command == ":print") {
-        Value v;
-        evalString(arg, v);
-        if (v.type() == nString) {
-            std::cout << v.str();
-        } else if (v.type() == nAttrs && state.isDerivation(v)) {
-            printValue(std::cout, v, 2, 1);
-        } else {
-            printValue(std::cout, v, std::numeric_limits<unsigned int>::max(), 0);
-        }
-        std::cout << std::endl;
-    }
-
-    else if (command == ":q" || command == ":quit") {
-        if (evaluator.debug) {
-            evaluator.debug->stop = false;
-        }
-        return ProcessLineResult::Quit;
-    }
-
-    else if (command == ":doc") {
-        Value v;
-        evalString(arg, v);
-        if (auto doc = evaluator.builtins.getDoc(v)) {
-            std::string markdown;
-
-            if (!doc->args.empty() && doc->name) {
-                auto args = doc->args;
-                for (auto & arg : args)
-                    arg = "*" + arg + "*";
-
-                markdown +=
-                    "**Synopsis:** `builtins." + (std::string) (*doc->name) + "` "
-                    + concatStringsSep(" ", args) + "\n\n";
+            if (registeredCommand->attributes.debugModeOnly && !inDebugger()) {
+                throw Error("command '%s' can only be used when the debugger is active", command);
             }
 
-            markdown += stripIndentation(doc->doc);
-
-            logger->cout(trim(renderMarkdownToTerminal(markdown)));
-        } else if (v.isLambda()) {
-            auto pos = evaluator.positions[v.lambda().fun->pos];
-            if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
-                // Path and position have now been obtained, feed to nix-doc library to get data.
-                auto docComment = lambdaDocsForPos(*path, pos);
-                if (!docComment) {
-                    throw Error("lambda '%s' has no documentation comment", pos);
-                }
-
-                // Build and print Markdown representation of documentation comment.
-                std::string markdown = stripIndentation(docComment.get());
-                logger->cout(trim(renderMarkdownToTerminal(markdown)));
-            } else {
-                throw Error("lambda '%s' doesn't have a determinable source file", pos);
-            }
-        } else {
-            throw Error("value '%s' does not have documentation", arg);
+            return registeredCommand->handler(*this, arg);
+        } catch (UnexpectedArgument & excArg) {
+            throw Error("unexpected argument '%1%' to command '%2%", excArg.argValue, command);
         }
-    }
-
-    else if (command == ":te" || command == ":trace-enable") {
-        if (arg == "false" || (arg == "" && loggerSettings.showTrace)) {
-            std::cout << "not showing error traces\n";
-            loggerSettings.showTrace.override(false);
-        } else if (arg == "true" || (arg == "" && !loggerSettings.showTrace)) {
-            std::cout << "showing error traces\n";
-            loggerSettings.showTrace.override(true);
-        } else {
-            throw Error("unexpected argument '%s' to %s", arg, command);
-        };
-    }
-
-    else if (command != "")
+    } else if (command != "") {
         throw Error("unknown command '%1%'", command);
-
-    else {
+    } else {
         /* A line is either a regular expression or a `var = expr` assignment */
         std::variant<std::unique_ptr<Expr>, ExprReplBindings> result = parseReplString(line);
-        std::visit(overloaded {
-            [&](ExprReplBindings & b) {
-                for (auto & [name, e] : b.symbols) {
+        std::visit(
+            overloaded{
+                [&](ExprReplBindings & b) {
+                    for (auto & [name, e] : b.symbols) {
+                        Value v;
+                        e->eval(state, *env, v);
+                        // NONEXTLINE(bugprone-unused-return-value): leak because of thunk
+                        // references
+                        (void) e.release();
+                        addVarToScope(name, v);
+                    }
+                },
+                [&](std::unique_ptr<Expr> & e) {
                     Value v;
                     e->eval(state, *env, v);
-                    (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
-                    addVarToScope(name, v);
+                    // NONEXTLINE(bugprone-unused-return-value): leak because of thunk references
+                    (void) e.release();
+                    state.forceValue(v, noPos);
+                    printValue(std::cout, v, 1);
+                    std::cout << std::endl;
                 }
             },
-            [&](std::unique_ptr<Expr> & e) {
-                Value v;
-                e->eval(state, *env, v);
-                (void) e.release(); // NOLINT(bugprone-unused-return-value): leak because of thunk references
-                state.forceValue(v, noPos);
-                printValue(std::cout, v, 1);
-                std::cout << std::endl;
-            }
-        }, result);
+            result
+        );
     }
 
     return ProcessLineResult::PromptAgain;
+}
+
+void NixRepl::initDebugBuiltinCommands()
+{
+    addCommand(
+        "backtrace",
+        [](NixRepl & repl, const std::string & _arg) {
+            auto traces = repl.evaluator.debug->traces();
+            for (const auto & [idx, i] : enumerate(traces)) {
+                std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
+                showDebugTrace(std::cout, repl.evaluator.positions, *i);
+            }
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"bt"},
+         .debugModeOnly = true,
+         .help = "Show trace stack",
+         .section = "Debug mode"}
+    );
+
+    addCommand(
+        "show-trace",
+        [](NixRepl & repl, const std::string & arg) {
+            try {
+                repl.debugTraceIndex = stoi(arg);
+            } catch (...) {
+            }
+
+            auto traces = repl.evaluator.debug->traces();
+            for (const auto & [idx, i] : enumerate(traces)) {
+                if (idx == repl.debugTraceIndex) {
+                    std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
+                    showDebugTrace(std::cout, repl.evaluator.positions, *i);
+                    std::cout << std::endl;
+                    printEnvBindings(repl.state, i->expr, i->env);
+                    repl.loadDebugTraceEnv(*i);
+                    break;
+                }
+            }
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"st"},
+         .debugModeOnly = true,
+         .help = "Show current trace. If an integer is provided, this switches to that stack "
+                 "beforehand.",
+         .section = "Debug mode",
+         .positionalArgsSpecifiers = {{.placeholderText = "integer index", .optional = true}}}
+    );
+
+    addCommand(
+        "step",
+        [](NixRepl & repl, const std::string & _arg) {
+            repl.evaluator.debug->stop = true;
+            return ProcessLineResult::Continue;
+        },
+        {.aliases = {"s"}, .debugModeOnly = true, .help = "Go one step", .section = "Debug mode"}
+    );
+
+    addCommand(
+        "continue",
+        [](NixRepl & repl, const std::string & _arg) {
+            repl.evaluator.debug->stop = false;
+            return ProcessLineResult::Continue;
+        },
+        {.aliases = {"c"},
+         .debugModeOnly = true,
+         .help = "Go until end of program, exception or builtins.break",
+         .section = "Debug mode"}
+    );
+}
+
+void NixRepl::initBuiltinCommands()
+{
+    initDebugBuiltinCommands();
+
+    addCommand(
+        "add",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v;
+            repl.evalString(arg, v);
+            repl.addAttrsToScope(v);
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"a"},
+         .help = "Add attributes from resulting set to scope",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "load",
+        [](NixRepl & repl, const std::string & arg) {
+            repl.state.resetFileCache();
+            repl.loadFile(arg);
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {
+            .aliases = {"l"},
+            .help = "Load Nix expression and add it to scope",
+            .positionalArgsSpecifiers = {argPath},
+        }
+    );
+
+    addCommand(
+        "reload",
+        [](NixRepl & repl, const std::string & _arg) {
+            repl.state.resetFileCache();
+            repl.reloadFiles();
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"r"}, .help = "Reload all files successfully loaded"}
+    );
+
+    addCommand(
+        "edit",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v;
+            repl.evalString(arg, v);
+
+            const auto [path, line] = [&]() -> std::pair<SourcePath, uint32_t> {
+                if (v.type() == nPath || v.type() == nString) {
+                    NixStringContext context;
+                    auto path = repl.state.coerceToPath(
+                        noPos, v, context, "while evaluating the filename to edit"
+                    );
+                    return {path, 0};
+                } else if (v.isLambda()) {
+                    auto pos = repl.evaluator.positions[v.lambda().fun->pos];
+                    if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
+                        return {*path, pos.line};
+                    }
+                    throw Error("'%s' cannot be shown in an editor", pos);
+                } else {
+                    return findPackageFilename(repl.state, v, arg);
+                }
+            }();
+
+            auto args = editorFor(path, line);
+            auto editor = args.front();
+            args.pop_front();
+
+            runProgram2(RunOptions{.program = editor, .searchPath = true, .args = args})
+                .waitAndCheck();
+
+            if (!repl.evaluator.store->isInStore(canonPath(path.canonical().abs(), true))) {
+                repl.state.resetFileCache();
+                repl.reloadFiles();
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {
+            .aliases = {"e"},
+            .help = "Open package or function in $EDITOR",
+            .positionalArgsSpecifiers = {argExpr},
+        }
+    );
+
+    addCommand(
+        "type",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v;
+            repl.evalString(arg, v);
+            logger->cout(showType(v));
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {
+            .aliases = {"t"},
+            .help = "Describe result of evaluation",
+            .positionalArgsSpecifiers = {argExpr},
+        }
+    );
+
+    addCommand(
+        "use",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v, f, result;
+            repl.evalString(arg, v);
+            repl.evalString(
+                R""("drv: (import <nixpkgs> {}).runCommand "shell")""
+                R""({ buildInputs = [ drv ]; } "")"",
+                f
+            );
+            repl.state.callFunction(f, v, result, PosIdx());
+
+            StorePath drvPath = repl.getDerivationPath(result);
+            runNix("nix-shell", {repl.evaluator.store->printStorePath(drvPath)});
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"u"},
+         .help = "Build derivation, then start nix-shell",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "log",
+        [](NixRepl & repl, const std::string & arg) {
+            if (arg.empty()) {
+                throw Error("cannot use ':log' without specifying a derivation");
+            }
+
+            StorePath drvPath = ([&] {
+                auto maybeDrvPath = repl.evaluator.store->maybeParseStorePath(arg);
+                if (maybeDrvPath && maybeDrvPath->isDerivation()) {
+                    return std::move(*maybeDrvPath);
+                } else {
+                    Value v;
+                    repl.evalString(arg, v);
+                    return repl.getDerivationPath(v);
+                }
+            })();
+            Path drvPathRaw = repl.evaluator.store->printStorePath(drvPath);
+
+            settings.readOnlyMode = true;
+            Finally roReset([&]() { settings.readOnlyMode = false; });
+
+            auto subs = repl.state.aio.blockOn(getDefaultSubstituters());
+            subs.push_front(repl.evaluator.store);
+
+            bool foundLog = false;
+            RunPager pager;
+
+            for (auto & sub : subs) {
+                auto * logSubP = dynamic_cast<LogStore *>(&*sub);
+                if (!logSubP) {
+                    printInfo(
+                        "Skipped '%s' which does not support retrieving build logs", sub->getUri()
+                    );
+                    continue;
+                }
+                auto & logSub = *logSubP;
+
+                auto log = repl.state.aio.blockOn(logSub.getBuildLog(drvPath));
+                if (log) {
+                    printInfo("got build log for '%s' from '%s'", drvPathRaw, logSub.getUri());
+                    logger->writeToStdout(*log);
+                    foundLog = true;
+                    break;
+                }
+            }
+
+            if (!foundLog) {
+                throw Error("build log of '%s' is not available", drvPathRaw);
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.help = "Show logs for a derivation",
+         .positionalArgsSpecifiers = {{.placeholderText = "expr | .drv path"}}}
+    );
+
+    addCommand(
+        "build",
+        [](NixRepl & repl, const std::string & arg) {
+            auto drvPath = repl.evalIntoDerivationPath(arg);
+            auto drv = repl.buildWithProgressBar(drvPath);
+
+            repl.printDerivationOutputs(
+                drvPath, [&repl](const std::string & outputName, const StorePath & outputPath) {
+                    return fmt(
+                        "  %s -> %s", outputName, repl.evaluator.store->printStorePath(outputPath)
+                    );
+                }
+            );
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"b"}, .help = "Build a derivation", .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "build-with-gc-roots",
+        [](NixRepl & repl, const std::string & arg) {
+            auto drvPath = repl.evalIntoDerivationPath(arg);
+            auto drv = repl.buildWithProgressBar(drvPath);
+
+            repl.printDerivationOutputs(
+                drvPath, [&repl](const std::string & outputName, const StorePath & outputPath) {
+                    auto localStore = repl.evaluator.store.try_cast_shared<LocalFSStore>();
+
+                    std::string symlink = fmt("repl-result-%s", outputName);
+                    repl.state.aio.blockOn(localStore->addPermRoot(outputPath, absPath(symlink)));
+                    return fmt(
+                        "  ./%s -> %s", symlink, repl.evaluator.store->printStorePath(outputPath)
+                    );
+                }
+            );
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"bl"},
+         .help = "Build a derivation, creating GC roots in the working directory",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "build-and-install",
+        [](NixRepl & repl, const std::string & arg) {
+            Path drvPathRaw =
+                repl.evaluator.store->printStorePath(repl.evalIntoDerivationPath(arg));
+
+            runNix("nix-env", {"-i", drvPathRaw});
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"i"},
+         .help = "Build derivation, then install result into current profile",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "shell",
+        [](NixRepl & repl, const std::string & arg) {
+            Path drvPathRaw =
+                repl.evaluator.store->printStorePath(repl.evalIntoDerivationPath(arg));
+
+            runNix("nix-shell", {drvPathRaw});
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"sh"},
+         .help = "Build dependencies of derivation, then start nix-shell",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "print",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v;
+            repl.evalString(arg, v);
+            if (v.type() == nString) {
+                std::cout << v.str();
+            } else if (v.type() == nAttrs && repl.state.isDerivation(v)) {
+                repl.printValue(std::cout, v, 2, 1);
+            } else {
+                repl.printValue(std::cout, v, std::numeric_limits<unsigned int>::max(), 0);
+            }
+            std::cout << std::endl;
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"p"},
+         .help = "Evaluate and print expression recursively\n"
+                 "Strings are printed directly, without escaping.",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "quit",
+        [](NixRepl & repl, const std::string & _arg) {
+            if (repl.evaluator.debug) {
+                repl.evaluator.debug->stop = false;
+            }
+            return ProcessLineResult::Quit;
+        },
+        {.aliases = {"q"}, .help = "Exit the REPL"}
+    );
+
+    addCommand(
+        "doc",
+        [](NixRepl & repl, const std::string & arg) {
+            Value v;
+            repl.evalString(arg, v);
+
+            if (auto doc = repl.evaluator.builtins.getDoc(v)) {
+                std::string markdown;
+
+                if (!doc->args.empty() && doc->name) {
+                    auto args = doc->args;
+                    for (auto & arg : args) {
+                        arg = "*" + arg + "*";
+                    }
+
+                    markdown += "**Synopsis:** `builtins." + (std::string) *doc->name + "` "
+                        + concatStringsSep(" ", args) + "\n\n";
+                }
+
+                markdown += stripIndentation(doc->doc);
+                logger->cout(trim(renderMarkdownToTerminal(markdown)));
+
+            } else if (v.isLambda()) {
+                auto pos = repl.evaluator.positions[v.lambda().fun->pos];
+                if (auto path = std::get_if<CheckedSourcePath>(&pos.origin)) {
+                    auto docComment = lambdaDocsForPos(*path, pos);
+                    if (!docComment) {
+                        throw Error("lambda '%s' has no documentation comment", pos);
+                    }
+
+                    std::string markdown = stripIndentation(docComment.get());
+                    logger->cout(trim(renderMarkdownToTerminal(markdown)));
+                } else {
+                    throw Error("lambda '%s' doesn't have a determinable source file", pos);
+                }
+            } else {
+                throw Error("value '%s' does not have documentation", arg);
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.help = "Show documentation for the provided function (experimental lambda support)",
+         .positionalArgsSpecifiers = {argExpr}}
+    );
+
+    addCommand(
+        "trace-enable",
+        [](NixRepl & repl, const std::string & arg) {
+            if (arg == "false" || (arg == "" && loggerSettings.showTrace)) {
+                std::cout << "not showing error traces\n";
+                loggerSettings.showTrace.override(false);
+            } else if (arg == "true" || (arg == "" && !loggerSettings.showTrace)) {
+                std::cout << "showing error traces\n";
+                loggerSettings.showTrace.override(true);
+            } else {
+                throw UnexpectedArgument(arg);
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"te"},
+         .help = "Enable, disable, or toggle showing traces for errors",
+         .positionalArgsSpecifiers = {{.placeholderText = "bool", .optional = true}}}
+    );
+
+    addCommand(
+        "env",
+        [](NixRepl & repl, const std::string & _arg) {
+            if (repl.inDebugger()) {
+                auto traces = repl.evaluator.debug->traces();
+                for (const auto & [idx, i] : enumerate(traces)) {
+                    if (idx == repl.debugTraceIndex) {
+                        printEnvBindings(repl.state, i->expr, i->env);
+                        break;
+                    }
+                }
+            } else {
+                printEnvBindings(repl.state.ctx.symbols, *repl.staticEnv, *repl.env, 0);
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.help = "Show environment stack"}
+    );
+
+    addCommand(
+        "load-flake",
+        [](NixRepl & repl, const std::string & arg) {
+            repl.loadFlake(arg);
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {.aliases = {"lf"},
+         .help = "Load Nix flake and add it to the scope",
+         .section = "Flakes",
+         .positionalArgsSpecifiers = {{.placeholderText = "flakeref"}}}
+    );
+
+    generateHelpCommand();
+}
+
+static Strings wrapText(const std::string & text, size_t width)
+{
+    Strings lines, inputLines;
+
+    inputLines = tokenizeString<Strings>(text, "\n");
+
+    for (auto & line : inputLines) {
+        // Preserve empty lines
+        if (line.empty()) {
+            lines.emplace_back("");
+            continue;
+        }
+
+        std::string wrappedLine;
+        Strings words = tokenizeString<Strings>(line, " ");
+
+        for (auto & word : words) {
+            if (wrappedLine.size() + word.size() + 1 > width) {
+                lines.push_back(wrappedLine);
+                wrappedLine.clear();
+            }
+            if (!wrappedLine.empty()) {
+                wrappedLine += " ";
+            }
+            wrappedLine += word;
+        }
+
+        if (!wrappedLine.empty()) {
+            lines.push_back(wrappedLine);
+        }
+    }
+
+    return lines;
+}
+
+void NixRepl::generateHelpCommand()
+{
+    addCommand(
+        "help",
+        [](NixRepl & repl, const std::string & _arg) {
+            // Special entries appear at the top, general entries stems from command registration.
+            std::map<std::string, std::string> generalEntries, specialEntries;
+            std::map<std::string, std::map<std::string, std::string>> perSectionEntries;
+            std::cout << "The following commands are available:\n"
+                      << "\n";
+
+            specialEntries["<expr>"] = "Evaluate and print expression";
+            specialEntries["<x> = <expr>"] = "Bind expression to variable";
+
+            size_t maxLhsWidth = 20;
+            for (auto & [name, command] : repl.registeredCommands) {
+                auto aliases = command->attributes.aliases;
+                bool isAlias = std::find(aliases.begin(), aliases.end(), name) != aliases.end();
+
+                if (command->attributes.debugModeOnly && !repl.inDebugger()) {
+                    continue;
+                }
+
+                if (isAlias) {
+                    continue;
+                }
+
+                auto lhs = concatMapStringsSep(", ", aliases, [](const std::string & alias) {
+                    return ":" + alias;
+                });
+                if (!lhs.empty()) {
+                    lhs += ", ";
+                }
+
+                lhs += ":";
+                lhs += name;
+
+                if (!command->attributes.positionalArgsSpecifiers.empty()) {
+                    lhs += " ";
+                }
+
+                lhs += concatMapStringsSep(
+                    " ",
+                    command->attributes.positionalArgsSpecifiers,
+                    [](const CommandArgumentSpecifier & specifier) {
+                        if (specifier.optional) {
+                            return "[" + specifier.placeholderText + "]";
+                        } else {
+                            return "<" + specifier.placeholderText + ">";
+                        }
+                    }
+                );
+
+                maxLhsWidth = std::max(maxLhsWidth, lhs.size() + 5);
+                auto helpText =
+                    command->attributes.help.value_or("No help text is provided for this command.");
+
+                if (!command->attributes.section) {
+                    generalEntries[lhs] = helpText;
+                } else {
+                    perSectionEntries[*command->attributes.section][lhs] = helpText;
+                }
+            }
+
+            const size_t totalWidth = std::get<1>(getWindowSize());
+            const size_t lhsWidth = maxLhsWidth;
+            //                                                                              2 + 1 spaces
+            const size_t rhsWidth = std::max(static_cast<size_t>(0), totalWidth - lhsWidth - 3);
+
+            auto printSection = [lhsWidth,
+                                 rhsWidth](const std::map<std::string, std::string> & entries) {
+                for (auto & [lhs, rhs] : entries) {
+                    auto wrapped = wrapText(rhs, rhsWidth);
+
+                    for (auto const [index, wrappedComponent] : enumerate(wrapped)) {
+                        if (index == 0) {
+                            //                                                          2 + 1 spaces
+                            auto compensatedLhsWidth = std::max(static_cast<size_t>(0), lhsWidth - 3);
+                            std::cout
+                                << std::format("  {:<{}} {}\n", lhs, compensatedLhsWidth, wrappedComponent);
+                        } else {
+                            //                                                          only 1 space
+                            auto compensatedLhsWidth = std::max(static_cast<size_t>(0), lhsWidth - 1);
+                            std::cout
+                                << std::format("{:<{}} {}\n", " ", compensatedLhsWidth, wrappedComponent);
+                        }
+                    }
+                }
+            };
+
+            printSection(specialEntries);
+            printSection(generalEntries);
+            for (auto & [section, entries] : perSectionEntries) {
+                std::cout << "\n    " << section << " commands\n" << std::endl;
+                printSection(entries);
+            }
+
+            return ProcessLineResult::PromptAgain;
+        },
+        {
+            .aliases = {"?"},
+            .help = "Print help about all commands (this content)",
+        }
+    );
 }
 
 void NixRepl::loadFile(const Path & path)
