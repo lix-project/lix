@@ -74,4 +74,4 @@ def test_nix_settings_to_env_overlay_store_dir(tmp_path: Path):
 
     settings.to_env_overlay(env)
     assert "store = " not in env._env["NIX_CONFIG"]
-    assert env.dirs.nix_store_dir == "/some/path"
+    assert str(env.dirs.nix_store_dir) == "/some/path"

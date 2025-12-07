@@ -81,7 +81,7 @@ class NixSettings:
         (env.dirs.nix_conf_dir / "nix.conf").write_text(cfg)
         env.set_env("NIX_CONFIG", cfg)
         if self.nix_store_dir:
-            env.dirs.nix_store_dir = str(self.nix_store_dir)
+            env.dirs.nix_store_dir = self.nix_store_dir
 
 
 @dataclasses.dataclass
