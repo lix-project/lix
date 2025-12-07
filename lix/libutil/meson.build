@@ -1,5 +1,6 @@
 libutil_sources = files(
   # keep-sorted start
+  'abstract-config.cc',
   'archive.cc',
   'args.cc',
   'async-io.cc',
@@ -58,6 +59,7 @@ libutil_sources = files(
 
 libutil_headers = files(
   # keep-sorted start
+  'abstract-config.hh',
   'abstract-setting-to-json.hh',
   'ansicolor.hh',
   'apply-config-options.hh',
