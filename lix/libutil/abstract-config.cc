@@ -123,9 +123,9 @@ void AbstractConfig::warnUnknownSettings()
 
 void AbstractConfig::reapplyUnknownSettings()
 {
-    auto unknownSettings2 = std::move(unknownSettings);
+    auto const toReapply = std::move(unknownSettings);
     unknownSettings = {};
-    for (auto const & [name, value] : unknownSettings2) {
+    for (auto const & [name, value] : toReapply) {
         set(name, value);
     }
 }
