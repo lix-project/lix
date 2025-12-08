@@ -83,6 +83,7 @@ class CommandResult:
 class Command:
     argv: list[str]
     _env: ManagedEnv
+    exe: Path | None = None
     stdin: bytes | None = None
     cwd: Path = dataclasses.field(default=None)
     _logger: logging.Logger = dataclasses.field(default=logger, init=False)
@@ -107,6 +108,7 @@ class Command:
         self._logger.debug("Running Command with args: %s", self.argv)
         proc = subprocess.Popen(
             self.argv,
+            executable=self.exe,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE if self.stdin else subprocess.DEVNULL,

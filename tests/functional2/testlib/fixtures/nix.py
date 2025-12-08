@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any, Literal
 from collections.abc import Callable, Generator
+import shutil
 
 import pytest
 
@@ -90,6 +91,18 @@ class Nix:
     _settings: NixSettings | None = dataclasses.field(init=False, default=None)
 
     @property
+    def _nix_executable(self) -> Path:
+        if nix_bin_dir := self.env.dirs.nix_bin_dir:
+            return Path(nix_bin_dir) / "nix"
+
+        if from_path := shutil.which("nix"):
+            return Path(from_path)
+
+        raise ValueError(
+            "Couldn't find a Nix command to execute! Set NIX_BIN_DIR or fix your environment"
+        )
+
+    @property
     def settings(self) -> NixSettings:
         """
         :return: the settings for the nix instance
@@ -124,7 +137,7 @@ class Nix:
                 settings.nix_store_dir = self.env.dirs.nix_store_dir
 
         settings.to_env_overlay(self.env)
-        return Command(argv=argv, _env=self.env)
+        return Command(argv=argv, exe=self._nix_executable, _env=self.env)
 
     def nix(
         self,

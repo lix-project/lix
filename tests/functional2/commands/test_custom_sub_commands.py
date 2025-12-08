@@ -32,7 +32,7 @@ def custom_sub_command(request: pytest.FixtureRequest, custom_sub_command_path: 
          import os, sys
          # Start with args[0] set to the actual nix command used for testing
          # as we are not making Lix variants of those.
-         os.execvp("nix-{lix_cmd}", [ "nix-{lix_cmd}" ] + sys.argv[1:])
+         os.execvp("nix", [ "nix-{lix_cmd}" ] + sys.argv[1:])
          """)
     )
     executable.chmod(stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR)
