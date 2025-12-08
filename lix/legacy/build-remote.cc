@@ -527,7 +527,7 @@ kj::Promise<void> AcceptedBuild::runImpl(RunContext context)
                 AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite))
             );
             if (!result) {
-                printError("somebody is hogging the upload lock for '%s', continuing...");
+                printError("somebody is hogging the upload lock for '%s', continuing...", storeUri);
             }
         }
 
