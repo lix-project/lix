@@ -83,7 +83,7 @@ inline void State::dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos)
 }
 
 inline void State::overridesFound(const PosIdx pos) {
-    // Added 2024-09-18. Turn into an error at some point in the future.
+    // Added 2024-09-18, updated 2025-11-27. Turn into an error at some point in the future.
     // See the documentation on deprecated features for more details.
     logWarning({
         .msg = HintFmt(
@@ -163,6 +163,13 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
                 std::tuple(attr.symbol),
                 std::tuple(std::make_unique<ExprSet>(), pos)
             );
+            // Before inserting new attrs, check for __override and throw an error
+            // (the error will initially be a warning to ease migration)
+            if (!featureSettings.isEnabled(Dep::RecSetOverrides) && attr.symbol == symbols.sym___overrides) {
+                if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive) {
+                    overridesFound(pos);
+                }
+            }
             attrs = static_cast<ExprSet *>(next.first->second.e.get());
         }
     }

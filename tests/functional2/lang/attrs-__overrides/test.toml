@@ -1,3 +1,9 @@
 [[test]]
+name = "warning"
+runner = "eval-okay"
+matrix = true
+
+[[test]]
 runner = "eval-okay"
 flags = [ "--extra-deprecated-features", "rec-set-overrides" ]
+matrix = true

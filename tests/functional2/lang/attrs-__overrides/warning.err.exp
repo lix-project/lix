@@ -1,0 +1,6 @@
+warning: __overrides attributes are deprecated and will be removed in the future. Use --extra-deprecated-features rec-set-overrides to silence this warning.
+         at /pwd/in.nix:3:4:
+              2|   "${"foo"}" = "bar";
+              3|    __overrides = { bar = "qux"; };
+               |    ^
+              4| }
