@@ -22,7 +22,7 @@ void CharPtrCastCheck::check(
   const auto ReinterpretCastExpr =
       Result.Nodes.getNodeAs<CXXReinterpretCastExpr>("reinterpret-cast-expr");
   const auto ToTypeSpan = ReinterpretCastExpr->getAngleBrackets();
-  const auto & SM = Result.Context->getSourceManager();
+  const auto &SM = Result.Context->getSourceManager();
 
   auto Diag =
       diag(ReinterpretCastExpr->getExprLoc(),
@@ -32,14 +32,16 @@ void CharPtrCastCheck::check(
   auto Inside = tooling::getText(*ReinterpretCastExpr->getSubExprAsWritten(),
                                  *Result.Context);
 
-  Diag << Inserter.createIncludeInsertion(SM.getFileID(ReinterpretCastExpr->getExprLoc()), "charptr-cast.hh");
+  Diag << Inserter.createIncludeInsertion(
+      SM.getFileID(ReinterpretCastExpr->getExprLoc()), "charptr-cast.hh");
 
-  llvm::Twine Replacement =
-      "charptr_cast" +
-      tooling::getText(CharSourceRange(ToTypeSpan, true), *Result.Context) +
-      "(" + Inside + ")";
+  auto Replacement =
+      ("charptr_cast" +
+       tooling::getText(CharSourceRange(ToTypeSpan, true), *Result.Context) +
+       "(" + Inside + ")")
+          .str();
   Diag << FixItHint::CreateReplacement(ReinterpretCastExpr->getSourceRange(),
-                                       Replacement.str());
+                                       Replacement);
 }
 
 } // namespace nix::clang_tidy
