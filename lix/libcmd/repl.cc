@@ -150,6 +150,11 @@ struct NixRepl
     StorePath getDerivationPath(Value & v);
     ProcessLineResult processLine(std::string line);
 
+    bool inDebugger() const
+    {
+        return evaluator.debug && evaluator.debug->inDebugger;
+    }
+
     void loadFile(const Path & path);
     void loadFlake(const std::string & flakeRef);
     void loadFiles();
@@ -292,7 +297,7 @@ ReplExitStatus NixRepl::mainLoop()
 {
     if (isFirstRepl) {
         std::string_view debuggerNotice = "";
-        if (evaluator.debug && evaluator.debug->inDebugger) {
+        if (inDebugger()) {
             debuggerNotice = " debugger";
         }
         notice("Lix %1%%2%\nType :? for help.", Uncolored(nixVersion), debuggerNotice);
