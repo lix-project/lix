@@ -148,6 +148,11 @@ struct NixRepl
      * to a derivation, or evaluates to an invalid derivation.
      */
     StorePath getDerivationPath(Value & v);
+    /**
+     * Build a path and show a progress bar for it.
+     */
+    Derivation buildWithProgressBar(const StorePath & drvPath);
+
     ProcessLineResult processLine(std::string line);
 
     bool inDebugger() const
@@ -496,6 +501,25 @@ StorePath NixRepl::getDerivationPath(Value & v) {
     return *drvPath;
 }
 
+Derivation NixRepl::buildWithProgressBar(const StorePath & drvPath)
+{
+    // TODO: this only shows a progress bar for explicitly initiated builds,
+    // not eval-time fetching or builds performed for IFD.
+    // But we can't just show it everywhere, since that would erase partial output from evaluation.
+    logger->resetProgress();
+    logger->resume();
+    Finally stopLogger([&]() { logger->pause(); });
+    state.aio.blockOn(evaluator.store->buildPaths({
+        DerivedPath::Built{
+            .drvPath = makeConstantStorePath(drvPath),
+            .outputs = OutputsSpec::All{},
+        },
+    }));
+    auto drv = state.aio.blockOn(evaluator.store->readDerivation(drvPath));
+
+    return drv;
+}
+
 void NixRepl::loadDebugTraceEnv(const DebugTrace & dt)
 {
     initEnv();
@@ -758,22 +782,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
         Path drvPathRaw = evaluator.store->printStorePath(drvPath);
 
         if (command == ":b" || command == ":bl") {
-            // TODO: this only shows a progress bar for explicitly initiated builds,
-            // not eval-time fetching or builds performed for IFD.
-            // But we can't just show it everywhere, since that would erase partial output from evaluation.
-            logger->resetProgress();
-            logger->resume();
-            Finally stopLogger([&]() {
-                logger->pause();
-            });
-
-            state.aio.blockOn(evaluator.store->buildPaths({
-                DerivedPath::Built {
-                    .drvPath = makeConstantStorePath(drvPath),
-                    .outputs = OutputsSpec::All { },
-                },
-            }));
-            auto drv = state.aio.blockOn(evaluator.store->readDerivation(drvPath));
+            auto drv = buildWithProgressBar(drvPath);
             logger->cout("\nThis derivation produced the following outputs:");
             for (auto & [outputName, outputPath] :
                  state.aio.blockOn(evaluator.store->queryDerivationOutputMap(drvPath)))
