@@ -181,6 +181,7 @@ deprecated_feature_definitions = files(
   'deprecated-features/floating-without-zero.md',
   'deprecated-features/nix-path-shadow.md',
   'deprecated-features/nul-bytes.md',
+  'deprecated-features/or-as-identifier.md',
   'deprecated-features/rec-set-dynamic-attrs.md',
   'deprecated-features/rec-set-merges.md',
   'deprecated-features/rec-set-overrides.md',

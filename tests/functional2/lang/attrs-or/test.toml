@@ -1,0 +1,9 @@
+[[test]]
+runner = "parse-okay"
+flags = ["--extra-deprecated-features", "or-as-identifier"]
+matrix = true
+
+[[test]]
+name = "warning"
+runner = "parse-okay"
+matrix = true

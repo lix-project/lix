@@ -1,0 +1,10 @@
+warning: using or as an identifier is deprecated because it cannot be used in most places (try let or = 1; in or). Use --extra-deprecated-features or-as-identifier to disable this warning.
+         at /pwd/in.nix:1:5:
+              1| let or = 1; in or
+               |     ^
+              2|
+error: syntax error, expecting expression
+       at /pwd/in.nix:1:16:
+            1| let or = 1; in or
+             |                ^
+            2|

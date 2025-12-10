@@ -1,7 +1,7 @@
 ---
 synopsis: 'more deprecated features'
 issues: []
-cls: [2092, 2310, 2311, 4638, 4652]
+cls: [2092, 2310, 2311, 4638, 4652, 4764]
 category: Breaking Changes
 credits: [piegames, commentator2.0]
 ---
@@ -13,3 +13,4 @@ You can opt in into the old behavior with `--extra-deprecated-features` or any e
 - `floating-without-zero` so far, one was able to declare a float using something like `.123`. This can cause confusion about accessing attributes. Floating point numbers must now always include the leading zero, i.e. `0.123`
 - `rec-set-merges` Attribute sets like `{ foo = {}; foo.bar = 42;}` implicitly merge at parse time, however if one of them is marked as recursive but not the others then the recursive attribute may get lost (order-dependent). Therefore, merging attrs with mixed-`rec` is now forbidden.
 - `rec-set-dynamic-attrs` Dynamic attributes have weird semantics in the presence of recursive attrsets (they evaluate *after* the rest of the set). This is now forbidden.
+- `or-as-identifier` `or` as an identifier has always been weird since the `or` (almost-)keyword has been introduced. We are deprecating the backcompat hacks from the early days of Nix in favor of making `or` a full and proper keyword.

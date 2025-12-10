@@ -1,0 +1,15 @@
+_type: ExprLet
+attrs:
+  or:
+    _type: ExprLiteral
+    value: 1
+    valueType: Int
+body:
+  _type: ExprCall
+  args:
+    - _type: ExprVar
+      value: or
+  fun:
+    _type: ExprLiteral
+    value: 1
+    valueType: Int

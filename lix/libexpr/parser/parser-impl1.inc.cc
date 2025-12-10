@@ -324,7 +324,11 @@ struct AttrState : SubexprState {
 
 template<> struct BuildAST<grammar::v1::attr::simple> {
     static void apply(const auto & in, auto & s, State & ps) {
-        s.pushAttr(ps.symbols.create(in.string_view()), ps.at(in));
+        auto symbol = ps.symbols.create(in.string_view());
+        if (!ps.featureSettings.isEnabled(Dep::OrAsIdentifier) && symbol == ps.symbols.sym_or) {
+            ps.orIdentifierFound(ps.at(in));
+        }
+        s.pushAttr(symbol, ps.at(in));
     }
 };
 
@@ -956,6 +960,10 @@ template<> struct BuildAST<grammar::v1::expr::select::attr_or> {
 
 template<> struct BuildAST<grammar::v1::expr::select::as_app_or> {
     static void apply(const auto & in, SelectState & s, State & ps) {
+        if (!ps.featureSettings.isEnabled(Dep::OrAsIdentifier)) {
+            ps.orArgumentFound(ps.at(in));
+        }
+
         std::vector<std::unique_ptr<Expr>> args(1);
         args[0] = std::make_unique<ExprVar>(ps.at(in), ps.symbols.sym_or);
         s->emplaceExpr<ExprCall>(s.pos, s->popExprOnly(), std::move(args));

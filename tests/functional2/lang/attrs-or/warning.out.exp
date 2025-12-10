@@ -1,0 +1,29 @@
+_type: ExprLet
+attrs:
+  or:
+    _type: ExprLiteral
+    value: 1
+    valueType: Int
+body:
+  _type: ExprSelect
+  attrs:
+    - a
+  default:
+    _type: ExprCall
+    args:
+      - _type: ExprVar
+        value: or
+    fun:
+      _type: ExprLambda
+      arg: x
+      body:
+        _type: ExprVar
+        value: x
+  e:
+    _type: ExprSet
+    attrs:
+      a:
+        _type: ExprLiteral
+        value: 2
+        valueType: Int
+    recursive: false

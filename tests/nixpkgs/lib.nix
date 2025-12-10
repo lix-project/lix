@@ -24,6 +24,7 @@ let
     "broken-string-escape"
     "rec-set-merges"
     "rec-set-dynamic-attrs"
+    "or-as-identifier"
   ];
 
   env.NIX_CONFIG = "extra-deprecated-features = ${concatStringsSep " " deprecatedFeatures}";

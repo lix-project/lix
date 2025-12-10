@@ -42,6 +42,8 @@ struct State
     void nulFound(const PosIdx pos);
     void recSetMergeFound(const AttrPath & attrPath, const PosIdx pos);
     void recSetDynamicAttrFound(const PosIdx pos);
+    void orIdentifierFound(const PosIdx pos);
+    void orArgumentFound(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
@@ -193,6 +195,34 @@ inline void State::recSetDynamicAttrFound(const PosIdx pos)
             "evaluated separately from the other recursive attributes. Use %s to disable this "
             "error.",
             "--extra-deprecated-features rec-set-dynamic-attrs"
+        ),
+        .pos = positions[pos],
+    });
+}
+
+// Added 2026-01-30
+inline void State::orIdentifierFound(const PosIdx pos)
+{
+    logWarning({
+        .msg = HintFmt(
+            "using %s as an identifier is deprecated because it cannot be used in most places (try "
+            "%s). Use %s to disable this warning.",
+            "or",
+            "let or = 1; in or",
+            "--extra-deprecated-features or-as-identifier"
+        ),
+        .pos = positions[pos],
+    });
+}
+// Added 2026-01-30
+inline void State::orArgumentFound(const PosIdx pos)
+{
+    logWarning({
+        .msg = HintFmt(
+            "using %s as an argument is deprecated because it is parsed with the wrong precedence "
+            "which may cause unexpected behavior. Use %s to disable this warning.",
+            "or",
+            "--extra-deprecated-features or-as-identifier"
         ),
         .pos = positions[pos],
     });
