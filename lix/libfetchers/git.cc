@@ -826,8 +826,14 @@ struct GitInputScheme : InputScheme
                 }
             }
 
-            if (!input.getRev())
-                input.attrs.insert_or_assign("rev", Hash::parseAny(chomp(readFile(localRefFile)), HashType::SHA1).gitRev());
+            if (!input.getRev()) {
+                auto rev = chomp(TRY_AWAIT(runProgram(
+                    "git",
+                    true,
+                    {"-C", repoDir, "rev-list", "--max-count=1", *input.getRef()}
+                )));
+                input.attrs.insert_or_assign("rev", rev);
+            }
 
             // cache dir lock is removed at scope end; we will only use read-only operations on specific revisions in the remainder
         }
