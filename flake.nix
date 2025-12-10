@@ -465,7 +465,20 @@
               let
                 inherit (self.packages.${system}) nix;
                 pkgs = nixpkgsFor.${system}.native;
-                testWithNix = import (nixpkgs + "/lib/tests/test-with-nix.nix") { inherit pkgs lib nix; };
+                testWithNix =
+                  (import (nixpkgs + "/lib/tests/test-with-nix.nix") {
+                    inherit pkgs lib nix;
+                  }).overrideAttrs
+                    (_: {
+                      buildInputs = [
+                        (import (nixpkgs + "/lib/path/tests") {
+                          inherit pkgs;
+                          # NOTE: Override the nix version used here, we cannot rely on CppNix actually building
+                          #       c.f. https://github.com/NixOS/nixpkgs/blob/master/lib/path/tests/default.nix#L18
+                          nixVersions.stable = nix;
+                        })
+                      ];
+                    });
               in
               pkgs.symlinkJoin {
                 name = "nixpkgs-lib-tests";
