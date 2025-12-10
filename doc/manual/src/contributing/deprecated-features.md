@@ -19,7 +19,7 @@ This description is not normative, but a feature removal may roughly happen like
 1. Add a warning when the feature is being used.
 2. Disable the feature by default, putting it behind a deprecated feature flag.
   - If disabling the feature started out as an opt-in experimental feature, turn that experimental flag into a no-op or remove it entirely.
-    For example, `--extra-experimental-features=no-url-literals` becomes `--extra-deprecated-features=url-literals`.
+    For example, `--extra-experimental-features no-url-literals` becomes `--extra-deprecated-features url-literals`.
 3. Decide on a time frame for how long that feature will still be supported for backwards compatibility, and clearly communicate that in the error messages.
   - Sometimes, automatic migration to alternatives is possible, and such should be provided if possible
   - At least one NixOS release cycle should be the minimum
