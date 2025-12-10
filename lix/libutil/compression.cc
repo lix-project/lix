@@ -16,7 +16,6 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <cerrno>
-#include <chrono>
 #include <cstdio>
 #include <cstring>
 
@@ -63,13 +62,15 @@ struct ArchiveDecompressionSource : Source
         struct archive_entry * ae;
         if (!archive) {
             archive = std::make_unique<TarArchive>(*src, true);
-            this->archive->check(archive_read_next_header(this->archive->archive, &ae),
-                "failed to read header (%s)");
-            if (archive_filter_count(this->archive->archive) < 2) {
+            this->archive->check(
+                archive_read_next_header(this->archive->archive.get(), &ae),
+                "failed to read header (%s)"
+            );
+            if (archive_filter_count(this->archive->archive.get()) < 2) {
                 throw CompressionError("input compression not recognized");
             }
         }
-        ssize_t result = archive_read_data(this->archive->archive, data, len);
+        ssize_t result = archive_read_data(this->archive->archive.get(), data, len);
         if (result > 0) return result;
         if (result == 0) {
             throw EndOfFile("reached end of compressed file");

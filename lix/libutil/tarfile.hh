@@ -9,7 +9,7 @@ namespace nix {
 
 struct TarArchive
 {
-    struct archive * archive;
+    std::unique_ptr<struct archive, decltype([](auto * p) { archive_read_free(p); })> archive;
     Source * source;
     std::vector<unsigned char> buffer;
 
@@ -23,8 +23,6 @@ struct TarArchive
     TarArchive(const TarArchive &) = delete;
 
     void close();
-
-    ~TarArchive();
 };
 
 kj::Promise<Result<void>> unpackTarfile(AsyncInputStream & source, const Path & destDir);

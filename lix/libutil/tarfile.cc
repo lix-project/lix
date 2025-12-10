@@ -45,53 +45,46 @@ void TarArchive::check(int err, const std::string & reason)
     if (err == ARCHIVE_EOF) {
         throw EndOfFile("reached end of archive");
     } else if (err != ARCHIVE_OK) {
-        throw Error(reason, archive_error_string(this->archive));
+        throw Error(reason, archive_error_string(this->archive.get()));
     }
 }
 
-TarArchive::TarArchive(Source & source, bool raw) : buffer(65536)
+TarArchive::TarArchive(Source & source, bool raw)
+    : archive{archive_read_new()}
+    , source(&source)
+    , buffer(65536)
 {
-    this->archive = archive_read_new();
-    this->source = &source;
-
     if (!raw) {
-        archive_read_support_filter_all(archive);
-        archive_read_support_format_all(archive);
+        archive_read_support_filter_all(archive.get());
+        archive_read_support_format_all(archive.get());
     } else {
-        archive_read_support_filter_all(archive);
-        archive_read_support_format_raw(archive);
-        archive_read_support_format_empty(archive);
+        archive_read_support_filter_all(archive.get());
+        archive_read_support_format_raw(archive.get());
+        archive_read_support_format_empty(archive.get());
     }
-    archive_read_set_option(archive, nullptr, "mac-ext", nullptr);
+    archive_read_set_option(archive.get(), nullptr, "mac-ext", nullptr);
     check(
-        archive_read_open(archive, (void *) this, callback_open, callback_read, callback_close),
+        archive_read_open(
+            archive.get(), (void *) this, callback_open, callback_read, callback_close
+        ),
         "Failed to open archive (%s)"
     );
 }
 
-TarArchive::TarArchive(const Path & path)
+TarArchive::TarArchive(const Path & path) : archive{archive_read_new()}
 {
-    this->archive = archive_read_new();
-
-    archive_read_support_filter_all(archive);
-    archive_read_support_format_all(archive);
-    archive_read_set_option(archive, nullptr, "mac-ext", nullptr);
+    archive_read_support_filter_all(archive.get());
+    archive_read_support_format_all(archive.get());
+    archive_read_set_option(archive.get(), nullptr, "mac-ext", nullptr);
     check(
-        archive_read_open_filename(archive, requireCString(path), 16384),
+        archive_read_open_filename(archive.get(), requireCString(path), 16384),
         "failed to open archive: %s"
     );
 }
 
 void TarArchive::close()
 {
-    check(archive_read_close(this->archive), "Failed to close archive (%s)");
-}
-
-TarArchive::~TarArchive()
-{
-    if (this->archive) {
-        archive_read_free(this->archive);
-    }
+    check(archive_read_close(this->archive.get()), "Failed to close archive (%s)");
 }
 
 static void extract_archive(TarArchive & archive, const Path & destDir)
@@ -103,18 +96,18 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
 
     for (;;) {
         struct archive_entry * entry;
-        int r = archive_read_next_header(archive.archive, &entry);
+        int r = archive_read_next_header(archive.archive.get(), &entry);
         if (r == ARCHIVE_EOF) {
             break;
         }
         auto name = archive_entry_pathname(entry);
         if (!name) {
             throw Error(
-                "cannot get archive member name: %s", archive_error_string(archive.archive)
+                "cannot get archive member name: %s", archive_error_string(archive.archive.get())
             );
         }
         if (r == ARCHIVE_WARN) {
-            printTaggedWarning("%1%", Uncolored(archive_error_string(archive.archive)));
+            printTaggedWarning("%1%", Uncolored(archive_error_string(archive.archive.get())));
         } else {
             archive.check(r);
         }
@@ -135,7 +128,7 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
             archive_entry_copy_hardlink(entry, (destDir + "/" + original_hardlink).c_str());
         }
 
-        archive.check(archive_read_extract(archive.archive, entry, flags));
+        archive.check(archive_read_extract(archive.archive.get(), entry, flags));
     }
 
     archive.close();
