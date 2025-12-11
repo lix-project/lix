@@ -1,6 +1,8 @@
 rnix = dependency('rnix-0.12-rs')
 rowan = dependency('rowan-0.15-rs')
 
+rust = import('rust')
+
 lix_doc = static_library(
   'lix_doc',
   sources : files('src/lib.rs'),
@@ -18,4 +20,10 @@ lix_doc = static_library(
 
 liblix_doc = declare_dependency(
   link_with : lix_doc,
+)
+
+rust.test(
+	'lix_doc_test',
+	lix_doc,
+	suite : 'check'
 )
