@@ -266,7 +266,7 @@ CgroupAvailableFeatureSet detectAvailableCgroupFeatures()
 static std::vector<std::string> readControllers(const std::filesystem::path & cgroupPath)
 {
     return tokenizeString<std::vector<std::string>>(
-        readFile(cgroupPath / "cgroup.controllers"), " "
+        trim(readFile(cgroupPath / "cgroup.controllers")), " "
     );
 }
 
