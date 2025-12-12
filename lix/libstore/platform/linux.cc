@@ -858,7 +858,7 @@ void LinuxLocalDerivationGoal::prepareSandbox()
     if (buildUser && (buildUser->getUIDCount() != 1 || settings.useCgroups)) {
         context.cgroup.emplace(
             settings.nixStateDir + "/cgroups",
-            fmt("nix-build-uid-%d", buildUser->getUID()),
+            fmt("nix-build@%s-%d", drvPath.hashPart(), buildUser->getUID()),
             buildUser->getUID(),
             buildUser->getGID()
         );
