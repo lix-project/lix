@@ -90,6 +90,12 @@
     lib.meta.availableOn stdenv.hostPlatform libsystemtap
     && lib.meta.availableOn stdenv.buildPlatform systemtap-lix,
 
+  # In CI, we want to make sure both static and dynamic versions of our libraries build.
+  # Building them entirely separately is way too expensive for our anemic CI, so we instead
+  # ask Meson to `-Ddefault_library=both`. However that also installs both kinds of libraries,
+  # which takes up waaaay more space. So we'll delete the installed static libraries in postInstall.
+  ciBuildAndDeleteBothLibraries ? !stdenv.hostPlatform.isStatic,
+
   # Not a real argument, just the only way to approximate let-binding some
   # stuff for argument defaults.
   __forDefaults ? {
@@ -310,6 +316,7 @@ stdenv.mkDerivation (finalAttrs: {
       "-Dcpp_link_args=-fuse-ld=lld"
     ]
     ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
+    ++ lib.optional ciBuildAndDeleteBothLibraries "-Ddefault_library=both"
     # musl doesn't support fibers, and we can't detect this with meson alone.
     ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
@@ -491,6 +498,9 @@ stdenv.mkDerivation (finalAttrs: {
     lib.optionalString (!finalAttrs.dontBuild) ''
       mkdir -p $doc/nix-support
       echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
+    ''
+    + lib.optionalString ciBuildAndDeleteBothLibraries ''
+      rm -f $out/lib/liblix{cmd,expr,fetchers,main,store,util}${hostPlatform.extensions.staticLibrary}
     ''
     + lib.optionalString hostPlatform.isStatic ''
       mkdir -p $out/nix-support
