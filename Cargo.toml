@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["lix/lix-doc"]
+members = ["lix/lix-doc", "lix/libutil"]
 
 [workspace.package]
 edition = "2021"

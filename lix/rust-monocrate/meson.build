@@ -10,6 +10,7 @@ rust_monocrate = static_library(
   sources : rust_monocrate_sources,
   dependencies : [
     liblix_doc_internal,
+    liblixutil_rs_internal,
     rnix,
     rowan,
   ],

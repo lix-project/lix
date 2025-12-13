@@ -6,3 +6,4 @@ edition.workspace = true
 [lib]
 crate-type = ["staticlib"]
 lix-doc = { path = "../lix-doc" }
+lixutil_rs = { path = "../libutil_rs" }

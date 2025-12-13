@@ -1,0 +1,13 @@
+# Note: this is not really intended to actually do anything with Cargo, it
+# exists to make Cargo manage dependencies in a workspace across lix-doc and
+# liblixrust
+#
+# It is highly likely it will not actually pass build, especially as the build
+# system gets more anti-Cargo.
+
+[package]
+name = "lixutil-rs"
+edition.workspace = true
+
+[lib]
+path = "lib.rs"

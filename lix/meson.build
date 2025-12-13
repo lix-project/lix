@@ -25,7 +25,53 @@ install_headers(config_h, subdir : 'lix')
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
 
+# We manage libutil's Rust components here, because subdir(rust-monocrate)
+# needs libutil's Rust components, and subdir(libutil) needs rust-monocrate.
+# FIXME?: Should libutil-rs just be in a separate directory from libutil, then?
+libutil_rs_sources = files(
+  'libutil/lib.rs',
+)
+libutil_rs = static_library(
+  'lixutil_rs',
+  sources : libutil_rs_sources,
+  rust_args : [
+    # Will be empty if we're linking statically.
+    rust_dynamic_args,
+    # Will no-op if we're linking statically.
+    '-C', f'link-arg=-Wl,@soname_arg@,liblixutil_rs.@dylib_suffix@',
+  ],
+)
+libutil_rs_gen_h = custom_target(
+  'libutil-rs.gen.hh',
+  input : [
+    files('libutil/cbindgen.toml'),
+    libutil_rs_sources,
+  ],
+  output : ['libutil-rs.gen.hh'],
+  command : [
+    cbindgen,
+    '--config',
+    '@INPUT0@',
+    '--output',
+    '@OUTPUT0@',
+    '--',
+    '@INPUT1@',
+  ],
+)
+# For rust-monocrate.
+liblixutil_rs_internal = declare_dependency(
+  link_with : libutil_rs,
+)
+
 subdir('rust-monocrate')
+
+# NOW we can create the dependency object anything that actually wants to use liblixutil_rs,
+# because liblixutil_rs is secretly rust-monocrate in a trenchcoat.
+# `library('lixutil')` and `executable('liblixutil-tests')` depend on this.
+liblixutil_rs = declare_dependency(
+  link_with : rust_monocrate,
+  sources : [libutil_rs_gen_h],
+)
 
 # liblix_doc is actually rust-monocrate in a trenchcoat.
 liblix_doc = declare_dependency(

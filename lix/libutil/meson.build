@@ -344,6 +344,10 @@ dependencies = [
   nlohmann_json,
   openssl,
   libatomic,
+
+  # NOTE: this is secretly rust-monocrate in a trenchcoat.
+  # See that directory's README for more details.
+  liblixutil_rs,
 ]
 
 libutil_temp = library(
@@ -422,6 +426,8 @@ liblixutil = declare_dependency(
     libarchive,
     nlohmann_json,
     libatomic,
+    # This is secretly rust-monocrate + the generated header.
+    liblixutil_rs,
   ],
   link_with : libutil
 )
