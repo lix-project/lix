@@ -253,14 +253,25 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
     struct group * gr = peer.gidKnown ? getgrgid(peer.gid) : 0;
     std::string group = gr ? gr->gr_name : std::to_string(peer.gid);
 
+    if (group == settings.buildUsersGroup) {
+        throw Error(
+            "the user '%1%' is not allowed to connect to the Nix daemon as its group is '%2%', "
+            "which is the group of users running the sandboxed builds.",
+            user,
+            group
+        );
+    }
+
     const Strings & trustedUsers = authorizationSettings.trustedUsers;
     const Strings & allowedUsers = authorizationSettings.allowedUsers;
 
-    if (matchUser(user, group, trustedUsers))
+    if (matchUser(user, group, trustedUsers)) {
         trusted = Trusted;
+    }
 
-    if ((!trusted && !matchUser(user, group, allowedUsers)) || group == settings.buildUsersGroup)
+    if (!trusted && !matchUser(user, group, allowedUsers)) {
         throw Error("user '%1%' is not allowed to connect to the Nix daemon", user);
+    }
 
     return { trusted, std::move(user) };
 }
