@@ -280,7 +280,10 @@ retry:
             throw Error("cannot perform a sandboxed build because user namespaces are not available.\nIn this Lix's configuration, user namespaces are required due to either being non-root, or build-users-group being disabled without also enabling auto-allocate-uids");
         }
     }
-    #endif
+#else
+    // NOTE: This is needed to silence the `unused-variable` warning on non-linux machines
+    (void) sandboxFallbackAllowed;
+#endif
 
     actLock.reset();
 
