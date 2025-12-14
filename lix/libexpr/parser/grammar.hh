@@ -12,6 +12,8 @@
 // eolf rules in favor of reproducing the old flex lexer as faithfully as
 // possible, and deferring calculation of positions to downstream users.
 
+/* clang-format absolutely butchers the template arguments */
+// clang-format off
 namespace nix::parser::grammar::v1 {
 
 using namespace tao::pegtl;
@@ -154,13 +156,20 @@ struct identifier : _not_at_any_keyword<
     star<c::id_rest>
 > {};
 
+struct _integer {
+    // Add a special case to specifically catch and forbid `0.a`, which otherwise parses as selection
+    // TODO this is only an artifact of `0.` not being a float, and should be eliminated once that is corrected
+    struct at_dot_id : success {};
+};
+
 // floats may extend ints, thus these rules are very similar.
-struct integer : seq<
+struct integer : _integer, seq<
     sor<
         seq<range<'1', '9'>, star<digit>, not_at<one<'.'>>>,
         seq<one<'0'>, not_at<one<'.'>, digit>, star<digit>>
     >,
-    not_at<_extend_as_path>
+    not_at<_extend_as_path>,
+    opt<at<seq<one<'.'>, sor<c::id_first, one<'"'>>>>, _integer::at_dot_id> // This will be not_at in the future once it becomes a hard error
 > {};
 
 struct _floating {
@@ -169,6 +178,7 @@ struct _floating {
 struct floating : _floating, seq<
     sor<
         seq<range<'1', '9'>, star<digit>, one<'.'>, star<digit>>,
+        // TODO once the deprecations don't have an opt-out anymore, parse `0.` like `1.` by using `star<digit>`
         seq<one<'0'>, one<'.'>, plus<digit>>,
         _floating::no_leading_zero
     >,
@@ -536,14 +546,26 @@ struct _expr {
         must<one<']'>>
     > {};
 
-    struct _simple : sor<
-        id,
-        int_,
-        float_,
-        string,
-        ind_string,
-        path,
-        uri,
+    struct _simple {
+        struct noseps : semantic, success {};
+        // the subset of `simple` that may not directly follow each other without whitespace as a token boundary
+        struct token_simple : sor<
+            id,
+            int_,
+            float_,
+            string,
+            ind_string,
+            path,
+            uri
+        > { };
+    };
+
+    struct simple : _simple, sor<
+        seq<
+            _simple::token_simple,
+            // error if we have <token_simple><token_simple> without whitespace in-between
+            opt<at<_simple::token_simple>, _simple::noseps>
+        >,
         seq<one<'('>, seps, must<expr>, seps, must<one<')'>>>,
         ancient_let,
         rec_set,
@@ -552,7 +574,7 @@ struct _expr {
     > {};
 
     struct _select {
-        struct head : _simple {};
+        struct head : simple {};
         struct attr : semantic, seq<attrpath> {};
         struct attr_or : semantic, must<select> {};
         struct as_app_or : semantic, t::kw_or {};
@@ -793,3 +815,4 @@ public:
     }
 };
 }
+// clang-format on

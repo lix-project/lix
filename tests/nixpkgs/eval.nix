@@ -16,6 +16,7 @@ let
     "rec-set-merges"
     "rec-set-dynamic-attrs"
     "or-as-identifier"
+    "tokens-no-whitespace"
   ];
 in
 

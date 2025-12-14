@@ -1,0 +1,4 @@
+warning: Found floating point literal without leading zero. To fix this warning, add a zero before the dot. Use --extra-deprecated-feature floating-without-zero to silence this warning
+         at «string»:1:14:
+              1| with {}; [0.0.0]
+               |              ^

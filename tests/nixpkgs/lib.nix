@@ -25,6 +25,7 @@ let
     "rec-set-merges"
     "rec-set-dynamic-attrs"
     "or-as-identifier"
+    "tokens-no-whitespace"
   ];
 
   env.NIX_CONFIG = "extra-deprecated-features = ${concatStringsSep " " deprecatedFeatures}";

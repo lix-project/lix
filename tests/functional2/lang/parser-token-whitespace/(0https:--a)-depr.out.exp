@@ -1,0 +1,22 @@
+{
+  "_type": "ExprWith",
+  "attrs": {
+    "_type": "ExprSet",
+    "recursive": false
+  },
+  "body": {
+    "_type": "ExprCall",
+    "args": [
+      {
+        "_type": "ExprLiteral",
+        "value": "https://a",
+        "valueType": "String"
+      }
+    ],
+    "fun": {
+      "_type": "ExprLiteral",
+      "value": 0,
+      "valueType": "Int"
+    }
+  }
+}

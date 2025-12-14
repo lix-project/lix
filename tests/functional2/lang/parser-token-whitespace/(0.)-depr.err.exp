@@ -1,0 +1,4 @@
+error: syntax error, expecting ')'
+       at «string»:1:12:
+            1| with {}; (0.)
+             |            ^

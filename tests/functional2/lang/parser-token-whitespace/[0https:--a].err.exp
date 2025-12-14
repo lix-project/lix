@@ -1,0 +1,4 @@
+error: whitespace between function arguments or list elements is required here. Use --extra-deprecated-features tokens-no-whitespace to disable this error
+       at «string»:1:12:
+            1| with {}; [0https://a]
+             |            ^

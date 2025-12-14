@@ -1,0 +1,4 @@
+error: syntax error, expecting ']'
+       at «string»:1:13:
+            1| with {}; [00.]
+             |             ^

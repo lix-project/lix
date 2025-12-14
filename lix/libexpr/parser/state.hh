@@ -44,6 +44,7 @@ struct State
     void recSetDynamicAttrFound(const PosIdx pos);
     void orIdentifierFound(const PosIdx pos);
     void orArgumentFound(const PosIdx pos);
+    void whitespaceBetweenTokensRequired(const PosIdx pos);
     void addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos);
     void mergeAttrs(AttrPath & attrPath, ExprSet * source, ExprSet * target);
     void validateLambdaAttrs(AttrsPattern & pattern, PosIdx pos = noPos);
@@ -226,6 +227,19 @@ inline void State::orArgumentFound(const PosIdx pos)
         ),
         .pos = positions[pos],
     });
+}
+
+// Added 2026-01-30
+inline void State::whitespaceBetweenTokensRequired(const PosIdx pos)
+{
+    throw ParseError(
+        {.msg = HintFmt(
+             "whitespace between function arguments or list elements is required here. Use %s to "
+             "disable this error",
+             "--extra-deprecated-features tokens-no-whitespace"
+         ),
+         .pos = positions[pos]}
+    );
 }
 
 inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_ptr<Expr> e, const PosIdx pos)

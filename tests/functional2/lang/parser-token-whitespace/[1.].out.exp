@@ -1,0 +1,17 @@
+{
+  "_type": "ExprWith",
+  "attrs": {
+    "_type": "ExprSet",
+    "recursive": false
+  },
+  "body": {
+    "_type": "ExprList",
+    "elems": [
+      {
+        "_type": "ExprLiteral",
+        "value": 1.0,
+        "valueType": "Float"
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+[[test]]
+runner = "parse-fail"
+in = "in.nix"
+flags = ["--extra-deprecated-features", "tokens-no-whitespace"]
+
+[[test]]
+runner = "eval-fail"
+in = "in-2.nix"

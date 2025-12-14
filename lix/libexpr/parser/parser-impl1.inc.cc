@@ -294,6 +294,17 @@ template<> struct BuildAST<grammar::v1::formals> : change_head<FormalsState> {
     }
 };
 
+template<>
+struct BuildAST<grammar::v1::expr::simple::noseps>
+{
+    static void apply(const auto & in, auto &, State & ps)
+    {
+        if (!ps.featureSettings.isEnabled(Dep::TokensNoWhitespace)) {
+            ps.whitespaceBetweenTokensRequired(ps.at(in));
+        }
+    }
+};
+
 template<> struct BuildAST<grammar::v1::expr::lambda::arg> {
     static void apply(const auto & in, auto & s, State & ps) {
         s.pattern.name = ps.symbols.create(in.string_view());
@@ -518,6 +529,17 @@ template<> struct BuildAST<grammar::v1::expr::int_> {
             });
         }
         s.emplaceExpr<ExprInt>(ps.at(in), v);
+    }
+};
+
+template<>
+struct BuildAST<grammar::v1::t::integer::at_dot_id>
+{
+    static void apply(const auto & in, auto &, State & ps)
+    {
+        if (!ps.featureSettings.isEnabled(Dep::TokensNoWhitespace)) {
+            ps.whitespaceBetweenTokensRequired(ps.at(in));
+        }
     }
 };
 

@@ -186,6 +186,7 @@ deprecated_feature_definitions = files(
   'deprecated-features/rec-set-merges.md',
   'deprecated-features/rec-set-overrides.md',
   'deprecated-features/shadow-internal-symbols.md',
+  'deprecated-features/tokens-no-whitespace.md',
   'deprecated-features/url-literals.md',
   # keep-sorted end
 )
