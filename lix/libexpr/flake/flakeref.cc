@@ -7,6 +7,8 @@
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/registry.hh"
 
+#include <cerrno>
+
 namespace nix {
 
 #if 0
@@ -148,6 +150,14 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
                     }
                     if (!found)
                         throw BadURL("could not find a flake.nix file");
+                }
+
+                try {
+                    path = absPath(path, std::nullopt, true);
+                } catch (SysError & e) {
+                    if (e.errNo != ENOENT && e.errNo != ENOTDIR) {
+                        throw;
+                    }
                 }
 
                 if (!S_ISDIR(lstat(path).st_mode))
