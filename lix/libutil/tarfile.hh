@@ -7,6 +7,8 @@
 
 namespace nix {
 
+MakeError(ArchiveError, Error);
+
 struct TarArchive
 {
     std::unique_ptr<struct archive, decltype([](auto * p) { archive_read_free(p); })> archive;

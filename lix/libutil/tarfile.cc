@@ -45,7 +45,7 @@ void TarArchive::check(int err, const std::string & reason)
     if (err == ARCHIVE_EOF) {
         throw EndOfFile("reached end of archive");
     } else if (err != ARCHIVE_OK) {
-        throw Error(reason, archive_error_string(this->archive.get()));
+        throw ArchiveError(reason, archive_error_string(this->archive.get()));
     }
 }
 
