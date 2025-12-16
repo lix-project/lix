@@ -2,6 +2,7 @@ import builtins
 import types
 import typing
 from pathlib import Path
+from textwrap import dedent
 from types import UnionType
 from typing import Any, Literal, get_args, get_origin
 
@@ -13,6 +14,7 @@ from functional2.testlib.fixtures.file_helper import (
     merge_file_declaration,
     Fileish,
     CopyTemplate,
+    File,
 )
 
 # Things have to be resolved from top to bottom, because otherwise the tests behave flakey
@@ -162,6 +164,31 @@ def get_global_asset_pack(name: str) -> FileDeclaration:
         }
 
     match name:
+        case ".git":
+            return {
+                ".git": {
+                    "config": File(
+                        dedent("""
+                    [core]
+                        repositoryformatversion = 0
+                        filemode = true
+                        bare = false
+                        logallrefupdates = true
+
+                    [user]
+                        email = "tests+functional2@lix.systems"
+                        name = "functional2"
+                """)
+                    ),
+                    "description": File(
+                        "Unnamed repository; edit this file 'description' to name the repository."
+                    ),
+                    "HEAD": File("ref: refs/heads/main"),
+                    "info": {"exclude": File("")},
+                    "objects": {"info": {}, "pack": {}},
+                    "refs": {"heads": {}, "tags": {}},
+                }
+            }
         # default case, if its just config.nix + folder content
         case _ if (global_assets_folder / name).exists():
             return {"config.nix": get_global_asset("config.nix")} | folder_to_assets(name)
