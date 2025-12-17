@@ -7,6 +7,10 @@ timeline:
     cls: [2206, 2295]
     message:
       Introduced as a parser error for the symbols `__sub`, `__mul`, `__div`, `__lessThan`.
+  - date: 2026-01-30
+    release: 2.95.0
+    cls: [4788]
+    message: Expanded the deprecation to also forbid shadowing the builtin symbols `null`, `true` and `false`.
 ---
 Shadowing symbol names used internally by the parser is deprecated.
 As an example, `5 - 3` internally expands to `__sub 5 3` in the parser.
@@ -24,3 +28,6 @@ Affected symbol names:
 - `__mul`
 - `__div`
 - `__lessThan`
+- `true`
+- `false`
+- `null`

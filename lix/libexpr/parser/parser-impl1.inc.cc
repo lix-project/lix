@@ -511,11 +511,18 @@ template<> struct BuildAST<grammar::v1::repl_root::expression> : change_head<Exp
 };
 
 template<> struct BuildAST<grammar::v1::expr::id> {
-    static void apply(const auto & in, ExprState & s, State & ps) {
-        if (in.string_view() == "__curPos")
+    static void apply(const auto & in, ExprState & s, State & ps)
+    {
+        auto symbol_str = in.string_view();
+        if (symbol_str == "__curPos") {
             s.emplaceExpr<ExprPos>(ps.at(in));
-        else
+        } else if (symbol_str == "null" || symbol_str == "true" || symbol_str == "false") {
+            // These should be literals really, but in Nix land they're mere identifiers with
+            // builtins in scope We mark them specially to make sure shadowing them can be detected
+            s.pushExpr(ps.at(in), ps.mkInternalVar(ps.at(in), ps.symbols.create(in.string_view())));
+        } else {
             s.emplaceExpr<ExprVar>(ps.at(in), ps.symbols.create(in.string_view()));
+        }
     }
 };
 
