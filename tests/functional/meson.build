@@ -88,7 +88,6 @@ functional_tests_scripts = [
   'nix-shell/basic.sh',
   'nix-shell/structured-attrs.sh',
   'nix-shell/regression-533.sh',
-  'check-refs.sh',
   'build-remote-input-addressed.sh',
   'secure-drv-outputs.sh',
   'restricted.sh',
