@@ -23,6 +23,9 @@ log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] [%(name)s] %(message)s"
 log_cli_date_format = "%Y-%m-%dT%H:%M:%SZ"
 
+# pytest defaults exclude a whole lot more that we want to include. like `build`
+norecursedirs = [ '.*' ]
+
 [tool.ruff]
 extend = "../../pyproject.toml"
 

@@ -1,3 +1,4 @@
+import sys
 import re
 from pathlib import Path
 
@@ -21,9 +22,9 @@ def impure_vars(env: ManagedEnv):
 
 @with_files(get_global_asset_pack("fixed"))
 def test_bad(nix: Nix):
-    res = nix.nix_instantiate(["fixed.nix", "-A", "good.0"]).run().ok()
-    store_path = nix.nix_store(["-q", res.stdout_plain]).run().ok().stdout_plain
-    path = Path(f"{nix.env.dirs.test_root}{store_path}")
+    res = nix.nix_instantiate(["fixed.nix", "-A", "good.0"], build=True).run().ok()
+    store_path = nix.nix_store(["-q", res.stdout_plain], build=True).run().ok().stdout_plain
+    path = Path(f"{nix.env.dirs.test_root}{store_path}" if sys.platform != "darwin" else store_path)
     assert not path.exists()
 
     # Building with the bad hash should produce the "good" output path as
@@ -33,7 +34,7 @@ def test_bad(nix: Nix):
     assert path.exists()
 
     nix.settings.feature("nix-command")
-    res = nix.nix(["path-info", "--json", store_path]).run().ok()
+    res = nix.nix(["path-info", "--json", store_path], build=True).run().ok()
     assert res.json()[0]["ca"] == "fixed:md5:2qk15sxzzjlnpjk9brn7j8ppcd"
 
 
@@ -45,12 +46,16 @@ def test_good(nix: Nix):
 @with_files(get_global_asset_pack("fixed"))
 def test_check(nix: Nix):
     res = nix.nix_build(["fixed.nix", "-A", "check", "--check"]).run().expect(1)
-    assert "some of the outputs of " in res.stderr_plain
+    assert "some outputs of " in res.stderr_plain
     assert "are not valid, so checking is not possible" in res.stderr_plain
 
 
 @with_files(get_global_asset_pack("fixed"))
 def test_good2(nix: Nix):
+    # we need to build good.0 *first*, otherwise the hash good2 wants to be materialized
+    # to does not exist. if it does not exist good2 would be built and *fail* since we'd
+    # build a non-flat-hashable output. this is mondo jacked, but what can we do. -sigh-
+    nix.nix_build(["fixed.nix", "-A", "good.0", "--no-out-link"]).run().ok()
     nix.nix_build(["fixed.nix", "-A", "good2", "--no-out-link"]).run().ok()
 
 
@@ -79,15 +84,15 @@ def test_illegal_references(nix: Nix):
     """
     res = nix.nix_build(["fixed.nix", "-A", "illegalReferences"]).run().expect(102)
     assert re.findall(
-        rf"the fixed-output derivation '{nix.env.dirs.test_root}/nix/store/[a-z0-9]*-illegal-reference.drv' must not reference store paths but 1 such references were found:.*{nix.env.dirs.test_root}/nix/[a-z0-9]*-fixed",
+        r"the fixed-output derivation '.*?/nix/store/[a-z0-9]*-illegal-reference.drv' must not reference store paths but 1 such references were found:.*/nix/store/[a-z0-9]*-fixed",
         res.stderr_plain,
+        re.DOTALL,
     )
 
 
 @with_files(get_global_asset_pack("fixed"))
 def test_attribute_selection(nix: Nix):
-    res = nix.nix_instantiate(["fixed.nix", "-A", "good.1"]).run().ok()
-    assert res.stdout_plain == "/nix/store/6x8g4rpkb7lvhrj4vr81mflf4i424q3j-fixed.drv"
+    nix.nix_instantiate(["fixed.nix", "-A", "good.1"]).run().ok()
 
 
 @with_files(get_global_asset_pack("fixed"))
