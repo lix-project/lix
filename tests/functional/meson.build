@@ -72,7 +72,6 @@ functional_tests_scripts = [
   'export-graph.sh',
   'fetchGitRefs.sh',
   'gc-runtime.sh',
-  'tarball.sh',
   'fetchers.sh',
   'fetchGit.sh',
   'fetchGitLocked.sh',

@@ -139,6 +139,7 @@ class _Dirs:
     nix_store_dir: Path | None
     cache_dir: Path | None
     xdg_cache_home: Path | None
+    tmpdir: Path | None
     """used for nar caching"""
 
     def get_env_keys(self) -> set[str]:
@@ -176,6 +177,7 @@ class ManagedEnv:
             nix_store_dir=self._get_dir("nix/store"),
             cache_dir=self._get_dir("binary-cache"),
             xdg_cache_home=self._get_dir("test-home/.cache"),
+            tmpdir=self._get_dir("tmp"),
         )
         self.path.prepend(self.dirs.nix_bin_dir)
         self.init_defaults(global_path)

@@ -128,6 +128,7 @@ def test_env_to_env(tmp_path: Path):
         "XDG_CACHE_HOME",
         "PATH",
         "BUILD_TEST_SHELL",
+        "TMPDIR",
     } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else set())
 
 
