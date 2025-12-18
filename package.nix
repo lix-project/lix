@@ -168,13 +168,19 @@ let
     if aws-sdk-cpp == null then
       null
     else
-      aws-sdk-cpp.override {
+      (aws-sdk-cpp.override {
         apis = [
           "s3"
           "transfer"
         ];
         customMemoryManagement = false;
-      };
+      }).overrideAttrs
+        {
+          # this overrideAttrs is needed to match the configuration of
+          # aws-sdk-cpp in nixpkgs' builds of lix so we don't rebuild this in
+          # practice
+          requiredSystemFeatures = [ ];
+        };
 
   # Reimplementation of Nixpkgs' Meson cross file, with some additions to make
   # it actually work.
