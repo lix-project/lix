@@ -1532,21 +1532,6 @@ void ExprLambda::eval(EvalState & state, Env & env, Value & v)
     v = {NewValueAs::lambda, state.ctx.mem, env, *this};
 }
 
-namespace {
-/** Increments a count on construction and decrements on destruction.
- */
-class CallDepth {
-  size_t & count;
-public:
-  CallDepth(size_t & count) : count(count) {
-    ++count;
-  }
-  ~CallDepth() {
-    --count;
-  }
-};
-};
-
 struct FormalsMatch
 {
     std::vector<SymbolStr> missing;
@@ -1686,7 +1671,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 {
     if (callDepth > evalSettings.maxCallDepth)
         ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
-    CallDepth _level(callDepth);
+    MaintainCount _level(callDepth);
 
     auto trace = evalSettings.traceFunctionCalls
         ? std::make_unique<FunctionCallTrace>(ctx.positions[pos])
