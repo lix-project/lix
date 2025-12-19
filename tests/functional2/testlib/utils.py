@@ -149,8 +149,8 @@ def get_global_asset(name: str) -> Fileish:
             {
                 "system": environ.get("system"),
                 # Either just the build shell or entire global path if we are darwin
-                "path": environ.get("BUILD_TEST_SHELL") or environ.get("PATH"),
-                "shell": Path(environ.get("BUILD_TEST_SHELL") or "/bin") / "sh",
+                "path": environ.get("BUILD_TEST_ENV") or environ.get("PATH"),
+                "shell": Path(environ.get("BUILD_TEST_SHELL") or "/bin") / "bash",
             },
         )
     return CopyFile(functional2_base_folder / "testlib" / "global_assets" / name)

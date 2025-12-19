@@ -24,8 +24,12 @@ option('sandbox-shell', type : 'string', value : 'busybox',
   description : 'path to a statically-linked shell to use as /bin/sh in sandboxes (usually busybox)',
 )
 
+option('build-test-env', type: 'string',
+  description : 'path to a statically-linked busybox which offers coreutils functionality'
+)
+
 option('build-test-shell', type: 'string',
-  description : 'path to a statically-linked shell which also offeres coreutils functionality'
+  description : 'path to a statically-linked bash (cannot use busybox sh because of __structuredAttrs)'
 )
 
 option('pasta-path', type : 'string', value : 'pasta',

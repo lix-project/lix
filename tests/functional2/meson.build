@@ -18,6 +18,9 @@ functional2_env.set('NIX_BIN_DIR', fs.parent(nix.full_path()))
 if build_test_shell != ''
   functional2_env.set('BUILD_TEST_SHELL', build_test_shell)
 endif
+if build_test_env != ''
+  functional2_env.set('BUILD_TEST_ENV', build_test_env)
+endif
 functional2_env.set('system', host_system)
 
 test(

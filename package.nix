@@ -66,6 +66,7 @@
   wrapBintoolsWith,
 
   busybox-sandbox-shell,
+  bash,
 
   pname ? "lix",
   versionSuffix ? "",
@@ -296,8 +297,12 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
-      "-Dbuild-test-shell=${pkgsStatic.busybox}/bin"
+      "-Dbuild-test-shell=${pkgsStatic.bash}/bin"
+      "-Dbuild-test-env=${pkgsStatic.busybox}/bin"
       "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
+    ]
+    ++ lib.optionals hostPlatform.isDarwin [
+      "-Dbuild-test-shell=${bash}/bin"
     ]
     ++ lib.optionals useLld [
       "-Dc_link_args=-fuse-ld=lld"
@@ -432,7 +437,8 @@ stdenv.mkDerivation (finalAttrs: {
     VERSION_SUFFIX = versionSuffix;
   }
   // lib.optionalAttrs hostPlatform.isLinux {
-    BUILD_TEST_SHELL = "${pkgsStatic.busybox}/bin";
+    BUILD_TEST_SHELL = "${pkgsStatic.bash}/bin";
+    BUILD_TEST_ENV = "${pkgsStatic.busybox}/bin";
   }
   // lib.optionalAttrs hostPlatform.isStatic {
     NIX_CFLAGS_COMPILE = " -static";

@@ -167,6 +167,7 @@ class ManagedEnv:
         # Things fetched from the global env
         build_shell = environ.get("BUILD_TEST_SHELL")
         global_path = environ.get("PATH")
+        build_env = environ.get("BUILD_TEST_ENV")
         # `NIX_BIN_DIR` either propagated from us or set by meson
         # Set to the codebase internal output if started standalone
         # This is where the current lix binaries are located.
@@ -176,9 +177,10 @@ class ManagedEnv:
         lix_bin = Path(environ.get("NIX_BIN_DIR", lix_base_folder / "outputs/out/bin"))
 
         self._env = {}
-        self.path = _ManagedPath(build_shell)
+        self.path = _ManagedPath(build_env)
         self._tmp_path = tmp_path
         self.shell_dir = build_shell or "/bin"
+        self.build_env = build_env
 
         self.dirs = _Dirs(
             test_root=self._get_dir(""),
@@ -193,6 +195,7 @@ class ManagedEnv:
             tmpdir=self._get_dir("tmp"),
         )
         self.path.prepend(self.dirs.nix_bin_dir)
+        self.path.prepend(build_shell)
         self.init_defaults(global_path)
 
     def _get_dir(self, sub_path: str) -> Path:
@@ -210,6 +213,8 @@ class ManagedEnv:
             "PAGER": "cat",
             "BUILD_TEST_SHELL": self.shell_dir,
         }
+        if self.build_env:
+            self._env["BUILD_TEST_ENV"] = self.build_env
         if platform.system() == "Darwin":
             # Darwin / Apple behaves differently and requires _NIX_TEST_NO_SANDBOX to be set for whatever reason
             self._env |= {"_NIX_TEST_NO_SANDBOX": "1"}

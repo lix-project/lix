@@ -14,7 +14,7 @@ def test_env_inits_defaults(tmp_path: Path):
     assert env.get_env("GIT_CONFIG_SYSTEM") == "/dev/null"
     if sys.platform != "darwin":
         # Darwin doesn't like sandboxes so we don't have a sandbox shell here
-        assert "busybox" in env.get_env("SHELL")
+        assert "bash" in env.get_env("SHELL")
     else:
         assert "/bin/sh" in env.get_env("SHELL")
     assert env.get_env("PAGER") == "cat"
@@ -134,7 +134,7 @@ def test_env_to_env(tmp_path: Path):
         "PATH",
         "BUILD_TEST_SHELL",
         "TMPDIR",
-    } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else set())
+    } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else {"BUILD_TEST_ENV"})
 
 
 def test_path_inits_build_shell():
