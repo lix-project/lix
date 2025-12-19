@@ -107,3 +107,26 @@ def test_reference_specifier(nix: Nix):
     )
 
     assert "output check for 'lib' contains an illegal reference specifier 'dev'" in error[-1]
+
+
+@with_files(
+    get_global_asset_pack("dependencies")
+    | {
+        "regression-reference-checks.nix": CopyFile(
+            "assets/test_reference_checks/regression-reference-checks.nix"
+        )
+    }
+)
+def test_regression_partial_build(nix: Nix):
+    out, _ = (
+        nix.nix_build(
+            ["regression-reference-checks.nix", "-A", "out", "-A", "man", "--no-out-link"]
+        )
+        .run()
+        .ok()
+        .stdout_plain.splitlines()
+    )
+
+    nix.nix_store(["--delete", out], build=True).run().ok()
+
+    nix.nix_build(["regression-reference-checks.nix", "-A", "out"]).run().ok()

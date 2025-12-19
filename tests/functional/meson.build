@@ -155,7 +155,6 @@ functional_tests_scripts = [
   'extra-sandbox-profile.sh',
   'substitute-truncated-nar.sh',
   'regression-484.sh',
-  'regression-reference-checks.sh',
   'redirected-filter-source.sh',
   'daemon-trust.sh',
 ]
