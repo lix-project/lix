@@ -45,7 +45,7 @@ struct IndirectInputScheme : InputScheme
             ref = path[1];
             rev = Hash::parseAny(path[2], HashType::SHA1);
         } else
-            throw BadURL("GitHub URL '%s' is invalid", url.url);
+            throw BadURL("indirect URL '%s' is invalid", url.url);
 
         std::string id = path[0];
 
