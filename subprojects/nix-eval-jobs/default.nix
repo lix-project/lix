@@ -90,6 +90,7 @@ let
       homepage = "https://git.lix.systems/lix-project/lix/src/branch/main/subprojects/nix-eval-jobs";
       license = lib.licenses.gpl3;
       platforms = lib.platforms.unix;
+      mainProgram = "nix-eval-jobs";
     };
   });
 in
