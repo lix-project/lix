@@ -194,7 +194,7 @@ class ManagedEnv:
             nix_conf_dir=self._get_dir("etc/nix"),
             nix_bin_dir=lix_bin,
             real_store_dir=self._get_dir("nix/store"),
-            cache_dir=self._get_dir("binary-cache"),
+            cache_dir=self._get_dir("test-binary-cache"),
             xdg_cache_home=self._get_dir("test-home/.cache"),
             tmpdir=self._get_dir("tmp"),
         )
