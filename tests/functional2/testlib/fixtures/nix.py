@@ -1,3 +1,5 @@
+import contextlib
+import copy
 import dataclasses
 import sys
 from functools import partialmethod
@@ -6,6 +8,7 @@ from textwrap import dedent
 from typing import Any, Literal
 from collections.abc import Callable, Generator
 import shutil
+import logging
 
 import pytest
 
@@ -104,6 +107,7 @@ class NixSettings:
 @dataclasses.dataclass
 class Nix:
     env: ManagedEnv
+    logger: logging.Logger
     _settings: NixSettings | None = dataclasses.field(init=False, default=None)
 
     @property
@@ -163,6 +167,50 @@ class Nix:
         build: bool | Literal["auto"] = "auto",
     ) -> Command:
         return self.nix_cmd([nix_exe, *cmd], flake=flake, build=build)
+
+    @contextlib.contextmanager
+    def daemon(
+        self, args: list[str] = [], settings: dict[str, str | list[str]] = {}, **kwargs
+    ) -> "Nix":
+        daemon = copy.deepcopy(self)
+        daemon.settings.other_settings["allowed-users"] = ["*"]
+        daemon.settings.other_settings["trusted-users"] = []
+        daemon.settings.store = f"local?root={self.env.dirs.test_root}"
+        daemon.settings.other_settings |= settings
+
+        sockets = [Path(daemon.env.dirs.nix_state_dir) / "daemon-socket/socket"]
+        for p in sockets:
+            p.unlink(missing_ok=True)
+
+        proc = daemon.nix(args, nix_exe="nix-daemon", **kwargs).start()
+
+        def log_daemon_result(result: CommandResult | None, level: int):
+            if result:
+                self.logger.log(level, "daemon exited with code %i", result.rc)
+                self.logger.log(level, "stdout: %s", result.stdout_s)
+                self.logger.log(level, "stderr: %s", result.stderr_s)
+            else:
+                self.logger.error("daemon exited unexpectedly")
+
+        # wait for daemon to come up. this may take a while under load.
+        while not all(p.exists() for p in sockets):
+            if status := proc.wait(0.01):
+                log_daemon_result(status, logging.ERROR)
+                raise RuntimeError("daemon exited during startup")
+
+        inner = copy.deepcopy(self)
+        inner.settings.store = f"unix://{sockets[-1]}"  # missing multi socket support
+
+        try:
+            timeout, level = 1, logging.ERROR
+            yield inner
+            # 5 seconds should be enough to wait for a *graceful* exit.
+            timeout, level = 5, logging.DEBUG
+        finally:
+            result = proc.terminate(timeout)
+            if not result:
+                result = proc.kill()
+            log_daemon_result(result, level)
 
     # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
     nix_build = partialmethod(nix, nix_exe="nix-build")  # noqa: RUF045
@@ -230,13 +278,13 @@ class Nix:
 
 
 @pytest.fixture
-def nix(tmp_path: Path, env: ManagedEnv) -> Generator[Nix, Any, None]:
+def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Nix, Any, None]:
     """
     Provides a rich way of calling `nix`.
     For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
     After configuring the command, use `.run()` to run it
     """
-    yield Nix(env)
+    yield Nix(env, logger)
     # when things are done using the nix store, the permissions for the store are read only
     # after the test was executed, we set the permissions to rwx (write being the important part)
     # for pytest to be able to delete the files during cleanup
