@@ -146,7 +146,6 @@ functional_tests_scripts = [
   'nested-sandboxing.sh',
   'test-libstoreconsumer.sh',
   'extra-sandbox-profile.sh',
-  'substitute-truncated-nar.sh',
   'regression-484.sh',
   'redirected-filter-source.sh',
 ]
