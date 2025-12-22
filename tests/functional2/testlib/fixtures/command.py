@@ -1,3 +1,4 @@
+import contextlib
 import dataclasses
 import json
 import logging
@@ -79,6 +80,52 @@ class CommandResult:
         return json.loads(self.stdout)
 
 
+class RunningCommand(contextlib.AbstractContextManager):
+    argv: list[str]
+    stdin: bytes | None = None
+    _proc: subprocess.Popen
+
+    def __init__(self, argv: list[str], stdin: bytes | None, proc: subprocess.Popen):
+        self.argv = argv
+        self.stdin = stdin
+        self._proc = proc
+
+    def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+        self.kill()
+
+    def kill(self) -> CommandResult | None:
+        """
+        Kill the process immediately without waiting for it to exit cleanly.
+        :return: `None` if the process was already dead, else the process result.
+        """
+        if self._proc is not None:
+            self._proc.kill()
+            # wait forever. killing must never fail, so we'd rather timeout than not notice errors here
+            return self.wait()
+        return None
+
+    def terminate(self, timeout: float | None = None) -> CommandResult | None:
+        """
+        Send a termination signal to the process and waits for it to exit. `None` timeouts are treated as infinite.
+        :return: `None` if timeout expired before the process exited, else the process result.
+        """
+        self._proc.terminate()
+        return self.wait(timeout)
+
+    def wait(self, timeout: float | None = None) -> CommandResult | None:
+        """
+        Waits for the process to exit. `None` timeouts are treated as infinite.
+        :return: `None` if timeout expired before the process exited, else the process result.
+        """
+        try:
+            stdout, stderr = self._proc.communicate(input=self.stdin, timeout=timeout)
+            rc = self._proc.returncode
+            self._proc = None
+            return CommandResult(cmd=self.argv, rc=rc, stdout=stdout, stderr=stderr)
+        except subprocess.TimeoutExpired:
+            return None
+
+
 @dataclasses.dataclass
 class Command:
     argv: list[str]
@@ -105,6 +152,13 @@ class Command:
         Runs the configured command
         :return: Information about the Result of the execution
         """
+        return self.start().wait()
+
+    def start(self) -> RunningCommand:
+        """
+        Starts the configured command
+        :return: Handle to the running command for interaction or waiting
+        """
         self._logger.debug("Running Command with args: %s", self.argv)
         proc = subprocess.Popen(
             self.argv,
@@ -115,9 +169,7 @@ class Command:
             cwd=self.cwd,
             env=self._env.to_env(),
         )
-        (stdout, stderr) = proc.communicate(input=self.stdin)
-        rc = proc.returncode
-        return CommandResult(cmd=self.argv, rc=rc, stdout=stdout, stderr=stderr)
+        return RunningCommand(self.argv, self.stdin, proc)
 
 
 @pytest.fixture
