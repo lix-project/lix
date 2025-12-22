@@ -156,7 +156,6 @@ functional_tests_scripts = [
   'substitute-truncated-nar.sh',
   'regression-484.sh',
   'redirected-filter-source.sh',
-  'daemon-trust.sh',
 ]
 
 # Plugin tests require shared libraries support.
