@@ -109,7 +109,7 @@ class Nix:
         """
         if self._settings is None:
             self._settings = NixSettings()
-            self._settings.store = f"local?root={self.env.dirs.test_root}&store=/nix/store"
+            self._settings.store = f"local?root={self.env.dirs.test_root}"
 
         return self._settings
 
@@ -134,7 +134,7 @@ class Nix:
                 build == "auto" and (argv[0] == "nix-build" or argv[1:2] == ["build"])
             ):
                 settings.store = None
-                settings.nix_store_dir = self.env.dirs.nix_store_dir
+                settings.nix_store_dir = self.env.dirs.real_store_dir
 
         settings.to_env_overlay(self.env)
         return Command(argv=argv, exe=self._nix_executable, _env=self.env)
@@ -178,8 +178,8 @@ class Nix:
         """
         The actual NIX_STORE_DIR this Nix command uses.
         """
-        assert self.env.dirs.nix_store_dir is not None, "bug in ManagedEnv"
-        return self.env.dirs.nix_store_dir
+        assert self.env.dirs.real_store_dir is not None, "bug in ManagedEnv"
+        return self.env.dirs.real_store_dir
 
     def physical_store_path_for(self, path: str | Path) -> Path:
         """

@@ -136,11 +136,18 @@ class _Dirs:
     nix_state_dir: Path | None
     nix_conf_dir: Path | None
     nix_bin_dir: Path | None
-    nix_store_dir: Path | None
+    # this one *must not* be NIX_STORE_DIR, otherwise lix will pick it up
+    # and misconfigure itself. the config system is unbelievable bullshit
+    real_store_dir: Path | None
     cache_dir: Path | None
     xdg_cache_home: Path | None
     tmpdir: Path | None
     """used for nar caching"""
+    nix_store_dir: Path | None = None
+    """
+    store dir override for building on macos *specifically*. do not
+    use or set this for any other purpose or many tests will break.
+    """
 
     def get_env_keys(self) -> set[str]:
         return {f.name.upper() for f in dataclasses.fields(self)}
@@ -174,7 +181,7 @@ class ManagedEnv:
             nix_state_dir=self._get_dir("var/nix"),
             nix_conf_dir=self._get_dir("etc/nix"),
             nix_bin_dir=lix_bin,
-            nix_store_dir=self._get_dir("nix/store"),
+            real_store_dir=self._get_dir("nix/store"),
             cache_dir=self._get_dir("binary-cache"),
             xdg_cache_home=self._get_dir("test-home/.cache"),
             tmpdir=self._get_dir("tmp"),
