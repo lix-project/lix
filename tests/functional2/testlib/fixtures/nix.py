@@ -286,6 +286,22 @@ class Nix:
         res = self.nix(["hash", "path", actual_path, *args], flake=True).run().ok()
         return res.stdout_plain
 
+    def clear_store(self):
+        """
+        Clears the test-owned store (and state) and resets them to an empty state
+        """
+        nix_store_dir = self.env.dirs.nix_store_dir
+        state_dir = self.env.dirs.nix_state_dir
+
+        # Make store writable
+        Command(["chmod", "-R", "+w", nix_store_dir], self.env).run().ok()
+        shutil.rmtree(nix_store_dir)
+        shutil.rmtree(state_dir)
+
+        # Re-create the directories
+        nix_store_dir.mkdir()
+        state_dir.mkdir()
+
 
 _fully_sandboxed = (
     sys.platform == "linux"
