@@ -190,7 +190,7 @@ class ManagedEnv:
             test_root=self._get_dir(""),
             home=self._get_dir("test-home"),
             nix_log_dir=self._get_dir("var/log/nix"),
-            nix_state_dir=self._get_dir("var/nix"),
+            nix_state_dir=self._get_dir("nix/var/nix"),
             nix_conf_dir=self._get_dir("etc/nix"),
             nix_bin_dir=lix_bin,
             real_store_dir=self._get_dir("nix/store"),

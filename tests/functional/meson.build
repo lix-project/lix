@@ -109,7 +109,6 @@ functional_tests_scripts = [
   'local-store.sh',
   'filter-source.sh',
   'misc.sh',
-  'dump-db.sh',
   'linux-sandbox.sh',
   'supplementary-groups.sh',
   'build-dry.sh',
