@@ -223,3 +223,12 @@ def test_path_sandbox_entire_store_package():
     assert len(sb_paths) == 2
     assert sb_paths[0] == "/path/to/build_shell"
     assert re.fullmatch(r"^/nix/store/\w{32}-python3-3\.\d{1,2}\.\d{1,2}-[^/]+$", sb_paths[1])
+
+
+def test_path_which():
+    path = _ManagedPath("/path/to/build_shell")
+    with pytest.raises(ValueError, match="not in configured path"):
+        path.which("pytest")
+    wanted = shutil.which("pytest")
+    path.add_program(wanted)
+    assert str(path.which("pytest")) == wanted

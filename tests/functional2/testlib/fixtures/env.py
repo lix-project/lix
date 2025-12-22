@@ -127,6 +127,12 @@ class _ManagedPath:
                 ret.append(p)
         return ret
 
+    def which(self, program_name: str) -> Path:
+        path = shutil.which(program_name, path=self.to_path())
+        if not path:
+            raise ValueError(f"{program_name} is not in configured path")
+        return Path(path)
+
 
 @dataclasses.dataclass
 class _Dirs:
