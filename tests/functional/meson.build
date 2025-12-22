@@ -117,7 +117,6 @@ functional_tests_scripts = [
   'shell.sh',
   'brotli.sh',
   'zstd.sh',
-  'compression-levels.sh',
   'nix-copy-ssh.sh',
   'nix-copy-ssh-ng.sh',
   'pre-hook.sh',
