@@ -8,6 +8,7 @@ from textwrap import dedent
 from typing import Any, Literal
 from collections.abc import Callable, Generator
 import shutil
+import subprocess
 import logging
 
 import pytest
@@ -275,6 +276,19 @@ class Nix:
         actual_path = self.physical_store_path_for(store_path).as_posix()
         res = self.nix(["hash", "path", actual_path, *args], flake=True).run().ok()
         return res.stdout_plain
+
+
+_fully_sandboxed = (
+    sys.platform == "linux"
+    and Path("/proc/self/ns/user").is_symlink()
+    and subprocess.run(["unshare", "--user", "--mount", "--pid", "true"]).returncode == 0
+)
+
+
+def pytest_runtest_setup(item: Any):
+    for mark in item.iter_markers(name="full_sandbox"):
+        if not _fully_sandboxed:
+            pytest.skip(f"{sys.platform} does not support full sandboxing")
 
 
 @pytest.fixture

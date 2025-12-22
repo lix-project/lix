@@ -6,6 +6,8 @@ requires-python = ">=3.12"
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
 
+markers = ["full_sandbox: test requires a fully isolated sandbox"]
+
 # xfail tests should fail when not failing as described
 xfail_strict = true
 
