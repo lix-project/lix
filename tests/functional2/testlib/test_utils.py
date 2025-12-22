@@ -11,6 +11,7 @@ def test_list_type_valid():
 
 def test_list_type_valid_multi_type():
     assert is_value_of_type([1, "a", 2], list[int | str])
+    assert is_value_of_type([1, "a", 2], set[str | int] | list[int | str])
 
 
 def test_list_type_invalid_single_fail():

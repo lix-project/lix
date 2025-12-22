@@ -120,8 +120,10 @@ def is_value_of_type(value: Any, expected_type: type[Any] | UnionType) -> bool:
     if expected_type is Any:
         return True
     match origin:
-        case None | types.UnionType:
+        case None:
             return isinstance(value, expected_type)
+        case types.UnionType:
+            return any(is_value_of_type(value, t) for t in get_args(expected_type))
         case typing.Literal:
             return value in get_args(expected_type)
         case builtins.type:
