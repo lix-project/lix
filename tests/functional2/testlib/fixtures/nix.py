@@ -34,6 +34,19 @@ class NixSettings:
     the store is relocated).
     """
 
+    other_settings: dict[str, str | int | list[str] | set[str | int] | None] = dataclasses.field(
+        default_factory=lambda: {
+            "show-trace": "true",
+            "sandbox": "true",
+            # explicitly disable substitution by default, otherwise we may attempt to contact
+            # substituters and slow down many tests with pointless connection retry timeouts.
+            "substituters": [],
+        }
+    )
+    """
+    All other `nix.conf` settings. `None` values are not written to the config.
+    """
+
     def feature(self, *names: str) -> "NixSettings":
         """
         Adds the given features to the list of enabled `experimental_features`
@@ -50,11 +63,6 @@ class NixSettings:
             # The cleanup will only happen a couple of runs later, wasting space in the meantime.
             # Effectively disable this space reserve to reduce the waste considerably (by about 98%).
             gc-reserved-space = 0
-            show-trace = true
-            sandbox = true
-            # explicitly disable substitution by default, otherwise we may attempt to contact
-            # substituters and slow down many tests with pointless connection retry timeouts.
-            substituters =
             extra-sandbox-paths = {" ".join(env.path.to_sandbox_paths())}
         """)
         # Note: newline at the end is required due to nix being nix;
@@ -75,8 +83,11 @@ class NixSettings:
             if value is not None:
                 config += f"{name} = {serializer(value)}\n"
 
-        field_may("experimental-features", self.experimental_features)
-        field_may("store", self.store)
+        for k, v in [("experimental-features", self.experimental_features), ("store", self.store)]:
+            assert k not in self.other_settings
+            field_may(k, v)
+        for k, v in self.other_settings.items():
+            field_may(k, v)
         assert self.store or self.nix_store_dir, (
             "Failing to set either nix_store_dir or store will cause accidental use of the system store."
         )
