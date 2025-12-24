@@ -41,3 +41,6 @@ buildtime.bin
 *.pyc
 
 **/.idea
+
+# Yeah, I've got no clue.
+/subprojects/.wraplock
