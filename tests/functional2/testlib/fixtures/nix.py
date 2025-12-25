@@ -45,6 +45,11 @@ class NixSettings:
 
     def to_config(self, env: ManagedEnv) -> str:
         config = dedent(f"""
+            # Running the test suite creates a lot of stores in the test root (somewhere under TMPDIR).
+            # Obviously, they are not critical for system operation, so there is no need to reserve space.
+            # The cleanup will only happen a couple of runs later, wasting space in the meantime.
+            # Effectively disable this space reserve to reduce the waste considerably (by about 98%).
+            gc-reserved-space = 0
             show-trace = true
             sandbox = true
             # explicitly disable substitution by default, otherwise we may attempt to contact
