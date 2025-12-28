@@ -269,7 +269,11 @@ class Nix:
         :param path: a string or Path to convert
         :return: a Path object holding the rewritten, physical system path to the store entry
         """
-        return Path(str(path).replace("/nix/store", self.store_dir.as_posix()))
+        return (
+            Path(str(path).replace("/nix/store", self.store_dir.as_posix()))
+            if str(path).startswith("/nix/store")
+            else Path(path)
+        )
 
     def hash_path(self, store_path: str | Path, *args: str) -> str:
         """
