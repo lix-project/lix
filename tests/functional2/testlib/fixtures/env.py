@@ -195,7 +195,7 @@ class ManagedEnv:
             tmpdir=self._get_dir("tmp"),
         )
         self.path.prepend(self.dirs.nix_bin_dir)
-        self.path.prepend(build_shell)
+        self.path.prepend(self.shell_dir)
         self.init_defaults(global_path)
 
     def _get_dir(self, sub_path: str) -> Path:
