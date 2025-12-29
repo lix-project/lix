@@ -23,9 +23,8 @@
 #include <unistd.h>
 #include <utility>
 
-#ifdef __APPLE__
-# include <sys/syscall.h>
-#endif
+// both apple and linux must use raw syscalls for some things that are not exposed otherwise
+#include <sys/syscall.h>
 
 #ifdef __linux__
 # include <linux/capability.h>
