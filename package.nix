@@ -256,6 +256,16 @@ stdenv.mkDerivation (finalAttrs: {
     ]
   );
 
+  buildTestShell =
+    if hostPlatform.isLinux then
+      "${pkgsStatic.bash}/bin"
+    else if hostPlatform.isDarwin then
+      "${bash}/bin"
+    else
+      null;
+
+  buildTestEnv = if hostPlatform.isLinux then "${pkgsStatic.busybox}/bin" else null;
+
   src = fileset.toSource {
     root = ./.;
     fileset = fileset.intersection baseFiles (
@@ -297,13 +307,12 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
-      "-Dbuild-test-shell=${pkgsStatic.bash}/bin"
-      "-Dbuild-test-env=${pkgsStatic.busybox}/bin"
       "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
     ]
-    ++ lib.optionals hostPlatform.isDarwin [
-      "-Dbuild-test-shell=${bash}/bin"
-    ]
+    ++ lib.optional (
+      finalAttrs.buildTestShell != null
+    ) "-Dbuild-test-shell=${finalAttrs.buildTestShell}"
+    ++ lib.optional (finalAttrs.buildTestEnv != null) "-Dbuild-test-env=${finalAttrs.buildTestEnv}"
     ++ lib.optionals useLld [
       "-Dc_link_args=-fuse-ld=lld"
       "-Dcpp_link_args=-fuse-ld=lld"
@@ -436,9 +445,11 @@ stdenv.mkDerivation (finalAttrs: {
 
     VERSION_SUFFIX = versionSuffix;
   }
-  // lib.optionalAttrs hostPlatform.isLinux {
-    BUILD_TEST_SHELL = "${pkgsStatic.bash}/bin";
-    BUILD_TEST_ENV = "${pkgsStatic.busybox}/bin";
+  // lib.optionalAttrs (finalAttrs.buildTestEnv != null) {
+    BUILD_TEST_ENV = finalAttrs.buildTestEnv;
+  }
+  // lib.optionalAttrs (finalAttrs.buildTestShell != null) {
+    BUILD_TEST_SHELL = finalAttrs.buildTestShell;
   }
   // lib.optionalAttrs hostPlatform.isStatic {
     NIX_CFLAGS_COMPILE = " -static";
