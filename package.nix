@@ -34,8 +34,7 @@
   lix-clang-tidy ? null,
   llvmPackages,
   lsof,
-  # FIXME: remove default after dropping NixOS 24.05
-  lowdown-unsandboxed ? lowdown,
+  lowdown-unsandboxed,
   lowdown,
   mdbook,
   mdbook-linkcheck,
@@ -44,8 +43,7 @@
   ninja,
   ncurses,
   openssl,
-  # FIXME: we need passt 2024_12_11.09478d5 or newer, i.e. nixos 25.05 or later
-  passt-lix ? __forDefaults.passt-lix,
+  passt,
   pegtl,
   pkg-config,
   python3,
@@ -55,8 +53,6 @@
   rustc,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
-  # FIXME: remove default after dropping NixOS 25.05
-  toml11-lix ? __forDefaults.toml11-lix,
   toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
@@ -133,11 +129,6 @@
     systemtap-lix = buildPackages.linuxPackages.systemtap.override { withStap = false; };
 
     build-release-notes = callPackage ./maintainers/build-release-notes.nix { };
-
-    passt-lix = callPackage ./misc/passt.nix { };
-
-    toml11-lix =
-      if lib.versionOlder toml11.version "4.4.0" then callPackage ./misc/toml11.nix { } else toml11;
   },
 }:
 
@@ -307,7 +298,7 @@ stdenv.mkDerivation (finalAttrs: {
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
       "-Dsandbox-shell=${lib.getExe' busybox-sandbox-shell "busybox"}"
-      "-Dpasta-path=${lib.getExe' passt-lix "pasta"}"
+      "-Dpasta-path=${lib.getExe' passt "pasta"}"
     ]
     ++ lib.optional (
       finalAttrs.buildTestShell != null
@@ -400,7 +391,7 @@ stdenv.mkDerivation (finalAttrs: {
     libarchive
     boost
     lowdown
-    toml11-lix
+    toml11
     pegtl
     capnproto
     dtrace-headers
@@ -411,7 +402,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals stdenv.hostPlatform.isStatic [ llvmPackages.libunwind ]
   ++ lib.optionals hostPlatform.isLinux [
     libseccomp
-    passt-lix
+    passt
   ]
   ++ lib.optional internalApiDocs rapidcheck
   ++ lib.optional hostPlatform.isx86_64 libcpuid
