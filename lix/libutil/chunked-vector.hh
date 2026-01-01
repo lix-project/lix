@@ -37,7 +37,7 @@ private:
     }
 
 public:
-    ChunkedVector(uint32_t reserve)
+    ChunkedVector(uint32_t reserve = 1)
     {
         chunks.reserve(reserve);
         addChunk();
