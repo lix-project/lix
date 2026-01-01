@@ -25,7 +25,15 @@ log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] [%(name)s] %(message)s"
 log_cli_date_format = "%Y-%m-%dT%H:%M:%SZ"
 
-# pytest defaults exclude a whole lot more that we want to include. like `build`
+# By default, Pytest attempts to helpfully exclude searching for tests in
+# `build` directories.
+#
+# Unfortunately, we have a directory of tests named `build` in this directory
+# (not to be confused with the top-level Meson `build` directory;
+# `tests/functional2/build/` != `build/`).
+#
+# These are glob expressions.
+# See: https://docs.pytest.org/en/stable/reference/reference.html#confval-norecursedirs
 norecursedirs = [ '.*' ]
 
 [tool.ruff]
