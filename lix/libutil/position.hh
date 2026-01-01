@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <variant>
 
 #include "lix/libutil/source-path.hh"
 
@@ -50,6 +51,40 @@ struct Pos
         }
 
         std::optional<std::string> getSource() const;
+
+        constexpr friend bool operator==(Origin const & lhs, Origin const & rhs)
+        {
+            // clang-format: off
+            return std::visit(overloaded {
+                [&](std::monostate const &, std::monostate const &) {
+                    return true;
+                },
+                [&](Stdin const & lStdin, Stdin const & rStdin) {
+                    // NOTE: comparing the `ref<>`s, not their contents.
+                    return lStdin.source == rStdin.source;
+                },
+                [&](String const & lStr, String const & rStr) {
+                    // NOTE: comparing the `ref<>`s, not their contents.
+                    return lStr.source == rStr.source;
+                },
+                [&](CheckedSourcePath const & lPath, CheckedSourcePath const & rPath) {
+                    return lPath == rPath;
+                },
+                [](Hidden const & lHidden, Hidden const & rHidden) {
+                    // NOTE(Qyriad): Pos::Hidden is an empty class with a default `operator==`,
+                    // so we believe this will always be true. We forward the comparison anyway
+                    // 1) because we could be wrong, and 2) so if `Hidden`'s behavior changes
+                    // this part doesn't accidentally become incorrect.
+                    return lHidden == rHidden;
+                },
+                [](auto const &, auto const &) {
+                    // This means lhs and rhs were different types, in which case we never
+                    // consider them equal.
+                    return false;
+                },
+            }, lhs, rhs);
+            // clang-format: on
+        }
     };
 
     Origin origin = std::monostate();
