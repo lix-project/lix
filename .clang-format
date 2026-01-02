@@ -36,7 +36,7 @@ BreakAfterAttributes: Always
 BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: BeforeComma
-ColumnLimit: 100
+ColumnLimit: 110
 EmptyLineAfterAccessModifier: Leave
 EmptyLineBeforeAccessModifier: Leave
 FixNamespaceComments: false
