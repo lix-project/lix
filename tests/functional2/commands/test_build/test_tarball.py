@@ -5,10 +5,10 @@ from pathlib import Path
 import pytest
 from _pytest.fixtures import FixtureRequest
 
-from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.file_helper import with_files, Symlink, CopyFile
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset_pack, get_global_asset
+from testlib.fixtures.command import Command
+from testlib.fixtures.file_helper import with_files, Symlink, CopyFile
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset_pack, get_global_asset
 
 
 TAR_FILES = {

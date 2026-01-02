@@ -1,8 +1,8 @@
 import shutil
 
-from functional2.testlib.fixtures.file_helper import with_files
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset_pack
+from testlib.fixtures.file_helper import with_files
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset_pack
 
 
 @with_files(get_global_asset_pack("dependencies"))

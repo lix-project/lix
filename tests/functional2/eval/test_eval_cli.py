@@ -3,8 +3,8 @@ from typing import Any
 
 import pytest
 
-from functional2.testlib.fixtures.file_helper import with_files, CopyFile, Symlink, File
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.file_helper import with_files, CopyFile, Symlink, File
+from testlib.fixtures.nix import Nix
 
 
 @pytest.fixture(autouse=True)

@@ -2,10 +2,10 @@ import sys
 
 import pytest
 from pathlib import Path
-from functional2.testlib.fixtures.file_helper import with_files
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset, CopyFile
-from functional2.testlib.xattrs import verify_no_xattrs_in_tree, skip_if_xattrs_are_unsupported
+from testlib.fixtures.file_helper import with_files
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset, CopyFile
+from testlib.xattrs import verify_no_xattrs_in_tree, skip_if_xattrs_are_unsupported
 
 
 @with_files(

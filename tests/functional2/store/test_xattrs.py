@@ -1,9 +1,9 @@
 import pytest
 import sys
 
-from functional2.testlib.fixtures.file_helper import with_files, File
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.xattrs import verify_no_xattrs_in_tree, skip_if_xattrs_are_unsupported
+from testlib.fixtures.file_helper import with_files, File
+from testlib.fixtures.nix import Nix
+from testlib.xattrs import verify_no_xattrs_in_tree, skip_if_xattrs_are_unsupported
 
 import xattr
 import json

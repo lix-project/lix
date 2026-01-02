@@ -46,26 +46,26 @@ extend = "../../pyproject.toml"
 "os.environ".msg = """
 Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
   - env= in subprocess functions
-  - functional2.testlib.commands.Command.with_env for starting subprocesses
-  - functional2.testlib.environ for read-only access
+  - testlib.commands.Command.with_env for starting subprocesses
+  - testlib.environ for read-only access
 """
 "os.environb".msg = """
 Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
   - env= in subprocess functions
-  - functional2.testlib.commands.Command.with_env for starting subprocesses
-  - functional2.testlib.environ for read-only access
+  - testlib.commands.Command.with_env for starting subprocesses
+  - testlib.environ for read-only access
 """
 "os.putenv".msg = """
 Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
   - env= in subprocess functions
-  - functional2.testlib.commands.Command.with_env for starting subprocesses
-  - functional2.testlib.environ for read-only access
+  - testlib.commands.Command.with_env for starting subprocesses
+  - testlib.environ for read-only access
 """
 "os.unsetenv".msg = """
 Environment variables are process wide and are unsafe to set as they interfere with other tests. Instead, use:
   - env= in subprocess functions
-  - functional2.testlib.commands.Command.with_env for starting subprocesses
-  - functional2.testlib.environ for read-only access
+  - testlib.commands.Command.with_env for starting subprocesses
+  - testlib.environ for read-only access
 """
 "os.chdir".msg = "Changing current directory is process wide and may interfere with other tests. Use cwd= while spawning a process instead."
 "os.fchdir".msg = "Changing current directory is process wide and may interfere with other tests. Use cwd= while spawning a process instead."

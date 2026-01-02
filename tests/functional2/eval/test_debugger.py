@@ -1,7 +1,7 @@
 import re
 from textwrap import dedent
 
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 
 
 def test_regression_9932(nix: Nix):

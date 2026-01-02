@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator
 from typing import Literal, Any
 
 import pytest
-from functional2.testlib.utils import is_value_of_type
+from testlib.utils import is_value_of_type
 
 
 def test_list_type_valid():

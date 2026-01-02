@@ -47,7 +47,7 @@ Additional testing resources like a temporary directory, asset files, nix comman
 To check if something equals or a condition is true, use the `assert` expression:
 
 ```python
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 
 # Trivial test
 def test_example():
@@ -128,7 +128,7 @@ Injecting parameters into a test that are controlled by [fixtures](#useful-fixtu
 This is currently only used by the `pytest_command` fixture, to test our framework.
 ```python
 import pytest
-from functional2.testlib.fixtures.pytest_command import Command
+from testlib.fixtures.pytest_command import Command
 @pytest.mark.parametrize("pytest_command",
     [
         ["-k", "fun"],
@@ -188,7 +188,7 @@ In order to make its usage easier, one can also use this fixture by using our cu
 ```python
 import pytest
 from pathlib import Path
-from functional2.testlib.fixtures.file_helper import File, Symlink, with_files
+from testlib.fixtures.file_helper import File, Symlink, with_files
 
 @with_files(
     {
@@ -203,7 +203,7 @@ To run a function twice with a different set of files, one can pass multiple dic
 
 ```python
 from pathlib import Path
-from functional2.testlib.fixtures.file_helper import File, with_files
+from testlib.fixtures.file_helper import File, with_files
 
 
 @with_files(
@@ -226,7 +226,7 @@ In order for the golden values to actually update within the code base (compared
 
 ```python
 import pytest
-from functional2.testlib.fixtures.file_helper import AssetSymlink, with_files
+from testlib.fixtures.file_helper import AssetSymlink, with_files
 
 
 @with_files(
@@ -243,7 +243,7 @@ def test_example(snapshot):
 An object which provides nix executables.
 
 ```python
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 
 # Simple test that runs `nix-instantiate` with some arguments and checks its output
 def test_err_context(nix: Nix):

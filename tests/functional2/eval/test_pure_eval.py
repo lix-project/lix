@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from functional2.testlib.fixtures.file_helper import with_files, File, CopyFile
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset
+from testlib.fixtures.file_helper import with_files, File, CopyFile
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset
 
 
 use_impure_message = "is forbidden in pure eval mode (use '--impure' to override)"

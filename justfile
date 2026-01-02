@@ -43,7 +43,7 @@ test-integration *OPTIONS: install (test "--suite" "installcheck")
 
 # Run functional2 tests using pytest directly, allowing for additional arguments to be passed to pytest e.g. for more granular test selection
 test-functional2 *OPTIONS:
-    cd tests && python -m pytest -v {{ OPTIONS }} functional2
+    cd tests/functional2 && python -m pytest -v {{ OPTIONS }}
 
 alias clang-tidy := lint
 

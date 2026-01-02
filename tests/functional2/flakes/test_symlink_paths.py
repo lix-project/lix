@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.fixtures.file_helper import CopyFile, Symlink, with_files, File
-from functional2.testlib.utils import get_global_asset_pack
-from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.nix import Nix
+from testlib.fixtures.file_helper import CopyFile, Symlink, with_files, File
+from testlib.utils import get_global_asset_pack
+from testlib.fixtures.command import Command
+from testlib.fixtures.env import ManagedEnv
 
 
 @with_files(

@@ -2,7 +2,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import pytest
-from functional2.testlib.fixtures.file_helper import (
+from testlib.fixtures.file_helper import (
     CopyFile,
     CopyTemplate,
     CopyTree,

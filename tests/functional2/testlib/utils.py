@@ -6,8 +6,8 @@ from textwrap import dedent
 from types import UnionType
 from typing import Any, Literal, get_args, get_origin
 
-from functional2.testlib.environ import environ
-from functional2.testlib.fixtures.file_helper import (
+from testlib.environ import environ
+from testlib.fixtures.file_helper import (
     CopyFile,
     CopyTree,
     FileDeclaration,
@@ -53,12 +53,7 @@ def get_functional2_files(additional_files: FileDeclaration | None = None) -> Fi
     if additional_files is None:
         additional_files = {}
     return merge_file_declaration(
-        {
-            "functional2": {
-                "__init__.py": CopyFile(functional2_base_folder / "__init__.py"),
-                "pyproject.toml": CopyFile(functional2_base_folder / "pyproject.toml"),
-            }
-        },
+        {"functional2": {"pyproject.toml": CopyFile(functional2_base_folder / "pyproject.toml")}},
         additional_files,
     )
 

@@ -4,10 +4,10 @@ import textwrap
 from urllib.parse import urlencode, quote
 import sys
 
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.fixtures.file_helper import with_files
-from functional2.testlib.utils import get_global_asset
-from functional2.testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.nix import Nix
+from testlib.fixtures.file_helper import with_files
+from testlib.utils import get_global_asset
+from testlib.fixtures.env import ManagedEnv
 
 
 @pytest.fixture

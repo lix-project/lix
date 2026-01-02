@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from functional2.testlib.fixtures.env import ManagedEnv, _ManagedPath
+from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.env import _ManagedPath
 
 
 def test_env_inits_defaults(tmp_path: Path):

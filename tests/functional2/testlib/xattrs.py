@@ -2,7 +2,7 @@ import xattr
 import pytest
 
 from pathlib import Path
-from functional2.testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.env import ManagedEnv
 
 
 def has_xattrs(path: Path) -> bool:

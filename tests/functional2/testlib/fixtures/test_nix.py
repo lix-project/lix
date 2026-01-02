@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.fixtures.nix import NixSettings
+from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.nix import NixSettings
 
 
 def test_nix_settings_serializes_xf(env: ManagedEnv):

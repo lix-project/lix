@@ -8,13 +8,8 @@ from typing import Any, NamedTuple, ClassVar
 from collections.abc import Generator
 
 import tomllib
-from functional2.testlib.fixtures.file_helper import (
-    AssetSymlink,
-    CopyFile,
-    FileDeclaration,
-    Fileish,
-)
-from functional2.testlib.utils import is_value_of_type, test_base_folder, get_global_asset
+from testlib.fixtures.file_helper import AssetSymlink, CopyFile, FileDeclaration, Fileish
+from testlib.utils import is_value_of_type, test_base_folder, get_global_asset
 from tomllib import TOMLDecodeError
 
 LANG_TEST_ID_PATTERN = "{folder_name}:{test_name}"

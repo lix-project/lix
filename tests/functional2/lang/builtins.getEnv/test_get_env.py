@@ -1,10 +1,10 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from functional2.lang.test_lang import test_eval_okay as nix_eval
-from functional2.testlib.fixtures.file_helper import with_files, File, AssetSymlink
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.fixtures.snapshot import Snapshot
+from lang.test_lang import test_eval_okay as nix_eval
+from testlib.fixtures.file_helper import with_files, File, AssetSymlink
+from testlib.fixtures.nix import Nix
+from testlib.fixtures.snapshot import Snapshot
 
 
 @with_files(

@@ -13,9 +13,9 @@ import logging
 
 import pytest
 
-from functional2.testlib.fixtures.command import CommandResult, Command
-from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.utils import is_value_of_type
+from testlib.fixtures.command import CommandResult, Command
+from testlib.fixtures.env import ManagedEnv
+from testlib.utils import is_value_of_type
 
 
 @dataclasses.dataclass

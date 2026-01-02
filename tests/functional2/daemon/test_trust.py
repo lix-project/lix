@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 
 
 @pytest.mark.parametrize(

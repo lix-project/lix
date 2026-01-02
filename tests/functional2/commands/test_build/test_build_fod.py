@@ -1,8 +1,8 @@
 import re
 
-from functional2.testlib.fixtures.file_helper import with_files, CopyFile
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset
+from testlib.fixtures.file_helper import with_files, CopyFile
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset
 
 _fod_files = {
     "fod-failing.nix": CopyFile("assets/test_build/fod-failing.nix"),

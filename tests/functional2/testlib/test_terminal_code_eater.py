@@ -1,4 +1,4 @@
-from functional2.testlib.terminal_code_eater import eat_terminal_codes
+from testlib.terminal_code_eater import eat_terminal_codes
 
 
 def test_eats_color():

@@ -3,8 +3,8 @@ from textwrap import dedent
 
 import pytest
 
-from functional2.testlib.fixtures.file_helper import File, with_files, EnvTemplate
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.file_helper import File, with_files, EnvTemplate
+from testlib.fixtures.nix import Nix
 
 files = {
     "dep": {"flake.nix": File("{outputs = i: { };}")},

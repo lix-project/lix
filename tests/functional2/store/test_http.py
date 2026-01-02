@@ -4,9 +4,9 @@ import sqlite3
 import aiohttp.web as web
 import pytest
 
-from functional2.testlib.fixtures.file_helper import File, with_files
-from functional2.testlib.fixtures.http_server import http_server
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.file_helper import File, with_files
+from testlib.fixtures.http_server import http_server
+from testlib.fixtures.nix import Nix
 
 
 class HTTPStore:

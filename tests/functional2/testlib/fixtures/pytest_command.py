@@ -1,7 +1,7 @@
 import pytest
 from _pytest.fixtures import FixtureRequest
-from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.command import Command
+from testlib.fixtures.env import ManagedEnv
 
 
 @pytest.fixture(name="pytest_command")

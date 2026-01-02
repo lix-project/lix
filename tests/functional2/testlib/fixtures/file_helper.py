@@ -7,8 +7,8 @@ from collections.abc import Callable, Iterable
 
 import pytest
 
-from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.fixtures.formatter import BalancedTemplater
+from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.formatter import BalancedTemplater
 
 
 class Fileish(ABC):

@@ -4,8 +4,8 @@ import pytest
 import signal
 from pathlib import Path
 from textwrap import dedent
-from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.nix import Nix
 
 COMMANDS = ["copy-closure", "collect-garbage"]
 

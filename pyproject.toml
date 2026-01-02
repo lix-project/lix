@@ -20,9 +20,6 @@ respect-gitignore = true
 # show what violations have been fixed
 show-fixes = true
 
-# need to test if "." or ".." is correct, as we assume functional2 to be the root directory for imports
-src = [".."]
-
 [tool.ruff.lint]
 
 preview = true

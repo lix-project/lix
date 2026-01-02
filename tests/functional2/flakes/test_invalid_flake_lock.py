@@ -1,7 +1,7 @@
 from logging import Logger
 from pathlib import Path
 from textwrap import dedent
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 import re
 
 

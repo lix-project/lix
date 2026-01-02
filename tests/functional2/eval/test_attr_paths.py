@@ -1,4 +1,4 @@
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 import pytest
 from typing import NamedTuple
 from textwrap import dedent

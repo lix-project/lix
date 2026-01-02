@@ -5,17 +5,17 @@ from textwrap import dedent
 
 import pytest
 from _pytest.logging import LogCaptureFixture
-from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.env import ManagedEnv
-from functional2.testlib.fixtures.file_helper import (
+from testlib.fixtures.command import Command
+from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.file_helper import (
     CopyFile,
     File,
     FileDeclaration,
     merge_file_declaration,
     with_files,
 )
-from functional2.testlib.fixtures.snapshot import Snapshot
-from functional2.testlib.utils import get_functional2_files
+from testlib.fixtures.snapshot import Snapshot
+from testlib.utils import get_functional2_files
 
 
 def _get_f2_snapshot_files(additional_files: FileDeclaration) -> FileDeclaration:
@@ -33,7 +33,7 @@ def _get_f2_snapshot_files(additional_files: FileDeclaration) -> FileDeclaration
                         },
                     },
                     "conftest.py": File(
-                        "pytest_plugins = ('functional2.testlib.fixtures.logger', 'functional2.testlib.fixtures.snapshot')"
+                        "pytest_plugins = ('testlib.fixtures.logger', 'testlib.fixtures.snapshot')"
                     ),
                 }
             },

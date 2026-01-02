@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from ..testlib.fixtures.nix import Nix
-from ..testlib.nar import (
+from testlib.fixtures.nix import Nix
+from testlib.nar import (
     DirectoryUnordered,
     NarItem,
     NarListener,

@@ -5,10 +5,10 @@ from textwrap import dedent
 
 import pytest
 
-from functional2.testlib.fixtures.command import Command
-from functional2.testlib.fixtures.file_helper import File, AssetSymlink, with_files
-from functional2.testlib.fixtures.snapshot import Snapshot
-from functional2.testlib.utils import get_functional2_lang_files
+from testlib.fixtures.command import Command
+from testlib.fixtures.file_helper import File, AssetSymlink, with_files
+from testlib.fixtures.snapshot import Snapshot
+from testlib.utils import get_functional2_lang_files
 
 
 @pytest.mark.parametrize("pytest_command", [["-k", "generic_test", "--setup-plan"]], indirect=True)

@@ -1,9 +1,9 @@
 import re
 import sys
 
-from functional2.testlib.fixtures.file_helper import with_files, CopyFile
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset_pack
+from testlib.fixtures.file_helper import with_files, CopyFile
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset_pack
 
 _files = {
     "output-cycles.nix": CopyFile("assets/test_build/output-cycles.nix"),

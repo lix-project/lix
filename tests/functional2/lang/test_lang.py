@@ -7,9 +7,9 @@ import pytest
 import yaml
 from _pytest.python import Metafunc
 
-from functional2.lang.lang_util import LangTest, fetch_all_lang_tests, LangTestRunner
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.fixtures.snapshot import Snapshot
+from lang.lang_util import LangTest, fetch_all_lang_tests, LangTestRunner
+from testlib.fixtures.nix import Nix
+from testlib.fixtures.snapshot import Snapshot
 
 
 def pytest_generate_tests(metafunc: Metafunc):

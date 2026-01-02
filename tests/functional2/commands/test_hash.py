@@ -3,15 +3,10 @@ from collections.abc import Callable
 
 import pytest
 
-from functional2.testlib.fixtures.file_helper import (
-    _init_files,
-    File,
-    AssetSymlink,
-    with_files,
-    Symlink,
-)
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.fixtures.snapshot import Snapshot
+from testlib.fixtures.file_helper import _init_files  # noqa: PLC2701
+from testlib.fixtures.file_helper import File, AssetSymlink, with_files, Symlink
+from testlib.fixtures.nix import Nix
+from testlib.fixtures.snapshot import Snapshot
 
 
 @pytest.mark.parametrize("algo", ["md5", "sha1", "sha256", "sha512"])

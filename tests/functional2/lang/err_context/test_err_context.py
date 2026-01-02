@@ -1,4 +1,4 @@
-from functional2.testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix
 
 
 def test_err_context(nix: Nix):

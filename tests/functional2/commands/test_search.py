@@ -3,9 +3,9 @@ import re
 
 import pytest
 
-from functional2.testlib.fixtures.file_helper import CopyFile, with_files
-from functional2.testlib.fixtures.nix import Nix
-from functional2.testlib.utils import get_global_asset
+from testlib.fixtures.file_helper import CopyFile, with_files
+from testlib.fixtures.nix import Nix
+from testlib.utils import get_global_asset
 
 _files = {
     "search.nix": CopyFile("assets/test_search/search.nix"),

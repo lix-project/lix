@@ -8,7 +8,7 @@ import pytest
 from _pytest.config import Config
 from _pytest.fixtures import FixtureRequest
 
-from functional2.testlib.environ import environ
+from testlib.environ import environ
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
