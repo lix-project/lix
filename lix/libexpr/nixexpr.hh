@@ -114,9 +114,6 @@ protected:
     Expr(const PosIdx pos) : pos(pos) {};
 
 public:
-    struct AstSymbols {
-        Symbol sub, lessThan, mul, div, or_, findFile, nixPath, body, overrides;
-    };
 
     PosIdx pos;
 

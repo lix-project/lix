@@ -64,7 +64,7 @@ try {
 std::string DrvInfo::queryName(EvalState & state)
 {
     if (name == "" && attrs) {
-        auto i = attrs->get(state.ctx.s.name);
+        auto i = attrs->get(state.ctx.symbols.sym_name);
         if (!i) {
             state.ctx.errors.make<TypeError>("derivation name missing").debugThrow();
         }
@@ -79,7 +79,7 @@ std::string DrvInfo::queryName(EvalState & state)
 std::string DrvInfo::querySystem(EvalState & state)
 {
     if (system == "" && attrs) {
-        auto i = attrs->get(state.ctx.s.system);
+        auto i = attrs->get(state.ctx.symbols.sym_system);
         system = !i
             ? "unknown"
             : state.forceStringNoCtx(
@@ -93,7 +93,7 @@ std::string DrvInfo::querySystem(EvalState & state)
 std::optional<StorePath> DrvInfo::queryDrvPath(EvalState & state)
 {
     if (!drvPath && attrs) {
-        auto i = attrs->get(state.ctx.s.drvPath);
+        auto i = attrs->get(state.ctx.symbols.sym_drvPath);
         NixStringContext context;
         if (!i) {
             drvPath = {std::nullopt};
@@ -121,7 +121,7 @@ StorePath DrvInfo::requireDrvPath(EvalState & state)
 StorePath DrvInfo::queryOutPath(EvalState & state)
 {
     if (!outPath && attrs) {
-        auto i = attrs->get(state.ctx.s.outPath);
+        auto i = attrs->get(state.ctx.symbols.sym_outPath);
         NixStringContext context;
         if (i) {
             outPath = state.coerceToStorePath(
@@ -150,7 +150,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
         return;
     }
 
-    const Attr * outputs = this->attrs->get(state.ctx.s.outputs);
+    const Attr * outputs = this->attrs->get(state.ctx.symbols.sym_outputs);
     if (outputs == nullptr) {
         fillDefault();
         return;
@@ -183,7 +183,7 @@ void DrvInfo::fillOutputs(EvalState & state, bool withPaths)
             state.forceAttrs(out->value, outputs->pos, errMsg);
 
             // ...and evaluate its `outPath` attribute.
-            const Attr * outPath = out->value.attrs()->get(state.ctx.s.outPath);
+            const Attr * outPath = out->value.attrs()->get(state.ctx.symbols.sym_outPath);
             if (outPath == nullptr) {
                 continue;
                 // FIXME: throw error?
@@ -222,7 +222,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
     // output by its attribute, e.g. `pkgs.lix.dev`, which (lol?) sets the magic
     // attribute `outputSpecified = true`, and changes the `outputName` attr to the
     // explicitly selected-into output.
-    if (const Attr * outSpecAttr = attrs->get(state.ctx.s.outputSpecified)) {
+    if (const Attr * outSpecAttr = attrs->get(state.ctx.symbols.sym_outputSpecified)) {
         bool outputSpecified = state.forceBool(
             outSpecAttr->value,
             outSpecAttr->pos,
@@ -264,7 +264,7 @@ DrvInfo::Outputs DrvInfo::queryOutputs(EvalState & state, bool withPaths, bool o
 std::string DrvInfo::queryOutputName(EvalState & state)
 {
     if (outputName == "" && attrs) {
-        auto i = attrs->get(state.ctx.s.outputName);
+        auto i = attrs->get(state.ctx.symbols.sym_outputName);
         outputName = i ? state.forceStringNoCtx(
                              i->value, noPos, "while evaluating the output name of a derivation"
                          )
@@ -278,7 +278,7 @@ Bindings * DrvInfo::getMeta(EvalState & state)
 {
     if (meta) return meta;
     if (!attrs) return 0;
-    auto a = attrs->get(state.ctx.s.meta);
+    auto a = attrs->get(state.ctx.symbols.sym_meta);
     if (!a) {
         return 0;
     }
@@ -310,7 +310,7 @@ bool DrvInfo::checkMeta(EvalState & state, Value & v)
         return true;
     }
     else if (v.type() == nAttrs) {
-        auto i = v.attrs()->get(state.ctx.s.outPath);
+        auto i = v.attrs()->get(state.ctx.symbols.sym_outPath);
         if (i) {
             return false;
         }
@@ -524,7 +524,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
                `recurseForDerivations = true' attribute. */
             if (attr->value.type() == nAttrs) {
                 const Attr * recurseForDrvs =
-                    attr->value.attrs()->get(state.ctx.s.recurseForDerivations);
+                    attr->value.attrs()->get(state.ctx.symbols.sym_recurseForDerivations);
                 if (recurseForDrvs == nullptr) {
                     continue;
                 }

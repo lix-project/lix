@@ -88,7 +88,7 @@ void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
     auto [tree, input2] = state.aio.blockOn(input.fetch(state.ctx.store));
 
     auto attrs2 = state.ctx.buildBindings(8);
-    state.ctx.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.ctx.s.outPath));
+    state.ctx.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.ctx.symbols.sym_outPath));
     if (input2.getRef())
         attrs2.alloc("branch").mkString(*input2.getRef());
     // Backward compatibility: set 'rev' to

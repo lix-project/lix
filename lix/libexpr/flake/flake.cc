@@ -334,7 +334,7 @@ static Flake getFlake(
     Value vInfo;
     state.eval(flakeExpr, vInfo);
 
-    if (auto description = vInfo.attrs()->get(state.ctx.s.description)) {
+    if (auto description = vInfo.attrs()->get(state.ctx.symbols.sym_description)) {
         expectType(state, nString, description->value, description->pos);
         flake.description = description->value.str();
     }
@@ -367,7 +367,7 @@ static Flake getFlake(
         flake.resolvedRef = resolvedRef;
     }
 
-    if (auto outputs = vInfo.attrs()->get(state.ctx.s.outputs)) {
+    if (auto outputs = vInfo.attrs()->get(state.ctx.symbols.sym_outputs)) {
         expectType(state, nFunction, outputs->value, outputs->pos);
 
         if (outputs->value.isLambda()) {
@@ -376,19 +376,19 @@ static Flake getFlake(
                 pattern)
             {
                 for (auto & formal : pattern->formals) {
-                    if (formal.name != state.ctx.s.self)
+                    if (formal.name != state.ctx.symbols.sym_self) {
                         flake.inputs.emplace(
                             state.ctx.symbols[formal.name],
-                            FlakeInput{
-                                .ref = parseFlakeRef(std::string(state.ctx.symbols[formal.name]))
-                            }
+                            FlakeInput{.ref = parseFlakeRef(std::string(state.ctx.symbols[formal.name]))}
                         );
+                    }
                 }
             }
         }
 
-    } else
+    } else {
         throw Error("flake '%s' lacks attribute 'outputs'", lockedRef);
+    }
 
     auto sNixConfig = state.ctx.symbols.create("nixConfig");
 
@@ -457,12 +457,16 @@ static Flake getFlake(
     }
 
     for (auto & attr : *vInfo.attrs()) {
-        if (attr.name != state.ctx.s.description &&
-            attr.name != sInputs &&
-            attr.name != state.ctx.s.outputs &&
-            attr.name != sNixConfig)
-            throw Error("flake '%s' has an unsupported attribute '%s', at %s",
-                lockedRef, state.ctx.symbols[attr.name], state.ctx.positions[attr.pos]);
+        if (attr.name != state.ctx.symbols.sym_description && attr.name != sInputs
+            && attr.name != state.ctx.symbols.sym_outputs && attr.name != sNixConfig)
+        {
+            throw Error(
+                "flake '%s' has an unsupported attribute '%s', at %s",
+                lockedRef,
+                state.ctx.symbols[attr.name],
+                state.ctx.positions[attr.pos]
+            );
+        }
     }
 
     return flake;

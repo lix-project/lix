@@ -137,7 +137,7 @@ struct ExprState
 
     std::unique_ptr<Expr> order(PosIdx pos, bool less, State & state)
     {
-        return call(pos, state, state.s.lessThan, !less);
+        return call(pos, state, state.symbols.sym___lessThan, !less);
     }
 
     std::unique_ptr<Expr> concatStrings(PosIdx pos)
@@ -153,7 +153,9 @@ struct ExprState
         std::vector<std::unique_ptr<Expr>> args(2);
         args[0] = std::make_unique<ExprInt>(pos, 0);
         args[1] = popExprOnly();
-        return std::make_unique<ExprCall>(pos, state.mkInternalVar(pos, state.s.sub), std::move(args));
+        return std::make_unique<ExprCall>(
+            pos, state.mkInternalVar(pos, state.symbols.sym___sub), std::move(args)
+        );
     }
 
     void applyOp(PosIdx pos, auto & op, State & state) {
@@ -163,27 +165,27 @@ struct ExprState
             return std::make_unique<ExprOpNot>(pos, std::move(e));
         };
 
-        auto expr = (overloaded {
-            [&] (Op::implies)     { return applyBinary<ExprOpImpl>(pos); },
-            [&] (Op::or_)         { return applyBinary<ExprOpOr>(pos); },
-            [&] (Op::and_)        { return applyBinary<ExprOpAnd>(pos); },
-            [&] (Op::equals)      { return applyBinary<ExprOpEq>(pos); },
-            [&] (Op::not_equals)  { return applyBinary<ExprOpNEq>(pos); },
-            [&] (Op::less)        { return order(pos, true, state); },
-            [&] (Op::greater_eq)  { return not_(order(pos, true, state)); },
-            [&] (Op::greater)     { return order(pos, false, state); },
-            [&] (Op::less_eq)     { return not_(order(pos, false, state)); },
-            [&] (Op::update)      { return applyBinary<ExprOpUpdate>(pos); },
-            [&] (Op::not_)        { return applyUnary<ExprOpNot>(pos); },
-            [&] (Op::plus)        { return concatStrings(pos); },
-            [&] (Op::minus)       { return call(pos, state, state.s.sub); },
-            [&] (Op::mul)         { return call(pos, state, state.s.mul); },
-            [&] (Op::div)         { return call(pos, state, state.s.div); },
-            [&] (Op::concat)      { return applyBinary<ExprOpConcatLists>(pos); },
-            [&] (has_attr & a)    { return applyUnary<ExprOpHasAttr>(pos, std::move(a.path)); },
-            [&] (Op::unary_minus) { return negate(pos, state); },
-            [&] (Op::pipe_right)  { return pipe(pos, state, true); },
-            [&] (Op::pipe_left)   { return pipe(pos, state); },
+        auto expr = (overloaded{
+            [&](Op::implies) { return applyBinary<ExprOpImpl>(pos); },
+            [&](Op::or_) { return applyBinary<ExprOpOr>(pos); },
+            [&](Op::and_) { return applyBinary<ExprOpAnd>(pos); },
+            [&](Op::equals) { return applyBinary<ExprOpEq>(pos); },
+            [&](Op::not_equals) { return applyBinary<ExprOpNEq>(pos); },
+            [&](Op::less) { return order(pos, true, state); },
+            [&](Op::greater_eq) { return not_(order(pos, true, state)); },
+            [&](Op::greater) { return order(pos, false, state); },
+            [&](Op::less_eq) { return not_(order(pos, false, state)); },
+            [&](Op::update) { return applyBinary<ExprOpUpdate>(pos); },
+            [&](Op::not_) { return applyUnary<ExprOpNot>(pos); },
+            [&](Op::plus) { return concatStrings(pos); },
+            [&](Op::minus) { return call(pos, state, state.symbols.sym___sub); },
+            [&](Op::mul) { return call(pos, state, state.symbols.sym___mul); },
+            [&](Op::div) { return call(pos, state, state.symbols.sym___div); },
+            [&](Op::concat) { return applyBinary<ExprOpConcatLists>(pos); },
+            [&](has_attr & a) { return applyUnary<ExprOpHasAttr>(pos, std::move(a.path)); },
+            [&](Op::unary_minus) { return negate(pos, state); },
+            [&](Op::pipe_right) { return pipe(pos, state, true); },
+            [&](Op::pipe_left) { return pipe(pos, state); },
         })(op);
         pushExpr(pos, std::move(expr));
     }
@@ -755,7 +757,7 @@ template<> struct BuildAST<grammar::v1::path::searched_path> {
          * https://github.com/NixOS/nix/commit/62a6eeb1f3da0a5954ad2da54c454eb7fc1c6e5d
          * (TODO: Provide a better and officially supported and documented mechanism for doing this)
          */
-        args[0] = std::make_unique<ExprVar>(pos, ps.s.nixPath);
+        args[0] = std::make_unique<ExprVar>(pos, ps.symbols.sym___nixPath);
         args[1] = std::make_unique<ExprString>(pos, in.string());
         s.parts.emplace_back(
             pos,
@@ -765,8 +767,10 @@ template<> struct BuildAST<grammar::v1::path::searched_path> {
                  * until we can figure out how to design a better replacement.
                  * https://git.lix.systems/lix-project/lix/issues/599
                  */
-                std::make_unique<ExprVar>(pos, ps.s.findFile),
-                std::move(args)));
+                std::make_unique<ExprVar>(pos, ps.symbols.sym___findFile),
+                std::move(args)
+            )
+        );
     }
 };
 
@@ -831,7 +835,7 @@ template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<Binding
 
         auto pos = ps.at(in);
         b.set.pos = pos;
-        s.emplaceExpr<ExprSelect>(pos, std::make_unique<ExprSet>(std::move(b.set)), pos, ps.s.body);
+        s.emplaceExpr<ExprSelect>(pos, std::make_unique<ExprSet>(std::move(b.set)), pos, ps.symbols.sym_body);
     }
 };
 
@@ -893,7 +897,7 @@ template<> struct BuildAST<grammar::v1::expr::select::attr_or> {
 template<> struct BuildAST<grammar::v1::expr::select::as_app_or> {
     static void apply(const auto & in, SelectState & s, State & ps) {
         std::vector<std::unique_ptr<Expr>> args(1);
-        args[0] = std::make_unique<ExprVar>(ps.at(in), ps.s.or_);
+        args[0] = std::make_unique<ExprVar>(ps.at(in), ps.symbols.sym_or);
         s->emplaceExpr<ExprCall>(s.pos, s->popExprOnly(), std::move(args));
     }
 };

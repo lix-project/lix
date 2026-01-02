@@ -28,7 +28,6 @@ Expr * Evaluator::parse(
         positions,
         basePath,
         positions.addOrigin(origin, length),
-        this->s.exprSymbols,
         featureSettings,
     };
 
@@ -63,7 +62,6 @@ Evaluator::parse_repl(
         positions,
         basePath,
         positions.addOrigin(origin, length),
-        this->s.exprSymbols,
         featureSettings,
     };
 

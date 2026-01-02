@@ -87,7 +87,7 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                 auto a = v.attrs()->get(state.ctx.symbols.create("derivation"));
 
                 Path drvPath;
-                a = v.attrs()->get(state.ctx.s.drvPath);
+                a = v.attrs()->get(state.ctx.symbols.sym_drvPath);
                 if (a) {
                     if (strict) {
                         state.forceValue(a->value, a->pos);
@@ -97,7 +97,7 @@ static void printValueAsXML(EvalState & state, bool strict, bool location,
                     }
                 }
 
-                a = v.attrs()->get(state.ctx.s.outPath);
+                a = v.attrs()->get(state.ctx.symbols.sym_outPath);
                 if (a) {
                     if (strict) {
                         state.forceValue(a->value, a->pos);

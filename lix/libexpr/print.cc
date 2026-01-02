@@ -232,7 +232,7 @@ private:
 
     void printDerivation(Value & v)
     {
-        auto i = v.attrs()->get(state.ctx.s.drvPath);
+        auto i = v.attrs()->get(state.ctx.symbols.sym_drvPath);
         NixStringContext context;
         std::string storePath;
         if (i) {

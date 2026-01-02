@@ -51,7 +51,7 @@ JSON printValueAsJSON(EvalState & state, bool strict,
                 out = *maybeString;
                 break;
             }
-            auto i = v.attrs()->get(state.ctx.s.outPath);
+            auto i = v.attrs()->get(state.ctx.symbols.sym_outPath);
             if (!i) {
                 out = JSON::object();
                 StringSet names;

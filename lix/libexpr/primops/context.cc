@@ -136,11 +136,11 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
     for (const auto & info : contextInfos) {
         auto infoAttrs = state.ctx.buildBindings(3);
         if (info.second.path)
-            infoAttrs.alloc(state.ctx.s.path).mkBool(true);
+            infoAttrs.alloc(state.ctx.symbols.sym_path).mkBool(true);
         if (info.second.allOutputs)
             infoAttrs.alloc(sAllOutputs).mkBool(true);
         if (!info.second.outputs.empty()) {
-            auto & outputsVal = infoAttrs.alloc(state.ctx.s.outputs);
+            auto & outputsVal = infoAttrs.alloc(state.ctx.symbols.sym_outputs);
             auto content = state.ctx.mem.newList(info.second.outputs.size());
             outputsVal = {NewValueAs::list, content};
             for (const auto & [i, output] : enumerate(info.second.outputs))
@@ -177,7 +177,7 @@ void prim_appendContext(EvalState & state, Value ** args, Value & v)
         if (!settings.readOnlyMode)
             state.aio.blockOn(state.ctx.store->ensurePath(namePath));
         state.forceAttrs(i.value, i.pos, "while evaluating the value of a string context");
-        auto a = i.value.attrs()->get(state.ctx.s.path);
+        auto a = i.value.attrs()->get(state.ctx.symbols.sym_path);
         if (a) {
             if (state.forceBool(
                     a->value, a->pos, "while evaluating the `path` attribute of a string context"
@@ -209,7 +209,7 @@ void prim_appendContext(EvalState & state, Value ** args, Value & v)
             }
         }
 
-        a = i.value.attrs()->get(state.ctx.s.outputs);
+        a = i.value.attrs()->get(state.ctx.symbols.sym_outputs);
         if (a) {
             state.forceList(
                 a->value, a->pos, "while evaluating the `outputs` attribute of a string context"

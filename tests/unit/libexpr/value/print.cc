@@ -440,7 +440,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
     vDerivation.mkString("derivation");
 
     BindingsBuilder builder = evaluator.buildBindings(10);
-    builder.insert(evaluator.s.type, vDerivation);
+    builder.insert(evaluator.symbols.sym_type, vDerivation);
 
     Value vAttrs;
     vAttrs.mkAttrs(builder.finish());

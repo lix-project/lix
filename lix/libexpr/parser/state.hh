@@ -25,11 +25,10 @@ struct IndStringLine {
 
 struct State
 {
-    SymbolTable & symbols;
+    NixSymbolTable & symbols;
     PosTable & positions;
     SourcePath basePath;
     PosTable::Origin origin;
-    const Expr::AstSymbols & s;
     const FeatureSettings & featureSettings;
     bool hasWarnedAboutBadLineEndings = false; // State to only warn on first occurrence
 
@@ -194,7 +193,7 @@ inline void State::addAttr(ExprAttrs * attrs, AttrPath && attrPath, std::unique_
 
         // Before inserting new attrs, check for __override and throw an error
         // (the error will initially be a warning to ease migration)
-        if (!featureSettings.isEnabled(Dep::RecSetOverrides) && attr.symbol == s.overrides) {
+        if (!featureSettings.isEnabled(Dep::RecSetOverrides) && attr.symbol == symbols.sym___overrides) {
             if (auto set = dynamic_cast<ExprSet *>(attrs); set && set->recursive) {
                 overridesFound(pos);
             }

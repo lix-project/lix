@@ -230,7 +230,7 @@ try {
                         if (name == "recurseForDerivations" &&
                             !args.forceRecurse) {
                             auto attrv = v.attrs()->get(
-                                evaluator->s.recurseForDerivations);
+                                evaluator->symbols.sym_recurseForDerivations);
                             recurse = state->forceBool(
                                 attrv->value, attrv->pos,
                                 "while evaluating recurseForDerivations");

@@ -163,20 +163,6 @@ public:
     }
 };
 
-struct StaticSymbols
-{
-    const Symbol outPath, drvPath, type, meta, name, value, system, overrides, outputs, outputName,
-        ignoreNulls, file, line, column, functor, toString, right, wrong, structuredAttrs,
-        allowedReferences, allowedRequisites, disallowedReferences, disallowedRequisites, maxSize,
-        maxClosureSize, builder, args, contentAddressed, impure, outputHash, outputHashAlgo,
-        outputHashMode, recurseForDerivations, description, self, startSet, operator_, key,
-        path, prefix, outputSpecified;
-
-    const Expr::AstSymbols exprSymbols;
-
-    explicit StaticSymbols(SymbolTable & symbols);
-};
-
 class EvalMemory
 {
     static constexpr size_t CACHES = 8;
@@ -491,9 +477,8 @@ class Evaluator
     EvalState * activeEval = nullptr;
 
 public:
-    SymbolTable symbols;
+    NixSymbolTable symbols;
     PosTable positions;
-    const StaticSymbols s;
     EvalMemory mem;
     EvalRuntimeCaches caches;
     EvalPaths paths;

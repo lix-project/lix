@@ -46,23 +46,25 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         auto attrs = state.ctx.buildBindings(7 + outputs.size());
 
-        attrs.alloc(state.ctx.s.type).mkString("derivation");
-        attrs.alloc(state.ctx.s.name).mkString(i.queryName(state));
+        attrs.alloc(state.ctx.symbols.sym_type).mkString("derivation");
+        attrs.alloc(state.ctx.symbols.sym_name).mkString(i.queryName(state));
         auto system = i.querySystem(state);
         if (!system.empty())
-            attrs.alloc(state.ctx.s.system).mkString(system);
-        attrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(i.queryOutPath(state)));
+            attrs.alloc(state.ctx.symbols.sym_system).mkString(system);
+        attrs.alloc(state.ctx.symbols.sym_outPath)
+            .mkString(state.ctx.store->printStorePath(i.queryOutPath(state)));
         if (drvPath)
-            attrs.alloc(state.ctx.s.drvPath).mkString(state.ctx.store->printStorePath(*drvPath));
+            attrs.alloc(state.ctx.symbols.sym_drvPath).mkString(state.ctx.store->printStorePath(*drvPath));
 
         // Copy each output meant for installation.
-        auto & vOutputs = attrs.alloc(state.ctx.s.outputs);
+        auto & vOutputs = attrs.alloc(state.ctx.symbols.sym_outputs);
         auto outputsList = state.ctx.mem.newList(outputs.size());
         vOutputs = {NewValueAs::list, outputsList};
         for (const auto & [m, j] : enumerate(outputs)) {
             outputsList->elems[m].mkString(j.first);
             auto outputAttrs = state.ctx.buildBindings(2);
-            outputAttrs.alloc(state.ctx.s.outPath).mkString(state.ctx.store->printStorePath(*j.second));
+            outputAttrs.alloc(state.ctx.symbols.sym_outPath)
+                .mkString(state.ctx.store->printStorePath(*j.second));
             attrs.alloc(j.first).mkAttrs(outputAttrs);
 
             /* This is only necessary when installing store paths, e.g.,
@@ -81,7 +83,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             meta.insert(state.ctx.symbols.create(j), *v);
         }
 
-        attrs.alloc(state.ctx.s.meta).mkAttrs(meta);
+        attrs.alloc(state.ctx.symbols.sym_meta).mkAttrs(meta);
 
         manifest->elems[n++].mkAttrs(attrs);
 
@@ -116,9 +118,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     debug("evaluating user environment builder");
     state.forceValue(topLevel, noPos);
     NixStringContext context;
-    const Attr & aDrvPath(*topLevel.attrs()->get(state.ctx.s.drvPath));
+    const Attr & aDrvPath(*topLevel.attrs()->get(state.ctx.symbols.sym_drvPath));
     auto topLevelDrv = state.coerceToStorePath(aDrvPath.pos, aDrvPath.value, context, "");
-    const Attr & aOutPath(*topLevel.attrs()->get(state.ctx.s.outPath));
+    const Attr & aOutPath(*topLevel.attrs()->get(state.ctx.symbols.sym_outPath));
     auto topLevelOut = state.coerceToStorePath(aOutPath.pos, aOutPath.value, context, "");
 
     /* Realise the resulting store expression. */

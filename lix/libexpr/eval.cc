@@ -231,62 +231,6 @@ void initLibExpr()
     libexprInitialised = true;
 }
 
-StaticSymbols::StaticSymbols(SymbolTable & symbols)
-    : outPath(symbols.create("outPath"))
-    , drvPath(symbols.create("drvPath"))
-    , type(symbols.create("type"))
-    , meta(symbols.create("meta"))
-    , name(symbols.create("name"))
-    , value(symbols.create("value"))
-    , system(symbols.create("system"))
-    , overrides(symbols.create("__overrides"))
-    , outputs(symbols.create("outputs"))
-    , outputName(symbols.create("outputName"))
-    , ignoreNulls(symbols.create("__ignoreNulls"))
-    , file(symbols.create("file"))
-    , line(symbols.create("line"))
-    , column(symbols.create("column"))
-    , functor(symbols.create("__functor"))
-    , toString(symbols.create("__toString"))
-    , right(symbols.create("right"))
-    , wrong(symbols.create("wrong"))
-    , structuredAttrs(symbols.create("__structuredAttrs"))
-    , allowedReferences(symbols.create("allowedReferences"))
-    , allowedRequisites(symbols.create("allowedRequisites"))
-    , disallowedReferences(symbols.create("disallowedReferences"))
-    , disallowedRequisites(symbols.create("disallowedRequisites"))
-    , maxSize(symbols.create("maxSize"))
-    , maxClosureSize(symbols.create("maxClosureSize"))
-    , builder(symbols.create("builder"))
-    , args(symbols.create("args"))
-    , contentAddressed(symbols.create("__contentAddressed"))
-    , impure(symbols.create("__impure"))
-    , outputHash(symbols.create("outputHash"))
-    , outputHashAlgo(symbols.create("outputHashAlgo"))
-    , outputHashMode(symbols.create("outputHashMode"))
-    , recurseForDerivations(symbols.create("recurseForDerivations"))
-    , description(symbols.create("description"))
-    , self(symbols.create("self"))
-    , startSet(symbols.create("startSet"))
-    , operator_(symbols.create("operator"))
-    , key(symbols.create("key"))
-    , path(symbols.create("path"))
-    , prefix(symbols.create("prefix"))
-    , outputSpecified(symbols.create("outputSpecified"))
-    , exprSymbols{
-        .sub = symbols.create("__sub"),
-        .lessThan = symbols.create("__lessThan"),
-        .mul = symbols.create("__mul"),
-        .div = symbols.create("__div"),
-        .or_ = symbols.create("or"),
-        .findFile = symbols.create("__findFile"),
-        .nixPath = symbols.create("__nixPath"),
-        .body = symbols.create("body"),
-        .overrides = symbols.create("__overrides"),
-    }
-{
-}
-
 EvalMemory::EvalMemory()
 {
     assert(libexprInitialised);
@@ -413,8 +357,7 @@ Evaluator::Evaluator(
     std::shared_ptr<Store> buildStore,
     std::function<ReplExitStatus(EvalState & es, ValMap const & extraEnv)> debugRepl
 )
-    : s(symbols)
-    , paths(aio, store, [&] {
+    : paths(aio, store, [&] {
         SearchPath searchPath;
         if (!evalSettings.pureEval) {
             for (auto & i : _searchPath.elements)
@@ -962,8 +905,8 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
-        attrs.alloc(ctx.s.file).mkString(path->to_string());
-        makePositionThunks(*this, p, attrs.alloc(ctx.s.line), attrs.alloc(ctx.s.column));
+        attrs.alloc(ctx.symbols.sym_file).mkString(path->to_string());
+        makePositionThunks(*this, p, attrs.alloc(ctx.symbols.sym_line), attrs.alloc(ctx.symbols.sym_column));
         v.mkAttrs(attrs);
     } else
         v.mkNull();
@@ -1182,7 +1125,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
         dynamicEnv = &env2;
         Env * inheritEnv = inheritFromExprs ? buildInheritFromEnv(state, env2) : nullptr;
 
-        ExprAttrs::AttrDefs::iterator overrides = attrs.find(state.ctx.s.overrides);
+        ExprAttrs::AttrDefs::iterator overrides = attrs.find(state.ctx.symbols.sym___overrides);
         bool hasOverrides = overrides != attrs.end();
 
         /* The recursive attributes are evaluated in the new
@@ -1797,7 +1740,8 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
             }
         }
 
-        else if (vCur.type() == nAttrs && (functor = vCur.attrs()->get(ctx.s.functor))) {
+        else if (vCur.type() == nAttrs && (functor = vCur.attrs()->get(ctx.symbols.sym___functor)))
+        {
             /* 'vCur' may be allocated on the stack of the calling
                function, but for functors we may keep a reference, so
                heap-allocate a copy and use that instead. */
@@ -1811,13 +1755,16 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
             args = args.subspan(1);
         }
 
-        else
-            ctx.errors.make<TypeError>(
+        else {
+            ctx.errors
+                .make<TypeError>(
                     "attempt to call something which is not a function but %1%: %2%",
                     showType(vCur),
-                    ValuePrinter(*this, vCur, errorPrintOptions))
+                    ValuePrinter(*this, vCur, errorPrintOptions)
+                )
                 .atPos(pos)
                 .debugThrow();
+        }
     }
 
     vRes = vCur;
@@ -1856,7 +1803,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     forceValue(fun, pos);
 
     if (fun.type() == nAttrs) {
-        auto found = fun.attrs()->get(ctx.s.functor);
+        auto found = fun.attrs()->get(ctx.symbols.sym___functor);
         if (found) {
             Value v;
             callFunction(found->value, fun, v, pos);
@@ -2322,7 +2269,7 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
 
 bool EvalState::isFunctor(Value & fun)
 {
-    return fun.type() == nAttrs && fun.attrs()->get(ctx.s.functor);
+    return fun.type() == nAttrs && fun.attrs()->get(ctx.symbols.sym___functor);
 }
 
 
@@ -2397,7 +2344,7 @@ std::string_view EvalState::forceStringNoCtx(Value & v, const PosIdx pos, std::s
 bool EvalState::isDerivation(Value & v)
 {
     if (v.type() != nAttrs) return false;
-    auto i = v.attrs()->get(ctx.s.type);
+    auto i = v.attrs()->get(ctx.symbols.sym_type);
     if (!i) {
         return false;
     }
@@ -2412,7 +2359,7 @@ bool EvalState::isDerivation(Value & v)
 std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value & v,
     NixStringContext & context, StringCoercionMode mode, bool copyToStore)
 {
-    auto i = v.attrs()->get(ctx.s.toString);
+    auto i = v.attrs()->get(ctx.symbols.sym___toString);
     if (i) {
         Value v1;
         try {
@@ -2461,7 +2408,7 @@ BackedStringView EvalState::coerceToString(
         auto maybeString = tryAttrsToString(pos, v, context, mode, copyToStore);
         if (maybeString)
             return std::move(*maybeString);
-        auto i = v.attrs()->get(ctx.s.outPath);
+        auto i = v.attrs()->get(ctx.symbols.sym_outPath);
         if (!i) {
             ctx.errors.make<TypeError>(
                 "cannot coerce %1% to a string: %2%",
@@ -2701,8 +2648,8 @@ bool EvalState::eqValues(Value & v1, Value & v2, const PosIdx pos, std::string_v
             /* If both sets denote a derivation (type = "derivation"),
                then compare their outPaths. */
             if (isDerivation(v1) && isDerivation(v2)) {
-                auto i = v1.attrs()->get(ctx.s.outPath);
-                auto j = v2.attrs()->get(ctx.s.outPath);
+                auto i = v1.attrs()->get(ctx.symbols.sym_outPath);
+                auto j = v2.attrs()->get(ctx.symbols.sym_outPath);
                 if (i && j) {
                     return eqValues(i->value, j->value, pos, errorCtx);
                 }
