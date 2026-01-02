@@ -113,6 +113,7 @@ int mount(
     unsigned long mountflags,
     const void * data
 );
+#endif
 
 [[nodiscard]]
 ssize_t llistxattr(const std::string & path, char * list, size_t size);
@@ -122,7 +123,6 @@ ssize_t lremovexattr(const std::string & path, const std::string & name);
 
 [[nodiscard]]
 ssize_t getxattr(const std::string & path, const std::string & name, void * value, size_t size);
-#endif
 
 [[nodiscard]]
 int chdir(const std::string & path);

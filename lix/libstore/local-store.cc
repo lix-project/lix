@@ -544,7 +544,6 @@ static void canonicalisePathMetaData_(
         return;
     }
 
-#if __linux__
     /* Remove extended attributes / ACLs. */
     ssize_t eaSize = sys::llistxattr(path, nullptr, 0);
 
@@ -573,8 +572,7 @@ static void canonicalisePathMetaData_(
             (void) sys::chmod(path, st.st_mode);
             resetMode = false;
         }
-     }
-#endif
+    }
 
     inodesSeen.insert(Inode(st.st_dev, st.st_ino));
 

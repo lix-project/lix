@@ -187,6 +187,23 @@ ssize_t getxattr(const std::string & path, const std::string & name, void * valu
 }
 #endif
 
+#if __APPLE__
+ssize_t llistxattr(const std::string & path, char * list, size_t size)
+{
+    return ::listxattr(requireCString(path), list, size, XATTR_NOFOLLOW);
+}
+
+ssize_t lremovexattr(const std::string & path, const std::string & name)
+{
+    return ::removexattr(requireCString(path), requireCString(name), XATTR_NOFOLLOW);
+}
+
+ssize_t getxattr(const std::string & path, const std::string & name, void * value, size_t size)
+{
+    return ::getxattr(requireCString(path), requireCString(name), value, size, 0, XATTR_NOFOLLOW);
+}
+#endif
+
 int chdir(const std::string & path)
 {
     return ::chdir(requireCString(path));

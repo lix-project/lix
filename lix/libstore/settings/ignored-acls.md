@@ -1,9 +1,14 @@
 ---
 name: ignored-acls
 internalName: ignoredAcls
-platforms: [linux]
 type: StringSet
-default: [security.csm, security.selinux, system.nfs4_acl]
+defaultExpr: |
+  #if __linux__
+    {"security.csm", "security.selinux", "system.nfs4_acl"}
+  #else
+    {}
+  #endif
+defaultText: '*Linux:* `security.csm, security.selinux, system.nfs4_acl`, *other platforms:* nothing.'
 ---
 A list of ACLs that should be ignored, normally Lix attempts to
 remove all ACLs from files and directories in the Nix store, but
