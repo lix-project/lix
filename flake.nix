@@ -430,36 +430,9 @@
 
             nixpkgsLibTests = forAllSystems (
               system:
-              let
+              nixpkgsFor.${system}.native.callPackage ./tests/nixpkgs/lib.nix {
+                inherit nixpkgs system;
                 inherit (self.packages.${system}) nix;
-                pkgs = nixpkgsFor.${system}.native;
-                testWithNix =
-                  (import (nixpkgs + "/lib/tests/test-with-nix.nix") {
-                    inherit pkgs lib nix;
-                  }).overrideAttrs
-                    (_: {
-                      buildInputs = [
-                        (import (nixpkgs + "/lib/path/tests") {
-                          inherit pkgs;
-                          # NOTE: Override the nix version used here, we cannot rely on CppNix actually building
-                          #       c.f. https://github.com/NixOS/nixpkgs/blob/master/lib/path/tests/default.nix#L18
-                          nixVersions.stable = nix;
-                        })
-                      ];
-                    });
-              in
-              pkgs.symlinkJoin {
-                name = "nixpkgs-lib-tests";
-                paths = [
-                  testWithNix
-                ]
-                # NOTE: nixpkgs 25.11 is being ... *creative*, and requires this dance to override
-                # the evaluator used for the test. it will break again in the future, don't worry.
-                ++ lib.optionals pkgs.stdenv.isLinux [
-                  ((pkgs.callPackage "${nixpkgs}/ci/eval" { inherit nix; } { }).attrpathsSuperset {
-                    evalSystem = system;
-                  })
-                ];
               }
             );
           };
