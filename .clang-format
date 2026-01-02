@@ -4,6 +4,7 @@ AccessModifierOffset: -4
 AlignAfterOpenBracket: BlockIndent
 AlignEscapedNewlines: Left
 AlignOperands: DontAlign
+AlignTrailingComments: false
 AllowShortBlocksOnASingleLine: Always
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: WithoutElse
