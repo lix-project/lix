@@ -5,9 +5,9 @@ AlignAfterOpenBracket: BlockIndent
 AlignEscapedNewlines: Left
 AlignOperands: DontAlign
 AlignTrailingComments: false
-AllowShortBlocksOnASingleLine: Always
+AllowShortBlocksOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: Empty
-AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortIfStatementsOnASingleLine: Never
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
