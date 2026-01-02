@@ -134,7 +134,8 @@ def test_env_to_env(tmp_path: Path):
         "PATH",
         "BUILD_TEST_SHELL",
         "TMPDIR",
-    } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else {"BUILD_TEST_ENV"})
+        "BUILD_TEST_ENV",
+    } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else set())
 
 
 def test_path_inits_build_shell():

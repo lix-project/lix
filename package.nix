@@ -245,13 +245,19 @@ stdenv.mkDerivation (finalAttrs: {
       p.python-frontmatter
       p.pycapnp
     ]
-    ++ lib.optionals finalAttrs.doCheck [
+    ++ lib.optionals finalAttrs.doCheck ([
       (dontWrapPython p.pytest)
       p.pytest-xdist
       p.pytest-timeout
       p.ruff
       p.aiohttp
-    ]
+
+      # Remove once https://github.com/NixOS/nixpkgs/pull/476848 lands here.
+      (p.pyxattr.overrideAttrs (old: {
+        buildInputs = lib.filter (lib.meta.availableOn stdenv.hostPlatform) old.buildInputs;
+        meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
+      }))
+    ])
   );
 
   buildTestShell =
@@ -262,7 +268,18 @@ stdenv.mkDerivation (finalAttrs: {
     else
       null;
 
-  buildTestEnv = if hostPlatform.isLinux then "${pkgsStatic.busybox}/bin" else null;
+  buildTestEnv =
+    if hostPlatform.isLinux then
+      lib.makeBinPath [
+        pkgsStatic.busybox
+        pkgsStatic.acl
+      ]
+    else
+      lib.makeBinPath [
+        pkgs.darwin.file_cmds
+        pkgs.darwin.shell_cmds
+        pkgs.darwin.text_cmds
+      ];
 
   src = fileset.toSource {
     root = ./.;
@@ -618,6 +635,12 @@ stdenv.mkDerivation (finalAttrs: {
             p.xdg-base-dirs
             p.packaging
             p.xonsh
+
+            # Remove once https://github.com/NixOS/nixpkgs/pull/476848 lands here.
+            (p.pyxattr.overrideAttrs (old: {
+              buildInputs = lib.filter (lib.meta.availableOn stdenv.hostPlatform) old.buildInputs;
+              meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
+            }))
           ]
         );
         pythonEnv = python3.pythonOnBuildForHost.withPackages pythonPackages;

@@ -12,6 +12,9 @@ rec {
 
   system = "@system@";
 
+  isLinux = (builtins.match ".+-linux$" system) != null;
+  isDarwin = (builtins.match ".+-darwin$" system) != null;
+
   shared = builtins.getEnv "_NIX_TEST_SHARED";
 
   mkDerivation = args:

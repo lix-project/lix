@@ -17,7 +17,7 @@ let
     buildCommand = ''
       mkdir $out
       # Space-filler to test GC stats reporting
-      head -c 100k /dev/zero > $out/filler
+      head -c 100000 /dev/zero > $out/filler
       echo BAR > $out/bar
       echo ${input0} > $out/input0
       echo ${input3} > $out/input3
