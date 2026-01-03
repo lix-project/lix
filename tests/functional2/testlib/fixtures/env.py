@@ -21,12 +21,16 @@ class _ManagedPath:
     """
 
     build_shell: dataclasses.InitVar[str | None]
+    build_env: dataclasses.InitVar[str | None] = None
     """statically linked shell to use within builds which provides coreutils functionality"""
     _path: list[str] = dataclasses.field(default_factory=list)
 
-    def __post_init__(self, build_shell: str | None):
+    def __post_init__(self, build_shell: str | None, build_env: str | None):
         if build_shell:
             self.prepend(build_shell)
+        if build_env:
+            for part in build_env.split(":"):
+                self.append(part)
 
     def to_path(self) -> str:
         """
@@ -177,7 +181,7 @@ class ManagedEnv:
         lix_bin = Path(environ.get("NIX_BIN_DIR", lix_base_folder / "outputs/out/bin"))
 
         self._env = {}
-        self.path = _ManagedPath(build_env)
+        self.path = _ManagedPath(build_shell, build_env)
         self._tmp_path = tmp_path
         self.shell_dir = build_shell or "/bin"
         self.build_env = build_env
