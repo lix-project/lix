@@ -1,6 +1,8 @@
 error:
        … while calling the 'getAttr' builtin
          at «internal»:1:500:
+       … while evaluating the second argument passed to builtins.getAttr
+
        … while calling the 'derivationStrict' builtin
          at «internal»:1:208:
        … while evaluating derivation 'package-you-care-about'
@@ -22,6 +24,8 @@ error:
 
        … while calling the 'getAttr' builtin
          at «internal»:1:500:
+       … while evaluating the second argument passed to builtins.getAttr
+
        … while calling the 'derivationStrict' builtin
          at «internal»:1:208:
        … while evaluating derivation 'direct-dependency'
@@ -41,6 +45,8 @@ error:
 
        … while calling the 'getAttr' builtin
          at «internal»:1:500:
+       … while evaluating the second argument passed to builtins.getAttr
+
        … while calling the 'derivationStrict' builtin
          at «internal»:1:208:
        … while evaluating derivation 'transitive-dependency'

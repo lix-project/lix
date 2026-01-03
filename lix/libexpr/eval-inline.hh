@@ -100,6 +100,85 @@ Env & EvalMemory::allocEnv(size_t size)
     return *env;
 }
 
+/* The overloaded versions of `checkType` exist because of non-unified error handling
+ * The variant which takes an Expression is required because of debug frames (`withFrames`).
+ * Ideally, at some point in the future, we'd implement debug frames that are not tied to the expression and
+ * env and then unify both `checkType` functions into one. Then the argument forwarding overloading hack done
+ * for the other functions below will be removable again.
+ */
+[[gnu::always_inline]]
+void EvalState::checkType(Value & v, ValueType vType, Env & env, Expr & e)
+{
+    if (v.type() != vType) {
+        ctx.errors
+            .make<TypeError>(
+                "expected %1% but found %2%: %3%",
+                Uncolored(vType),
+                showType(v),
+                ValuePrinter(*this, v, errorPrintOptions)
+            )
+            .atPos(e.getPos())
+            .withFrame(env, e)
+            .debugThrow();
+    }
+}
+
+[[gnu::always_inline]]
+void EvalState::checkType(Value & v, ValueType vType)
+{
+    if (v.type() != vType) {
+        ctx.errors
+            .make<TypeError>(
+                "expected %1% but found %2%: %3%",
+                Uncolored(vType),
+                showType(v),
+                ValuePrinter(*this, v, errorPrintOptions)
+            )
+            .debugThrow();
+    }
+}
+
+template<typename... Args>
+[[gnu::always_inline]]
+bool EvalState::checkBool(Value & v, Args &&... errorArgs)
+{
+    checkType(v, nBool, std::forward<Args>(errorArgs)...);
+    return v.boolean();
+}
+
+template<typename... Args>
+[[gnu::always_inline]]
+NixInt EvalState::checkInt(Value & v, Args &&... errorArgs)
+{
+    checkType(v, nInt, std::forward<Args>(errorArgs)...);
+    return v.integer();
+}
+
+template<typename... Args>
+[[gnu::always_inline]]
+NixFloat EvalState::checkFloat(Value & v, Args &&... errorArgs)
+{
+    if (v.type() == nInt) {
+        return v.integer().value;
+    }
+    checkType(v, nFloat, std::forward<Args>(errorArgs)...);
+    return v.fpoint();
+}
+
+template<typename... Args>
+[[gnu::always_inline]]
+void EvalState::checkList(Value & v, Args &&... errorArgs)
+{
+    checkType(v, nList, std::forward<Args>(errorArgs)...);
+}
+
+template<typename... Args>
+[[gnu::always_inline]]
+Bindings * EvalState::checkAttrs(Value & v, Args &&... errorArgs)
+{
+    checkType(v, nAttrs, std::forward<Args>(errorArgs)...);
+    return v.attrs();
+}
 
 [[gnu::always_inline]]
 void EvalState::forceValue(Value & v, const PosIdx pos)
@@ -138,15 +217,14 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
 }
 
 [[gnu::always_inline]]
-inline void EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx)
+inline Bindings * EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx)
 {
-    forceValue(v, pos);
-    if (v.type() != nAttrs) {
-        ctx.errors.make<TypeError>(
-            "expected a set but found %1%: %2%",
-            showType(v),
-            ValuePrinter(*this, v, errorPrintOptions)
-        ).withTrace(pos, errorCtx).debugThrow();
+    try {
+        forceValue(v, pos);
+        return checkAttrs(v);
+    } catch (Error & e) {
+        e.addTrace(ctx.positions[pos], errorCtx);
+        throw;
     }
 }
 
@@ -154,13 +232,12 @@ inline void EvalState::forceAttrs(Value & v, const PosIdx pos, std::string_view 
 [[gnu::always_inline]]
 inline void EvalState::forceList(Value & v, const PosIdx pos, std::string_view errorCtx)
 {
-    forceValue(v, pos);
-    if (!v.isList()) {
-        ctx.errors.make<TypeError>(
-            "expected a list but found %1%: %2%",
-            showType(v),
-            ValuePrinter(*this, v, errorPrintOptions)
-        ).withTrace(pos, errorCtx).debugThrow();
+    try {
+        forceValue(v, pos);
+        checkList(v);
+    } catch (Error & e) {
+        e.addTrace(ctx.positions[pos], errorCtx);
+        throw;
     }
 }
 

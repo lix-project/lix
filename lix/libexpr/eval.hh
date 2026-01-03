@@ -655,14 +655,6 @@ public:
     void eval(Expr & e, Value & v);
 
     /**
-     * Evaluation the expression, then verify that it has the expected
-     * type.
-     */
-    inline bool evalBool(Env & env, Expr & e);
-    inline void evalAttrs(Env & env, Expr & e, Value & v);
-    inline void evalList(Env & env, Expr & e, Value & v);
-
-    /**
      * If `v` is a thunk, enter it and overwrite `v` with the result
      * of the evaluation of the thunk.  If `v` is a delayed function
      * application, call the function and overwrite `v` with the
@@ -685,7 +677,7 @@ public:
     NixFloat forceFloat(Value & v, const PosIdx pos, std::string_view errorCtx);
     bool forceBool(Value & v, const PosIdx pos, std::string_view errorCtx);
 
-    void forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx);
+    inline Bindings * forceAttrs(Value & v, const PosIdx pos, std::string_view errorCtx);
     inline void forceList(Value & v, const PosIdx pos, std::string_view errorCtx);
     /**
      * @param v either lambda or primop
@@ -694,6 +686,19 @@ public:
     std::string_view forceString(Value & v, const PosIdx pos, std::string_view errorCtx);
     std::string_view forceString(Value & v, NixStringContext & context, const PosIdx pos, std::string_view errorCtx);
     std::string_view forceStringNoCtx(Value & v, const PosIdx pos, std::string_view errorCtx);
+
+    inline void checkType(Value & v, ValueType vType, Env & env, Expr & e);
+    inline void checkType(Value & v, ValueType vType);
+    template<typename... Args>
+    bool checkBool(Value & v, Args &&... errorArgs);
+    template<typename... Args>
+    NixInt checkInt(Value & v, Args &&... errorArgs);
+    template<typename... Args>
+    NixFloat checkFloat(Value & v, Args &&... errorArgs);
+    template<typename... Args>
+    void checkList(Value & v, Args &&... errorArgs);
+    template<typename... Args>
+    Bindings * checkAttrs(Value & v, Args &&... errorArgs);
 
     /**
      * Realise the given context, and return a mapping from the placeholders

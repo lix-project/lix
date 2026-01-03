@@ -1056,37 +1056,6 @@ void EvalState::eval(Expr & e, Value & v)
     e.eval(*this, ctx.builtins.env, v);
 }
 
-#define checkType(typeName, stringName) \
-    if (v.type() != (typeName)) \
-        ctx.errors.make<TypeError>( \
-                "expected a %1% but found %2%: %3%", \
-                Uncolored(stringName), \
-                showType(v), \
-                ValuePrinter(*this, v, errorPrintOptions) \
-            ).atPos(e.getPos()).withFrame(env, e).debugThrow();
-
-inline bool EvalState::evalBool(Env & env, Expr & e)
-{
-    Value v;
-    e.eval(*this, env, v);
-    checkType(nBool, "Boolean");
-    return v.boolean();
-}
-
-
-inline void EvalState::evalAttrs(Env & env, Expr & e, Value & v)
-{
-    e.eval(*this, env, v);
-    checkType(nAttrs, "set");
-}
-
-inline void EvalState::evalList(Env & env, Expr & e, Value & v)
-{
-    e.eval(*this, env, v);
-    checkType(nList, "list");
-}
-
-
 void Expr::eval(EvalState & state, Env & env, Value & v)
 {
     abort();
@@ -1870,13 +1839,17 @@ void ExprWith::eval(EvalState & state, Env & env, Value & v)
 
 void ExprIf::eval(EvalState & state, Env & env, Value & v)
 {
-    (state.evalBool(env, *cond) ? *then : *else_).eval(state, env, v);
+    Value vCond;
+    cond->eval(state, env, vCond);
+    (state.checkBool(vCond, env, *cond) ? *then : *else_).eval(state, env, v);
 }
 
 
 void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 {
-    if (!state.evalBool(env, *cond)) {
+    Value vCond;
+    cond->eval(state, env, vCond);
+    if (!state.checkBool(vCond, env, *cond)) {
         state.ctx.errors.make<AssertionError>("assertion failed")
             .atPos(pos)
             .withFrame(env, *this)
@@ -1888,7 +1861,9 @@ void ExprAssert::eval(EvalState & state, Env & env, Value & v)
 
 void ExprOpNot::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(!state.evalBool(env, *e));
+    Value vInner;
+    e->eval(state, env, vInner);
+    v.mkBool(!state.checkBool(vInner, env, *e));
 }
 
 
@@ -1910,27 +1885,57 @@ void ExprOpNEq::eval(EvalState & state, Env & env, Value & v)
 
 void ExprOpAnd::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(state.evalBool(env, *e1) && state.evalBool(env, *e2));
+    Value v1;
+    e1->eval(state, env, v1);
+    /* Explicitly short-circuit */
+    if (!state.checkBool(v1, env, *e1)) {
+        v.mkBool(false);
+        return;
+    }
+    Value v2;
+    e2->eval(state, env, v2);
+    v.mkBool(state.checkBool(v2, env, *e2));
 }
 
 
 void ExprOpOr::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(state.evalBool(env, *e1) || state.evalBool(env, *e2));
+    Value v1;
+    e1->eval(state, env, v1);
+    /* Explicitly short-circuit */
+    if (state.checkBool(v1, env, *e1)) {
+        v.mkBool(true);
+        return;
+    }
+    Value v2;
+    e2->eval(state, env, v2);
+    v.mkBool(state.checkBool(v2, env, *e2));
 }
 
 
 void ExprOpImpl::eval(EvalState & state, Env & env, Value & v)
 {
-    v.mkBool(!state.evalBool(env, *e1) || state.evalBool(env, *e2));
+    Value v1;
+    e1->eval(state, env, v1);
+    /* Explicitly short-circuit (ex falso quodlibet) */
+    if (!state.checkBool(v1, env, *e1)) {
+        v.mkBool(true);
+        return;
+    }
+    Value v2;
+    e2->eval(state, env, v2);
+    v.mkBool(state.checkBool(v2, env, *e2));
 }
 
 
 void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
 {
-    Value v1, v2;
-    state.evalAttrs(env, *e1, v1);
-    state.evalAttrs(env, *e2, v2);
+    Value v1;
+    e1->eval(state, env, v1);
+    state.checkAttrs(v1, env, *e1);
+    Value v2;
+    e2->eval(state, env, v2);
+    state.checkAttrs(v2, env, *e2);
 
     state.ctx.stats.nrOpUpdates++;
 
@@ -1970,8 +1975,12 @@ void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
 
     /* We don't call into `concatLists` as that loses the position information of the expressions. */
 
-    Value v1; state.evalList(env, *e1, v1);
-    Value v2; state.evalList(env, *e2, v2);
+    Value v1;
+    e1->eval(state, env, v1);
+    state.checkList(v1, env, *e1);
+    Value v2;
+    e2->eval(state, env, v2);
+    state.checkList(v2, env, *e2);
 
     size_t l1 = v1.listSize(), l2 = v2.listSize(), len = l1 + l2;
 
@@ -2211,19 +2220,11 @@ NixInt EvalState::forceInt(Value & v, const PosIdx pos, std::string_view errorCt
 {
     try {
         forceValue(v, pos);
-        if (v.type() != nInt)
-            ctx.errors.make<TypeError>(
-                "expected an integer but found %1%: %2%",
-                showType(v),
-                ValuePrinter(*this, v, errorPrintOptions)
-            ).atPos(pos).debugThrow();
-        return v.integer();
+        return checkInt(v);
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
-
-    return v.integer();
 }
 
 
@@ -2231,15 +2232,7 @@ NixFloat EvalState::forceFloat(Value & v, const PosIdx pos, std::string_view err
 {
     try {
         forceValue(v, pos);
-        if (v.type() == nInt)
-            return v.integer().value;
-        else if (v.type() != nFloat)
-            ctx.errors.make<TypeError>(
-                "expected a float but found %1%: %2%",
-                showType(v),
-                ValuePrinter(*this, v, errorPrintOptions)
-            ).atPos(pos).debugThrow();
-        return v.fpoint();
+        return checkFloat(v);
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
@@ -2251,19 +2244,11 @@ bool EvalState::forceBool(Value & v, const PosIdx pos, std::string_view errorCtx
 {
     try {
         forceValue(v, pos);
-        if (v.type() != nBool)
-            ctx.errors.make<TypeError>(
-                "expected a Boolean but found %1%: %2%",
-                showType(v),
-                ValuePrinter(*this, v, errorPrintOptions)
-            ).atPos(pos).debugThrow();
-        return v.boolean();
+        return checkBool(v);
     } catch (Error & e) {
         e.addTrace(ctx.positions[pos], errorCtx);
         throw;
     }
-
-    return v.boolean();
 }
 
 
