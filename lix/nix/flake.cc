@@ -21,10 +21,12 @@
 #include "flake.hh"
 #include "lix/libutil/types.hh"
 
+#include <algorithm>
 #include <limits>
 #include <iomanip>
 
 namespace nix {
+using namespace std::literals::string_view_literals;
 using namespace nix::flake;
 
 struct CmdFlakeUpdate;
@@ -1166,6 +1168,75 @@ struct CmdFlakeArchive : FlakeCommand, MixJSON, MixDryRun
     }
 };
 
+// For frameworks it's important that structures are as lazy as possible
+// to prevent infinite recursions, performance issues and errors that
+// aren't related to the thing to evaluate. As a consequence, they have
+// to emit more attributes than strictly (sic) necessary.
+// However, these attributes with empty values are not useful to the user
+// so we omit them.
+static bool hasContent(
+    EvalState & state,
+    eval_cache::AttrCursor & visitor,
+    std::vector<std::string> attrPath,
+    std::string const & attr
+)
+{
+    // Well-known flake outputs that are foo.${system}.
+    static constexpr std::array OUTS_SYS = {
+        "apps"sv,
+        "checks"sv,
+        "devShells"sv,
+        "legacyPackages"sv,
+        "packages"sv,
+    };
+
+    // Well-known flake outputs that are system-independent.
+    static constexpr std::array OUTS_NOSYS = {
+        "formatter",
+        "nixosConfigurations",
+        "nixosModules",
+        "overlays",
+    };
+
+    // Cursed.
+    attrPath.emplace_back(attr);
+
+    auto const & first = attrPath[0];
+    auto const numAttrs = attrPath.size();
+    auto visitorForAttr = visitor.getAttr(state, attr);
+
+    try {
+        if (std::ranges::contains(OUTS_SYS, first) && (numAttrs == 1 || numAttrs == 2)) {
+            for (auto const & subAttr : visitorForAttr->getAttrs(state)) {
+                // Recurse!
+                if (hasContent(state, *visitorForAttr, attrPath, subAttr)) {
+                    return true;
+                }
+            }
+            // Loop over, nothing found.
+            return false;
+        }
+
+        if (attrPath.size() == 1 && std::ranges::contains(OUTS_NOSYS, first)) {
+            for (auto const & subAttr : visitorForAttr->getAttrs(state)) {
+                // Recurse!
+                if (hasContent(state, *visitorForAttr, attrPath, subAttr)) {
+                    return true;
+                }
+            }
+            // Loop over, nothing found.
+            return false;
+        }
+        // If we don't recognize it, it's probably content.
+        return true;
+    } catch (EvalError const &) {
+        // Some attrs may contain errors, eg. legacyPackages of
+        // nixpkgs. We still want to recurse into it, instead of
+        // skipping it at all.
+        return true;
+    }
+}
+
 struct CmdFlakeShow : FlakeCommand, MixJSON
 {
     bool showLegacy = false;
@@ -1206,65 +1277,12 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
         auto flake = std::make_shared<LockedFlake>(lockFlake(*state));
         auto localSystem = std::string(evalSettings.getCurrentSystem());
 
-        std::function<bool(
-            eval_cache::AttrCursor & visitor,
-            std::vector<std::string> attrPath,
-            const std::string &attr)> hasContent;
-
         // For frameworks it's important that structures are as lazy as possible
         // to prevent infinite recursions, performance issues and errors that
         // aren't related to the thing to evaluate. As a consequence, they have
         // to emit more attributes than strictly (sic) necessary.
         // However, these attributes with empty values are not useful to the user
         // so we omit them.
-        hasContent = [&](
-            eval_cache::AttrCursor & visitor,
-            std::vector<std::string> attrPath,
-            const std::string &attr) -> bool
-        {
-            attrPath.push_back(attr);
-
-            auto visitor2 = visitor.getAttr(*state, attr);
-
-            try {
-                if ((attrPath[0] == "apps"
-                        || attrPath[0] == "checks"
-                        || attrPath[0] == "devShells"
-                        || attrPath[0] == "legacyPackages"
-                        || attrPath[0] == "packages")
-                    && (attrPath.size() == 1 || attrPath.size() == 2)) {
-                    for (const auto &subAttr : visitor2->getAttrs(*state)) {
-                        if (hasContent(*visitor2, attrPath, subAttr)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
-                if ((attrPath.size() == 1)
-                    && (attrPath[0] == "formatter"
-                        || attrPath[0] == "nixosConfigurations"
-                        || attrPath[0] == "nixosModules"
-                        || attrPath[0] == "overlays"
-                        )) {
-                    for (const auto &subAttr : visitor2->getAttrs(*state)) {
-                        if (hasContent(*visitor2, attrPath, subAttr)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
-                // If we don't recognize it, it's probably content
-                return true;
-            } catch (EvalError & e) {
-                // Some attrs may contain errors, eg. legacyPackages of
-                // nixpkgs. We still want to recurse into it, instead of
-                // skipping it at all.
-                return true;
-            }
-        };
-
         std::function<JSON(
             eval_cache::AttrCursor & visitor,
             const std::vector<std::string> & attrPath,
@@ -1293,7 +1311,7 @@ struct CmdFlakeShow : FlakeCommand, MixJSON
                         logger->cout("%s", headerPrefix);
                     std::vector<std::string> attrs;
                     for (const auto &attr : visitor.getAttrs(*state)) {
-                        if (hasContent(visitor, attrPath, attr))
+                        if (hasContent(*state, visitor, attrPath, attr))
                             attrs.push_back(attr);
                     }
 
