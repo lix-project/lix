@@ -14,6 +14,15 @@ class EvalState;
 class Bindings;
 struct SourcePath;
 
+struct StringArgument
+{
+    std::string value;
+};
+struct ExprArgument
+{
+    std::string expr;
+};
+
 struct MixEvalArgs : virtual Args, virtual MixRepair
 {
     static constexpr auto category = "Common evaluation options";
@@ -27,7 +36,7 @@ struct MixEvalArgs : virtual Args, virtual MixRepair
     std::optional<std::string> evalStoreUrl;
 
 private:
-    std::map<std::string, std::string> autoArgs;
+    std::map<std::string, std::variant<StringArgument, ExprArgument>> autoArgs;
 };
 
 /** @brief Resolve an argument that is generally a file, but could be something that

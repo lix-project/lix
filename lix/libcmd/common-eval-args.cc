@@ -44,7 +44,7 @@ MixEvalArgs::MixEvalArgs()
          .labels = {"name", "expr"},
          .handler = {[&](std::string name, std::string expr) {
              checkValidNixIdentifier(name);
-             autoArgs[name] = 'E' + expr;
+             autoArgs[name] = ExprArgument(expr);
          }}}
     );
 
@@ -55,7 +55,7 @@ MixEvalArgs::MixEvalArgs()
         .labels = {"name", "string"},
         .handler = {[&](std::string name, std::string s) {
             checkValidNixIdentifier(name);
-            autoArgs[name] = 'S' + s;
+            autoArgs[name] = StringArgument(s);
         }},
     });
 
@@ -182,11 +182,18 @@ MixEvalArgs::MixEvalArgs()
 Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
 {
     auto res = state.buildBindings(autoArgs.size());
-    for (auto & i : autoArgs) {
-        Value v = i.second[0] == 'E'
-            ? state.evalLazily(state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()))
-            : Value{NewValueAs::string, ((std::string_view) i.second).substr(1)};
-        res.insert(state.symbols.create(i.first), v);
+    for (auto & [name, value] : autoArgs) {
+        Value v = std::visit(
+            overloaded{
+                [&](StringArgument & str) -> Value { return {NewValueAs::string, (std::string_view) str.value}; },
+                [&](ExprArgument & e) -> Value {
+                    return state.evalLazily(state.parseExprFromString(e.expr, CanonPath::fromCwd()));
+                }
+            },
+            value
+        );
+
+        res.insert(state.symbols.create(name), v);
     }
     return res.finish();
 }
