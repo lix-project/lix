@@ -346,7 +346,7 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
         }
 
         return Logger::BufferState::HasSpace;
-    } catch (JSON::exception &e) { // NOLINT(lix-foreign-exceptions)
+    } catch (json::JSONError & e) {
         printTaggedWarning(
             "Unable to handle a JSON message from %s: %s", Uncolored(source), e.what()
         );

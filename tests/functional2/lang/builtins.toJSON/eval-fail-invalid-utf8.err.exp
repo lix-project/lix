@@ -1,0 +1,8 @@
+error:
+       … while calling the 'toJSON' builtin
+         at /pwd/in.nix:1:1:
+            1| builtins.toJSON (builtins.substring 0 1 "𝒫")
+             | ^
+            2|
+
+       error: JSON processing error: [json.exception.type_error.316] incomplete UTF-8 string; last byte: 0xF0

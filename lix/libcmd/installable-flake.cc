@@ -7,8 +7,6 @@
 #include "lix/libexpr/flake/flake.hh"
 #include "lix/libexpr/eval-cache.hh"
 
-#include <nlohmann/json.hpp>
-
 namespace nix {
 
 std::vector<std::string> InstallableFlake::getActualAttrPaths()

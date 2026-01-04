@@ -57,8 +57,6 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include <nlohmann/json.hpp>
-
 // This stuff is here to force the compiler to actually apply the extern
 // template directives in all compilation units. To borrow a term, under
 // complex microarchitectural conditions, clang ignores the extern template

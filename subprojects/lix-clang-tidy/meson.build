@@ -13,6 +13,7 @@ sources = files(
   'LixClangTidyChecks.cc',
   'NeverAsync.cc',
   'UnsafeCCalls.cc',
+  'ForbiddenIncludes.cc',
 )
 
 lix_clang_tidy = shared_module('lix-clang-tidy', sources,

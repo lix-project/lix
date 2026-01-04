@@ -1,5 +1,6 @@
 #include "CharPtrCast.hh"
 #include "DisallowedDecls.hh"
+#include "ForbiddenIncludes.hh"
 #include "ForeignExceptions.hh"
 #include "HasPrefixSuffix.hh"
 #include "NeverAsync.hh"
@@ -20,6 +21,8 @@ class NixClangTidyChecks : public ClangTidyModule {
             CheckFactories.registerCheck<DisallowedDeclsCheck>("lix-disallowed-decls");
             CheckFactories.registerCheck<ForeignExceptions>("lix-foreign-exceptions");
             CheckFactories.registerCheck<UnsafeCCalls>("lix-unsafe-c-calls");
+            CheckFactories.registerCheck<ForbiddenIncludesCheck>(
+                "lix-forbidden-includes");
         }
 };
 

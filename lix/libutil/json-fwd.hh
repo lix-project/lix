@@ -1,6 +1,7 @@
 #pragma once
 ///@file Lix-specific JSON handling (forward declarations only).
 
+// NOLINTNEXTLINE(lix-forbidden-includes): we *are* the wrapper
 #include <nlohmann/json_fwd.hpp>
 #include <type_traits>
 

@@ -11,10 +11,27 @@
 #include "lix/libutil/fmt.hh"
 #include "lix/libutil/json-fwd.hh" // IWYU pragma: export
 #include <concepts>
-#include <nlohmann/json.hpp> // IWYU pragma: export
 #include <list>
 #include <string_view>
 #include <type_traits>
+
+#define JSON_THROW_USER(exception) \
+    [](auto _lix_e) { throw ::nix::json::JSONError(_lix_e.id, _lix_e.what()); }(exception)
+#define JSON_TRY_USER try
+#define JSON_CATCH_USER(exception) catch (exception)
+
+namespace nix::json {
+class JSONError : public Error
+{
+public:
+    const int id; // nlohmann error id
+
+    JSONError(int id, const char * what) : Error("JSON processing error: %s", what), id(id) {}
+};
+}
+
+// NOLINTNEXTLINE(lix-forbidden-includes): we *are* the wrapper
+#include <nlohmann/json.hpp> // IWYU pragma: export
 
 namespace nix {
 
@@ -153,8 +170,6 @@ struct adl_serializer<std::optional<T>>
     }
 };
 
-MakeError(ParseError, Error);
-
 /**
  * Parse some JSON and throw an `Error` on failure. This make nlohmann errors
  * more inspectable and lets us add meaningful backtraces to any json errors.
@@ -165,12 +180,11 @@ JSON parse(Source && source, std::optional<std::string_view> context = {})
     try {
         // NOLINTNEXTLINE(lix-disallowed-decls): this is the wrapper for that
         return JSON::parse(std::forward<Source>(source));
-    } catch (JSON::exception & e) { // NOLINT(lix-foreign-exceptions)
-        ParseError error{"failed to parse JSON: %s", e.what()};
+    } catch (JSONError & error) {
         if (context) {
             error.addTrace(nullptr, fmt("while parsing %s", *context));
         }
-        throw error;
+        throw;
     }
 }
 }

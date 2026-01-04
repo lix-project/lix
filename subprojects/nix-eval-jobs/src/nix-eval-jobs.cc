@@ -157,7 +157,7 @@ class Collector {
         } else {
             try {
                 co_return JsonResponse{JSON::parse(*line)};
-            } catch (const json::ParseError &e) {
+            } catch (const json::JSONError &e) {
                 throw Error(
                     "Received invalid JSON from worker: %s\n json: '%s'",
                     e.what(), *line);

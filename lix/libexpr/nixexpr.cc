@@ -2,6 +2,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/symbol-table.hh"
 #include "lix/libexpr/print.hh"
+#include "lix/libutil/json.hh"
 
 #include <cstdlib>
 #include <sstream>
@@ -43,12 +44,12 @@ static JSON stringToJSON(std::string_view s)
         // hot, so the extra memory allocation and encoding is not worth avoiding
         (void) value.dump();
         return value;
-    } catch (nlohmann::json::type_error & e) { // NOLINT(lix-foreign-exceptions)
+    } catch (json::JSONError & e) {
         if (e.id == 316) {
             // invalid utf8 in string! serialize as byte array instead
             return s | std::ranges::to<std::vector<unsigned char>>();
         } else {
-            throw; // NOLINT(lix-foreign-exceptions)
+            throw;
         }
     }
 }

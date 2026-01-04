@@ -15,23 +15,13 @@ using namespace clang::ast_matchers;
 using namespace clang;
 
 void DisallowedDeclsCheck::registerMatchers(ast_matchers::MatchFinder *Finder) {
-  Finder->addMatcher(
-      traverse(clang::TK_AsIs,
-               callExpr(callee(cxxMethodDecl(hasName("parse"),
-                                             ofClass(isSameOrDerivedFrom(
-                                                 "nlohmann::basic_json")))))
-                   .bind("json-parse")),
-      this);
+  // we have none right now
+  (void)Finder;
 }
 
 void DisallowedDeclsCheck::check(
     const ast_matchers::MatchFinder::MatchResult &Result) {
-
-  if (auto MatchedParse = Result.Nodes.getNodeAs<CallExpr>("json-parse")) {
-    auto Diag = diag(MatchedParse->getExprLoc(),
-                     "using nlohmann::basic_json::parse is disallowed, use the lix wrapper instead");
-    Diag << FixItHint::CreateReplacement(MatchedParse->getCallee()->getSourceRange(),
-                                       "json::parse");
-  }
+  // we have none right now
+  (void)Result;
 }
 }; // namespace nix::clang_tidy
