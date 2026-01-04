@@ -136,7 +136,7 @@ class _ManagedPath:
 
 @dataclasses.dataclass
 class _Dirs:
-    test_root: Path | None
+    test_root: Path
     home: Path
     nix_log_dir: Path | None
     nix_state_dir: Path | None
