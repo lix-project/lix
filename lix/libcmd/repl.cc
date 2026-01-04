@@ -1367,9 +1367,15 @@ void NixRepl::loadFiles()
     loaded.clear();
 
     for (auto const & [spec, kind] : saved) {
-        if (kind == ReplLoadKind::File) {
-            notice("Loading '%s'...", Magenta(spec));
-            loadFile(spec);
+        switch (kind) {
+            case ReplLoadKind::File:
+                notice("Loading '%s'...", Magenta(spec));
+                loadFile(spec);
+                break;
+            case ReplLoadKind::Flake:
+                notice("Loading flake reference '%s'...", Magenta(spec));
+                loadFlake(spec);
+                break;
         }
     }
 
