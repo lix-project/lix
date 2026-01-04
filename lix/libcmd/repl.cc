@@ -137,6 +137,7 @@ struct NixRepl
     size_t debugTraceIndex;
 
     Strings loadedFiles;
+    Strings loadedFlakeRefs;
     std::function<AnnotatedValues()> getValues;
     std::map<std::string, std::shared_ptr<REPLCommand>> registeredCommands;
 
@@ -1289,15 +1290,29 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
 
     Value v;
 
-    flake::callFlake(state,
-        flake::lockFlake(state, flakeRef,
-            flake::LockFlags {
-                .updateLockFile = false,
-                .useRegistries = !evalSettings.pureEval,
-                .allowUnlocked = !evalSettings.pureEval,
-            }),
-        v);
-    addAttrsToScope(v);
+    try {
+        loadedFlakeRefs.remove(flakeRefS);
+        loadedFlakeRefs.push_back(flakeRefS);
+        flake::callFlake(
+            state,
+            flake::lockFlake(
+                state,
+                flakeRef,
+                flake::LockFlags{
+                    .updateLockFile = false,
+                    .useRegistries = !evalSettings.pureEval,
+                    .allowUnlocked = !evalSettings.pureEval,
+                }
+            ),
+            v
+        );
+        addAttrsToScope(v);
+    } catch (...) {
+        // In case of failure, do not keep the flake reference.
+        // Let the user re-load it again later.
+        loadedFlakeRefs.remove(flakeRefS);
+        throw;
+    }
 }
 
 
