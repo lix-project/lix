@@ -222,18 +222,23 @@ class Nix:
     nix_channel = partialmethod(nix, nix_exe="nix-channel")  # noqa: RUF045
     nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")  # noqa: RUF045
 
-    def eval(self, expr: str, settings: NixSettings | None = None) -> CommandResult:
+    def eval(
+        self, expr: str, settings: NixSettings | None = None, flags: list[str] | None = None
+    ) -> CommandResult:
         """
         calls `nix eval --json --expr {expr}` using the given expression
         :param expr: what to evaluate
         :param settings: if none, the global settings will be used, otherwise the given one
+        :param flags: if none, empty list, otherwise pass flags to the CLI invocation
         :return: result of the evaluation
         """
+        if flags is None:
+            flags = []
         orig = dataclasses.replace(self.settings)
         self._settings = settings or self.settings
         self.settings.feature("nix-command")
 
-        cmd = self.nix(["eval", "--json", "--expr", expr])
+        cmd = self.nix(["eval", "--json", *flags, "--expr", expr])
         # restore previous settings
         self._settings = orig
         return cmd.run()
