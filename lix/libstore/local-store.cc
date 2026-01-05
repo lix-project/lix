@@ -655,7 +655,7 @@ try {
 
     state.stmts->RegisterValidPath.use()
         (printStorePath(info.path))
-        (info.narHash.to_string(Base::Base16, true))
+        (info.narHash.to_string(HashFormat::Base16, true))
         (info.registrationTime == 0 ? time(0) : info.registrationTime)
         (info.deriver ? printStorePath(*info.deriver) : "", (bool) info.deriver)
         (info.narSize, info.narSize != 0)
@@ -768,7 +768,7 @@ void LocalStore::updatePathInfo(DBState & state, const ValidPathInfo & info)
 {
     state.stmts->UpdatePathInfo.use()
         (info.narSize, info.narSize != 0)
-        (info.narHash.to_string(Base::Base16, true))
+        (info.narHash.to_string(HashFormat::Base16, true))
         (info.ultimate ? 1 : 0, info.ultimate)
         (concatStringsSep(" ", info.sigs), !info.sigs.empty())
         (renderContentAddress(info.ca), (bool) info.ca)
@@ -1140,8 +1140,12 @@ try {
             auto hashResult = hashSink.finish();
 
             if (hashResult.first != info.narHash)
-                throw Error("hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
-                    printStorePath(info.path), info.narHash.to_string(Base::SRI, true), hashResult.first.to_string(Base::SRI, true));
+                throw Error(
+                    "hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
+                    printStorePath(info.path),
+                    info.narHash.to_string(HashFormat::SRI, true),
+                    hashResult.first.to_string(HashFormat::SRI, true)
+                );
 
             if (hashResult.second != info.narSize)
                 throw Error("size mismatch importing path '%s';\n  specified: %s\n  got:       %s",
@@ -1155,10 +1159,12 @@ try {
                     info.path
                 );
                 if (specified.hash != actualHash.hash) {
-                    throw Error("ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
+                    throw Error(
+                        "ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(Base::SRI, true),
-                        actualHash.hash.to_string(Base::SRI, true));
+                        specified.hash.to_string(HashFormat::SRI, true),
+                        actualHash.hash.to_string(HashFormat::SRI, true)
+                    );
                 }
             }
 
@@ -1505,7 +1511,8 @@ try {
         for (auto & link : readDirectory(linksDir)) {
             printMsg(lvlTalkative, "checking contents of '%s'", link.name);
             Path linkPath = linksDir + "/" + link.name;
-            std::string hash = hashPath(HashType::SHA256, linkPath).first.to_string(Base::Base32, false);
+            std::string hash =
+                hashPath(HashType::SHA256, linkPath).first.to_string(HashFormat::Base32, false);
             if (hash != link.name) {
                 printError("link '%s' was modified! expected hash '%s', got '%s'",
                     linkPath, link.name, hash);
@@ -1544,8 +1551,8 @@ try {
                     printError(
                         "path '%s' was modified! expected hash '%s', got '%s'",
                         toRealPath(printStorePath(i)),
-                        info->narHash.to_string(Base::SRI, true),
-                        current.first.to_string(Base::SRI, true)
+                        info->narHash.to_string(HashFormat::SRI, true),
+                        current.first.to_string(HashFormat::SRI, true)
                     );
                     if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {

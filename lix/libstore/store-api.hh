@@ -714,10 +714,13 @@ public:
      * @param showClosureSize If true, the closure size of each path is
      * included.
      */
-    kj::Promise<Result<JSON>> pathInfoToJSON(const StorePathSet & storePaths,
-        bool includeImpureInfo, bool showClosureSize,
-        Base hashBase = Base::Base32,
-        AllowInvalidFlag allowInvalid = DisallowInvalid);
+    kj::Promise<Result<JSON>> pathInfoToJSON(
+        const StorePathSet & storePaths,
+        bool includeImpureInfo,
+        bool showClosureSize,
+        HashFormat hashFormat = HashFormat::Base32,
+        AllowInvalidFlag allowInvalid = DisallowInvalid
+    );
 
     /**
      * @return the size of the closure of the specified path, that is,

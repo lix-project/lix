@@ -32,8 +32,21 @@ const int sha512HashSize = 64;
 
 extern std::set<std::string> hashTypes;
 
-enum class Base : int { Base64, Base32, Base16, SRI };
-
+/**
+ * @brief Enumeration representing the hash formats.
+ */
+enum class HashFormat : int {
+    /// @brief Base 64 encoding.
+    /// @see [IETF RFC 4648, section 4](https://datatracker.ietf.org/doc/html/rfc4648#section-4).
+    Base64,
+    /// @brief Nix-specific base-32 encoding. @see base32Chars
+    Base32,
+    /// @brief Lowercase hexadecimal encoding. @see base16Chars
+    Base16,
+    /// @brief "<hash algo>:<Base 64 hash>", format of the SRI integrity attribute.
+    /// @see W3C recommendation [Subresource Intergrity](https://www.w3.org/TR/SRI/).
+    SRI
+};
 
 struct Hash
 {
@@ -123,16 +136,16 @@ public:
      * or base-64. By default, this is prefixed by the hash type
      * (e.g. "sha256:").
      */
-    std::string to_string(Base base, bool includeType) const;
+    std::string to_string(HashFormat format, bool includeType) const;
 
     std::string gitRev() const
     {
-        return to_string(Base::Base16, false);
+        return to_string(HashFormat::Base16, false);
     }
 
     std::string gitShortRev() const
     {
-        return std::string(to_string(Base::Base16, false), 0, 7);
+        return std::string(to_string(HashFormat::Base16, false), 0, 7);
     }
 
     static Hash dummy;

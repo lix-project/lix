@@ -152,7 +152,9 @@ struct GitArchiveInputScheme : InputScheme
         auto path = owner + "/" + repo;
         assert(!(ref && rev));
         if (ref) path += "/" + *ref;
-        if (rev) path += "/" + rev->to_string(Base::Base16, false);
+        if (rev) {
+            path += "/" + rev->to_string(HashFormat::Base16, false);
+        }
         return ParsedURL {
             .scheme = schemeType(),
             .path = path,
@@ -304,8 +306,12 @@ struct GitHubInputScheme : GitArchiveInputScheme
                     ? "https://%s/%s/%s/archive/%s.tar.gz"
                     : "https://api.%s/repos/%s/%s/tarball/%s";
 
-        const auto url = fmt(urlFmt, host, getOwner(input), getRepo(input),
-            input.getRev()->to_string(Base::Base16, false));
+        const auto url =
+            fmt(urlFmt,
+                host,
+                getOwner(input),
+                getRepo(input),
+                input.getRev()->to_string(HashFormat::Base16, false));
 
         return DownloadUrl { url, headers };
     }
@@ -388,9 +394,12 @@ struct GitLabInputScheme : GitArchiveInputScheme
         // is 10 reqs/sec/ip-addr.  See
         // https://docs.gitlab.com/ee/user/gitlab_com/index.html#gitlabcom-specific-rate-limits
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("gitlab.com");
-        auto url = fmt("https://%s/api/v4/projects/%s%%2F%s/repository/archive.tar.gz?sha=%s",
-            host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo"),
-            input.getRev()->to_string(Base::Base16, false));
+        auto url =
+            fmt("https://%s/api/v4/projects/%s%%2F%s/repository/archive.tar.gz?sha=%s",
+                host,
+                getStrAttr(input.attrs, "owner"),
+                getStrAttr(input.attrs, "repo"),
+                input.getRev()->to_string(HashFormat::Base16, false));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };
@@ -487,9 +496,12 @@ struct SourceHutInputScheme : GitArchiveInputScheme
     DownloadUrl getDownloadUrl(const Input & input) const override
     {
         auto host = maybeGetStrAttr(input.attrs, "host").value_or("git.sr.ht");
-        auto url = fmt("https://%s/%s/%s/archive/%s.tar.gz",
-            host, getStrAttr(input.attrs, "owner"), getStrAttr(input.attrs, "repo"),
-            input.getRev()->to_string(Base::Base16, false));
+        auto url =
+            fmt("https://%s/%s/%s/archive/%s.tar.gz",
+                host,
+                getStrAttr(input.attrs, "owner"),
+                getStrAttr(input.attrs, "repo"),
+                input.getRev()->to_string(HashFormat::Base16, false));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };

@@ -32,7 +32,7 @@ void emitTreeAttrs(
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.alloc("narHash").mkString(narHash->to_string(Base::SRI, true));
+    attrs.alloc("narHash").mkString(narHash->to_string(HashFormat::SRI, true));
 
     if (input.getType() == "git")
         attrs.alloc("submodules").mkBool(
@@ -314,13 +314,15 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             ? state.aio.blockOn(state.ctx.store->queryPathInfo(storePath))->narHash
             : hashFile(HashType::SHA256, state.ctx.store->toRealPath(storePath));
         if (hash != *expectedHash) {
-            state.ctx.errors.make<EvalError>(
-                "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
-                *url,
-                expectedHash->to_string(Base::SRI, true),
-                hash.to_string(Base::SRI, true)
-            ).withExitStatus(102)
-            .debugThrow();
+            state.ctx.errors
+                .make<EvalError>(
+                    "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
+                    *url,
+                    expectedHash->to_string(HashFormat::SRI, true),
+                    hash.to_string(HashFormat::SRI, true)
+                )
+                .withExitStatus(102)
+                .debugThrow();
         }
     }
 

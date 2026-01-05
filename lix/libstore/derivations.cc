@@ -431,7 +431,8 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
             [&](const DerivationOutput::CAFixed & dof) {
                 s += ','; printUnquotedString(s, maskOutputs ? "" : store.printStorePath(dof.path(store, name, i.first)));
                 s += ','; printUnquotedString(s, dof.ca.printMethodAlgo());
-                s += ','; printUnquotedString(s, dof.ca.hash.to_string(Base::Base16, false));
+                s += ',';
+                printUnquotedString(s, dof.ca.hash.to_string(HashFormat::Base16, false));
             },
         }, i.second.raw);
         s += ')';
@@ -590,10 +591,12 @@ try {
         std::map<std::string, Hash> outputHashes;
         for (const auto & i : drv.outputs) {
             auto & dof = std::get<DerivationOutput::CAFixed>(i.second.raw);
-            auto hash = hashString(HashType::SHA256, "fixed:out:"
-                + dof.ca.printMethodAlgo() + ":"
-                + dof.ca.hash.to_string(Base::Base16, false) + ":"
-                + store.printStorePath(dof.path(store, drv.name, i.first)));
+            auto hash = hashString(
+                HashType::SHA256,
+                "fixed:out:" + dof.ca.printMethodAlgo() + ":"
+                    + dof.ca.hash.to_string(HashFormat::Base16, false) + ":"
+                    + store.printStorePath(dof.path(store, drv.name, i.first))
+            );
             outputHashes.insert_or_assign(i.first, std::move(hash));
         }
         co_return DrvHash {
@@ -608,7 +611,7 @@ try {
             const auto h = get(res.hashes, outputName);
             if (!h)
                 throw Error("no hash for output '%s' of derivation '%s'", outputName, drv.name);
-            inputs2[h->to_string(Base::Base16, false)].insert(outputName);
+            inputs2[h->to_string(HashFormat::Base16, false)].insert(outputName);
         }
     }
 
@@ -711,16 +714,16 @@ WireFormatGenerator serializeDerivation(const Store & store, const BasicDerivati
         co_yield i.first;
         auto [path, algo, hash] = std::visit(
             overloaded{
-                [&](const DerivationOutput::InputAddressed & doi
-                ) -> std::tuple<std::string, std::string, std::string> {
+                [&](const DerivationOutput::InputAddressed & doi)
+                    -> std::tuple<std::string, std::string, std::string> {
                     return {store.printStorePath(doi.path), "", ""};
                 },
-                [&](const DerivationOutput::CAFixed & dof
-                ) -> std::tuple<std::string, std::string, std::string> {
+                [&](const DerivationOutput::CAFixed & dof)
+                    -> std::tuple<std::string, std::string, std::string> {
                     return {
                         store.printStorePath(dof.path(store, drv.name, i.first)),
                         dof.ca.printMethodAlgo(),
-                        dof.ca.hash.to_string(Base::Base16, false)
+                        dof.ca.hash.to_string(HashFormat::Base16, false)
                     };
                 },
             },
@@ -750,7 +753,9 @@ void writeDerivation(Sink & out, const Store & store, const BasicDerivation & dr
 std::string hashPlaceholder(const OutputNameView outputName)
 {
     // FIXME: memoize?
-    return "/" + hashString(HashType::SHA256, concatStrings("nix-output:", outputName)).to_string(Base::Base32, false);
+    return "/"
+        + hashString(HashType::SHA256, concatStrings("nix-output:", outputName))
+              .to_string(HashFormat::Base32, false);
 }
 
 
@@ -833,7 +838,7 @@ JSON DerivationOutput::toJSON(
         [&](const DerivationOutput::CAFixed & dof) {
             res["path"] = store.printStorePath(dof.path(store, drvName, outputName));
             res["hashAlgo"] = dof.ca.printMethodAlgo();
-            res["hash"] = dof.ca.hash.to_string(Base::Base16, false);
+            res["hash"] = dof.ca.hash.to_string(HashFormat::Base16, false);
             // FIXME print refs?
         },
     }, raw);

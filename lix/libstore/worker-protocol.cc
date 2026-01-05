@@ -145,7 +145,7 @@ UnkeyedValidPathInfo WorkerProto::Serialise<UnkeyedValidPathInfo>::read(ReadConn
 WireFormatGenerator WorkerProto::Serialise<UnkeyedValidPathInfo>::write(WriteConn conn, const UnkeyedValidPathInfo & pathInfo)
 {
     co_yield (pathInfo.deriver ? conn.store.printStorePath(*pathInfo.deriver) : "");
-    co_yield pathInfo.narHash.to_string(Base::Base16, false);
+    co_yield pathInfo.narHash.to_string(HashFormat::Base16, false);
     co_yield WorkerProto::write(conn, pathInfo.references);
     co_yield pathInfo.registrationTime;
     co_yield pathInfo.narSize;

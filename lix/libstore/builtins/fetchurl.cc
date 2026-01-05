@@ -72,8 +72,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
                     Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
                     fetch(
                         aio,
-                        hashedMirror + printHashType(h.type) + "/"
-                            + h.to_string(Base::Base16, false)
+                        hashedMirror + printHashType(h.type) + "/" + h.to_string(HashFormat::Base16, false)
                     );
                     return;
                 } catch (Error & e) {

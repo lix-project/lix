@@ -897,7 +897,7 @@ void LocalDerivationGoal::initTmpDir() {
                 env[i.first] = i.second;
             } else {
                 auto hash = hashString(HashType::SHA256, i.first);
-                std::string fn = ".attr-" + hash.to_string(Base::Base32, false);
+                std::string fn = ".attr-" + hash.to_string(HashFormat::Base32, false);
                 Path p = tmpDir + "/" + fn;
                 /* TODO(jade): we should have BorrowedFD instead of OwnedFD. */
                 AutoCloseFD passAsFileFd{sys::openat(
@@ -2105,8 +2105,8 @@ try {
                         "specified: %s\n           got: %s\n expected path: %s\n      got path: %s",
                         worker.store.printStorePath(drvPath),
                         guessedUrl,
-                        wanted.to_string(Base::SRI, true),
-                        got.to_string(Base::SRI, true),
+                        wanted.to_string(HashFormat::SRI, true),
+                        got.to_string(HashFormat::SRI, true),
                         worker.store.printStorePath(dof.path(worker.store, drv->name, outputName)),
                         worker.store.printStorePath(newInfo0.path)
                     ));

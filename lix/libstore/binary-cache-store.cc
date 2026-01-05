@@ -164,14 +164,14 @@ try {
     auto [fileHash, fileSize] = fileHashSink.finish();
     narInfo->fileHash = fileHash;
     narInfo->fileSize = fileSize;
-    narInfo->url = "nar/" + narInfo->fileHash->to_string(Base::Base32, false) + ".nar"
-        + (config().compression == "xz" ? ".xz" :
-           config().compression == "bzip2" ? ".bz2" :
-           config().compression == "zstd" ? ".zst" :
-           config().compression == "lzip" ? ".lzip" :
-           config().compression == "lz4" ? ".lz4" :
-           config().compression == "br" ? ".br" :
-           "");
+    narInfo->url = "nar/" + narInfo->fileHash->to_string(HashFormat::Base32, false) + ".nar"
+        + (config().compression == "xz"          ? ".xz"
+               : config().compression == "bzip2" ? ".bz2"
+               : config().compression == "zstd"  ? ".zst"
+               : config().compression == "lzip"  ? ".lzip"
+               : config().compression == "lz4"   ? ".lz4"
+               : config().compression == "br"    ? ".br"
+                                                 : "");
 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now2 - now1).count();
     printMsg(lvlTalkative, "copying path '%1%' (%2% bytes, compressed %3$.1f%% in %4% ms) to binary cache",

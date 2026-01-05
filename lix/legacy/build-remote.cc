@@ -69,7 +69,7 @@ static std::string makeLockFilename(const std::string & storeUri) {
     // This avoids issues with the escaped URI being very long and causing
     // path too long errors, while also avoiding any possibility of collision
     // caused by simple truncation.
-    auto hash = hashString(HashType::SHA256, storeUri).to_string(Base::Base32, false);
+    auto hash = hashString(HashType::SHA256, storeUri).to_string(HashFormat::Base32, false);
     return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
 }
 

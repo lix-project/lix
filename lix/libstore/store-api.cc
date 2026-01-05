@@ -178,7 +178,7 @@ StorePath Store::makeStorePath(std::string_view type,
 StorePath Store::makeStorePath(std::string_view type,
     const Hash & hash, std::string_view name) const
 {
-    return makeStorePath(type, hash.to_string(Base::Base16, true), name);
+    return makeStorePath(type, hash.to_string(HashFormat::Base16, true), name);
 }
 
 
@@ -215,12 +215,15 @@ StorePath Store::makeFixedOutputPath(std::string_view name, const FixedOutputInf
             throw Error("fixed output derivation '%s' is not allowed to refer to other store paths.\nYou may need to use the 'unsafeDiscardReferences' derivation attribute, see the manual for more details.",
                 name);
         }
-        return makeStorePath("output:out",
-            hashString(HashType::SHA256,
-                "fixed:out:"
-                + makeFileIngestionPrefix(info.method)
-                + info.hash.to_string(Base::Base16, true) + ":"),
-            name);
+        return makeStorePath(
+            "output:out",
+            hashString(
+                HashType::SHA256,
+                "fixed:out:" + makeFileIngestionPrefix(info.method)
+                    + info.hash.to_string(HashFormat::Base16, true) + ":"
+            ),
+            name
+        );
     }
 }
 
@@ -801,7 +804,7 @@ try {
         auto info = TRY_AWAIT(queryPathInfo(i));
 
         if (showHash) {
-            s += info->narHash.to_string(Base::Base16, false) + "\n";
+            s += info->narHash.to_string(HashFormat::Base16, false) + "\n";
             s += fmt("%1%\n", info->narSize);
         }
 
@@ -852,10 +855,13 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<JSON>> Store::pathInfoToJSON(const StorePathSet & storePaths,
-    bool includeImpureInfo, bool showClosureSize,
-    Base hashBase,
-    AllowInvalidFlag allowInvalid)
+kj::Promise<Result<JSON>> Store::pathInfoToJSON(
+    const StorePathSet & storePaths,
+    bool includeImpureInfo,
+    bool showClosureSize,
+    HashFormat hashFormat,
+    AllowInvalidFlag allowInvalid
+)
 try {
     JSON::array_t jsonList = JSON::array();
 
@@ -867,7 +873,7 @@ try {
 
             jsonPath["path"] = printStorePath(info->path);
             jsonPath["valid"] = true;
-            jsonPath["narHash"] = info->narHash.to_string(hashBase, true);
+            jsonPath["narHash"] = info->narHash.to_string(hashFormat, true);
             jsonPath["narSize"] = info->narSize;
 
             {
@@ -909,7 +915,7 @@ try {
                     if (!narInfo->url.empty())
                         jsonPath["url"] = narInfo->url;
                     if (narInfo->fileHash)
-                        jsonPath["downloadHash"] = narInfo->fileHash->to_string(hashBase, true);
+                        jsonPath["downloadHash"] = narInfo->fileHash->to_string(hashFormat, true);
                     if (narInfo->fileSize)
                         jsonPath["downloadSize"] = narInfo->fileSize;
                     if (showClosureSize)

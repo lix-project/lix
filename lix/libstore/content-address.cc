@@ -53,16 +53,16 @@ std::string ContentAddressMethod::render(HashType ht) const
 
 std::string ContentAddress::render() const
 {
-    return std::visit(overloaded {
-        [](const TextIngestionMethod &) -> std::string {
-            return "text:";
-        },
-        [](const FileIngestionMethod & method) {
-            return "fixed:"
-                + makeFileIngestionPrefix(method);
-        },
-    }, method.raw)
-        + this->hash.to_string(Base::Base32, true);
+    return std::visit(
+               overloaded{
+                   [](const TextIngestionMethod &) -> std::string { return "text:"; },
+                   [](const FileIngestionMethod & method) {
+                       return "fixed:" + makeFileIngestionPrefix(method);
+                   },
+               },
+               method.raw
+           )
+        + this->hash.to_string(HashFormat::Base32, true);
 }
 
 /**

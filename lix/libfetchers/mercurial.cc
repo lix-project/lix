@@ -250,7 +250,10 @@ struct MercurialInputScheme : InputScheme
         auto checkHashType = [&](const std::optional<Hash> & hash)
         {
             if (hash.has_value() && hash->type != HashType::SHA1)
-                throw Error("Hash '%s' is not supported by Mercurial. Only sha1 is supported.", hash->to_string(Base::Base16, true));
+                throw Error(
+                    "Hash '%s' is not supported by Mercurial. Only sha1 is supported.",
+                    hash->to_string(HashFormat::Base16, true)
+                );
         };
 
 
@@ -296,7 +299,10 @@ struct MercurialInputScheme : InputScheme
             }
         }
 
-        Path cacheDir = fmt("%s/nix/hg/%s", getCacheDir(), hashString(HashType::SHA256, actualUrl).to_string(Base::Base32, false));
+        Path cacheDir =
+            fmt("%s/nix/hg/%s",
+                getCacheDir(),
+                hashString(HashType::SHA256, actualUrl).to_string(HashFormat::Base32, false));
 
         /* If this is a commit hash that we already have, we don't
            have to pull again. */

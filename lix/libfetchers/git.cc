@@ -58,8 +58,8 @@ bool touchCacheFile(const Path & path, time_t touch_time)
 
 Path getCachePath(std::string_view key)
 {
-    return getCacheDir() + "/nix/gitv3/" +
-        hashString(HashType::SHA256, key).to_string(Base::Base32, false);
+    return getCacheDir() + "/nix/gitv3/"
+        + hashString(HashType::SHA256, key).to_string(HashFormat::Base32, false);
 }
 
 // Returns the name of the HEAD branch.
@@ -577,7 +577,10 @@ struct GitInputScheme : InputScheme
         auto checkHashType = [&](const std::optional<Hash> & hash)
         {
             if (hash.has_value() && !(hash->type == HashType::SHA1 || hash->type == HashType::SHA256))
-                throw Error("Hash '%s' is not supported by Git. Supported types are sha1 and sha256.", hash->to_string(Base::Base16, true));
+                throw Error(
+                    "Hash '%s' is not supported by Git. Supported types are sha1 and sha256.",
+                    hash->to_string(HashFormat::Base16, true)
+                );
         };
 
         auto getLockedAttrs = [&]()

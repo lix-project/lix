@@ -92,7 +92,7 @@ SV * queryReferences(char * path)
 SV * queryPathHash(char * path)
     PPCODE:
         try {
-            auto s = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->narHash.to_string(Base::Base32, true);
+            auto s = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->narHash.to_string(HashFormat::Base32, true);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -118,7 +118,7 @@ SV * queryPathInfo(char * path, int base32)
                 XPUSHs(&PL_sv_undef);
             else
                 XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(*info->deriver).c_str(), 0)));
-            auto s = info->narHash.to_string(base32 ? Base::Base32 : Base::Base16, true);
+            auto s = info->narHash.to_string(base32 ? HashFormat::Base32 : HashFormat::Base16, true);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
             mXPUSHi(info->registrationTime);
             mXPUSHi(info->narSize);
@@ -210,7 +210,7 @@ SV * hashPath(char * algo, int base32, char * path)
     PPCODE:
         try {
             Hash h = hashPath(parseHashType(algo), path).first;
-            auto s = h.to_string(base32 ? Base::Base32 : Base::Base16, false);
+            auto s = h.to_string(base32 ? HashFormat::Base32 : HashFormat::Base16, false);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -221,7 +221,7 @@ SV * hashFile(char * algo, int base32, char * path)
     PPCODE:
         try {
             Hash h = hashFile(parseHashType(algo), path);
-            auto s = h.to_string(base32 ? Base::Base32 : Base::Base16, false);
+            auto s = h.to_string(base32 ? HashFormat::Base32 : HashFormat::Base16, false);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -232,7 +232,7 @@ SV * hashString(char * algo, int base32, char * s)
     PPCODE:
         try {
             Hash h = hashString(parseHashType(algo), s);
-            auto s = h.to_string(base32 ? Base::Base32 : Base::Base16, false);
+            auto s = h.to_string(base32 ? HashFormat::Base32 : HashFormat::Base16, false);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
@@ -243,7 +243,7 @@ SV * convertHash(char * algo, char * s, int toBase32)
     PPCODE:
         try {
             auto h = Hash::parseAny(s, parseHashType(algo));
-            auto s = h.to_string(toBase32 ? Base::Base32 : Base::Base16, false);
+            auto s = h.to_string(toBase32 ? HashFormat::Base32 : HashFormat::Base16, false);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());

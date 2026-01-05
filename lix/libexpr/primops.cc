@@ -1494,7 +1494,7 @@ static void prim_hashFile(EvalState & state, Value * * args, Value & v)
 
     auto path = realisePath(state, *args[1]);
 
-    v.mkString(hashString(*ht, path.readFile()).to_string(Base::Base16, false));
+    v.mkString(hashString(*ht, path.readFile()).to_string(HashFormat::Base16, false));
 }
 
 static std::string_view fileTypeToString(InputAccessor::Type type)
@@ -2776,7 +2776,7 @@ static void prim_hashString(EvalState & state, Value * * args, Value & v)
     NixStringContext context; // discarded
     auto s = state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.hashString");
 
-    v.mkString(hashString(*ht, s).to_string(Base::Base16, false));
+    v.mkString(hashString(*ht, s).to_string(HashFormat::Base16, false));
 }
 
 struct RegexCache

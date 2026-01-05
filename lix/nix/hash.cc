@@ -9,39 +9,39 @@
 
 namespace nix {
 
-struct CmdHashBase : Command
+struct CmdHashFormat : Command
 {
     FileIngestionMethod mode;
-    Base base = Base::SRI;
+    HashFormat format = HashFormat::SRI;
     bool truncate = false;
     HashType ht = HashType::SHA256;
     std::vector<std::string> paths;
     std::optional<std::string> modulus;
 
-    CmdHashBase(FileIngestionMethod mode) : mode(mode)
+    CmdHashFormat(FileIngestionMethod mode) : mode(mode)
     {
         addFlag({
             .longName = "sri",
             .description = "Print the hash in SRI format.",
-            .handler = {&base, Base::SRI},
+            .handler = {&format, HashFormat::SRI},
         });
 
         addFlag({
             .longName = "base64",
             .description = "Print the hash in base-64 format.",
-            .handler = {&base, Base::Base64},
+            .handler = {&format, HashFormat::Base64},
         });
 
         addFlag({
             .longName = "base32",
             .description = "Print the hash in base-32 (Nix-specific) format.",
-            .handler = {&base, Base::Base32},
+            .handler = {&format, HashFormat::Base32},
         });
 
         addFlag({
             .longName = "base16",
             .description = "Print the hash in base-16 format.",
-            .handler = {&base, Base::Base16},
+            .handler = {&format, HashFormat::Base16},
         });
 
         addFlag(Flag::mkHashTypeFlag("type", &ht));
@@ -91,18 +91,18 @@ struct CmdHashBase : Command
                 ? computeHashModulo(ht, *modulus, source).first
                 : hashSource(ht, source).first;
             if (truncate && h.hashSize > 20) h = compressHash(h, 20);
-            logger->cout(h.to_string(base, base == Base::SRI));
+            logger->cout(h.to_string(format, format == HashFormat::SRI));
         }
     }
 };
 
-struct CmdToBase : Command
+struct CmdToHashFormat : Command
 {
-    Base base;
+    HashFormat format;
     std::optional<HashType> ht;
     std::vector<std::string> args;
 
-    CmdToBase(Base base) : base(base)
+    CmdToHashFormat(HashFormat format) : format(format)
     {
         addFlag(Flag::mkHashTypeOptFlag("type", &ht));
         expectArgs("strings", &args);
@@ -110,17 +110,19 @@ struct CmdToBase : Command
 
     std::string description() override
     {
-        return fmt("convert a hash to %s representation",
-            base == Base::Base16 ? "base-16" :
-            base == Base::Base32 ? "base-32" :
-            base == Base::Base64 ? "base-64" :
-            "SRI");
+        return fmt(
+            "convert a hash to %s representation",
+            format == HashFormat::Base16       ? "base-16"
+                : format == HashFormat::Base32 ? "base-32"
+                : format == HashFormat::Base64 ? "base-64"
+                                               : "SRI"
+        );
     }
 
     void run() override
     {
         for (auto s : args)
-            logger->cout(Hash::parseAny(s, ht).to_string(base, base == Base::SRI));
+            logger->cout(Hash::parseAny(s, ht).to_string(format, format == HashFormat::SRI));
     }
 };
 
@@ -128,23 +130,23 @@ struct CmdHash : MultiCommand
 {
     CmdHash()
         : MultiCommand({
-            {"file",
-             [](auto & aio) {
-                 return make_ref<MixAio<CmdHashBase>>(aio, FileIngestionMethod::Flat);
-                 ;
-             }},
-            {"path",
-             [](auto & aio) {
-                 return make_ref<MixAio<CmdHashBase>>(aio, FileIngestionMethod::Recursive);
-             }},
-            {"to-base16",
-             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base16); }},
-            {"to-base32",
-             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base32); }},
-            {"to-base64",
-             [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::Base64); }},
-            {"to-sri", [](auto & aio) { return make_ref<MixAio<CmdToBase>>(aio, Base::SRI); }},
-        })
+              {"file",
+               [](auto & aio) {
+                   return make_ref<MixAio<CmdHashFormat>>(aio, FileIngestionMethod::Flat);
+                   ;
+               }},
+              {"path",
+               [](auto & aio) {
+                   return make_ref<MixAio<CmdHashFormat>>(aio, FileIngestionMethod::Recursive);
+               }},
+              {"to-base16",
+               [](auto & aio) { return make_ref<MixAio<CmdToHashFormat>>(aio, HashFormat::Base16); }},
+              {"to-base32",
+               [](auto & aio) { return make_ref<MixAio<CmdToHashFormat>>(aio, HashFormat::Base32); }},
+              {"to-base64",
+               [](auto & aio) { return make_ref<MixAio<CmdToHashFormat>>(aio, HashFormat::Base64); }},
+              {"to-sri", [](auto & aio) { return make_ref<MixAio<CmdToHashFormat>>(aio, HashFormat::SRI); }},
+          })
     {
     }
 
@@ -173,7 +175,7 @@ static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings arg
 {
     std::optional<HashType> ht;
     bool flat = false;
-    Base base = Base::Base16;
+    HashFormat format = HashFormat::Base16;
     bool truncate = false;
     enum { opHash, opTo } op = opHash;
     std::vector<std::string> ss;
@@ -184,50 +186,51 @@ static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings arg
         else if (*arg == "--version")
             printVersion("nix-hash");
         else if (*arg == "--flat") flat = true;
-        else if (*arg == "--base16") base = Base::Base16;
-        else if (*arg == "--base32") base = Base::Base32;
-        else if (*arg == "--base64") base = Base::Base64;
-        else if (*arg == "--sri") base = Base::SRI;
-        else if (*arg == "--truncate") truncate = true;
-        else if (*arg == "--type") {
+        else if (*arg == "--base16") {
+            format = HashFormat::Base16;
+        } else if (*arg == "--base32") {
+            format = HashFormat::Base32;
+        } else if (*arg == "--base64") {
+            format = HashFormat::Base64;
+        } else if (*arg == "--sri") {
+            format = HashFormat::SRI;
+        } else if (*arg == "--truncate") {
+            truncate = true;
+        } else if (*arg == "--type") {
             std::string s = getArg(*arg, arg, end);
             ht = parseHashType(s);
-        }
-        else if (*arg == "--to-base16") {
+        } else if (*arg == "--to-base16") {
             op = opTo;
-            base = Base::Base16;
-        }
-        else if (*arg == "--to-base32") {
+            format = HashFormat::Base16;
+        } else if (*arg == "--to-base32") {
             op = opTo;
-            base = Base::Base32;
-        }
-        else if (*arg == "--to-base64") {
+            format = HashFormat::Base32;
+        } else if (*arg == "--to-base64") {
             op = opTo;
-            base = Base::Base64;
-        }
-        else if (*arg == "--to-sri") {
+            format = HashFormat::Base64;
+        } else if (*arg == "--to-sri") {
             op = opTo;
-            base = Base::SRI;
-        }
-        else if (*arg != "" && arg->at(0) == '-')
+            format = HashFormat::SRI;
+        } else if (*arg != "" && arg->at(0) == '-') {
             return false;
-        else
+        } else {
             ss.push_back(*arg);
+        }
         return true;
     }).parseCmdline(argv);
 
     if (op == opHash) {
-        MixAio<CmdHashBase> cmd(aio, flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);
+        MixAio<CmdHashFormat> cmd(aio, flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);
         if (!ht.has_value()) ht = HashType::MD5;
         cmd.ht = ht.value();
-        cmd.base = base;
+        cmd.format = format;
         cmd.truncate = truncate;
         cmd.paths = ss;
         cmd.run();
     }
 
     else {
-        MixAio<CmdToBase> cmd(aio, base);
+        MixAio<CmdToHashFormat> cmd(aio, format);
         cmd.args = ss;
         if (ht.has_value()) cmd.ht = ht;
         cmd.run();

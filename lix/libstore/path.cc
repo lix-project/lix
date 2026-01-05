@@ -47,7 +47,7 @@ StorePath::StorePath(std::string_view _baseName)
 }
 
 StorePath::StorePath(const Hash & hash, std::string_view _name)
-    : baseName((hash.to_string(Base::Base32, false) + "-").append(std::string(_name)))
+    : baseName((hash.to_string(HashFormat::Base32, false) + "-").append(std::string(_name)))
 {
     assert(hash.base32Len() == HASH_PART_LEN);
     checkName(baseName, name());
