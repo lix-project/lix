@@ -213,6 +213,7 @@ libexpr_sources = files(
   'attr-set.cc',
   'eval-cache.cc',
   'eval-error.cc',
+  'eval-expr.cc',
   'eval-settings.cc',
   'eval.cc',
   'flake/config.cc',

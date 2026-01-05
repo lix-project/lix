@@ -241,5 +241,43 @@ inline void EvalState::forceList(Value & v, const PosIdx pos, std::string_view e
     }
 }
 
+inline Value * EvalState::lookupVar(Env * env, const ExprVar & var, bool noEval)
+{
+    for (auto l = var.level; l; --l, env = env->up)
+        ;
 
+    if (!var.fromWith) {
+        return &env->values[var.displ];
+    }
+
+    // This early exit defeats the `maybeThunk` optimization for variables from `with`,
+    // The added complexity of handling this appears to be similarly in cost, or
+    // the cases where applicable were insignificant in the first place.
+    if (noEval) {
+        return nullptr;
+    }
+
+    auto * fromWith = var.fromWith;
+    while (1) {
+        forceAttrs(
+            env->values[0], fromWith->pos, "while evaluating the first subexpression of a with expression"
+        );
+        auto j = env->values[0].attrs()->get(var.name);
+        if (j) {
+            if (ctx.stats.countCalls) {
+                ctx.stats.attrSelects[j->pos]++;
+            }
+            return &j->value;
+        }
+        if (!fromWith->parentWith) {
+            ctx.errors.make<UndefinedVarError>("undefined variable '%1%'", ctx.symbols[var.name])
+                .atPos(var.pos)
+                .withFrame(*env, var)
+                .debugThrow();
+        }
+        for (size_t l = fromWith->prevWith; l; --l, env = env->up)
+            ;
+        fromWith = fromWith->parentWith;
+    }
+}
 }

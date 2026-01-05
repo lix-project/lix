@@ -80,6 +80,9 @@ void copyContext(const Value & v, NixStringContext & context);
 std::string printValue(EvalState & state, Value & v);
 std::ostream & operator << (std::ostream & os, const ValueType t);
 
+Symbol getName(const AttrName & name, EvalState & state, Env & env);
+
+std::string showAttrPath(EvalState & state, Env & env, const AttrPath & attrPath);
 
 /**
  * Initialise the evaluator (including Boehm GC, if applicable).
@@ -861,7 +864,26 @@ std::string showType(const Value & v);
 
 static constexpr std::string_view corepkgsPrefix{"/__corepkgs__/"};
 
-
+// In C++, template functions need to be defined in the header :/
+template<typename... Args>
+DebugState::TraceFrame makeDebugTraceStacker(
+    EvalState & state, Expr & expr, Env & env, std::shared_ptr<Pos> && pos, const Args &... formatArgs
+)
+{
+    auto trace = state.ctx.debug->addTrace(
+        DebugTrace{
+            .pos = std::move(pos),
+            .expr = expr,
+            .env = env,
+            .hint = HintFmt(formatArgs...),
+            .isError = false,
+        }
+    );
+    if (state.ctx.debug->stop && state.ctx.debug->errorCallback) {
+        state.ctx.debug->onEvalError(nullptr, env, expr);
+    }
+    return trace;
+}
 }
 
 #include "lix/libexpr/eval-inline.hh" // IWYU pragma: keep
