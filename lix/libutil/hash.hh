@@ -157,11 +157,6 @@ public:
 Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht);
 
 /**
- * Print a hash in base-16 if it's MD5, or base-32 otherwise.
- */
-std::string printHash16or32(const Hash & hash);
-
-/**
  * Compute the hash of the given string.
  */
 Hash hashString(HashType ht, std::string_view s);

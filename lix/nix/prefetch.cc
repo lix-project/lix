@@ -263,7 +263,10 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
         if (!printPath)
             printInfo("path is '%s'", store->printStorePath(storePath));
 
-        logger->cout(printHash16or32(hash));
+        logger->cout(
+            hash.to_string(hash.type == HashType::MD5 ? HashFormat::Base16 : HashFormat::Base32, false)
+        );
+
         if (printPath)
             logger->cout(store->printStorePath(storePath));
 

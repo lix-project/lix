@@ -64,7 +64,6 @@ bool Hash::operator < (const Hash & h) const
     return false;
 }
 
-
 const std::string base16Chars = "0123456789abcdef";
 
 
@@ -77,12 +76,6 @@ static std::string printHash16(const Hash & hash)
         buf.push_back(base16Chars[hash.hash[i] & 0x0f]);
     }
     return buf;
-}
-
-
-std::string printHash16or32(const Hash & hash)
-{
-    return hash.to_string(hash.type == HashType::MD5 ? HashFormat::Base16 : HashFormat::Base32, false);
 }
 
 std::string Hash::to_string(HashFormat format, bool includeType) const
