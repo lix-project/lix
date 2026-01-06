@@ -329,45 +329,7 @@ Value ExprOpUpdate::eval(EvalState & state, Env & env)
     Value v2 = e2->eval(state, env);
     state.checkAttrs(v2, env, *e2);
 
-    state.ctx.stats.nrOpUpdates++;
-
-    if (v1.attrs()->size() == 0) {
-        return v2;
-    }
-    if (v2.attrs()->size() == 0) {
-        return v1;
-    }
-
-    auto attrs = state.ctx.buildBindings(v1.attrs()->size() + v2.attrs()->size());
-
-    /* Merge the sets, preferring values from the second set.  Make
-       sure to keep the resulting vector in sorted order. */
-    Bindings::iterator i = v1.attrs()->begin();
-    Bindings::iterator j = v2.attrs()->begin();
-
-    while (i != v1.attrs()->end() && j != v2.attrs()->end()) {
-        if (i->name == j->name) {
-            attrs.insert(*j);
-            ++i;
-            ++j;
-        } else if (i->name < j->name) {
-            attrs.insert(*i++);
-        } else {
-            attrs.insert(*j++);
-        }
-    }
-
-    while (i != v1.attrs()->end()) {
-        attrs.insert(*i++);
-    }
-    while (j != v2.attrs()->end()) {
-        attrs.insert(*j++);
-    }
-
-    Value v = {NewValueAs::attrs, attrs.alreadySorted()};
-
-    state.ctx.stats.nrOpUpdateValuesCopied += v.attrs()->size();
-    return v;
+    return state.updateAttrs(v1, v2);
 }
 
 Value ExprOpConcatLists::eval(EvalState & state, Env & env)

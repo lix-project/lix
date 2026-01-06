@@ -1358,6 +1358,48 @@ https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
     return callFunction(fun, vAttrs, pos);
 }
 
+Value EvalState::updateAttrs(const Value & v1, const Value & v2)
+{
+    ctx.stats.nrOpUpdates++;
+
+    if (v1.attrs()->size() == 0) {
+        return v2;
+    }
+    if (v2.attrs()->size() == 0) {
+        return v1;
+    }
+
+    auto attrs = ctx.buildBindings(v1.attrs()->size() + v2.attrs()->size());
+
+    /* Merge the sets, preferring values from the second set.  Make
+       sure to keep the resulting vector in sorted order. */
+    Bindings::iterator i = v1.attrs()->begin();
+    Bindings::iterator j = v2.attrs()->begin();
+
+    while (i != v1.attrs()->end() && j != v2.attrs()->end()) {
+        if (i->name == j->name) {
+            attrs.insert(*j);
+            ++i;
+            ++j;
+        } else if (i->name < j->name) {
+            attrs.insert(*i++);
+        } else {
+            attrs.insert(*j++);
+        }
+    }
+
+    while (i != v1.attrs()->end()) {
+        attrs.insert(*i++);
+    }
+    while (j != v2.attrs()->end()) {
+        attrs.insert(*j++);
+    }
+
+    Value v = {NewValueAs::attrs, attrs.alreadySorted()};
+    ctx.stats.nrOpUpdateValuesCopied += v.attrs()->size();
+    return v;
+}
+
 void EvalState::concatLists(
     Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx
 )

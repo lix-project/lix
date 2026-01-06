@@ -826,6 +826,7 @@ public:
         const SingleDerivedPath & p,
         Value & v);
 
+    Value updateAttrs(const Value & v1, const Value & v2);
     void
     concatLists(Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx);
 
