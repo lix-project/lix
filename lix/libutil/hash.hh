@@ -20,13 +20,27 @@ MakeError(BadHash, Error);
 
 enum class HashType : char { MD5 = 42, SHA1, SHA256, SHA512 };
 
+const size_t md5HashSize = 16;
+const size_t sha1HashSize = 20;
+const size_t sha256HashSize = 32;
+const size_t sha512HashSize = 64;
 
-const int md5HashSize = 16;
-const int sha1HashSize = 20;
-const int sha256HashSize = 32;
-const int sha512HashSize = 64;
+static constexpr size_t regularHashSize(HashType type)
+{
+    switch (type) {
+    case HashType::MD5:
+        return md5HashSize;
+    case HashType::SHA1:
+        return sha1HashSize;
+    case HashType::SHA256:
+        return sha256HashSize;
+    case HashType::SHA512:
+        return sha512HashSize;
+    }
+    abort();
+}
 
-extern std::set<std::string> hashTypes;
+extern const std::set<std::string> hashTypes;
 
 /**
  * @brief Enumeration representing the hash formats.
@@ -55,7 +69,13 @@ struct Hash
     /**
      * Create a zero-filled hash object.
      */
-    Hash(HashType type);
+    Hash(size_t hashSize, HashType type) : hashSize(hashSize), type(type)
+    {
+        assert(hashSize <= maxHashSize);
+        memset(hash, 0, maxHashSize);
+    }
+
+    Hash(HashType type) : Hash(regularHashSize(type), type) {}
 
     /**
      * Parse the hash from a string representation in the format
@@ -91,17 +111,22 @@ public:
     /**
      * Check whether two hash are equal.
      */
-    bool operator == (const Hash & h2) const;
-
-    /**
-     * Check whether two hash are not equal.
-     */
-    bool operator != (const Hash & h2) const;
+    bool operator==(const Hash & other) const
+    {
+        return std::ranges::equal(as_span(), other.as_span());
+    }
 
     /**
      * For sorting.
      */
-    bool operator < (const Hash & h) const;
+    std::strong_ordering operator<=>(const Hash & other) const
+    {
+        std::span<const uint8_t> lhs = as_span(), rhs = other.as_span();
+
+        return (lhs.size() == rhs.size())
+            ? std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end())
+            : lhs.size() <=> rhs.size();
+    }
 
     /**
      * Returns the length of a base-16 representation of this hash.
@@ -128,6 +153,14 @@ public:
     }
 
     /**
+     * Returns a span of the intrinsic hash
+     */
+    std::span<const uint8_t> as_span() const
+    {
+        return {hash, hashSize};
+    }
+
+    /**
      * Return a string representation of the hash, in base-16, base-32
      * or base-64. By default, this is prefixed by the hash type
      * (e.g. "sha256:").
@@ -141,7 +174,7 @@ public:
 
     std::string gitShortRev() const
     {
-        return std::string(to_string(HashFormat::Base16, false), 0, 7);
+        return std::string(gitRev(), 0, 7);
     }
 
     static Hash dummy;
@@ -177,7 +210,7 @@ inline HashResult hashPath(HashType ht, Path path)
  * Compress a hash to the specified number of bytes by cyclically
  * XORing bytes together.
  */
-Hash compressHash(const Hash & hash, unsigned int newSize);
+Hash compressHash(const Hash & hash, size_t newSize);
 
 /**
  * Parse a string representing a hash type.

@@ -16,53 +16,7 @@
 
 namespace nix {
 
-static size_t regularHashSize(HashType type) {
-    switch (type) {
-    case HashType::MD5: return md5HashSize;
-    case HashType::SHA1: return sha1HashSize;
-    case HashType::SHA256: return sha256HashSize;
-    case HashType::SHA512: return sha512HashSize;
-    }
-    abort();
-}
-
-
-std::set<std::string> hashTypes = { "md5", "sha1", "sha256", "sha512" };
-
-
-Hash::Hash(HashType type) : type(type)
-{
-    hashSize = regularHashSize(type);
-    assert(hashSize <= maxHashSize);
-    memset(hash, 0, maxHashSize);
-}
-
-
-bool Hash::operator == (const Hash & h2) const
-{
-    if (hashSize != h2.hashSize) return false;
-    for (unsigned int i = 0; i < hashSize; i++)
-        if (hash[i] != h2.hash[i]) return false;
-    return true;
-}
-
-
-bool Hash::operator != (const Hash & h2) const
-{
-    return !(*this == h2);
-}
-
-
-bool Hash::operator < (const Hash & h) const
-{
-    if (hashSize < h.hashSize) return true;
-    if (hashSize > h.hashSize) return false;
-    for (unsigned int i = 0; i < hashSize; i++) {
-        if (hash[i] < h.hash[i]) return true;
-        if (hash[i] > h.hash[i]) return false;
-    }
-    return false;
-}
+const std::set<std::string> hashTypes = {"md5", "sha1", "sha256", "sha512"};
 
 const std::string base16Chars = "0123456789abcdef";
 
@@ -247,14 +201,12 @@ static void update(detail::EvpMdCtxPtr & ctx, std::string_view data)
     }
 }
 
-
 static void finish(detail::EvpMdCtxPtr & ctx, unsigned char * hash)
 {
     if (!EVP_DigestFinal_ex(ctx.get(), hash, NULL)) {
         throw Error("failed to finalize message digest");
     }
 }
-
 
 Hash hashString(HashType ht, std::string_view s)
 {
@@ -265,7 +217,6 @@ Hash hashString(HashType ht, std::string_view s)
     return hash;
 }
 
-
 Hash hashFile(HashType ht, const Path & path)
 {
     HashSink sink(ht);
@@ -273,11 +224,7 @@ Hash hashFile(HashType ht, const Path & path)
     return sink.finish().first;
 }
 
-
-HashSink::HashSink(HashType ht) : ht(ht), ctx(start(ht))
-{
-    bytes = 0;
-}
+HashSink::HashSink(HashType ht) : ht(ht), ctx(start(ht)), bytes(0) {}
 
 void HashSink::writeUnbuffered(std::string_view data)
 {
@@ -305,7 +252,6 @@ HashResult HashSink::currentHash()
     return HashResult(hash, bytes);
 }
 
-
 HashResult hashPath(HashType ht, const PreparedDump & path)
 {
     HashSink sink(ht);
@@ -313,42 +259,55 @@ HashResult hashPath(HashType ht, const PreparedDump & path)
     return sink.finish();
 }
 
-
-Hash compressHash(const Hash & hash, unsigned int newSize)
+Hash compressHash(const Hash & hash, size_t newSize)
 {
-    Hash h(hash.type);
-    h.hashSize = newSize;
-    for (unsigned int i = 0; i < hash.hashSize; ++i)
-        h.hash[i % newSize] ^= hash.hash[i];
+    Hash h(newSize, hash.type);
+
+    for (const auto [idx, c] : enumerate(hash.as_span())) {
+        h.hash[idx % newSize] ^= c;
+    }
+
     return h;
 }
 
-
 std::optional<HashType> parseHashTypeOpt(std::string_view s)
 {
-    if (s == "md5") return HashType::MD5;
-    else if (s == "sha1") return HashType::SHA1;
-    else if (s == "sha256") return HashType::SHA256;
-    else if (s == "sha512") return HashType::SHA512;
-    else return std::optional<HashType> {};
+    if (s == "md5") {
+        return HashType::MD5;
+    }
+    if (s == "sha1") {
+        return HashType::SHA1;
+    }
+    if (s == "sha256") {
+        return HashType::SHA256;
+    }
+    if (s == "sha512") {
+        return HashType::SHA512;
+    }
+
+    return std::nullopt;
 }
 
 HashType parseHashType(std::string_view s)
 {
-    auto opt_h = parseHashTypeOpt(s);
-    if (opt_h)
+    if (auto opt_h = parseHashTypeOpt(s)) {
         return *opt_h;
-    else
-        throw UsageError("unknown hash algorithm '%1%'", s);
+    }
+
+    throw UsageError("unknown hash algorithm '%1%'", s);
 }
 
-std::string_view printHashType(HashType ht)
+std::string_view printHashType(HashType type)
 {
-    switch (ht) {
-    case HashType::MD5: return "md5";
-    case HashType::SHA1: return "sha1";
-    case HashType::SHA256: return "sha256";
-    case HashType::SHA512: return "sha512";
+    switch (type) {
+    case HashType::MD5:
+        return "md5";
+    case HashType::SHA1:
+        return "sha1";
+    case HashType::SHA256:
+        return "sha256";
+    case HashType::SHA512:
+        return "sha512";
     default:
         // illegal hash type enum value internally, as opposed to external input
         // which should be validated with nice error message.
