@@ -42,8 +42,8 @@ try {
         throw Error(
             "hash of path '%s' has changed from '%s' to '%s'!",
             printStorePath(path),
-            info->narHash.to_string(HashFormat::SRI, true),
-            hash.to_string(HashFormat::SRI, true)
+            info->narHash.to_string(),
+            hash.to_string()
         );
 
     teeSink

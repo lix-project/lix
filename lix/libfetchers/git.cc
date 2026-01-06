@@ -579,7 +579,7 @@ struct GitInputScheme : InputScheme
             if (hash.has_value() && !(hash->type == HashType::SHA1 || hash->type == HashType::SHA256))
                 throw Error(
                     "Hash '%s' is not supported by Git. Supported types are sha1 and sha256.",
-                    hash->to_string(HashFormat::Base16, true)
+                    hash->to_string(HashFormat::Base16)
                 );
         };
 

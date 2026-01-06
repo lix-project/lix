@@ -178,7 +178,7 @@ StorePath Store::makeStorePath(std::string_view type,
 StorePath Store::makeStorePath(std::string_view type,
     const Hash & hash, std::string_view name) const
 {
-    return makeStorePath(type, hash.to_string(HashFormat::Base16, true), name);
+    return makeStorePath(type, hash.to_string(HashFormat::Base16), name);
 }
 
 
@@ -219,8 +219,8 @@ StorePath Store::makeFixedOutputPath(std::string_view name, const FixedOutputInf
             "output:out",
             hashString(
                 HashType::SHA256,
-                "fixed:out:" + makeFileIngestionPrefix(info.method)
-                    + info.hash.to_string(HashFormat::Base16, true) + ":"
+                "fixed:out:" + makeFileIngestionPrefix(info.method) + info.hash.to_string(HashFormat::Base16)
+                    + ":"
             ),
             name
         );

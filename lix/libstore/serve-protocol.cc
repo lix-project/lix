@@ -87,7 +87,7 @@ WireFormatGenerator ServeProto::Serialise<UnkeyedValidPathInfo>::write(WriteConn
     co_yield info.narSize; // downloadSize, lie a little
     co_yield info.narSize;
     if (GET_PROTOCOL_MINOR(conn.version) >= 4) {
-        co_yield info.narHash.to_string(HashFormat::Base32, true);
+        co_yield info.narHash.to_string(HashFormat::Base32);
         co_yield renderContentAddress(info.ca);
         co_yield info.sigs;
     }

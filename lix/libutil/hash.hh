@@ -8,9 +8,7 @@
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/file-system.hh"
 
-
 namespace nix {
-
 
 namespace detail {
 
@@ -18,9 +16,7 @@ using EvpMdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
 
 }
 
-
 MakeError(BadHash, Error);
-
 
 enum class HashType : char { MD5 = 42, SHA1, SHA256, SHA512 };
 
@@ -136,7 +132,7 @@ public:
      * or base-64. By default, this is prefixed by the hash type
      * (e.g. "sha256:").
      */
-    std::string to_string(HashFormat format, bool includeType) const;
+    std::string to_string(HashFormat format = HashFormat::SRI, bool includeType = true) const;
 
     std::string gitRev() const
     {
@@ -198,7 +194,6 @@ std::optional<HashType> parseHashTypeOpt(std::string_view s);
  */
 std::string_view printHashType(HashType ht);
 
-
 struct AbstractHashSink : virtual Sink
 {
     virtual HashResult finish() = 0;
@@ -225,6 +220,4 @@ inline HashResult hashSource(HashType ht, Source & source)
     source.drainInto(h);
     return h.finish();
 }
-
-
 }

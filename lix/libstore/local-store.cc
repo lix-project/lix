@@ -655,7 +655,7 @@ try {
 
     state.stmts->RegisterValidPath.use()
         (printStorePath(info.path))
-        (info.narHash.to_string(HashFormat::Base16, true))
+        (info.narHash.to_string(HashFormat::Base16))
         (info.registrationTime == 0 ? time(0) : info.registrationTime)
         (info.deriver ? printStorePath(*info.deriver) : "", (bool) info.deriver)
         (info.narSize, info.narSize != 0)
@@ -768,7 +768,7 @@ void LocalStore::updatePathInfo(DBState & state, const ValidPathInfo & info)
 {
     state.stmts->UpdatePathInfo.use()
         (info.narSize, info.narSize != 0)
-        (info.narHash.to_string(HashFormat::Base16, true))
+        (info.narHash.to_string(HashFormat::Base16))
         (info.ultimate ? 1 : 0, info.ultimate)
         (concatStringsSep(" ", info.sigs), !info.sigs.empty())
         (renderContentAddress(info.ca), (bool) info.ca)
@@ -1143,8 +1143,8 @@ try {
                 throw Error(
                     "hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                     printStorePath(info.path),
-                    info.narHash.to_string(HashFormat::SRI, true),
-                    hashResult.first.to_string(HashFormat::SRI, true)
+                    info.narHash.to_string(),
+                    hashResult.first.to_string()
                 );
 
             if (hashResult.second != info.narSize)
@@ -1162,8 +1162,8 @@ try {
                     throw Error(
                         "ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(HashFormat::SRI, true),
-                        actualHash.hash.to_string(HashFormat::SRI, true)
+                        specified.hash.to_string(),
+                        actualHash.hash.to_string()
                     );
                 }
             }
@@ -1551,8 +1551,8 @@ try {
                     printError(
                         "path '%s' was modified! expected hash '%s', got '%s'",
                         toRealPath(printStorePath(i)),
-                        info->narHash.to_string(HashFormat::SRI, true),
-                        current.first.to_string(HashFormat::SRI, true)
+                        info->narHash.to_string(),
+                        current.first.to_string()
                     );
                     if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {

@@ -1532,14 +1532,14 @@ struct CmdFlakePrefetch : FlakeCommand, MixJSON
         if (json) {
             auto res = JSON::object();
             res["storePath"] = store->printStorePath(tree.storePath);
-            res["hash"] = hash.to_string(HashFormat::SRI, true);
+            res["hash"] = hash.to_string();
             logger->cout(res.dump());
         } else {
             notice(
                 "Downloaded '%s' to '%s' (hash '%s').",
                 lockedRef.to_string(),
                 store->printStorePath(tree.storePath),
-                hash.to_string(HashFormat::SRI, true)
+                hash.to_string()
             );
         }
     }

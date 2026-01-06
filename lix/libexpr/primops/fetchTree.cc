@@ -32,7 +32,7 @@ void emitTreeAttrs(
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.alloc("narHash").mkString(narHash->to_string(HashFormat::SRI, true));
+    attrs.alloc("narHash").mkString(narHash->to_string());
 
     if (input.getType() == "git")
         attrs.alloc("submodules").mkBool(
@@ -318,8 +318,8 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
                 .make<EvalError>(
                     "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
                     *url,
-                    expectedHash->to_string(HashFormat::SRI, true),
-                    hash.to_string(HashFormat::SRI, true)
+                    expectedHash->to_string(),
+                    hash.to_string()
                 )
                 .withExitStatus(102)
                 .debugThrow();

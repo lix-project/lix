@@ -293,7 +293,7 @@ struct CurlInputScheme : InputScheme
         // NAR hashes are preferred over file hashes since tar/zip
         // files don't have a canonical representation.
         if (auto narHash = input.getNarHash())
-            url.query.insert_or_assign("narHash", narHash->to_string(HashFormat::SRI, true));
+            url.query.insert_or_assign("narHash", narHash->to_string());
         return url;
     }
 

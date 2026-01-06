@@ -156,7 +156,7 @@ std::optional<struct ::stat> LocalStore::optimisePath_(
        contents of the symlink (i.e. the result of readlink()), not
        the contents of the target (which may not even exist). */
     Hash hash = hashPath(HashType::SHA256, path).first;
-    debug("'%1%' has hash '%2%'", path, hash.to_string(HashFormat::Base32, true));
+    debug("'%1%' has hash '%2%'", path, hash.to_string(HashFormat::Base32));
 
     /* Check if this is a known hash. */
     Path linkPath = linksDir + "/" + hash.to_string(HashFormat::Base32, false);

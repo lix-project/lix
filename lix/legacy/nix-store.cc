@@ -467,7 +467,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
-                        cout << fmt("%s\n", info->narHash.to_string(HashFormat::Base32, true));
+                        cout << fmt("%s\n", info->narHash.to_string(HashFormat::Base32));
                     } else if (query == qSize)
                         cout << fmt("%d\n", info->narSize);
                 }
@@ -859,8 +859,8 @@ opVerifyPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, S
             printError(
                 "path '%s' was modified! expected hash '%s', got '%s'",
                 store->printStorePath(path),
-                info->narHash.to_string(HashFormat::SRI, true),
-                current.first.to_string(HashFormat::SRI, true)
+                info->narHash.to_string(),
+                current.first.to_string()
             );
             status = 1;
         }

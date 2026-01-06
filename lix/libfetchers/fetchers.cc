@@ -178,7 +178,7 @@ try {
     };
 
     auto narHash = TRY_AWAIT(store->queryPathInfo(tree.storePath))->narHash;
-    input.attrs.insert_or_assign("narHash", narHash.to_string(HashFormat::SRI, true));
+    input.attrs.insert_or_assign("narHash", narHash.to_string());
 
     if (auto prevNarHash = getNarHash()) {
         if (narHash != *prevNarHash)
@@ -187,8 +187,8 @@ try {
                 "NAR hash mismatch in input '%s' (%s), expected '%s', got '%s'",
                 to_string(),
                 tree.actualPath,
-                prevNarHash->to_string(HashFormat::SRI, true),
-                narHash.to_string(HashFormat::SRI, true)
+                prevNarHash->to_string(),
+                narHash.to_string()
             );
     }
 

@@ -92,7 +92,7 @@ SV * queryReferences(char * path)
 SV * queryPathHash(char * path)
     PPCODE:
         try {
-            auto s = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->narHash.to_string(HashFormat::Base32, true);
+            auto s = aio().blockOn(store()->queryPathInfo(store()->parseStorePath(path)))->narHash.to_string(HashFormat::Base32);
             XPUSHs(sv_2mortal(newSVpv(s.c_str(), 0)));
         } catch (Error & e) {
             croak("%s", e.what());
