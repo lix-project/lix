@@ -12,8 +12,10 @@ namespace nix
 
 static const Value::List emptyListData{.size = 0};
 Value Value::EMPTY_LIST{Value::list_t{}, &emptyListData};
+Value Value::EMPTY_SET{attrs_t{}, &Bindings::EMPTY};
 
 const Value::Null Value::NULL_ACB = {{Value::Acb::tNull}};
+Value Value::VNULL{null_t{}};
 
 static_assert(alignof(Value::String) >= Value::TAG_ALIGN);
 static_assert(alignof(Bindings) >= Value::TAG_ALIGN);

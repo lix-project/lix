@@ -356,6 +356,8 @@ public:
      * Empty list constant.
      */
     static Value EMPTY_LIST;
+    static Value EMPTY_SET;
+    static Value VNULL;
 
     struct String;
     struct Acb;
