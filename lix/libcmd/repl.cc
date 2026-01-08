@@ -83,6 +83,21 @@ enum class ProcessLineResult {
 
 using namespace std::literals::string_view_literals;
 
+enum class ReplLoadKind
+{
+    File,
+    Flake,
+};
+
+// std::variant or virtual inheritence would both be overkill for this.
+struct ReplLoadable
+{
+    std::string spec;
+    ReplLoadKind kind;
+
+    friend constexpr auto operator<=>(ReplLoadable const &, ReplLoadable const &) = default;
+};
+
 struct NixRepl;
 using ReplFunction = std::function<ProcessLineResult(NixRepl &, const std::string &)>;
 using PrintDerivationOutputFunction =
@@ -136,8 +151,7 @@ struct NixRepl
     Evaluator & evaluator;
     size_t debugTraceIndex;
 
-    Strings loadedFiles;
-    Strings loadedFlakeRefs;
+    std::list<ReplLoadable> loaded;
     std::function<AnnotatedValues()> getValues;
     std::map<std::string, std::shared_ptr<REPLCommand>> registeredCommands;
 
@@ -1271,8 +1285,12 @@ void NixRepl::generateHelpCommand()
 
 void NixRepl::loadFile(const Path & path)
 {
-    loadedFiles.remove(path);
-    loadedFiles.push_back(path);
+    ReplLoadable loadable{
+        .spec = path,
+        .kind = ReplLoadKind::File,
+    };
+    loaded.remove(loadable);
+    loaded.push_back(loadable);
     Value v, v2;
     state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses), v);
     state.autoCallFunction(*autoArgs, v, v2, noPos);
@@ -1288,11 +1306,16 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
     if (evalSettings.pureEval && !flakeRef.input.isLocked())
         throw Error("cannot use ':load-flake' on locked flake reference '%s' (use --impure to override)", flakeRefS);
 
+    ReplLoadable loadable{
+        .spec = flakeRefS,
+        .kind = ReplLoadKind::Flake,
+    };
+
     Value v;
 
     try {
-        loadedFlakeRefs.remove(flakeRefS);
-        loadedFlakeRefs.push_back(flakeRefS);
+        loaded.remove(loadable);
+        loaded.push_back(loadable);
         flake::callFlake(
             state,
             flake::lockFlake(
@@ -1310,7 +1333,7 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
     } catch (...) {
         // In case of failure, do not keep the flake reference.
         // Let the user re-load it again later.
-        loadedFlakeRefs.remove(flakeRefS);
+        loaded.remove(loadable);
         throw;
     }
 }
@@ -1339,12 +1362,15 @@ void NixRepl::reloadFiles()
 
 void NixRepl::loadFiles()
 {
-    Strings old = loadedFiles;
-    loadedFiles.clear();
+    std::list<ReplLoadable> saved{loaded};
 
-    for (auto & i : old) {
-        notice("Loading '%1%'...", Magenta(i));
-        loadFile(i);
+    loaded.clear();
+
+    for (auto const & [spec, kind] : saved) {
+        if (kind == ReplLoadKind::File) {
+            notice("Loading '%s'...", Magenta(spec));
+            loadFile(spec);
+        }
     }
 
     for (auto & [i, what] : getValues()) {
