@@ -4,6 +4,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libutil/logging.hh"
+#include "loggers.hh"
 
 namespace nix {
 
@@ -90,6 +91,7 @@ void MixCommonArgs::initialFlagsProcessed()
 {
     initPlugins();
     pluginsInited();
+    createDefaultLogger();
 }
 
 

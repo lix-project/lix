@@ -4,6 +4,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/c-calls.hh"
+#include "lix/libutil/log-format.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -200,10 +201,7 @@ LegacyArgs::LegacyArgs(AsyncIoRoot & aio, const std::string & programName,
         .longName = "no-build-output",
         .shortName = 'Q',
         .description = "Do not show build output.",
-        .handler = {[&]() {
-            loggerSettings.logFormat.setDefault(loggerSettings.logFormat.get().withoutLogs());
-            loggerSettings.logFormat.autoValue = loggerSettings.logFormat.get().withoutLogs();
-        }},
+        .handler = {[&]() { setLogFormat(loggerSettings.logFormat.get().withoutLogs()); }},
     });
 
     addFlag({
