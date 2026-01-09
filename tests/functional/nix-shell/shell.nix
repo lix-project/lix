@@ -63,14 +63,16 @@ let pkgs = rec {
 
   foo = runCommand "foo" {} ''
     mkdir -p $out/bin
-    echo 'echo ${fooContents}' > $out/bin/foo
+    echo '#!${shell}' >> $out/bin/foo
+    echo 'echo ${fooContents}' >> $out/bin/foo
     chmod a+rx $out/bin/foo
     ln -s ${shell} $out/bin/bash
   '';
 
   bar = runCommand "bar" {} ''
     mkdir -p $out/bin
-    echo 'echo bar' > $out/bin/bar
+    echo '#!${shell}' > $out/bin/bar
+    echo 'echo bar' >> $out/bin/bar
     chmod a+rx $out/bin/bar
   '';
 
@@ -83,7 +85,8 @@ let pkgs = rec {
   # ruby "interpreter" that outputs "$@"
   ruby = runCommand "ruby" {} ''
     mkdir -p $out/bin
-    echo 'printf %s "$*"' > $out/bin/ruby
+    echo '#!${shell}' > $out/bin/ruby
+    echo 'printf %s "$*"' >> $out/bin/ruby
     chmod a+rx $out/bin/ruby
   '';
 

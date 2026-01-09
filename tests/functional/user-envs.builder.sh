@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 mkdir $out
 mkdir $out/bin
 echo "#! $shell" > $out/bin/$progName
