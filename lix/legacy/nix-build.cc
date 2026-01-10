@@ -503,13 +503,11 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
         auto rcfile = (Path) tmpDir + "/rc";
         auto tz = getEnv("TZ");
         std::string rc =
-            fmt("#!%1%\n"
-                "%2%"
+            fmt("%1%"
                 // always clear PATH.
                 // when nix-shell is run impure, we rehydrate it with the `p=$PATH` above
                 "unset PATH;"
                 "dontAddDisableDepTrack=1;\n",
-                *shell,
                 (pure ? "" : "[ -n \"$PS1\" ] && [ -e ~/.bashrc ] && source ~/.bashrc; p=$PATH; "));
         rc += structuredAttrsRC;
         rc += fmt(
