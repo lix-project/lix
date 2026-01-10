@@ -7,3 +7,4 @@ Description: Lix Package Manager (base include dir)
 Version: @PACKAGE_VERSION@
 Requires: kj-async
 Cflags: -I${includedir}
+Libs: -L${libdir} -lrust_monocrate
