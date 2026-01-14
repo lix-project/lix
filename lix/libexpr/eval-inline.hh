@@ -20,11 +20,21 @@ inline Value::Value(app_t, EvalMemory & mem, Value & lhs, Value & rhs)
 }
 
 inline Value::Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value> args)
+    : Value(app_t{}, mem, lhs, args, {})
 {
-    auto app = static_cast<Value::App *>(mem.allocBytes(sizeof(Value::App) + args.size_bytes()));
+}
+
+inline Value::Value(
+    app_t, EvalMemory & mem, const Value & lhs, std::span<Value> baseArgs, std::span<Value> moreArgs
+)
+{
+    auto app = static_cast<Value::App *>(
+        mem.allocBytes(sizeof(Value::App) + baseArgs.size_bytes() + moreArgs.size_bytes())
+    );
     app->_left = lhs;
-    app->_n = args.size();
-    std::copy(args.begin(), args.end(), app->_args);
+    app->_n = baseArgs.size() + moreArgs.size();
+    std::copy(baseArgs.begin(), baseArgs.end(), app->_args);
+    std::copy(moreArgs.begin(), moreArgs.end(), app->_args + baseArgs.size());
     raw = tag(tApp, app);
 }
 

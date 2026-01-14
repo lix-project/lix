@@ -544,6 +544,10 @@ public:
     /// lazy and/or partial application of a function.
     Value(app_t, EvalMemory & mem, Value & lhs, std::span<Value> args);
 
+    /// Constructs a nix language value of type "lambda", which represents a
+    /// lazy and/or partial application of a function.
+    Value(app_t, EvalMemory & mem, const Value & lhs, std::span<Value> baseArgs, std::span<Value> moreArgs);
+
     /// Constructs a nix language value of type "external", which is only used
     /// by plugins. Do any existing plugins even use this mechanism?
     Value(external_t, ExternalValueBase & external)

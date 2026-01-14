@@ -1138,7 +1138,14 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 
     Value vCur(fun);
 
-    auto makeAppChain = [&]() { vRes = {NewValueAs::app, ctx.mem, vCur, args}; };
+    auto makeAppChain = [&]() {
+        if (vCur.isApp()) {
+            auto & app = vCur.app();
+            vRes = {NewValueAs::app, ctx.mem, app.left(), app.args(), args};
+        } else {
+            vRes = {NewValueAs::app, ctx.mem, vCur, args};
+        }
+    };
 
     const Attr * functor;
 
