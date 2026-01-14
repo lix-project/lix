@@ -14,7 +14,7 @@ If an entry in the list is a directory, all files in the directory are loaded as
 FIXME(jade): We should provide a `nix_plugin_finalize()` that gets called at some point in teardown for use cases like nix-otel which need to be able to cleanup, flush things to network, etc, on exit without having to do that from life-after-main().
 
 In particular, these plugins may:
-- Construct static instances of `RegisterPrimOp` to add new primops or constants to the expression language (FIXME: will be replaced with an explicit function).
+- Add new primops or constants to the expression language by calling `PluginPrimOps::add`.
 - Add new store implementations with `StoreImplementations::add`.
 - Construct static instances of `GlobalConfig::Register` to add new config options.
 

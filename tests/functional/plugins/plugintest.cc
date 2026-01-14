@@ -36,13 +36,12 @@ static void prim_anotherNull (EvalState & state, Value ** args, Value & v)
         v.mkBool(false);
 }
 
-static RegisterPrimOp rp({
-    .name = "anotherNull",
-    .arity = 0,
-    .fun = prim_anotherNull,
-});
-
 extern "C" void nix_plugin_entry()
 {
+    PluginPrimOps::add({
+        .name = "anotherNull",
+        .arity = 0,
+        .fun = prim_anotherNull,
+    });
     entryCalled = true;
 }

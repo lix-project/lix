@@ -23,17 +23,22 @@ constexpr size_t nonRecursiveStackReservation = 128;
  */
 constexpr size_t conservativeStackReservation = 16;
 
-struct RegisterPrimOp
+class PluginPrimOps
 {
+    friend EvalBuiltins;
+
     typedef std::vector<PrimOp> PrimOps;
     static PrimOps * primOps;
+
+public:
+    PluginPrimOps() = delete;
 
     /**
      * You can register a constant by passing an arity of 0. fun
      * will get called during EvalState initialization, so there
      * may be primops not yet added and builtins is not yet sorted.
      */
-    RegisterPrimOp(PrimOpDetails && primOp);
+    static void add(PrimOpDetails && primOp);
 };
 
 /* These primops are disabled without enableNativeCode, but plugins

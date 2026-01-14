@@ -3038,10 +3038,9 @@ static void prim_splitVersion(EvalState & state, Value * * args, Value & v)
  * Primop registration
  *************************************************************/
 
+PluginPrimOps::PrimOps * PluginPrimOps::primOps;
 
-RegisterPrimOp::PrimOps * RegisterPrimOp::primOps;
-
-RegisterPrimOp::RegisterPrimOp(PrimOpDetails && primOp)
+void PluginPrimOps::add(PrimOpDetails && primOp)
 {
     if (!primOps) primOps = new PrimOps;
     primOps->emplace_back(std::move(primOp));
@@ -3083,14 +3082,16 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
         });
     }
 
-    if (RegisterPrimOp::primOps)
-        for (auto & primOp : *RegisterPrimOp::primOps)
+    if (PluginPrimOps::primOps) {
+        for (auto & primOp : *PluginPrimOps::primOps) {
             if (experimentalFeatureSettings.isEnabled(primOp.experimentalFeature))
             {
                 auto primOpAdjusted = primOp;
                 primOpAdjusted.arity = std::max(primOp.args.size(), primOp.arity);
                 addPrimOp(std::move(primOpAdjusted));
             }
+        }
+    }
 
     static PrimOp prim_initializeDerivation{{
         .arity = 1,
