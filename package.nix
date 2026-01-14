@@ -733,7 +733,10 @@ stdenv.mkDerivation (finalAttrs: {
         }
       );
 
-    perl-bindings = pkgs.callPackage ./perl { inherit fileset stdenv; };
+    perl-bindings = pkgs.callPackage ./perl {
+      inherit fileset stdenv;
+      nix = finalAttrs.finalPackage;
+    };
 
     binaryTarball = pkgs.callPackage ./nix-support/binary-tarball.nix {
       nix = finalAttrs.finalPackage;
