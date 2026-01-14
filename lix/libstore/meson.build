@@ -351,8 +351,8 @@ if host_machine.system() == 'freebsd'
   dependencies += [ libprocstat ]
 endif
 
-libstore_temp = library(
-  is_static ? 'lixstore_temp' : 'lixstore',
+libstore = library(
+  'lixstore',
   libstore_sources,
   libstore_generated_sources,
   libstore_settings_headers,
@@ -362,35 +362,10 @@ libstore_temp = library(
   dependencies : dependencies,
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
-  install : not is_static,
+  install : true,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,
 )
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
-if is_static
-  libstore_prelink = custom_target(
-    'lixstore-prelink',
-    output : 'lixstore-prelink.o',
-    input : libstore_temp,
-    command : [
-      cxx.cmd_array(),
-      '-r',
-      '-o',
-      '@OUTPUT@',
-      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
-      '@INPUT@',
-    ],
-  )
-  libstore = library(
-    'lixstore',
-    [libstore_prelink],
-    dependencies : dependencies,
-    install : true,
-  )
-else
-  libstore = libstore_temp
-endif
 
 install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
 

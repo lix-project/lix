@@ -355,8 +355,8 @@ dependencies = [
   liblixutil_rs,
 ]
 
-libutil_temp = library(
-  is_static ? 'lixutil_temp' : 'lixutil',
+libutil = library(
+  'lixutil',
   libutil_sources,
   libutil_rpc_sources,
   libutil_rpc_headers,
@@ -369,33 +369,8 @@ libutil_temp = library(
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
   implicit_include_directories : true,
-  install : not is_static,
+  install : true,
 )
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
-if is_static
-  libutil_prelink = custom_target(
-    'lixutil-prelink',
-    output : 'lixutil-prelink.o',
-    input : libutil_temp,
-    command : [
-      cxx.cmd_array(),
-      '-r',
-      '-o',
-      '@OUTPUT@',
-      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
-      '@INPUT@',
-    ],
-  )
-  libutil = library(
-    'lixutil',
-    [libutil_prelink],
-    dependencies : dependencies,
-    install : true,
-  )
-else
-  libutil = libutil_temp
-endif
 
 install_headers(libutil_headers, subdir : 'lix/libutil', preserve_path : true)
 

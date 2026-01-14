@@ -53,42 +53,17 @@ dependencies = [
   nlohmann_json,
 ]
 
-libfetchers_temp = library(
-  is_static ? 'lixfetchers_temp' : 'lixfetchers',
+libfetchers = library(
+  'lixfetchers',
   libfetchers_settings_header,
   libfetchers_sources,
   dependencies : dependencies,
   include_directories : [ '../..' ],
   cpp_pch : cpp_pch,
-  install : not is_static,
+  install : true,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,
 )
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
-if is_static
-  libfetchers_prelink = custom_target(
-    'lixfetchers-prelink',
-    output : 'lixfetchers-prelink.o',
-    input : libfetchers_temp,
-    command : [
-      cxx.cmd_array(),
-      '-r',
-      '-o',
-      '@OUTPUT@',
-      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
-      '@INPUT@',
-    ],
-  )
-  libfetchers = library(
-    'lixfetchers',
-    [libfetchers_prelink],
-    dependencies : dependencies,
-    install : true,
-  )
-else
-  libfetchers = libfetchers_temp
-endif
 
 install_headers(libfetchers_headers, subdir : 'lix/libfetchers', preserve_path : true)
 

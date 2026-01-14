@@ -289,8 +289,8 @@ dependencies = [
   toml11,
 ]
 
-libexpr_temp = library(
-  is_static ? 'lixexpr_temp' : 'lixexpr',
+libexpr = library(
+  'lixexpr',
   libexpr_sources,
   libexpr_settings_header,
   libexpr_generated_headers,
@@ -302,35 +302,10 @@ libexpr_temp = library(
     '../libmain',
   ],
   cpp_pch : cpp_pch,
-  install : not is_static,
+  install : true,
   # FIXME(Qyriad): is this right?
   install_rpath : libdir,
 )
-# FIXME: remove when https://git.lix.systems/lix-project/lix/issues/359 is fixed.
-# FIXME: replace by prelink when https://github.com/mesonbuild/meson/pull/14846 is widely available.
-if is_static
-  libexpr_prelink = custom_target(
-    'lixexpr-prelink',
-    output : 'lixexpr-prelink.o',
-    input : libexpr_temp,
-    command : [
-      cxx.cmd_array(),
-      '-r',
-      '-o',
-      '@OUTPUT@',
-      is_darwin ? '-Wl,-force_load' : '-Wl,--whole-archive',
-      '@INPUT@',
-    ],
-  )
-  libexpr = library(
-    'lixexpr',
-    [libexpr_prelink],
-    dependencies : dependencies,
-    install : true,
-  )
-else
-  libexpr = libexpr_temp
-endif
 
 install_headers(
   libexpr_headers,
