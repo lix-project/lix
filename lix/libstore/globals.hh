@@ -132,7 +132,7 @@ public:
      */
     bool readOnlyMode = false;
 
-    #include "libstore-settings.gen.inc"
+#include "lix/libstore/libstore-settings.gen.inc"
 };
 
 

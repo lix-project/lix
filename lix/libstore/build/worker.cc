@@ -1,4 +1,4 @@
-#include "build/derivation-goal.hh"
+#include "derivation-goal.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/charptr-cast.hh"

@@ -1,7 +1,7 @@
 #pragma once
 ///@file
 
-#include "logging.capnp.h"
+#include "lix/libutil/logging.capnp.h"
 #include "logging.hh"
 #include "rpc.hh" // IWYU pragma: keep
 #include <optional>

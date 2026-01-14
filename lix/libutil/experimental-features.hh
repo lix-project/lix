@@ -11,9 +11,8 @@ namespace nix {
 /**
  * The list of available experimental features.
  */
-enum struct ExperimentalFeature
-{
-    #include "experimental-features.gen.inc"
+enum struct ExperimentalFeature {
+#include "lix/libutil/experimental-features.gen.inc"
     NumXpFeatures, // number of available experimental features, do not use
 };
 

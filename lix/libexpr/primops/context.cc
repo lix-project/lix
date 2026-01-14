@@ -3,7 +3,7 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/types.hh"
-#include "value.hh"
+#include "lix/libexpr/value.hh"
 
 namespace nix {
 

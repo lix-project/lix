@@ -1,6 +1,6 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/extra-primops.hh"
-#include "value.hh"
+#include "lix/libexpr/value.hh"
 
 #include <sstream>
 #include <toml.hpp>

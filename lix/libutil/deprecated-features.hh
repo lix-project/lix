@@ -14,9 +14,8 @@ namespace nix {
  * Reminder: New deprecated features should start out with a warning without throwing an error.
  * See the developer documentation for details.
  */
-enum struct DeprecatedFeature
-{
-    #include "deprecated-features.gen.inc"
+enum struct DeprecatedFeature {
+#include "lix/libutil/deprecated-features.gen.inc"
     NumDepFeatures, // number of available deprecated features, do not use
 };
 

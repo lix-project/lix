@@ -20,7 +20,7 @@ struct FetchSettings : public Config
 {
     FetchSettings();
 
-    #include "libfetchers-settings.gen.inc"
+#include "lix/libfetchers/libfetchers-settings.gen.inc"
 };
 
 // FIXME: don't use a global variable.

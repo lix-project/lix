@@ -19,7 +19,7 @@ namespace nix {
 
 struct FileTransferSettings : Config
 {
-    #include "file-transfer-settings.gen.inc"
+#include "lix/libstore/file-transfer-settings.gen.inc"
 };
 
 extern FileTransferSettings fileTransferSettings;

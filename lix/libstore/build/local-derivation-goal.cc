@@ -1,5 +1,5 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
-#include "build/derivation-goal.hh"
+#include "derivation-goal.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
@@ -29,8 +29,8 @@
 #include "lix/libutil/mount.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
-#include "platform/linux.hh"
-#include "path-tree.hh"
+#include "lix/libstore/platform/linux.hh"
+#include "lix/libstore/path-tree.hh"
 
 #include <cstddef>
 #include <dirent.h>

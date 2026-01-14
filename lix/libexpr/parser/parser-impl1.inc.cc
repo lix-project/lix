@@ -1,4 +1,4 @@
-#include "eval-settings.hh"
+#include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/nixexpr.hh"
 #include "lix/libexpr/parser/change_head.hh"
 #include "lix/libexpr/parser/grammar.hh"

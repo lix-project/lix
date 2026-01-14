@@ -97,7 +97,7 @@ typedef uint64_t ActivityId;
 
 struct LoggerSettings : Config
 {
-    #include "logging-settings.gen.inc"
+#include "lix/libutil/logging-settings.gen.inc"
 };
 
 extern LoggerSettings loggerSettings;

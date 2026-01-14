@@ -14,7 +14,7 @@ struct EvalSettings : Config
 
     static std::string resolvePseudoUrl(std::string_view url);
 
-    #include "libexpr-settings.gen.inc"
+#include "lix/libexpr/libexpr-settings.gen.inc"
 
     /**
      * Implements the `eval-system` vs `system` defaulting logic

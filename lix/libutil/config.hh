@@ -332,7 +332,7 @@ extern GlobalConfig globalConfig;
 
 
 struct FeatureSettings : Config {
-    #include "feature-settings.gen.inc"
+#include "lix/libutil/feature-settings.gen.inc"
 
     /**
      * Check whether the given experimental feature is enabled.
