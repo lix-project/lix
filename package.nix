@@ -356,8 +356,14 @@ stdenv.mkDerivation (finalAttrs: {
   ]
   ++ [
     (lib.getBin lowdown-unsandboxed)
-    (lib.warnIf (lib.versionAtLeast mdbook.version "0.5.0")
-      "Workarounds for mdbook 0.4.x/0.5.x interoperability can be removed when 0.5.0 or above is in nixpkgs-stable"
+    (lib.warnIf
+      (
+        # if mdbook 0.5 is backported to 25.11
+        (lib.trivial.release == "25.11" && lib.versionAtLeast mdbook.version "0.5.0")
+        # or 25.11 is EOL
+        || (lib.trivial.oldestSupportedRelease > 2511)
+      )
+      "Workarounds for mdbook 0.4.x/0.5.x interoperability can be removed as 0.5.0 is in nixpkgs-stable"
       mdbook
     )
     mdbook-linkcheck
