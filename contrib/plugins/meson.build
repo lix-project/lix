@@ -2,14 +2,11 @@
 # Explicitly link curl so it binds to Nix-store libcurl, not /usr/lib/libcurl.
 if is_darwin
   plugin_deps = [
-    liblixutil.partial_dependency(includes : true, compile_args : true),
-    liblixstore.partial_dependency(includes : true, compile_args : true),
-    liblixexpr.partial_dependency(includes : true, compile_args : true),
-    liblixfetchers.partial_dependency(includes : true, compile_args : true),
+    liblix.partial_dependency(includes : true, compile_args : true),
     curl,
   ]
 else
-  plugin_deps = [liblixutil, liblixstore, liblixexpr, liblixfetchers, curl]
+  plugin_deps = [liblix, curl]
 endif
 
 plugin_mtls_store = shared_module(

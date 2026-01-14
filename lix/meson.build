@@ -140,21 +140,16 @@ liblixutil_rs = declare_dependency(
   sources : [libutil_rs_gen_h],
 )
 
-# liblix_doc is actually rust-monocrate in a trenchcoat.
-liblix_doc = declare_dependency(
-  link_with : rust_monocrate,
-)
+# we only collect sources and generated headers here. real headers are collected and
+# installed by each subdir due to how meson generates paths for headers it installs.
+liblix_sources = []
+liblix_generated_headers = embedded_sandbox_headers
 
 subdir('libutil')
-# Load-bearing order. libstore depends on libutil.
 subdir('libstore')
-# libfetchers depends on libstore
 subdir('libfetchers')
-# libexpr depends on all of the above
 subdir('libexpr')
-# libmain depends on libutil and libstore
 subdir('libmain')
-# libcmd depends on everything
 subdir('libcmd')
 
 # libexec utilities should depend only on libutil, but meh.
@@ -176,15 +171,55 @@ foreach lib : [ 'util', 'store', 'fetchers', 'expr', 'main', 'cmd' ]
   )
 endforeach
 
+dependencies = [
+  aws_s3,
+  aws_sdk,
+  aws_sdk_transfer,
+  boehm,
+  boost,
+  brotli,
+  capnp_rpc,
+  cpuid,
+  curl,
+  editline,
+  kj,
+  libarchive,
+  libatomic,
+  lowdown,
+  ncurses,
+  nlohmann_json,
+  openssl,
+  seccomp,
+  sqlite,
+  toml11,
+  # NOTE: this is secretly rust-monocrate in a trenchcoat.
+  # See that directory's README for more details.
+  liblixutil_rs,
+]
+
+if host_machine.system() == 'freebsd'
+  dependencies += [ libprocstat ]
+endif
+
+liblix_all = library(
+  'lix',
+  liblix_sources,
+  liblix_generated_headers,
+  dependencies : dependencies,
+  # `..` makes the `lix/` subtree of the repo available for includes,
+  # mirroring our header directory structure once they are installed.
+  include_directories : [ '..' ],
+  cpp_args : cpp_args,
+  cpp_pch : cpp_pch,
+  install : true,
+  # FIXME(Qyriad): is this right?
+  install_rpath : libdir,
+)
+
 liblix = declare_dependency(
-  dependencies : [
-    liblixutil,
-    liblixstore,
-    liblixfetchers,
-    liblixexpr,
-    liblixmain,
-    liblixcmd,
-  ],
+  include_directories : include_directories('..'),
+  dependencies : dependencies,
+  link_with : liblix_all,
 )
 
 meson.override_dependency('lix', liblix)

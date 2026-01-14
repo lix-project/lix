@@ -5,7 +5,7 @@
 #include "lix/libstore/platform/darwin.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
-#include "temporary-dir.hh"
+#include "lix/libstore/temporary-dir.hh"
 
 #include <sys/proc_info.h>
 #include <sys/sysctl.h>

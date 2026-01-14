@@ -1,4 +1,4 @@
-libutil_sources = files(
+liblix_sources += files(
   # keep-sorted start
   'abstract-config.cc',
   'archive.cc',
@@ -209,8 +209,10 @@ experimental_features_gen = custom_target(
     false,
   ],
 )
-experimental_features_header = experimental_features_gen[0]
-experimental_features_impl_header = experimental_features_gen[1]
+liblix_generated_headers += [
+  experimental_features_gen[0],
+  experimental_features_gen[1],
+]
 experimental_features_shortlist_md = experimental_features_gen[2]
 experimental_feature_descriptions_md = experimental_features_gen[3]
 
@@ -240,18 +242,18 @@ deprecated_features_gen = custom_target(
     false
   ],
 )
-deprecated_features_header = deprecated_features_gen[0]
-deprecated_features_impl_header = deprecated_features_gen[1]
+liblix_generated_headers += [
+  deprecated_features_gen[0],
+  deprecated_features_gen[1],
+]
 deprecated_features_shortlist_md = deprecated_features_gen[2]
 deprecated_feature_descriptions_md = deprecated_features_gen[3]
-
-libutil_settings_headers = []
 
 archive_setting_definitions = files(
   'archive-settings/preallocate-contents.md',
   'archive-settings/use-case-hack.md',
 )
-libutil_settings_headers += custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -268,7 +270,7 @@ feature_setting_definitions = files(
   'feature-settings/deprecated-features.md',
   'feature-settings/experimental-features.md',
 )
-libutil_settings_headers += custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -289,7 +291,7 @@ logging_setting_definitions = files(
   'logging-settings/show-trace.md',
   # keep-sorted end
 )
-libutil_settings_headers += custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -303,9 +305,6 @@ libutil_settings_headers += custom_target(
   install : true,
   install_dir : includedir / 'lix/libutil',
 )
-
-libutil_rpc_headers = []
-libutil_rpc_sources = []
 
 libutil_rpc_schemas = files(
   # keep-sorted start
@@ -335,65 +334,8 @@ foreach rpc : libutil_rpc_schemas
     depfile : '@PLAINNAME@.d',
   )
 
-  libutil_rpc_headers += rpc[0]
-  libutil_rpc_sources += rpc[1]
+  liblix_generated_headers += rpc[0]
+  liblix_sources += rpc[1]
 endforeach
 
-dependencies = [
-  boost,
-  brotli,
-  cpuid,
-  kj,
-  capnp_rpc,
-  libarchive,
-  nlohmann_json,
-  openssl,
-  libatomic,
-
-  # NOTE: this is secretly rust-monocrate in a trenchcoat.
-  # See that directory's README for more details.
-  liblixutil_rs,
-]
-
-libutil = library(
-  'lixutil',
-  libutil_sources,
-  libutil_rpc_sources,
-  libutil_rpc_headers,
-  experimental_features_header,
-  experimental_features_impl_header,
-  deprecated_features_header,
-  deprecated_features_impl_header,
-  libutil_settings_headers,
-  dependencies : dependencies,
-  include_directories : [ '../..' ],
-  cpp_pch : cpp_pch,
-  implicit_include_directories : true,
-  install : true,
-)
-
 install_headers(libutil_headers, subdir : 'lix/libutil', preserve_path : true)
-
-# Used by libstore and libfetchers.
-liblixutil = declare_dependency(
-  include_directories : include_directories('../..'),
-  sources : [
-    experimental_features_header,
-    deprecated_features_header,
-    libutil_settings_headers,
-    libutil_rpc_headers,
-  ],
-  dependencies: [
-    boost,
-    # Everything has to link to kj if it uses libutil internally (ensured by
-    # lix-base pkg-config externally)
-    kj,
-    capnp_rpc,
-    libarchive,
-    nlohmann_json,
-    libatomic,
-    # This is secretly rust-monocrate + the generated header.
-    liblixutil_rs,
-  ],
-  link_with : libutil
-)

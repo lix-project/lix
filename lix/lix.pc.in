@@ -9,4 +9,4 @@ Version: @PACKAGE_VERSION@
 Requires: lix-base kj-async @BOEHM_IF_FOUND@
 Requires.private: @AWS_SDK_IF_FOUND@ @BOEHM_IF_FOUND@ libeditline lowdown ncurses libbrotlidec libbrotlienc libcpuid libarchive libcrypto capnp-rpc libcurl libseccomp sqlite3
 Cflags: -I${includedir}
-Libs: -L${libdir} -lrust_monocrate -llixutil -llixstore -llixfetchers -llixexpr -llixmain -llixcmd
+Libs: -L${libdir} -lrust_monocrate -llix

@@ -1,4 +1,4 @@
-libfetchers_sources = files(
+liblix_sources += files(
   'attrs.cc',
   'cache.cc',
   'fetch-settings.cc',
@@ -31,7 +31,7 @@ libfetchers_setting_definitions = files(
   'settings/use-registries.md',
   'settings/warn-dirty.md',
 )
-libfetchers_settings_header = custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -46,34 +46,4 @@ libfetchers_settings_header = custom_target(
   install_dir : includedir / 'lix/libfetchers',
 )
 
-dependencies = [
-  liblixstore,
-  liblixutil,
-  kj,
-  nlohmann_json,
-]
-
-libfetchers = library(
-  'lixfetchers',
-  libfetchers_settings_header,
-  libfetchers_sources,
-  dependencies : dependencies,
-  include_directories : [ '../..' ],
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
-)
-
 install_headers(libfetchers_headers, subdir : 'lix/libfetchers', preserve_path : true)
-
-liblixfetchers = declare_dependency(
-  include_directories : include_directories('../..'),
-  sources : libfetchers_settings_header,
-  dependencies : [
-    liblixutil,
-    liblixstore,
-    kj,
-  ],
-  link_with : libfetchers,
-)

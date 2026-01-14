@@ -1,4 +1,4 @@
-libcmd_sources = files(
+liblix_sources += files(
   'built-path.cc',
   'cmd-profiles.cc',
   'command.cc',
@@ -32,44 +32,8 @@ libcmd_headers = files(
   'repl.hh',
 )
 
-libcmd_generated_headers = [
+liblix_generated_headers += [
   gen_header.process('repl-overlays.nix', preserve_path_from: meson.current_source_dir()),
 ]
 
-libcmd = library(
-  'lixcmd',
-  libcmd_generated_headers,
-  libcmd_sources,
-  dependencies : [
-    liblixutil,
-    liblixstore,
-    liblixfetchers,
-    liblixexpr,
-    liblixmain,
-    liblix_doc,
-    boehm,
-    editline,
-    kj,
-    lowdown,
-    ncurses,
-    nlohmann_json,
-  ],
-  # '../..' for self references like "lix/libcmd/*.hh"
-  include_directories : [ '../..' ],
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
-)
-
 install_headers(libcmd_headers, subdir : 'lix/libcmd', preserve_path : true)
-
-liblixcmd = declare_dependency(
-  include_directories : include_directories('../..'),
-  dependencies : [
-    liblixutil,
-    liblixstore,
-    kj,
-  ],
-  link_with : libcmd,
-)

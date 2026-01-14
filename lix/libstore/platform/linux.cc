@@ -1,4 +1,4 @@
-#include "build/personality.hh"
+#include "lix/libstore/build/personality.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"

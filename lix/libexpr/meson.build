@@ -1,8 +1,8 @@
-libexpr_generated_headers = [
+liblix_generated_headers += [
   gen_header.process('primops/derivation.nix', preserve_path_from : meson.current_source_dir()),
 ]
 foreach header : [ 'imported-drv-to-derivation.nix', 'fetchurl.nix' ]
-  libexpr_generated_headers += custom_target(
+  liblix_generated_headers += custom_target(
     command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
     input : header,
     output : '@PLAINNAME@.gen.hh',
@@ -33,7 +33,7 @@ libexpr_setting_definitions = files(
   'settings/trace-verbose.md',
   # keep-sorted end
 )
-libexpr_settings_header = custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -173,7 +173,7 @@ builtins_gen = custom_target(
     'builtins.md',
   ],
 )
-register_builtins_header = builtins_gen[0]
+liblix_generated_headers += builtins_gen[0]
 builtins_md = builtins_gen[1]
 
 builtin_constant_definitions = files(
@@ -204,10 +204,10 @@ builtin_constants_gen = custom_target(
     'builtin-constants.md',
   ],
 )
-register_builtin_constants_header = builtin_constants_gen[0]
+liblix_generated_headers += builtin_constants_gen[0]
 builtin_constants_md = builtin_constants_gen[1]
 
-libexpr_sources = files(
+liblix_sources += files(
   # keep-sorted start
   'attr-path.cc',
   'attr-set.cc',
@@ -278,49 +278,8 @@ libexpr_headers = files(
   # keep-sorted end
 )
 
-dependencies = [
-  liblixutil,
-  liblixstore,
-  liblixfetchers,
-  boehm,
-  boost,
-  kj,
-  nlohmann_json,
-  toml11,
-]
-
-libexpr = library(
-  'lixexpr',
-  libexpr_sources,
-  libexpr_settings_header,
-  libexpr_generated_headers,
-  register_builtins_header,
-  register_builtin_constants_header,
-  dependencies : dependencies,
-  # for shared.hh
-  include_directories : [
-    '../libmain',
-  ],
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
-)
-
 install_headers(
   libexpr_headers,
   subdir : 'lix/libexpr',
   preserve_path : true,
-)
-
-liblixexpr = declare_dependency(
-  include_directories : include_directories('../..'),
-  sources : libexpr_settings_header,
-  dependencies : [
-    liblixutil,
-    liblixfetchers,
-    boehm,
-    boost,
-  ],
-  link_with : libexpr,
 )

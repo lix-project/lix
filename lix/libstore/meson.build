@@ -1,7 +1,5 @@
-libstore_generated_headers = []
-libstore_generated_sources = []
 foreach header : [ 'schema.sql' ]
-  libstore_generated_headers += custom_target(
+  liblix_generated_headers += custom_target(
     command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
     input : header,
     output : '@PLAINNAME@.gen.hh',
@@ -41,14 +39,12 @@ subdir('build')
 foreach i : libstore_rpc
   foreach rpc_src : i.to_list()
     if rpc_src.full_path().endswith('.h')
-      libstore_generated_headers += [ rpc_src ]
+      liblix_generated_headers += [ rpc_src ]
     else
-      libstore_generated_sources += [ rpc_src ]
+      liblix_sources += [ rpc_src ]
     endif
   endforeach
 endforeach
-
-libstore_settings_headers = []
 
 file_transfer_setting_definitions = files(
   # keep-sorted start
@@ -62,7 +58,7 @@ file_transfer_setting_definitions = files(
   'file-transfer-settings/user-agent-suffix.md',
   # keep-sorted end
 )
-libstore_settings_headers += custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -155,7 +151,7 @@ libstore_setting_definitions = files(
   'settings/use-xdg-base-directories.md',
   # keep-sorted end
 )
-libstore_settings_headers += custom_target(
+liblix_generated_headers += custom_target(
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -170,13 +166,12 @@ libstore_settings_headers += custom_target(
   install_dir : includedir / 'lix/libstore',
 )
 
-libstore_extra_objects = []
 if dtrace_feature.enabled()
-  libstore_settings_headers += dtrace_header_gen.process('trace-probes.d')
-  libstore_extra_objects += dtrace_object_gen.process('trace-probes.d')
+  liblix_generated_headers += dtrace_header_gen.process('trace-probes.d')
+  liblix_sources += dtrace_object_gen.process('trace-probes.d')
 endif
 
-libstore_sources = files(
+liblix_sources += files(
   # keep-sorted start
   'binary-cache-store.cc',
   'build-result.cc',
@@ -317,66 +312,17 @@ libstore_headers = files(
 )
 
 if host_machine.system() == 'linux'
-  libstore_sources += files('platform/linux.cc')
+  liblix_sources += files('platform/linux.cc')
   libstore_headers += files('platform/linux.hh')
 elif host_machine.system() == 'darwin'
-  libstore_sources += files('platform/darwin.cc')
+  liblix_sources += files('platform/darwin.cc')
   libstore_headers += files('platform/darwin.hh')
 elif host_machine.system() == 'freebsd'
-  libstore_sources += files('platform/freebsd.cc')
+  liblix_sources += files('platform/freebsd.cc')
   libstore_headers += files('platform/freebsd.hh')
 else
-  libstore_sources += files('platform/fallback.cc')
+  liblix_sources += files('platform/fallback.cc')
   libstore_headers += files('platform/fallback.hh')
 endif
 
-libstore_generated_headers += embedded_sandbox_headers
-
-dependencies = [
-  liblixutil, # Internal.
-  aws_s3,
-  aws_sdk,
-  aws_sdk_transfer,
-  boost,
-  capnp_rpc,
-  curl,
-  kj,
-  libarchive,
-  nlohmann_json,
-  openssl,
-  seccomp,
-  sqlite,
-]
-
-if host_machine.system() == 'freebsd'
-  dependencies += [ libprocstat ]
-endif
-
-libstore = library(
-  'lixstore',
-  libstore_sources,
-  libstore_generated_sources,
-  libstore_settings_headers,
-  libstore_generated_headers,
-  libstore_extra_objects,
-  include_directories : [ '../..' ],
-  dependencies : dependencies,
-  cpp_args : cpp_args,
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
-)
-
 install_headers(libstore_headers, subdir : 'lix/libstore', preserve_path : true)
-
-# Used by libfetchers.
-liblixstore = declare_dependency(
-  include_directories : include_directories('../..'),
-  sources : libstore_settings_headers,
-  dependencies : [
-    liblixutil,
-    kj,
-  ],
-  link_with : libstore,
-)
