@@ -79,7 +79,7 @@ struct AuthorizationSettings : Config {
 
 AuthorizationSettings authorizationSettings;
 
-static GlobalConfig::Register rSettings(&authorizationSettings);
+Config & daemonAuthorizationSettings = authorizationSettings;
 
 static void sigChldHandler(int sigNo)
 {

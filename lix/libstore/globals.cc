@@ -53,8 +53,6 @@ namespace nix {
 
 Settings settings;
 
-static GlobalConfig::Register rSettings(&settings);
-
 Settings::Settings()
     : nixPrefix(NIX_PREFIX)
     , nixStore(canonPath(getEnvNonEmpty("NIX_STORE_DIR").value_or(getEnvNonEmpty("NIX_STORE").value_or(NIX_STORE_DIR))))
@@ -485,7 +483,10 @@ void assertLibStoreInitialized() {
     };
 }
 
-void initLibStore() {
+void initLibStore()
+{
+    GlobalConfig::registerGlobalConfig(settings);
+    GlobalConfig::registerGlobalConfig(fileTransferSettings);
 
     loadConfFile();
 
@@ -509,6 +510,4 @@ void initLibStore() {
 
     initLibStoreDone = true;
 }
-
-
 }

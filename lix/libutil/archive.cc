@@ -32,9 +32,8 @@ struct ArchiveSettings : Config
     #include "archive-settings.gen.inc"
 };
 
-static ArchiveSettings archiveSettings;
-
-static GlobalConfig::Register rArchiveSettings(&archiveSettings);
+static ArchiveSettings realArchiveSettings;
+Config & archiveSettings = realArchiveSettings;
 
 PathFilter defaultPathFilter = [](const Path &) { return true; };
 
@@ -138,7 +137,7 @@ static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool retu
             std::map<std::string, std::string> unhacked;
             for (auto & i : readDirectory(path))
                 // See Note [Case Hack].
-                if (archiveSettings.useCaseHack) {
+                if (realArchiveSettings.useCaseHack) {
                     std::string name(i.name);
                     size_t pos = i.name.find(caseHackSuffix);
                     if (pos != std::string::npos) {
@@ -149,8 +148,9 @@ static nar::Entry list(Path path, time_t & mtime, PathFilter & filter, bool retu
                         throw Error("file name collision in between '%1%' and '%2%'",
                             (path + "/" + unhacked[name]),
                             (path + "/" + i.name));
-                } else
+                } else {
                     unhacked.emplace(i.name, i.name);
+                }
 
             for (auto & i : unhacked) {
                 if (filter(path + "/" + i.first)) {
@@ -277,7 +277,7 @@ struct PrefilteredDump : PreparedDump
                     ) -> Generator<std::pair<const std::string &, nar::Entry>> {
                         for (auto & [name, entry] : d.contents) {
                             // FIXME(jade): what?! we have two copies of this case un-hack code?
-                            std::string narName = archiveSettings.useCaseHack
+                            std::string narName = realArchiveSettings.useCaseHack
                                 ? name.substr(0, name.find(caseHackSuffix))
                                 : name;
                             co_yield std::pair{
@@ -979,8 +979,9 @@ private:
 
         void maybePreallocateContents(uint64_t len)
         {
-            if (!archiveSettings.preallocateContents)
+            if (!realArchiveSettings.preallocateContents) {
                 return;
+            }
 
 #if HAVE_POSIX_FALLOCATE
             if (len) {
@@ -1061,13 +1062,13 @@ public:
 
 void restorePath(const Path & path, Source & source)
 {
-    NARRestoreVisitor sink(path, archiveSettings.useCaseHack);
+    NARRestoreVisitor sink(path, realArchiveSettings.useCaseHack);
     parseDump(sink, source);
 }
 
 kj::Promise<Result<void>> restorePath(const Path & path, AsyncInputStream & source)
 try {
-    NARRestoreVisitor sink(path, archiveSettings.useCaseHack);
+    NARRestoreVisitor sink(path, realArchiveSettings.useCaseHack);
     TRY_AWAIT(parseDump(sink, source));
     co_return result::success();
 } catch (...) {

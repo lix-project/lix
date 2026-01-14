@@ -446,18 +446,16 @@ GlobalConfig globalConfig;
 
 GlobalConfig::ConfigRegistrations * GlobalConfig::configRegistrations;
 
-GlobalConfig::Register::Register(Config * config)
+void GlobalConfig::registerGlobalConfig(Config & config)
 {
     if (!configRegistrations)
         configRegistrations = new ConfigRegistrations;
-    configRegistrations->emplace_back(config);
+    configRegistrations->emplace_back(&config);
 }
 
 FeatureSettings experimentalFeatureSettings;
 
 FeatureSettings& featureSettings = experimentalFeatureSettings;
-
-static GlobalConfig::Register rSettings(&experimentalFeatureSettings);
 
 bool FeatureSettings::isEnabled(const ExperimentalFeature & feature) const
 {

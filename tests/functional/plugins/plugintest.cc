@@ -20,8 +20,6 @@ bool entryCalled = false;
 
 MySettings mySettings;
 
-static GlobalConfig::Register rs(&mySettings);
-
 [[gnu::used, gnu::unused, gnu::retain]]
 static void maybeRequireMeowForDlopen() {
     meow();
@@ -43,5 +41,6 @@ extern "C" void nix_plugin_entry()
         .arity = 0,
         .fun = prim_anotherNull,
     });
+    GlobalConfig::registerGlobalConfig(mySettings);
     entryCalled = true;
 }

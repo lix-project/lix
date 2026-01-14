@@ -303,9 +303,11 @@ public:
 
 struct GlobalConfig : public AbstractConfig
 {
+private:
     typedef std::vector<Config*> ConfigRegistrations;
     static ConfigRegistrations * configRegistrations;
 
+public:
     bool set(const std::string & name, const std::string & value, const ApplyConfigOptions & options = {}) override;
 
     void getSettings(std::map<std::string, SettingInfo> & res, bool overriddenOnly = false) override;
@@ -322,10 +324,7 @@ struct GlobalConfig : public AbstractConfig
 
     void convertToArgs(Args & args, const std::string & category) override;
 
-    struct Register
-    {
-        Register(Config * config);
-    };
+    static void registerGlobalConfig(Config & config);
 };
 
 extern GlobalConfig globalConfig;

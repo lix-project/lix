@@ -20,8 +20,6 @@ namespace nix {
 
 LoggerSettings loggerSettings;
 
-static GlobalConfig::Register rLoggerSettings(&loggerSettings);
-
 Logger * logger = makeSimpleLogger(true);
 
 Activity Logger::startActivity(

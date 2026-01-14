@@ -307,6 +307,8 @@ Logger * makeJSONLogger(Logger & prevLogger);
  */
 extern Verbosity verbosity;
 
+extern LoggerSettings loggerSettings;
+
 #define ACTIVITY_PROGRESS(act, ...)                                                     \
     do {                                                                                \
         auto && _lix_act = (act);                                                       \

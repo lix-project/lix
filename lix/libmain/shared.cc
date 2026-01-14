@@ -1,10 +1,15 @@
+#include "lix/libexpr/eval-settings.hh"
+#include "lix/libfetchers/fetch-settings.hh"
 #include "lix/libmain/crash-handler.hh"
+#include "lix/libstore/filetransfer.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
+#include "lix/libutil/archive.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/log-format.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -140,6 +145,15 @@ void initNix()
     /* Turn on buffering for cerr. */
     static char buf[1024];
     std::cerr.rdbuf()->pubsetbuf(buf, sizeof(buf));
+
+    // libutil
+    GlobalConfig::registerGlobalConfig(loggerSettings);
+    GlobalConfig::registerGlobalConfig(featureSettings);
+    GlobalConfig::registerGlobalConfig(archiveSettings);
+    // libfetchers
+    GlobalConfig::registerGlobalConfig(fetchSettings);
+    // libexpr
+    GlobalConfig::registerGlobalConfig(evalSettings);
 
     initLibStore();
 

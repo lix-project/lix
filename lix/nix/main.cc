@@ -1,6 +1,7 @@
 #include "lix/libutil/args/root.hh"
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
@@ -465,7 +466,10 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
     initNix();
     initLibExpr();
 
-    #if __linux__
+    GlobalConfig::registerGlobalConfig(daemonAuthorizationSettings);
+    GlobalConfig::registerGlobalConfig(nixDevelopSettings);
+
+#if __linux__
     if (getuid() == 0) {
         try {
             saveMountNamespace();

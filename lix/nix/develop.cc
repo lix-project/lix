@@ -27,8 +27,7 @@ struct DevelopSettings : Config
 };
 
 static DevelopSettings developSettings;
-
-static GlobalConfig::Register rDevelopSettings(&developSettings);
+Config & nixDevelopSettings = developSettings;
 
 struct BuildEnvironment
 {

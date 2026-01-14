@@ -95,8 +95,6 @@ const std::string & EvalSettings::getCurrentSystem()
 
 EvalSettings evalSettings;
 
-static GlobalConfig::Register rEvalSettings(&evalSettings);
-
 Path getNixDefExpr()
 {
     return settings.useXDGBaseDirectories

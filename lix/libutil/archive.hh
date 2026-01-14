@@ -221,5 +221,7 @@ inline constexpr std::string_view narVersionMagic1 = "nix-archive-1";
 
 inline constexpr std::string_view caseHackSuffix = "~nix~case~hack~";
 
+class Config;
 
+extern Config & archiveSettings;
 }

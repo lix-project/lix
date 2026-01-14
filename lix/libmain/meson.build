@@ -21,6 +21,7 @@ libmain = library(
   dependencies : [
     liblixutil,
     liblixstore,
+    liblixexpr,
     boost,
     kj,
   ],

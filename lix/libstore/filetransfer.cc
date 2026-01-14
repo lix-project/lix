@@ -49,8 +49,6 @@ namespace nix {
 
 FileTransferSettings fileTransferSettings;
 
-static GlobalConfig::Register rFileTransferSettings(&fileTransferSettings);
-
 namespace {
 struct TransferItem
 {
