@@ -168,12 +168,7 @@ nix = executable(
   include_directories : legacy_include_directories,
   dependencies : [
     libasanoptions,
-    liblixutil,
-    liblixstore,
-    liblixfetchers,
-    liblixexpr,
-    liblixmain,
-    liblixcmd,
+    liblix,
     boehm,
     capnp_rpc,
     nlohmann_json,

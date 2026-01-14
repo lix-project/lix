@@ -8,7 +8,7 @@ repl_characterization_tester = executable(
   repl_characterization_tester_sources,
   dependencies : [
     libasanoptions,
-    liblixutil,
+    liblix,
     liblixutil_test_support,
     editline,
     boost,

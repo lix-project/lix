@@ -29,9 +29,7 @@ libutil_test_support = library(
   'lixutil-test-support',
   libutil_test_support_sources,
   dependencies : [
-    liblixutil,
-    # TODO(Qyriad): libutil tests really should not depend on libexpr...
-    liblixexpr,
+    liblix,
     rapidcheck,
   ],
   include_directories : include_directories('libutil-support'),
@@ -90,8 +88,7 @@ libutil_tester = executable(
     libasanoptions,
     rapidcheck,
     gtest,
-    liblixutil,
-    liblixexpr,
+    liblix,
     liblixutil_test_support,
     nlohmann_json,
     kj,
@@ -122,8 +119,7 @@ libstore_test_support = library(
   libstore_test_support_sources,
   dependencies : [
     liblixutil_test_support,
-    liblixutil,
-    liblixstore,
+    liblix,
     rapidcheck,
     kj,
   ],
@@ -160,8 +156,7 @@ libstore_tester = executable(
     libasanoptions,
     liblixstore_test_support,
     liblixutil_test_support,
-    liblixstore,
-    liblixutil,
+    liblix,
     rapidcheck,
     gtest,
     nlohmann_json,
@@ -191,9 +186,7 @@ libexpr_test_support = library(
   libexpr_test_support_sources,
   dependencies : [
     liblixstore_test_support,
-    liblixstore,
-    liblixutil,
-    liblixexpr,
+    liblix,
     rapidcheck,
   ],
   include_directories : include_directories(
@@ -226,10 +219,7 @@ libexpr_tester = executable(
     libasanoptions,
     liblixexpr_test_support,
     liblixstore_test_support,
-    liblixstore,
-    liblixutil,
-    liblixexpr,
-    liblixfetchers,
+    liblix,
     rapidcheck,
     gtest,
     nlohmann_json,
@@ -251,15 +241,11 @@ test(
 )
 
 libcmd_tester = executable(
-  'liblixcmd-tests',
+  'liblix-tests',
   files('libcmd/args.cc'),
   dependencies : [
     libasanoptions,
-    liblixcmd,
-    liblixutil,
-    liblixmain,
-    liblixexpr,
-    liblixstore,
+    liblix,
     gtest,
     boost,
     kj,
@@ -293,10 +279,7 @@ libmain_tester = executable(
   'liblixmain-tests',
   libmain_tests_sources,
   dependencies : [
-    liblixmain,
-    liblixexpr,
-    liblixutil,
-    liblixstore,
+    liblix,
     gtest,
     boost,
     kj,

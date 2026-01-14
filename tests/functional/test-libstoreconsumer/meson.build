@@ -3,8 +3,7 @@ libstoreconsumer_tester = executable(
   'main.cc',
   dependencies : [
     libasanoptions,
-    liblixutil,
-    liblixstore,
+    liblix,
     editline,
     boost,
     lowdown,
