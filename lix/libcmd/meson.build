@@ -63,13 +63,6 @@ libcmd = library(
 )
 
 install_headers(libcmd_headers, subdir : 'lix/libcmd', preserve_path : true)
-custom_target(
-  command : [ 'cp', '@INPUT@', '@OUTPUT@' ],
-  input : libcmd_generated_headers,
-  output : '@PLAINNAME@',
-  install : true,
-  install_dir : includedir / 'lix/libcmd',
-)
 
 liblixcmd = declare_dependency(
   include_directories : include_directories('../..'),
