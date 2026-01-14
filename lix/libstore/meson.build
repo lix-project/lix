@@ -404,20 +404,3 @@ liblixstore = declare_dependency(
   ],
   link_with : libstore,
 )
-
-meson.override_dependency('lix-store', liblixstore)
-
-# FIXME: not using the pkg-config module because it creates way too many deps
-# while meson migration is in progress, and we want to not include boost here
-configure_file(
-  input : 'lix-store.pc.in',
-  output : 'lix-store.pc',
-  install_dir : libdir / 'pkgconfig',
-  configuration : {
-    'prefix' : prefix,
-    'libdir' : libdir,
-    'includedir' : includedir,
-    'PACKAGE_VERSION' : meson.project_version(),
-    'AWS_SDK_IF_FOUND' : aws_sdk.found() ? 'aws-cpp-sdk-core aws-cpp-sdk-s3 aws-cpp-sdk-transfer' : '',
-  },
-)

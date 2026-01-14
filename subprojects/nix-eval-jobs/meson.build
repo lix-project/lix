@@ -8,11 +8,7 @@ project('nix-eval-jobs', 'cpp',
   ],
 )
 
-nix_main_dep = dependency('lix-main', required: true)
-nix_store_dep = dependency('lix-store', required: true)
-nix_expr_dep = dependency('lix-expr', required: true)
-nix_cmd_dep = dependency('lix-cmd', required: true)
-nix_util_dep = dependency('lix-util', required: true)
+lix_dep = dependency('lix', required: true)
 threads_dep = dependency('threads', required: true)
 nlohmann_json_dep = dependency('nlohmann_json', required: true)
 boost_dep = dependency('boost', required: true)

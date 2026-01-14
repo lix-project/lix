@@ -41,18 +41,3 @@ liblixmain = declare_dependency(
   ],
   link_with : libmain,
 )
-meson.override_dependency('lix-main', liblixmain)
-
-# FIXME: not using the pkg-config module because it creates way too many deps
-# while meson migration is in progress, and we want to not include boost here
-configure_file(
-  input : 'lix-main.pc.in',
-  output : 'lix-main.pc',
-  install_dir : libdir / 'pkgconfig',
-  configuration : {
-    'prefix' : prefix,
-    'libdir' : libdir,
-    'includedir' : includedir,
-    'PACKAGE_VERSION' : meson.project_version(),
-  },
-)

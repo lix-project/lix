@@ -1,0 +1,12 @@
+prefix=@prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: Lix libraries
+Description: Lix Package Manager (libraries)
+Version: @PACKAGE_VERSION@
+# dependencies on boost, libarchive, nlohmann_json are omitted since they are optional (only required by some headers)
+Requires: lix-base kj-async @BOEHM_IF_FOUND@
+Requires.private: @AWS_SDK_IF_FOUND@ @BOEHM_IF_FOUND@ libeditline lowdown ncurses libbrotlidec libbrotlienc libcpuid libarchive libcrypto capnp-rpc libcurl libseccomp sqlite3
+Cflags: -I${includedir}
+Libs: -L${libdir} -lrust_monocrate -llixutil -llixstore -llixfetchers -llixexpr -llixmain -llixcmd

@@ -5,6 +5,4 @@ includedir=@includedir@
 Name: Lix libstore
 Description: Lix Package Manager (libstore)
 Version: @PACKAGE_VERSION@
-Requires: lix-base lix-util
-Requires.private: @AWS_SDK_IF_FOUND@ capnp-rpc libcrypto libcurl libarchive libseccomp sqlite3
-Libs: -L${libdir} -llixstore
+Requires: lix

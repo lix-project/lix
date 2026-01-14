@@ -147,6 +147,35 @@ subdir('libmain')
 # libcmd depends on everything
 subdir('libcmd')
 
+# FIXME: not using the pkg-config module because it creates way too many deps
+# while meson migration is in progress, and we want to not include boost here
+foreach lib : [ 'util', 'store', 'fetchers', 'expr', 'main', 'cmd' ]
+  configure_file(
+    input : f'lib@lib@/lix-@lib@.pc.in',
+    output : f'lix-@lib@.pc',
+    install_dir : libdir / 'pkgconfig',
+    configuration : {
+      'prefix' : prefix,
+      'libdir' : libdir,
+      'includedir' : includedir,
+      'PACKAGE_VERSION' : meson.project_version(),
+    },
+  )
+endforeach
+
+liblix = declare_dependency(
+  dependencies : [
+    liblixutil,
+    liblixstore,
+    liblixfetchers,
+    liblixexpr,
+    liblixmain,
+    liblixcmd,
+  ],
+)
+
+meson.override_dependency('lix', liblix)
+
 # The rest of the subdirectories aren't separate components,
 # just source files in another directory, so we process them here.
 

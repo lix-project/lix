@@ -73,19 +73,3 @@ liblixcmd = declare_dependency(
   ],
   link_with : libcmd,
 )
-meson.override_dependency('lix-cmd', liblixcmd)
-
-# FIXME: not using the pkg-config module because it creates way too many deps
-# while meson migration is in progress, and we want to not include boost here
-configure_file(
-  input : 'lix-cmd.pc.in',
-  output : 'lix-cmd.pc',
-  install_dir : libdir / 'pkgconfig',
-  configuration : {
-    'prefix' : prefix,
-    'libdir' : libdir,
-    'includedir' : includedir,
-    'PACKAGE_VERSION' : meson.project_version(),
-    'BOEHM_IF_FOUND' : boehm.found() ? 'bdw-gc' : '',
-  },
-)

@@ -591,17 +591,21 @@ endforeach
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
-configure_file(
-  input : 'lix/lix-base.pc.in',
-  output : 'lix-base.pc',
-  install_dir : libdir / 'pkgconfig',
-  configuration : {
-    'prefix' : prefix,
-    'libdir' : libdir,
-    'includedir' : includedir,
-    'PACKAGE_VERSION' : meson.project_version(),
-  },
-)
+foreach pkgconf : [ 'lix-base.pc', 'lix.pc' ]
+  configure_file(
+    input : f'lix/@pkgconf@.in',
+    output : pkgconf,
+    install_dir : libdir / 'pkgconfig',
+    configuration : {
+      'prefix' : prefix,
+      'libdir' : libdir,
+      'includedir' : includedir,
+      'PACKAGE_VERSION' : meson.project_version(),
+      'AWS_SDK_IF_FOUND' : aws_sdk.found() ? 'aws-cpp-sdk-core aws-cpp-sdk-s3 aws-cpp-sdk-transfer' : '',
+      'BOEHM_IF_FOUND' : boehm.found() ? 'bdw-gc' : '',
+    },
+  )
+endforeach
 
 add_project_arguments(
   # TODO(Qyriad): Yes this is how the autoconf+Make system did it.
