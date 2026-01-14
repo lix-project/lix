@@ -5,6 +5,63 @@ lix_major = lix_version_parts[0]
 lix_minor = lix_version_parts[1]
 lix_patch = lix_version_parts[2].replace(lix_suffix, '')
 
+# These variables (aside from LSOF) are created pseudo-dynamically, near the beginning of
+# the top-level meson.build. Aside from prefix itself, each of these was
+# made into an absolute path by joining it with prefix, unless it was already
+# an absolute path (which is the default for store-dir, state-dir, and log-dir).
+cpp_str_defines = {
+  'LSOF': lsof.full_path(),
+  'NIX_PREFIX':    prefix,
+  'NIX_STORE_DIR': store_dir,
+  'NIX_DATA_DIR':  datadir,
+  'NIX_STATE_DIR': state_dir / 'nix',
+  'NIX_LOG_DIR':   log_dir,
+  'NIX_CONF_DIR':  sysconfdir / 'nix',
+  'NIX_BIN_DIR':   bindir,
+  'NIX_MAN_DIR':   mandir,
+}
+
+embedded_sandbox_headers = []
+
+if enable_embedded_sandbox_shell
+  hexdump = find_program('hexdump', required : true, native : true)
+  embedded_sandbox_shell_gen = custom_target(
+    'embedded-sandbox-shell.gen.hh',
+    command : [
+      hexdump,
+      '-v',
+      '-e',
+      '1/1 "0x%x," "\n"'
+    ],
+    input : busybox.full_path(),
+    output : 'embedded-sandbox-shell.gen.hh',
+    capture : true,
+    feed : true,
+  )
+  embedded_sandbox_headers += embedded_sandbox_shell_gen
+  cpp_str_defines += {
+    'SANDBOX_SHELL': '__embedded_sandbox_shell__'
+  }
+elif busybox.found()
+  cpp_str_defines += {
+    'SANDBOX_SHELL': busybox.full_path()
+  }
+endif
+
+if pasta.found()
+  cpp_str_defines += {
+    'PASTA_PATH': pasta.full_path(),
+  }
+endif
+
+cpp_args = []
+
+foreach name, value : cpp_str_defines
+  cpp_args += [
+    '-D' + name + '=' + '"' + value + '"'
+  ]
+endforeach
+
 config_h = configure_file(
   configuration : {
     'PACKAGE_NAME': '"' + meson.project_name() + '"',
