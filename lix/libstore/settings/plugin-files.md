@@ -16,8 +16,7 @@ FIXME(jade): We should provide a `nix_plugin_finalize()` that gets called at som
 In particular, these plugins may:
 - Construct static instances of `RegisterPrimOp` to add new primops or constants to the expression language (FIXME: will be replaced with an explicit function).
 - Add new store implementations with `StoreImplementations::add`.
-- Construct static instances of `RegisterCommand` to add new subcommands to the `nix` command (FIXME: will be replaced with an explicit function).
-- Construct static instances of `Setting` to add new Lix settings (FIXME: will be replaced with an explicit function).
+- Construct static instances of `GlobalConfig::Register` to add new config options.
 
 See the documentation for those symbols for more details.
 Note all the FIXMEs above: Lix is removing its usages of static initializers, see <https://git.lix.systems/lix-project/lix/issues/359>.
