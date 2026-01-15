@@ -1,7 +1,7 @@
 [Unit]
 Description=Nix Daemon
 Documentation=man:nix-daemon https://docs.lix.systems/manual/lix/stable
-Conflicts=nix-daemon.socket
+Conflicts=@conflicts@
 RequiresMountsFor=@storedir@
 RequiresMountsFor=@localstatedir@
 RequiresMountsFor=@localstatedir@/nix/db

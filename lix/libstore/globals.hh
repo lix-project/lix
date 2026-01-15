@@ -61,7 +61,16 @@ const uint32_t maxIdsPerBuild =
     #endif
     ;
 
-class Settings : public Config {
+class Settings : public Config
+{
+public:
+    struct DaemonSocketPath
+    {
+        Path path;
+    };
+
+private:
+    std::list<DaemonSocketPath> nixDaemonSockets_;
 
     unsigned int getDefaultCores();
 
@@ -117,9 +126,12 @@ public:
     Path nixManDir;
 
     /**
-     * File name of the socket the daemon listens to.
+     * Socket paths a client should connect to, in order of decreasing preference.
      */
-    Path nixDaemonSocketFile;
+    const std::list<DaemonSocketPath> & nixDaemonSockets() const
+    {
+        return nixDaemonSockets_;
+    }
 
     /**
      * Whether to show build log output in real time.
@@ -134,7 +146,6 @@ public:
 
 #include "lix/libstore/libstore-settings.gen.inc"
 };
-
 
 // FIXME: don't use a global variable.
 extern Settings settings;

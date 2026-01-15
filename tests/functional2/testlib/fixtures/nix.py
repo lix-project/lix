@@ -179,7 +179,8 @@ class Nix:
         daemon.settings.store = f"local?root={self.env.dirs.test_root}"
         daemon.settings.other_settings |= settings
 
-        sockets = [Path(daemon.env.dirs.nix_state_dir) / "daemon-socket/socket"]
+        sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
+        sockets = [sockets_dir / "socket"]
         for p in sockets:
             p.unlink(missing_ok=True)
 
@@ -194,7 +195,9 @@ class Nix:
                 self.logger.error("daemon exited unexpectedly")
 
         # wait for daemon to come up. this may take a while under load.
-        while not all(p.exists() for p in sockets):
+        # we only test the *last* socket in the list because that's the
+        # last one the daemon creates, once it's there the daemon is up
+        while not sockets[-1].exists():
             if status := proc.wait(0.01):
                 log_daemon_result(status, logging.ERROR)
                 raise RuntimeError("daemon exited during startup")

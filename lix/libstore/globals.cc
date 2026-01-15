@@ -49,13 +49,16 @@ namespace nix {
    Nix daemon by setting the mode/ownership of the directory
    appropriately.  (This wouldn't work on the socket itself since it
    must be deleted and recreated on startup.) */
-#define DEFAULT_SOCKET_PATH "/daemon-socket/socket"
+#define DEFAULT_SOCKET_DIR "/daemon-socket"
+#define LEGACY_SOCKET "/socket"
 
 Settings settings;
 
 Settings::Settings()
     : nixPrefix(NIX_PREFIX)
-    , nixStore(canonPath(getEnvNonEmpty("NIX_STORE_DIR").value_or(getEnvNonEmpty("NIX_STORE").value_or(NIX_STORE_DIR))))
+    , nixStore(canonPath(
+          getEnvNonEmpty("NIX_STORE_DIR").value_or(getEnvNonEmpty("NIX_STORE").value_or(NIX_STORE_DIR))
+      ))
     , nixDataDir(canonPath(getEnvNonEmpty("NIX_DATA_DIR").value_or(NIX_DATA_DIR)))
     , nixLogDir(canonPath(getEnvNonEmpty("NIX_LOG_DIR").value_or(NIX_LOG_DIR)))
     , nixStateDir(canonPath(getEnvNonEmpty("NIX_STATE_DIR").value_or(NIX_STATE_DIR)))
@@ -63,8 +66,19 @@ Settings::Settings()
     , nixUserConfFiles(getUserConfigFiles())
     , nixBinDir(canonPath(getEnvNonEmpty("NIX_BIN_DIR").value_or(NIX_BIN_DIR)))
     , nixManDir(canonPath(NIX_MAN_DIR))
-    , nixDaemonSocketFile(canonPath(getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH").value_or(nixStateDir + DEFAULT_SOCKET_PATH)))
 {
+    if (auto socketDirFromEnv = getEnvNonEmpty("LIX_DAEMON_SOCKET_DIR")) {
+        nixDaemonSockets_ = {{canonPath(*socketDirFromEnv + LEGACY_SOCKET)}};
+    } else if (auto socketPathFromEnv = getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH")) {
+        nixDaemonSockets_ = {{canonPath(*socketPathFromEnv)}};
+    } else {
+        auto baseDir = nixStateDir + DEFAULT_SOCKET_DIR;
+        // this should always match the list of sockets created by daemonLoop and the socket units
+        nixDaemonSockets_ = {
+            {canonPath(baseDir + LEGACY_SOCKET)},
+        };
+    }
+
     buildUsersGroup.setDefault(getuid() == 0 ? "nixbld" : "");
     allowSymlinkedStore.setDefault(getEnv("NIX_IGNORE_SYMLINK_STORE") == "1");
 

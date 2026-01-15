@@ -27,6 +27,7 @@
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/users.hh"
 
+#include <algorithm>
 #include <functional>
 #include <kj/async.h>
 #include <memory>
@@ -1422,7 +1423,11 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
 {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
-        if (allowDaemon == AllowDaemon::Allow && pathExists(settings.nixDaemonSocketFile)) {
+        if (allowDaemon == AllowDaemon::Allow
+            && std::ranges::any_of(
+                settings.nixDaemonSockets(), [](auto & socket) { return pathExists(socket.path); }
+            ))
+        {
             return make_ref<UDSRemoteStore>(params);
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
             return LocalStore::makeLocalStore(params);
@@ -1453,7 +1458,7 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
             // FIXME? this ignores *all* store parameters passed to this function?
             return LocalStore::makeLocalStore(chrootStoreParams);
         }
-        #endif
+#endif
         else
             return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {

@@ -6,6 +6,7 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/current-process.hh"
@@ -33,6 +34,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include <kj/async.h>
 #include <string>
 #include <unistd.h>
 #include <signal.h>
@@ -276,34 +278,13 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
     return { trusted, std::move(user) };
 }
 
-
-/**
- * Run a server. The loop opens a socket and accepts new connections from that
- * socket.
- *
- * @param forceTrustClientOpt If present, force trusting or not trusted
- * the client. Otherwise, decide based on the authentication settings
- * and user credentials (from the unix domain socket).
- */
-static kj::Promise<Result<void>> daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
+static kj::Promise<Result<void>> daemonLoopForSocket(
+    const Path & self,
+    const Settings::DaemonSocketPath & socket,
+    AutoCloseFD & fdSocket,
+    std::optional<TrustedFlag> forceTrustClientOpt
+)
 try {
-    if (chdir("/") == -1)
-        throw SysError("cannot change current directory");
-
-    createDirs(dirOf(settings.nixDaemonSocketFile));
-    auto fdSocket = createUnixDomainSocket(settings.nixDaemonSocketFile, 0666);
-
-    //  Get rid of children automatically; don't let them become zombies.
-    setSigChldAction(true);
-
-    const auto self = [] {
-        auto tmp = getSelfExe();
-        if (!tmp) {
-            throw Error("can't locate the daemon binary!");
-        }
-        return *tmp;
-    }();
-
     makeNonBlocking(fdSocket.get());
     auto observer = kj::UnixEventPort::FdObserver{
         AIO().unixEventPort, fdSocket.get(), kj::UnixEventPort::FdObserver::OBSERVE_READ
@@ -371,6 +352,46 @@ try {
             logError(ei);
         }
     }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+/**
+ * Run a server. The loop opens a socket and accepts new connections from that
+ * socket.
+ *
+ * @param forceTrustClientOpt If present, force trusting or not trusted
+ * the client. Otherwise, decide based on the authentication settings
+ * and user credentials (from the unix domain socket).
+ */
+static kj::Promise<Result<void>> daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
+try {
+    if (chdir("/") == -1) {
+        throw SysError("cannot change current directory");
+    }
+
+    const auto self = [] {
+        auto tmp = getSelfExe();
+        if (!tmp) {
+            throw Error("can't locate the daemon binary!");
+        }
+        return *tmp;
+    }();
+
+    std::list<std::pair<Settings::DaemonSocketPath, AutoCloseFD>> sockets;
+    for (auto & socket : settings.nixDaemonSockets()) {
+        createDirs(dirOf(socket.path));
+        sockets.emplace_back(socket, createUnixDomainSocket(socket.path, 0666));
+    }
+
+    //  Get rid of children automatically; don't let them become zombies.
+    setSigChldAction(true);
+
+    TRY_AWAIT(asyncSpread(sockets, [&](auto & socket) {
+        return daemonLoopForSocket(self, socket.first, socket.second, forceTrustClientOpt);
+    }));
 
     co_return result::success();
 } catch (...) {
@@ -651,5 +672,4 @@ void registerNixDaemon()
 {
     registerCommand2<CmdDaemon>({"daemon"});
 }
-
 }

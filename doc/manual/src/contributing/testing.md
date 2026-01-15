@@ -383,7 +383,10 @@ I grepped `lix/` for `get[eE]nv\("` to find the mentions in Lix code.
   Overrides compile-time configuration of various locations used by Lix. See `lix/libstore/globals.cc`.
 
   **Expected value**: a directory
-- `NIX_DAEMON_SOCKET_PATH` (optional) - Overrides the daemon socket path from `$NIX_STATE_DIR/daemon-socket/socket`.
+- `LIX_DAEMON_SOCKET_DIR` (optional) - Overrides the daemon socket directory from `$NIX_STATE_DIR/daemon-socket`.
+
+  **Expected value**: a directory
+- `NIX_DAEMON_SOCKET_PATH` (optional) - Overrides the daemon socket path from `$NIX_STATE_DIR/daemon-socket/socket`. Ignored if `LIX_DAEMON_SOCKET_DIR` is set.
 
   **Expected value**: path to a socket
 - `NIX_LOG_FD` (output) - An FD number for logs in `internal-json` format to be sent to.
