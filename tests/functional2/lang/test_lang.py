@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-from _pytest.fixtures import FixtureRequest
 from _pytest.python import Metafunc
 
 from functional2.lang.lang_util import LangTest, fetch_all_lang_tests, LangTestRunner
@@ -25,13 +24,13 @@ def pytest_generate_tests(metafunc: Metafunc):
         return
     selected_runner: LangTestRunner
     match func_name:
-        case "test_eval":
+        case "test_eval_okay":
             selected_runner = LangTestRunner.EVAL_OKAY
-        case "test_xfail_eval":
+        case "test_eval_fail":
             selected_runner = LangTestRunner.EVAL_FAIL
-        case "test_parser":
+        case "test_parse_okay":
             selected_runner = LangTestRunner.PARSE_OKAY
-        case "test_xfail_parser":
+        case "test_parse_fail":
             selected_runner = LangTestRunner.PARSE_FAIL
         case _:
             return
@@ -42,12 +41,7 @@ def pytest_generate_tests(metafunc: Metafunc):
         files, flags, ids = zip(*map(LangTest.to_params, selected_tests))  # type: ignore
     else:
         files, flags, ids = [], [], []
-    metafunc.parametrize(("files", "flags"), zip(files, flags), ids=ids, indirect=True)
-
-
-@pytest.fixture
-def flags(request: FixtureRequest) -> list[str]:
-    return request.param
+    metafunc.parametrize(("files", "flags"), zip(files, flags), ids=ids, indirect=["files"])
 
 
 def _cleanup_output(stdout: str, stderr: str, origin: Path) -> tuple[str, str]:
@@ -60,7 +54,7 @@ def _cleanup_output(stdout: str, stderr: str, origin: Path) -> tuple[str, str]:
     return clean_out, clean_err
 
 
-def test_parser(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
+def test_parse_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(
         ["--parse", *flags, files / "in.nix"],
         # TODO(Commentator2.0): Mirrors behavior of init.sh from functional
@@ -89,7 +83,7 @@ def test_parser(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str
     assert snapshot("err.exp") == stderr
 
 
-def test_xfail_parser(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
+def test_parse_fail(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(["--parse", *flags, files / "in.nix"], flake=True)
     result = nix_command.run().expect(1)
     stdout, stderr = _cleanup_output(result.stdout_s, result.stderr_s, files)
@@ -98,7 +92,7 @@ def test_xfail_parser(files: Path, nix: Nix, flags: list[str], snapshot: Callabl
     assert snapshot("err.exp") == stderr
 
 
-def test_eval(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
+def test_eval_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(["--eval", "--strict", *flags, files / "in.nix"], flake=True)
     result = nix_command.run().ok()
     stdout, stderr = _cleanup_output(result.stdout_s, result.stderr_s, files)
@@ -107,7 +101,7 @@ def test_eval(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str],
     assert snapshot("err.exp") == stderr
 
 
-def test_xfail_eval(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
+def test_eval_fail(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(
         ["--eval", "--strict", "--show-trace", *flags, files / "in.nix"], flake=True
     )

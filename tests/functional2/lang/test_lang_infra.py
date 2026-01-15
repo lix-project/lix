@@ -23,7 +23,7 @@ from functional2.testlib.utils import get_functional2_lang_files
 )
 def test_detects_generic_lang_test(pytest_command: Command):
     result = pytest_command.run().ok()
-    assert "lang/test_lang.py::test_eval[generic_test:eval-okay]" in result.stdout_plain
+    assert "lang/test_lang.py::test_eval_okay[generic_test:eval-okay]" in result.stdout_plain
 
 
 @pytest.mark.parametrize("pytest_command", [["-k", "toml_test", "--setup-plan"]], indirect=True)
@@ -50,7 +50,7 @@ def test_detects_generic_lang_test(pytest_command: Command):
 )
 def test_detects_toml_lang_test(pytest_command: Command):
     result = pytest_command.run().ok()
-    assert "lang/test_lang.py::test_eval[toml_test:my_name]" in result.stdout_plain
+    assert "lang/test_lang.py::test_eval_okay[toml_test:my_name]" in result.stdout_plain
 
 
 @pytest.mark.parametrize("pytest_command", [["--setup-plan"]], indirect=True)
@@ -71,7 +71,7 @@ def test_detects_toml_lang_test(pytest_command: Command):
 )
 def test_skips_py_files(files: Path, pytest_command: Command):
     result = pytest_command.run().ok()
-    assert "lang/test_lang.py::test_eval[some_py_module:eval-okay]" not in result.stdout_plain
+    assert "lang/test_lang.py::test_eval_okay[some_py_module:eval-okay]" not in result.stdout_plain
     assert (
         f"[    INFO] [lang-test-collector] skipping {files.absolute()}/functional2/lang/some_py_module as it contains a py file, assuming custom tests"
         in result.stdout_plain
@@ -223,11 +223,13 @@ def test_collection_fails_with_bad_naming(pytest_command: Command):
 )
 def test_all_runners_work(pytest_command: Command):
     result = pytest_command.run().ok()
-    assert "lang/test_lang.py::test_eval[infra_okay_runners:eval-okay]" in result.stdout_plain
-    assert "lang/test_lang.py::test_parser[infra_okay_runners:parse-okay]" in result.stdout_plain
-    assert "lang/test_lang.py::test_xfail_eval[infra_fail_runners:eval-fail]" in result.stdout_plain
+    assert "lang/test_lang.py::test_eval_okay[infra_okay_runners:eval-okay]" in result.stdout_plain
     assert (
-        "lang/test_lang.py::test_xfail_parser[infra_fail_runners:parse-fail]" in result.stdout_plain
+        "lang/test_lang.py::test_parse_okay[infra_okay_runners:parse-okay]" in result.stdout_plain
+    )
+    assert "lang/test_lang.py::test_eval_fail[infra_fail_runners:eval-fail]" in result.stdout_plain
+    assert (
+        "lang/test_lang.py::test_parse_fail[infra_fail_runners:parse-fail]" in result.stdout_plain
     )
 
 
@@ -628,8 +630,8 @@ def test_toml_matrix_only_list_str(pytest_command: Command):
 def test_toml_matrix_uses_all_files(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
-    assert "test_eval[matrix-all:eval-okay] PASSED" in out
-    assert "test_eval[matrix-all:eval-okay-1] PASSED" in out
+    assert "test_eval_okay[matrix-all:eval-okay] PASSED" in out
+    assert "test_eval_okay[matrix-all:eval-okay-1] PASSED" in out
 
 
 @pytest.mark.parametrize("pytest_command", [[]], indirect=True)
@@ -670,9 +672,9 @@ def test_toml_matrix_uses_all_files(pytest_command: Command):
 def test_toml_mixing_matrix_single(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
-    assert "test_eval[mixed-matrix:eval-okay] PASSED" in out
-    assert "test_eval[mixed-matrix:eval-okay-1] PASSED" in out
-    assert "test_eval[mixed-matrix:non-matrix-1] PASSED" in out
+    assert "test_eval_okay[mixed-matrix:eval-okay] PASSED" in out
+    assert "test_eval_okay[mixed-matrix:eval-okay-1] PASSED" in out
+    assert "test_eval_okay[mixed-matrix:non-matrix-1] PASSED" in out
 
 
 @pytest.mark.parametrize("pytest_command", [[]], indirect=True)
@@ -747,11 +749,11 @@ def test_toml_non_unique_name(pytest_command: Command):
 def test_toml_matrix_subset(pytest_command: Command):
     res = pytest_command.run().ok()
     out = res.stdout_plain
-    assert "test_eval[subset:matrix] PASSED" in out
-    assert "test_eval[subset:matrix-hello] PASSED" in out
-    assert "test_eval[subset:matrix-1] PASSED" not in out
-    assert "test_eval[subset:eval-okay-1] PASSED" in out
-    assert "test_eval[subset:eval-okay] PASSED" not in out
+    assert "test_eval_okay[subset:matrix] PASSED" in out
+    assert "test_eval_okay[subset:matrix-hello] PASSED" in out
+    assert "test_eval_okay[subset:matrix-1] PASSED" not in out
+    assert "test_eval_okay[subset:eval-okay-1] PASSED" in out
+    assert "test_eval_okay[subset:eval-okay] PASSED" not in out
 
 
 @pytest.mark.parametrize("pytest_command", [[]], indirect=True)
@@ -816,7 +818,7 @@ def test_toml_bad_in_naming(pytest_command: Command):
 def test_toml_missing_in_file(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
-    assert "ERROR lang/test_lang.py::test_eval[toml-missing:eval-okay] - FileNotFound" in out
+    assert "ERROR lang/test_lang.py::test_eval_okay[toml-missing:eval-okay] - FileNotF" in out
 
 
 @pytest.mark.parametrize("pytest_command", [[]], indirect=True)
@@ -838,7 +840,7 @@ def test_toml_missing_in_file(pytest_command: Command):
 def test_generic_missing_in_file(pytest_command: Command):
     res = pytest_command.run().expect(1)
     out = res.stdout_plain
-    assert "ERROR lang/test_lang.py::test_eval[generic-missing:eval-okay] - FileNotFound" in out
+    assert "ERROR lang/test_lang.py::test_eval_okay[generic-missing:eval-okay] - FileNotF" in out
 
 
 @pytest.mark.parametrize("pytest_command", [["--setup-plan"]], indirect=True)

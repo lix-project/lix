@@ -1,7 +1,7 @@
 from pathlib import Path
 from collections.abc import Callable
 
-from functional2.lang.test_lang import test_eval as nix_eval
+from functional2.lang.test_lang import test_eval_okay as nix_eval
 from functional2.testlib.fixtures.file_helper import (
     with_files,
     CopyFile,

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from functional2.lang.test_lang import test_eval as nix_eval
+from functional2.lang.test_lang import test_eval_okay as nix_eval
 from functional2.testlib.fixtures.file_helper import AssetSymlink, CopyFile, CopyTree, with_files
 from functional2.testlib.fixtures.nix import Nix
 from functional2.testlib.fixtures.snapshot import Snapshot
