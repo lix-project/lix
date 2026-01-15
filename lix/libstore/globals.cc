@@ -50,7 +50,6 @@ namespace nix {
    appropriately.  (This wouldn't work on the socket itself since it
    must be deleted and recreated on startup.) */
 #define DEFAULT_SOCKET_DIR "/daemon-socket"
-#define LEGACY_SOCKET "/socket"
 
 Settings settings;
 
@@ -68,14 +67,14 @@ Settings::Settings()
     , nixManDir(canonPath(NIX_MAN_DIR))
 {
     if (auto socketDirFromEnv = getEnvNonEmpty("LIX_DAEMON_SOCKET_DIR")) {
-        nixDaemonSockets_ = {{canonPath(*socketDirFromEnv + LEGACY_SOCKET)}};
+        nixDaemonSockets_ = {{canonPath(*socketDirFromEnv + LEGACY_SOCKET_COMBINED)}};
     } else if (auto socketPathFromEnv = getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH")) {
         nixDaemonSockets_ = {{canonPath(*socketPathFromEnv)}};
     } else {
         auto baseDir = nixStateDir + DEFAULT_SOCKET_DIR;
         // this should always match the list of sockets created by daemonLoop and the socket units
         nixDaemonSockets_ = {
-            {canonPath(baseDir + LEGACY_SOCKET)},
+            {canonPath(baseDir + LEGACY_SOCKET_COMBINED)},
         };
     }
 

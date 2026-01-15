@@ -51,7 +51,9 @@ UDSRemoteStore::UDSRemoteStore(
 std::string UDSRemoteStore::getUri()
 {
     if (path) {
-        return std::string("unix://") + *path;
+        return fmt(
+            "unix://%s%s", *path, config().protocol.overridden ? fmt("?protocol=%s", config().protocol) : ""
+        );
     } else {
         return "daemon";
     }
@@ -84,7 +86,17 @@ ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
     std::list<Path> candidates;
 
     if (path) {
-        candidates.emplace_back(*path);
+        if (config().protocol == "any") {
+            candidates.emplace_back(*path + LEGACY_SOCKET_COMBINED);
+        } else {
+            for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
+                if (proto == "legacy-combined") {
+                    candidates.emplace_back(*path);
+                } else {
+                    throw Error("can't connect to %s with unknown daemon protocol %s", *path, proto);
+                }
+            }
+        }
     } else {
         candidates = settings.nixDaemonSockets()
             | std::views::transform([](auto & socket) { return socket.path; })

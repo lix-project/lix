@@ -8,6 +8,8 @@
 
 namespace nix {
 
+constexpr inline std::string_view LEGACY_SOCKET_COMBINED = "/socket";
+
 struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreConfig
 {
     UDSRemoteStoreConfig(const Params & params)
@@ -16,6 +18,24 @@ struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreCon
         , RemoteStoreConfig(params)
     {
     }
+
+    const Setting<std::string> protocol{
+        this,
+        "legacy-combined",
+        "protocol",
+        R"(
+          Space-or-comma-separated list of protocols to try to connect to, in preference order.
+          Currently supported:
+            - `legacy-combined` (default): legacy wire protocol using a single combined socket.
+              The provided path will be used *unmodified* to locate the combined daemon socket.
+
+          Also supports the special value `any` to try *all* known protocols using the provided
+          path as the *base* directory for sockets. Unlike `legacy-combined` this will append a
+          `/socket` to the given path when trying to connect with the legacy-combined protocol.
+
+          Ignored unless a path is also present.
+        )"
+    };
 
     const std::string name() override { return "Local Daemon Store"; }
 

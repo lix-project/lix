@@ -4,6 +4,6 @@ R"(
 
 This store type accesses a Nix store by talking to a Nix daemon
 listening on the Unix domain socket *path*. The store pseudo-URL
-`daemon` is equivalent to `unix:///nix/var/nix/daemon-socket/socket`.
+`daemon` is equivalent to `unix:///nix/var/nix/daemon-socket?protocol=any`.
 
 )"
