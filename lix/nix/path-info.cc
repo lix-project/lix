@@ -80,6 +80,58 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
         std::cout << fmt("\t%6.1f%c", res, idents.at(power));
     }
 
+    void run(ref<Store> store, Installables && installables) override
+    {
+        StorePathSet paths;
+
+        if (all) {
+            if (installables.size()) {
+                throw UsageError("'--all' does not expect arguments");
+            }
+
+            paths = aio().blockOn(store->queryAllValidPaths());
+        } else {
+            auto state = getEvaluator()->begin(aio());
+
+            if (operateOn == OperateOn::Output) {
+                for (auto i : installables) {
+                    for (auto b : i->toDerivedPaths(*state)) {
+                        std::visit(
+                            overloaded{
+                                [&](const DerivedPath::Built & bfd) {
+                                    for (auto & [_, output] :
+                                         aio().blockOn(resolveDerivedPath(*store, bfd, &*getEvalStore())))
+                                    {
+                                        paths.insert(output);
+                                    }
+                                },
+                                [&](const DerivedPath::Opaque & bo) { paths.insert(bo.path); },
+                            },
+                            b.path.raw()
+                        );
+                    }
+                }
+            } else {
+                auto drvPaths = Installable::toDerivations(*state, store, installables, true);
+                paths.insert(drvPaths.begin(), drvPaths.end());
+            }
+
+            if (recursive) {
+                // XXX: This only computes the store path closure, ignoring
+                // intermediate realisations
+                StorePathSet closure;
+                aio().blockOn(store->computeFSClosure(paths, closure));
+
+                paths.insert(closure.begin(), closure.end());
+            }
+        }
+
+        auto sorted = aio().blockOn(store->topoSortPaths(paths));
+        std::reverse(sorted.begin(), sorted.end());
+
+        run(store, std::move(sorted));
+    }
+
     void run(ref<Store> store, StorePaths && storePaths) override
     {
         // Wipe the progress bar to prevent interference with the output.

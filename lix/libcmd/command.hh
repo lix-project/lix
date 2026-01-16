@@ -220,12 +220,10 @@ struct MixOperateOnOptions : virtual Args
  */
 struct BuiltPathsCommand : InstallablesCommand, virtual MixOperateOnOptions
 {
-private:
+protected:
 
     bool recursive = false;
     bool all = false;
-
-protected:
 
     Realise realiseMode = Realise::Derivation;
 
