@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include <exception>
 #include <functional>
 #include <kj/async.h>
 #include <limits>
@@ -154,13 +155,6 @@ public:
     };
 
 private:
-    void getFailed()
-    {
-        auto state_(state.lock());
-        state_->inUse--;
-        state_->notify();
-    }
-
     // lock lifetimes must always be short, and *NEVER* cross a yield point.
     // we ensure this by using explicit continuations instead of coroutines.
     kj::Promise<Result<std::optional<Handle>>> tryGet()
@@ -184,7 +178,6 @@ private:
             }
         }
 
-        state_->inUse++;
         return {std::nullopt};
     } catch (...) {
         return {result::current_exception()};
@@ -193,18 +186,35 @@ private:
 public:
     kj::Promise<Result<Handle>> get()
     try {
-        if (auto existing = LIX_TRY_AWAIT(tryGet())) {
-            co_return std::move(*existing);
-        }
+        while (true) {
+            if (auto existing = LIX_TRY_AWAIT(tryGet())) {
+                co_return std::move(*existing);
+            }
 
-        /* We need to create a new instance. Because that might take a
-           while, we don't hold the lock in the meantime. */
-        try {
+            // We need to create a new instance. Because that might take a
+            // while, we don't hold the lock in the meantime. we use state
+            // inUse accounting to ensure that we do not create a resource
+            // if we couldn't have taken it from the pool, and we are thus
+            // obligated to decrease inUse if we *fail* to return a handle
+            // for any reason (i.e., exceptions or promise cancellations).
+            // this accounting cannot be done in tryGet because cancelling
+            // the get() promise can destroy this coroutine before we have
+            // the chance to undo state accounting tryGet would have done.
+            {
+                auto state_ = state.lock();
+                if (state_->inUse >= state_->max) {
+                    continue;
+                }
+                state_->inUse++;
+            }
+            auto cleanup = kj::defer([&] {
+                auto state_(state.lock());
+                state_->inUse--;
+                state_->notify();
+            });
             Handle h(*this, LIX_TRY_AWAIT(factory()));
+            cleanup.cancel();
             co_return h;
-        } catch (...) {
-            getFailed();
-            throw;
         }
     } catch (...) {
         co_return result::current_exception();

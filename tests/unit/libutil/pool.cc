@@ -1,5 +1,6 @@
 #include "lix/libutil/pool.hh"
 #include "lix/libutil/result.hh"
+#include <exception>
 #include <gtest/gtest.h>
 #include <kj/async.h>
 
@@ -131,5 +132,36 @@ namespace nix {
             Pool<TestResource>::Handle h = pool.get().wait(ws).value();
             ASSERT_NE(h->num, counter);
         }
+    }
+
+    TEST_F(PoolTest, factoryCancel)
+    {
+        // resource factories failing must not crash if a promise is cancelled.
+        // c.f. https://git.lix.systems/lix-project/lix/issues/1041
+
+        {
+            Pool<TestResource> pool(1);
+            (void) pool.get();
+        }
+
+        {
+            auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+                return {result::failure(std::make_exception_ptr(Error("failure")))};
+            };
+
+            Pool<TestResource> pool(1, createResource);
+            (void) pool.get();
+        }
+    }
+
+    TEST_F(PoolTest, factoryFailureNormal)
+    {
+        auto createResource = []() -> kj::Promise<Result<ref<TestResource>>> {
+            return {result::failure(std::make_exception_ptr(Error("failure")))};
+        };
+
+        Pool<TestResource> pool(1, createResource);
+
+        ASSERT_THROW(pool.get().wait(ws).value(), Error);
     }
 }
