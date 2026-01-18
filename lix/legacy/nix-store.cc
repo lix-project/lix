@@ -288,6 +288,7 @@ try {
    graph.  Topological sorting is used to keep the tree relatively
    flat. */
 static void printTree(
+    std::ostream & ostream,
     std::shared_ptr<Store> store,
     AsyncIoRoot & aio,
     const StorePath & path,
@@ -297,11 +298,11 @@ static void printTree(
 )
 {
     if (!done.insert(path).second) {
-        cout << fmt("%s%s [...]\n", firstPad, store->printStorePath(path));
+        ostream << fmt("%s%s [...]\n", firstPad, store->printStorePath(path));
         return;
     }
 
-    cout << fmt("%s%s\n", firstPad, store->printStorePath(path));
+    ostream << fmt("%s%s\n", firstPad, store->printStorePath(path));
 
     auto info = aio.blockOn(store->queryPathInfo(path));
 
@@ -315,6 +316,7 @@ static void printTree(
     for (const auto &[n, i] : enumerate(sorted)) {
         bool last = n + 1 == sorted.size();
         printTree(
+            ostream,
             store,
             aio,
             i,
@@ -477,7 +479,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qTree: {
             StorePathSet done;
             for (auto & i : opArgs)
-                printTree(store, aio, store->followLinksToStorePath(i), "", "", done);
+                printTree(std::cout, store, aio, store->followLinksToStorePath(i), "", "", done);
             break;
         }
 
