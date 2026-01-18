@@ -64,6 +64,7 @@ path_opts = [
   'state-dir',
   'log-dir',
   'profile-dir',
+  'libexec-dir',
 ]
 # For your grepping pleasure, this loop sets the following variables that aren't mentioned
 # literally above:
@@ -71,6 +72,7 @@ path_opts = [
 # state_dir
 # log_dir
 # profile_dir
+# libexec_dir
 foreach optname : path_opts
   varname = optname.replace('-', '_')
   path = get_option(optname)

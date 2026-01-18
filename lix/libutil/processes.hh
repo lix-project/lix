@@ -144,6 +144,38 @@ kj::Promise<Result<std::pair<int, std::string>>> runProgram(RunOptions options);
 
 RunningProgram runProgram2(const RunOptions & options);
 
+class [[nodiscard("you must call RunningHelper::wait()")]] RunningHelper : RunningProgram
+{
+    friend RunningHelper runHelper(const char * name, RunOptions options);
+
+    const char * name;
+    AutoCloseFD errPipe;
+
+    RunningHelper(const char * name, RunningProgram && proc, AutoCloseFD && errPipe)
+        : RunningProgram(std::move(proc))
+        , name(name)
+        , errPipe(std::move(errPipe))
+    {
+    }
+
+    void check();
+
+public:
+    RunningHelper() = default;
+    RunningHelper(RunningHelper &&) = default;
+    RunningHelper & operator=(RunningHelper &&) = default;
+
+    using RunningProgram::operator bool;
+    using RunningProgram::getStdout;
+    using RunningProgram::getStdoutFD;
+    using RunningProgram::kill;
+    using RunningProgram::wait;
+
+    void waitAndCheck();
+};
+
+RunningHelper runHelper(const char * name, RunOptions options);
+
 class ExecError : public Error
 {
 public:

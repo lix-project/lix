@@ -1,5 +1,6 @@
 #include "async-io.hh"
 #include "c-calls.hh"
+#include "file-descriptor.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/finally.hh"
@@ -18,6 +19,7 @@
 #include <iostream>
 
 #include <grp.h>
+#include <string>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -333,6 +335,36 @@ void RunningProgram::waitAndCheck()
     }
 }
 
+void RunningHelper::check()
+{
+    char first;
+    try {
+        readFull(errPipe.get(), &first, 1);
+    } catch (EndOfFile &) {
+        return;
+    }
+    if (first == '\n') {
+        return;
+    }
+    auto rest = readFile(errPipe.get());
+    int status = kill();
+    throw ExecError(status, "helper %s failed: %s", name, first + rest);
+}
+
+void RunningHelper::waitAndCheck()
+{
+    if (std::uncaught_exceptions() == 0) {
+        auto error = readFile(errPipe.get());
+        if (!error.empty()) {
+            int status = kill();
+            throw ExecError(status, "helper %s failed: %s", name, error);
+        }
+        RunningProgram::waitAndCheck();
+    } else {
+        RunningProgram::kill();
+    }
+}
+
 RunningProgram runProgram2(const RunOptions & options)
 {
     checkInterrupt();
@@ -452,6 +484,22 @@ RunningProgram runProgram2(const RunOptions & options)
         std::move(pid),
         options.captureStdout ? std::move(out.readSide) : AutoCloseFD{}
     };
+}
+
+RunningHelper runHelper(const char * name, RunOptions options)
+{
+    Pipe errPipe;
+    errPipe.create();
+
+    options.program = fmt("%s/%s", LIX_LIBEXEC_DIR, name);
+    options.args.push_front(std::to_string(errPipe.writeSide.get()));
+    options.searchPath = false;
+    options.redirections.push_back({.dup = errPipe.writeSide.get(), .from = errPipe.writeSide.get()});
+
+    RunningHelper helper{name, runProgram2(options), std::move(errPipe.readSide)};
+    errPipe.writeSide.close();
+    helper.check();
+    return helper;
 }
 
 std::string statusToString(int status)

@@ -71,6 +71,7 @@ configdata.set_quoted('PACKAGE_VERSION', meson.project_version())
 configdata.set_quoted('PACKAGE_TARNAME', meson.project_name())
 configdata.set_quoted('PACKAGE_STRING', meson.project_name() + ' ' + meson.project_version())
 configdata.set_quoted('SYSTEM', host_system)
+configdata.set_quoted('LIX_LIBEXEC_DIR', libexecdir / 'lix')
 
 config_h = configure_file(
   configuration : configdata,
@@ -146,6 +147,9 @@ subdir('libexpr')
 subdir('libmain')
 # libcmd depends on everything
 subdir('libcmd')
+
+# libexec utilities should depend only on libutil, but meh.
+subdir('libexec')
 
 # FIXME: not using the pkg-config module because it creates way too many deps
 # while meson migration is in progress, and we want to not include boost here
