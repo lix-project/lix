@@ -101,13 +101,11 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
            closure (i.e., that have a non-infinite distance to
            'dependency'). Print every edge on a path between `package`
            and `dependency`. */
-        RunPager pager;
-        logger->cout(
-            "%s",
-            aio().blockOn(
+        withPager([&](Pager & pager) {
+            pager << aio().blockOn(
                 genGraphString(packagePath, dependencyPath, graphData, *store, all, precise)
-            )
-        );
+            );
+        });
     }
 };
 

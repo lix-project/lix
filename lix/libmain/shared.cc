@@ -419,6 +419,23 @@ RunPager::~RunPager()
     }
 }
 
+void withPager(kj::Function<void(Pager &)> fn)
+{
+    struct PagerImpl : Pager
+    {
+        Pager & operator<<(std::string_view data) override
+        {
+            std::cout.write(data.data(), data.size());
+            return *this;
+        }
+    };
+
+    RunPager wrapper;
+    PagerImpl pager;
+    fn(pager);
+    std::cout.flush();
+}
+
 PrintFreed::~PrintFreed()
 {
     // When in dry-run mode, print the paths on stdout

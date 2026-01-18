@@ -1133,12 +1133,10 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         return;
     }
 
-    RunPager pager;
-
-    {
+    withPager([&](Pager & pager) {
         Table table;
-        std::ostringstream dummy;
-        XMLWriter xml(true, *(xmlOutput ? &cout : &dummy));
+        std::ostringstream xmlStream;
+        XMLWriter xml(true, xmlStream);
         XMLOpenElement xmlRoot(xml, "items");
 
         for (auto & i : elems) {
@@ -1369,9 +1367,11 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         }
 
         if (!xmlOutput) {
-            std::cout << printTable(table);
+            pager << printTable(table);
+        } else {
+            pager << xmlStream.str();
         }
-    }
+    });
 }
 
 static void opSwitchProfile(Globals & globals, Strings opFlags, Strings opArgs)
@@ -1424,19 +1424,26 @@ static void opListGenerations(Globals & globals, Strings opFlags, Strings opArgs
 
     auto [gens, curGen] = findGenerations(globals.profile);
 
-    RunPager pager;
-
-    for (auto & i : gens) {
-        tm t;
-        if (!localtime_r(&i.creationTime, &t)) throw Error("cannot convert time");
-        logger->cout("%|4|   %|4|-%|02|-%|02| %|02|:%|02|:%|02|   %||",
-            i.number,
-            t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
-            t.tm_hour, t.tm_min, t.tm_sec,
-            i.number == curGen ? "(current)" : "");
-    }
+    withPager([&](Pager & pager) {
+        for (auto & i : gens) {
+            tm t;
+            if (!localtime_r(&i.creationTime, &t)) {
+                throw Error("cannot convert time");
+            }
+            pager << fmt(
+                "%|4|   %|4|-%|02|-%|02| %|02|:%|02|:%|02|   %||\n",
+                i.number,
+                t.tm_year + 1900,
+                t.tm_mon + 1,
+                t.tm_mday,
+                t.tm_hour,
+                t.tm_min,
+                t.tm_sec,
+                i.number == curGen ? "(current)" : ""
+            );
+        }
+    });
 }
-
 
 static void opDeleteGenerations(Globals & globals, Strings opFlags, Strings opArgs)
 {

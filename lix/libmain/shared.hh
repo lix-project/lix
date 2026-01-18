@@ -10,6 +10,8 @@
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
 
+#include <kj/function.h>
+
 namespace nix {
 
 int handleExceptions(const std::string & programName, std::function<int()> fun);
@@ -85,6 +87,30 @@ private:
     Pid pid;
     int std_out;
 };
+
+/**
+ * Represents a running pager if paging is available, or stdout if not.
+ */
+class Pager
+{
+protected:
+    Pager() = default;
+
+public:
+    /**
+     * Writes some data to the pager (or stdout). Only the provided data
+     * is written, with no newlines are added or any formatting applied.
+     */
+    virtual Pager & operator<<(std::string_view data) = 0;
+};
+
+/**
+ * Starts a pager if standard output is a terminal and $PAGER is set. The
+ * pager is provided as an argument to the callback; only data written to
+ * that object will be sent to the pager program. If no pager is started,
+ * e.g. if $PAGER is cleared, the pager object writes directly to stdout.
+ */
+void withPager(kj::Function<void(Pager &)> fn);
 
 /* GC helpers. */
 

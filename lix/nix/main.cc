@@ -381,8 +381,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
     auto markdown =
         state->forceString(attr->value, noPos, "while evaluating the lowdown help text");
 
-    RunPager pager;
-    std::cout << renderMarkdownToTerminal(markdown) << "\n";
+    withPager([&](Pager & pager) { pager << renderMarkdownToTerminal(markdown) << "\n"; });
 }
 
 static NixArgs & getNixArgs(Command & cmd)

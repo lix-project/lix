@@ -43,24 +43,27 @@ struct CmdLog : InstallableCommand
             },
         }, b.path.raw());
 
-        RunPager pager;
-        for (auto & sub : subs) {
-            auto * logSubP = dynamic_cast<LogStore *>(&*sub);
-            if (!logSubP) {
-                printInfo("Skipped '%s' which does not support retrieving build logs", sub->getUri());
-                continue;
+        withPager([&](Pager & pager) {
+            for (auto & sub : subs) {
+                auto * logSubP = dynamic_cast<LogStore *>(&*sub);
+                if (!logSubP) {
+                    printInfo("Skipped '%s' which does not support retrieving build logs", sub->getUri());
+                    continue;
+                }
+                auto & logSub = *logSubP;
+
+                auto log = aio().blockOn(logSub.getBuildLog(path));
+                if (!log) {
+                    continue;
+                }
+                logger->pause();
+                printInfo("got build log for '%s' from '%s'", installable->what(), logSub.getUri());
+                pager << *log;
+                return;
             }
-            auto & logSub = *logSubP;
 
-            auto log = aio().blockOn(logSub.getBuildLog(path));
-            if (!log) continue;
-            logger->pause();
-            printInfo("got build log for '%s' from '%s'", installable->what(), logSub.getUri());
-            writeFull(STDOUT_FILENO, *log);
-            return;
-        }
-
-        throw Error("build log of '%s' is not available", installable->what());
+            throw Error("build log of '%s' is not available", installable->what());
+        });
     }
 };
 

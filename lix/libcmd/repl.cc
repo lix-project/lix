@@ -903,30 +903,29 @@ void NixRepl::initBuiltinCommands()
             subs.push_front(repl.evaluator.store);
 
             bool foundLog = false;
-            RunPager pager;
 
-            for (auto & sub : subs) {
-                auto * logSubP = dynamic_cast<LogStore *>(&*sub);
-                if (!logSubP) {
-                    printInfo(
-                        "Skipped '%s' which does not support retrieving build logs", sub->getUri()
-                    );
-                    continue;
+            withPager([&](Pager & pager) {
+                for (auto & sub : subs) {
+                    auto * logSubP = dynamic_cast<LogStore *>(&*sub);
+                    if (!logSubP) {
+                        printInfo("Skipped '%s' which does not support retrieving build logs", sub->getUri());
+                        continue;
+                    }
+                    auto & logSub = *logSubP;
+
+                    auto log = repl.state.aio.blockOn(logSub.getBuildLog(drvPath));
+                    if (log) {
+                        printInfo("got build log for '%s' from '%s'", drvPathRaw, logSub.getUri());
+                        pager << *log;
+                        foundLog = true;
+                        break;
+                    }
                 }
-                auto & logSub = *logSubP;
 
-                auto log = repl.state.aio.blockOn(logSub.getBuildLog(drvPath));
-                if (log) {
-                    printInfo("got build log for '%s' from '%s'", drvPathRaw, logSub.getUri());
-                    logger->writeToStdout(*log);
-                    foundLog = true;
-                    break;
+                if (!foundLog) {
+                    throw Error("build log of '%s' is not available", drvPathRaw);
                 }
-            }
-
-            if (!foundLog) {
-                throw Error("build log of '%s' is not available", drvPathRaw);
-            }
+            });
 
             return ProcessLineResult::PromptAgain;
         },

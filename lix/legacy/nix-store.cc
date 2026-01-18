@@ -25,7 +25,9 @@
 #include <iostream>
 #include <algorithm>
 
+#include <ostream>
 #include <ranges>
+#include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -375,17 +377,14 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
 
     if (!query) query = qOutputs;
 
-    RunPager pager;
-
-    {
+    withPager([&](Pager & pager) {
         switch (*query) {
-
         case qOutputs: {
             for (auto & i : opArgs) {
                 auto outputs =
                     aio.blockOn(maybeUseOutputs(store, store->followLinksToStorePath(i), true, forceRealise));
                 for (auto & outputPath : outputs) {
-                    cout << fmt("%1%\n", store->printStorePath(outputPath));
+                    pager << fmt("%1%\n", store->printStorePath(outputPath));
                 }
             }
             break;
@@ -420,7 +419,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             }
             auto sorted = aio.blockOn(store->topoSortPaths(paths));
             for (StorePaths::reverse_iterator i = sorted.rbegin(); i != sorted.rend(); ++i) {
-                cout << fmt("%s\n", store->printStorePath(*i));
+                pager << fmt("%s\n", store->printStorePath(*i));
             }
             break;
         }
@@ -428,7 +427,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qDeriver:
             for (auto & i : opArgs) {
                 auto info = aio.blockOn(store->queryPathInfo(store->followLinksToStorePath(i)));
-                cout << fmt(
+                pager << fmt(
                     "%s\n", info->deriver ? store->printStorePath(*info->deriver) : "unknown-deriver"
                 );
             }
@@ -444,7 +443,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             }
             auto sorted = aio.blockOn(store->topoSortPaths(result));
             for (StorePaths::reverse_iterator i = sorted.rbegin(); i != sorted.rend(); ++i) {
-                cout << fmt("%s\n", store->printStorePath(*i));
+                pager << fmt("%s\n", store->printStorePath(*i));
             }
             break;
         }
@@ -461,7 +460,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                         bindingName
                     );
                 }
-                cout << fmt("%s\n", j->second);
+                pager << fmt("%s\n", j->second);
             }
             break;
 
@@ -475,9 +474,9 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
-                        cout << fmt("%s\n", info->narHash.to_string(HashFormat::Base32));
+                        pager << fmt("%s\n", info->narHash.to_string(HashFormat::Base32));
                     } else if (query == qSize) {
-                        cout << fmt("%d\n", info->narSize);
+                        pager << fmt("%d\n", info->narSize);
                     }
                 }
             }
@@ -486,7 +485,9 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qTree: {
             StorePathSet done;
             for (auto & i : opArgs) {
-                printTree(std::cout, store, aio, store->followLinksToStorePath(i), "", "", done);
+                std::stringstream tmp;
+                printTree(tmp, store, aio, store->followLinksToStorePath(i), "", "", done);
+                pager << tmp.str();
             }
             break;
         }
@@ -501,7 +502,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     roots.insert(j);
                 }
             }
-            std::cout << aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
+            pager << aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
@@ -515,13 +516,13 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     roots.insert(j);
                 }
             }
-            std::cout << aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
+            pager << aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
         case qResolve: {
             for (auto & i : opArgs) {
-                cout << fmt("%s\n", store->printStorePath(store->followLinksToStorePath(i)));
+                pager << fmt("%s\n", store->printStorePath(store->followLinksToStorePath(i)));
             }
             break;
         }
@@ -547,7 +548,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             for (auto & [target, links] : roots) {
                 if (referrers.find(target) != referrers.end()) {
                     for (auto & link : links) {
-                        cout << fmt("%1% -> %2%\n", link, gcStore.printStorePath(target));
+                        pager << fmt("%1% -> %2%\n", link, gcStore.printStorePath(target));
                     }
                 }
             }
@@ -557,7 +558,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         default:
             abort();
         }
-    }
+    });
 }
 
 static void
@@ -593,15 +594,16 @@ opReadLog(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Stri
 
     auto & logStore = require<LogStore>(*store);
 
-    RunPager pager;
-
-    for (auto & i : opArgs) {
-        auto path = logStore.followLinksToStorePath(i);
-        auto log = aio.blockOn(logStore.getBuildLog(path));
-        if (!log)
-            throw Error("build log of derivation '%s' is not available", logStore.printStorePath(path));
-        std::cout << *log;
-    }
+    withPager([&](Pager & pager) {
+        for (auto & i : opArgs) {
+            auto path = logStore.followLinksToStorePath(i);
+            auto log = aio.blockOn(logStore.getBuildLog(path));
+            if (!log) {
+                throw Error("build log of derivation '%s' is not available", logStore.printStorePath(path));
+            }
+            pager << *log;
+        }
+    });
 }
 
 static void
