@@ -62,18 +62,18 @@ foreach name, value : cpp_str_defines
   ]
 endforeach
 
+configdata.set('HAVE_STRUCT_DIRENT_D_TYPE', 1) # FIXME: actually check this for solaris
+configdata.set('LIX_MAJOR', lix_major)
+configdata.set('LIX_MINOR', lix_minor)
+configdata.set('LIX_PATCH', lix_patch)
+configdata.set_quoted('PACKAGE_NAME', meson.project_name())
+configdata.set_quoted('PACKAGE_VERSION', meson.project_version())
+configdata.set_quoted('PACKAGE_TARNAME', meson.project_name())
+configdata.set_quoted('PACKAGE_STRING', meson.project_name() + ' ' + meson.project_version())
+configdata.set_quoted('SYSTEM', host_system)
+
 config_h = configure_file(
-  configuration : {
-    'PACKAGE_NAME': '"' + meson.project_name() + '"',
-    'PACKAGE_VERSION': '"' + meson.project_version() + '"',
-    'LIX_MAJOR': lix_major,
-    'LIX_MINOR': lix_minor,
-    'LIX_PATCH': lix_patch,
-    'PACKAGE_TARNAME': '"' + meson.project_name() + '"',
-    'PACKAGE_STRING': '"' + meson.project_name() + ' ' + meson.project_version() + '"',
-    'HAVE_STRUCT_DIRENT_D_TYPE': 1, # FIXME: actually check this for solaris
-    'SYSTEM': '"' + host_system + '"',
-  } + configdata,
+  configuration : configdata,
   output : 'config.h',
 )
 

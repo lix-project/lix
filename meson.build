@@ -244,7 +244,7 @@ elif is_linux
   # Clang sanitizers on Linux.
   # FIXME(Qyriad): is that true?
 endif
-configdata = { }
+configdata = configuration_data()
 
 #
 # Rust Support
@@ -279,9 +279,7 @@ gc_opt = get_option('gc').disable_if(
   error_message: 'gc does far too many memory crimes for ASan'
 )
 boehm = dependency('bdw-gc', required : gc_opt, version : '>=8.2.6', include_type : 'system')
-configdata += {
-  'HAVE_BOEHMGC': boehm.found().to_int(),
-}
+configdata.set('HAVE_BOEHMGC', boehm.found().to_int())
 
 boost = dependency('boost', required : true, include_type : 'system')
 kj = dependency('kj-async', required : true, include_type : 'system')
@@ -290,9 +288,7 @@ capnp_rpc = dependency('capnp-rpc', required : true, include_type : 'system')
 # cpuid only makes sense on x86_64
 cpuid_required = is_x64 ? get_option('cpuid') : false
 cpuid = dependency('libcpuid', 'cpuid', required : cpuid_required, include_type : 'system')
-configdata += {
-  'HAVE_LIBCPUID': cpuid.found().to_int(),
-}
+configdata.set('HAVE_LIBCPUID', cpuid.found().to_int())
 
 # seccomp only makes sense on Linux
 seccomp_required = is_linux ? get_option('seccomp-sandboxing') : false
@@ -300,14 +296,10 @@ seccomp = dependency('libseccomp', 'seccomp', required : seccomp_required, versi
 if is_linux and not seccomp.found()
   warning('Sandbox security is reduced because libseccomp has not been found! Please provide libseccomp if it supports your CPU architecture.')
 endif
-configdata += {
-  'HAVE_SECCOMP': seccomp.found().to_int(),
-}
+configdata.set('HAVE_SECCOMP', seccomp.found().to_int())
 
 # fcntl(F_GETPATH) returns the path of an fd on macOS and BSDs
-configdata += {
-  'HAVE_F_GETPATH': cxx.has_header_symbol('fcntl.h', 'F_GETPATH').to_int(),
-}
+configdata.set('HAVE_F_GETPATH', cxx.has_header_symbol('fcntl.h', 'F_GETPATH').to_int())
 
 libarchive = dependency('libarchive', required : true, include_type : 'system')
 
@@ -365,9 +357,7 @@ if aws_s3.found()
   )
 endif
 
-configdata += {
-  'ENABLE_S3': aws_s3.found().to_int(),
-}
+configdata.set('ENABLE_S3', aws_s3.found().to_int())
 
 sqlite = dependency('sqlite3', 'sqlite', version : '>=3.6.19', required : true, include_type : 'system')
 
@@ -452,9 +442,7 @@ if enable_embedded_sandbox_shell
   # This one goes in config.h
   # The path to busybox is passed as a -D flag when compiling libstore.
   # Idk why, ask the old buildsystem.
-  configdata += {
-    'HAVE_EMBEDDED_SANDBOX_SHELL': 1,
-  }
+  configdata.set('HAVE_EMBEDDED_SANDBOX_SHELL', 1)
 endif
 
 sandbox_shell = get_option('sandbox-shell')
@@ -482,9 +470,7 @@ endif
 
 if get_option('disable-fibers')
   warning('building Lix without fiber support. performance will suffer.')
-  configdata += {
-    'HAVE_THREADBARE_LIBC': 1,
-  }
+  configdata.set('HAVE_THREADBARE_LIBC', 1)
 endif
 
 if dtrace_feature.enabled()
@@ -519,9 +505,7 @@ if dtrace_feature.enabled()
     output : '@BASENAME@.gen.hh',
     arguments : ['-h', '-s', '@INPUT@', '-o', '@OUTPUT@'])
 endif
-configdata += {
-  'HAVE_DTRACE': dtrace_feature.enabled().to_int(),
-}
+configdata.set('HAVE_DTRACE', dtrace_feature.enabled().to_int())
 
 pasta_path = get_option('pasta-path')
 # we can't check the pasta version because passt misuses stdio (it calls _exit()
@@ -563,7 +547,7 @@ run_command('rm', '-f',
   check : true,
 )
 summary('can hardlink to symlink', can_link_symlink, bool_yn : true)
-configdata += { 'CAN_LINK_SYMLINK': can_link_symlink.to_int() }
+configdata.set('CAN_LINK_SYMLINK', can_link_symlink.to_int())
 
 
 # Check for each of these functions, and create a define like `#define HAVE_LCHOWN 1`.
@@ -584,9 +568,7 @@ endif
 foreach funcspec : check_funcs
   define_name = 'HAVE_' + funcspec.underscorify().to_upper()
   define_value = cxx.has_function(funcspec).to_int()
-  configdata += {
-    define_name: define_value,
-  }
+  configdata.set(define_name, define_value)
 endforeach
 
 # FIXME: not using the pkg-config module because it creates way too many deps
