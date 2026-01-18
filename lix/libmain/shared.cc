@@ -12,6 +12,8 @@
 #include "lix/libutil/log-format.hh"
 #include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/file-descriptor.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libmain/loggers.hh"
@@ -26,6 +28,7 @@
 
 #include <cstdlib>
 #include <kj/async-io.h>
+#include <kj/common.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -373,7 +376,7 @@ int handleExceptions(const std::string & programName, std::function<int()> fun)
     return 0;
 }
 
-static std::pair<Pid, AutoCloseFD> startPager()
+static std::pair<RunningHelper, AutoCloseFD> startPager()
 {
     if (!isOutputARealTerminal(StandardOutputStream::Stdout)) {
         return {};
@@ -384,27 +387,18 @@ static std::pair<Pid, AutoCloseFD> startPager()
         return {};
     }
 
-    logger->pause();
-
     Pipe toPager;
     toPager.create();
 
-    auto pid = startProcess([&]() {
-        if (dup2(toPager.readSide.get(), STDIN_FILENO) == -1)
-            throw SysError("dupping stdin");
-        if (!getenv("LESS"))
-            setenv("LESS", "FRSXMK", 1);
-        restoreProcessContext();
-        if (pager)
-            execl("/bin/sh", "sh", "-c", pager, nullptr);
-        execlp("pager", "pager", nullptr);
-        execlp("less", "less", nullptr);
-        execlp("more", "more", nullptr);
-        throw SysError("executing '%1%'", pager);
-    });
+    auto helper = runHelper(
+        "run-pager",
+        {
+            .args = pager ? Strings{pager} : Strings{},
+            .redirections = {{.dup = STDIN_FILENO, .from = toPager.readSide.get()}},
+        }
+    );
 
-    pid.setKillSignal(SIGINT);
-    return {std::move(pid), std::move(toPager.writeSide)};
+    return {std::move(helper), std::move(toPager.writeSide)};
 }
 
 void withPager(kj::Function<void(Pager &)> fn)
@@ -422,15 +416,22 @@ void withPager(kj::Function<void(Pager &)> fn)
         }
     };
 
-    auto [pagerPid, pagerPipe] = startPager();
+    logger->pause();
+    KJ_DEFER(logger->resume());
+
+    auto [pagerProc, pagerPipe] = startPager();
     KJ_DEFER({
-        if (pagerPid) {
-            logger->resume();
+        if (pagerProc) {
+            pagerProc.kill();
         }
     });
 
-    PagerImpl pager{pagerPid ? pagerPid.get() : STDOUT_FILENO};
+    PagerImpl pager{pagerProc ? pagerPipe.get() : STDOUT_FILENO};
     fn(pager);
+    pagerPipe.close();
+    if (pagerProc) {
+        pagerProc.waitAndCheck();
+    }
 }
 
 PrintFreed::~PrintFreed()
