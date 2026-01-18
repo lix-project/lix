@@ -8,6 +8,7 @@
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/c-calls.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/log-format.hh"
 #include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
@@ -372,20 +373,23 @@ int handleExceptions(const std::string & programName, std::function<int()> fun)
     return 0;
 }
 
-
-RunPager::RunPager()
+static std::pair<Pid, AutoCloseFD> startPager()
 {
-    if (!isOutputARealTerminal(StandardOutputStream::Stdout)) return;
+    if (!isOutputARealTerminal(StandardOutputStream::Stdout)) {
+        return {};
+    }
     char * pager = getenv("NIX_PAGER");
     if (!pager) pager = getenv("PAGER");
-    if (pager && ((std::string) pager == "" || (std::string) pager == "cat")) return;
+    if (pager && ((std::string) pager == "" || (std::string) pager == "cat")) {
+        return {};
+    }
 
     logger->pause();
 
     Pipe toPager;
     toPager.create();
 
-    pid = startProcess([&]() {
+    auto pid = startProcess([&]() {
         if (dup2(toPager.readSide.get(), STDIN_FILENO) == -1)
             throw SysError("dupping stdin");
         if (!getenv("LESS"))
@@ -400,40 +404,33 @@ RunPager::RunPager()
     });
 
     pid.setKillSignal(SIGINT);
-    std_out = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);
-    if (dup2(toPager.writeSide.get(), STDOUT_FILENO) == -1)
-        throw SysError("dupping standard output");
-}
-
-
-RunPager::~RunPager()
-{
-    try {
-        if (pid) {
-            std::cout.flush();
-            dup2(std_out, STDOUT_FILENO);
-            pid.wait();
-        }
-    } catch (...) {
-        ignoreExceptionInDestructor();
-    }
+    return {std::move(pid), std::move(toPager.writeSide)};
 }
 
 void withPager(kj::Function<void(Pager &)> fn)
 {
     struct PagerImpl : Pager
     {
+        int to;
+
+        explicit PagerImpl(int to) : to(to) {}
+
         Pager & operator<<(std::string_view data) override
         {
-            std::cout.write(data.data(), data.size());
+            writeFull(to, data);
             return *this;
         }
     };
 
-    RunPager wrapper;
-    PagerImpl pager;
+    auto [pagerPid, pagerPipe] = startPager();
+    KJ_DEFER({
+        if (pagerPid) {
+            logger->resume();
+        }
+    });
+
+    PagerImpl pager{pagerPid ? pagerPid.get() : STDOUT_FILENO};
     fn(pager);
-    std::cout.flush();
 }
 
 PrintFreed::~PrintFreed()

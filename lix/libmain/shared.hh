@@ -73,22 +73,6 @@ struct LegacyArgs : public MixCommonArgs, public RootArgs
 void showManPage(const std::string & name);
 
 /**
- * The constructor of this class starts a pager if standard output is a
- * terminal and $PAGER is set. Standard output is redirected to the
- * pager.
- */
-class RunPager
-{
-public:
-    RunPager();
-    ~RunPager();
-
-private:
-    Pid pid;
-    int std_out;
-};
-
-/**
  * Represents a running pager if paging is available, or stdout if not.
  */
 class Pager
