@@ -10,9 +10,6 @@
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
 
-#include <signal.h>
-
-
 namespace nix {
 
 int handleExceptions(const std::string & programName, std::function<int()> fun);
@@ -88,9 +85,6 @@ private:
     Pid pid;
     int std_out;
 };
-
-extern volatile ::sig_atomic_t blockInt;
-
 
 /* GC helpers. */
 
