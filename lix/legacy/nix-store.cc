@@ -377,15 +377,16 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
 
     RunPager pager;
 
-    switch (*query) {
+    {
+        switch (*query) {
 
         case qOutputs: {
             for (auto & i : opArgs) {
-                auto outputs = aio.blockOn(
-                    maybeUseOutputs(store, store->followLinksToStorePath(i), true, forceRealise)
-                );
-                for (auto & outputPath : outputs)
+                auto outputs =
+                    aio.blockOn(maybeUseOutputs(store, store->followLinksToStorePath(i), true, forceRealise));
+                for (auto & outputPath : outputs) {
                     cout << fmt("%1%\n", store->printStorePath(outputPath));
+                }
             }
             break;
         }
@@ -396,54 +397,55 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qReferrersClosure: {
             StorePathSet paths;
             for (auto & i : opArgs) {
-                auto ps = aio.blockOn(maybeUseOutputs(
-                    store, store->followLinksToStorePath(i), useOutput, forceRealise
-                ));
+                auto ps = aio.blockOn(
+                    maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                );
                 for (auto & j : ps) {
                     if (query == qRequisites) {
                         aio.blockOn(store->computeFSClosure(j, paths, false, includeOutputs));
-                    }
-                    else if (query == qReferences) {
-                        for (auto & p : aio.blockOn(store->queryPathInfo(j))->references)
+                    } else if (query == qReferences) {
+                        for (auto & p : aio.blockOn(store->queryPathInfo(j))->references) {
                             paths.insert(p);
-                    }
-                    else if (query == qReferrers) {
+                        }
+                    } else if (query == qReferrers) {
                         StorePathSet tmp;
                         aio.blockOn(store->queryReferrers(j, tmp));
-                        for (auto & i : tmp)
+                        for (auto & i : tmp) {
                             paths.insert(i);
-                    }
-                    else if (query == qReferrersClosure)
+                        }
+                    } else if (query == qReferrersClosure) {
                         aio.blockOn(store->computeFSClosure(j, paths, true));
+                    }
                 }
             }
             auto sorted = aio.blockOn(store->topoSortPaths(paths));
-            for (StorePaths::reverse_iterator i = sorted.rbegin();
-                 i != sorted.rend(); ++i)
+            for (StorePaths::reverse_iterator i = sorted.rbegin(); i != sorted.rend(); ++i) {
                 cout << fmt("%s\n", store->printStorePath(*i));
+            }
             break;
         }
 
         case qDeriver:
             for (auto & i : opArgs) {
                 auto info = aio.blockOn(store->queryPathInfo(store->followLinksToStorePath(i)));
-                cout << fmt("%s\n", info->deriver ? store->printStorePath(*info->deriver) : "unknown-deriver");
+                cout << fmt(
+                    "%s\n", info->deriver ? store->printStorePath(*info->deriver) : "unknown-deriver"
+                );
             }
             break;
 
         case qValidDerivers: {
             StorePathSet result;
             for (auto & i : opArgs) {
-                auto derivers =
-                    aio.blockOn(store->queryValidDerivers(store->followLinksToStorePath(i)));
+                auto derivers = aio.blockOn(store->queryValidDerivers(store->followLinksToStorePath(i)));
                 for (const auto & i : derivers) {
                     result.insert(i);
                 }
             }
             auto sorted = aio.blockOn(store->topoSortPaths(result));
-            for (StorePaths::reverse_iterator i = sorted.rbegin();
-                 i != sorted.rend(); ++i)
+            for (StorePaths::reverse_iterator i = sorted.rbegin(); i != sorted.rend(); ++i) {
                 cout << fmt("%s\n", store->printStorePath(*i));
+            }
             break;
         }
 
@@ -452,9 +454,13 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 auto path = aio.blockOn(useDeriver(store, store->followLinksToStorePath(i)));
                 Derivation drv = aio.blockOn(store->derivationFromPath(path));
                 StringPairs::iterator j = drv.env.find(bindingName);
-                if (j == drv.env.end())
-                    throw Error("derivation '%s' has no environment binding named '%s'",
-                        store->printStorePath(path), bindingName);
+                if (j == drv.env.end()) {
+                    throw Error(
+                        "derivation '%s' has no environment binding named '%s'",
+                        store->printStorePath(path),
+                        bindingName
+                    );
+                }
                 cout << fmt("%s\n", j->second);
             }
             break;
@@ -462,84 +468,95 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qHash:
         case qSize:
             for (auto & i : opArgs) {
-                for (auto & j : aio.blockOn(maybeUseOutputs(
-                         store, store->followLinksToStorePath(i), useOutput, forceRealise
-                     )))
+                for (auto & j : aio.blockOn(
+                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                     ))
                 {
                     auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
                         cout << fmt("%s\n", info->narHash.to_string(HashFormat::Base32));
-                    } else if (query == qSize)
+                    } else if (query == qSize) {
                         cout << fmt("%d\n", info->narSize);
+                    }
                 }
             }
             break;
 
         case qTree: {
             StorePathSet done;
-            for (auto & i : opArgs)
+            for (auto & i : opArgs) {
                 printTree(std::cout, store, aio, store->followLinksToStorePath(i), "", "", done);
+            }
             break;
         }
 
         case qGraph: {
             StorePathSet roots;
-            for (auto & i : opArgs)
-                for (auto & j : aio.blockOn(maybeUseOutputs(
-                         store, store->followLinksToStorePath(i), useOutput, forceRealise
-                     )))
+            for (auto & i : opArgs) {
+                for (auto & j : aio.blockOn(
+                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                     ))
                 {
                     roots.insert(j);
                 }
+            }
             std::cout << aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
         case qGraphML: {
             StorePathSet roots;
-            for (auto & i : opArgs)
-                for (auto & j : aio.blockOn(maybeUseOutputs(
-                         store, store->followLinksToStorePath(i), useOutput, forceRealise
-                     )))
+            for (auto & i : opArgs) {
+                for (auto & j : aio.blockOn(
+                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                     ))
                 {
                     roots.insert(j);
                 }
+            }
             std::cout << aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
         case qResolve: {
-            for (auto & i : opArgs)
+            for (auto & i : opArgs) {
                 cout << fmt("%s\n", store->printStorePath(store->followLinksToStorePath(i)));
+            }
             break;
         }
 
         case qRoots: {
             StorePathSet args;
-            for (auto & i : opArgs)
-                for (auto & p : aio.blockOn(maybeUseOutputs(
-                         store, store->followLinksToStorePath(i), useOutput, forceRealise
-                     )))
+            for (auto & i : opArgs) {
+                for (auto & p : aio.blockOn(
+                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                     ))
                 {
                     args.insert(p);
                 }
+            }
 
             StorePathSet referrers;
             aio.blockOn(store->computeFSClosure(
-                args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations));
+                args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations
+            ));
 
             auto & gcStore = require<GcStore>(*store);
             Roots roots = aio.blockOn(gcStore.findRoots(false));
-            for (auto & [target, links] : roots)
-                if (referrers.find(target) != referrers.end())
-                    for (auto & link : links)
+            for (auto & [target, links] : roots) {
+                if (referrers.find(target) != referrers.end()) {
+                    for (auto & link : links) {
                         cout << fmt("%1% -> %2%\n", link, gcStore.printStorePath(target));
+                    }
+                }
+            }
             break;
         }
 
         default:
             abort();
+        }
     }
 }
 

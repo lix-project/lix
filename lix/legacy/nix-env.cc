@@ -1135,208 +1135,244 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
 
     RunPager pager;
 
-    Table table;
-    std::ostringstream dummy;
-    XMLWriter xml(true, *(xmlOutput ? &cout : &dummy));
-    XMLOpenElement xmlRoot(xml, "items");
+    {
+        Table table;
+        std::ostringstream dummy;
+        XMLWriter xml(true, *(xmlOutput ? &cout : &dummy));
+        XMLOpenElement xmlRoot(xml, "items");
 
-    for (auto & i : elems) {
-        try {
-            if (i.hasFailed()) continue;
-
-            //Activity act(*logger, lvlDebug, "outputting query result '%1%'", i.attrPath);
-
-            if (globals.prebuiltOnly &&
-                !validPaths.count(i.queryOutPath(*state)) &&
-                !substitutablePaths.count(i.queryOutPath(*state)))
-                continue;
-
-            /* For table output. */
-            Strings columns;
-
-            /* For XML output. */
-            XMLAttrs attrs;
-
-            if (printStatus) {
-                auto outPath = i.queryOutPath(*state);
-                bool hasSubs = substitutablePaths.count(outPath);
-                bool isInstalled = installed.count(outPath);
-                bool isValid = validPaths.count(outPath);
-                if (xmlOutput) {
-                    attrs["installed"] = isInstalled ? "1" : "0";
-                    attrs["valid"] = isValid ? "1" : "0";
-                    attrs["substitutable"] = hasSubs ? "1" : "0";
-                } else
-                    columns.push_back(
-                        (std::string) (isInstalled ? "I" : "-")
-                        + (isValid ? "P" : "-")
-                        + (hasSubs ? "S" : "-"));
-            }
-
-            if (xmlOutput)
-                attrs["attrPath"] = i.attrPath;
-            else if (printAttrPath)
-                columns.push_back(i.attrPath);
-
-            if (xmlOutput) {
-                auto drvName = DrvName(i.queryName(*state));
-                attrs["name"] = drvName.fullName;
-                attrs["pname"] = drvName.name;
-                attrs["version"] = drvName.version;
-            } else if (printName) {
-                columns.push_back(i.queryName(*state));
-            }
-
-            if (compareVersions) {
-                /* Compare this element against the versions of the
-                   same named packages in either the set of available
-                   elements, or the set of installed elements.  !!!
-                   This is O(N * M), should be O(N * lg M). */
-                std::string version;
-                VersionDiff diff = compareVersionAgainstSet(*state, i, otherElems, version);
-
-                char ch;
-                switch (diff) {
-                    case cvLess: ch = '>'; break;
-                    case cvEqual: ch = '='; break;
-                    case cvGreater: ch = '<'; break;
-                    case cvUnavail: ch = '-'; break;
-                    default: abort();
+        for (auto & i : elems) {
+            try {
+                if (i.hasFailed()) {
+                    continue;
                 }
 
-                if (xmlOutput) {
-                    if (diff != cvUnavail) {
-                        attrs["versionDiff"] = ch;
-                        attrs["maxComparedVersion"] = version;
+                // Activity act(*logger, lvlDebug, "outputting query result '%1%'", i.attrPath);
+
+                if (globals.prebuiltOnly && !validPaths.count(i.queryOutPath(*state))
+                    && !substitutablePaths.count(i.queryOutPath(*state)))
+                {
+                    continue;
+                }
+
+                /* For table output. */
+                Strings columns;
+
+                /* For XML output. */
+                XMLAttrs attrs;
+
+                if (printStatus) {
+                    auto outPath = i.queryOutPath(*state);
+                    bool hasSubs = substitutablePaths.count(outPath);
+                    bool isInstalled = installed.count(outPath);
+                    bool isValid = validPaths.count(outPath);
+                    if (xmlOutput) {
+                        attrs["installed"] = isInstalled ? "1" : "0";
+                        attrs["valid"] = isValid ? "1" : "0";
+                        attrs["substitutable"] = hasSubs ? "1" : "0";
+                    } else {
+                        columns.push_back(
+                            (std::string) (isInstalled ? "I" : "-") + (isValid ? "P" : "-")
+                            + (hasSubs ? "S" : "-")
+                        );
                     }
-                } else {
-                    auto column = (std::string) "" + ch + " " + version;
-                    if (diff == cvGreater && shouldANSI(StandardOutputStream::Stdout))
-                        column = ANSI_RED + column + ANSI_NORMAL;
-                    columns.push_back(column);
                 }
-            }
 
-            if (xmlOutput) {
-                if (i.querySystem(*state) != "") attrs["system"] = i.querySystem(*state);
-            }
-            else if (printSystem)
-                columns.push_back(i.querySystem(*state));
-
-            if (printDrvPath) {
-                auto drvPath = i.queryDrvPath(*state);
                 if (xmlOutput) {
-                    if (drvPath) attrs["drvPath"] = store.printStorePath(*drvPath);
-                } else
-                    columns.push_back(drvPath ? store.printStorePath(*drvPath) : "-");
-            }
-
-            if (xmlOutput)
-                attrs["outputName"] = i.queryOutputName(*state);
-
-            if (printOutPath && !xmlOutput) {
-                DrvInfo::Outputs outputs = i.queryOutputs(*state);
-                std::string s;
-                for (auto & j : outputs) {
-                    if (!s.empty()) s += ';';
-                    if (j.first != "out") { s += j.first; s += "="; }
-                    s += store.printStorePath(*j.second);
+                    attrs["attrPath"] = i.attrPath;
+                } else if (printAttrPath) {
+                    columns.push_back(i.attrPath);
                 }
-                columns.push_back(s);
-            }
 
-            if (printDescription) {
-                auto descr = i.queryMetaString(*state, "description");
                 if (xmlOutput) {
-                    if (descr != "") attrs["description"] = descr;
-                } else
-                    columns.push_back(descr);
-            }
-
-            if (xmlOutput) {
-                XMLOpenElement item(xml, "item", attrs);
-                DrvInfo::Outputs outputs = i.queryOutputs(*state, printOutPath);
-                for (auto & j : outputs) {
-                    XMLAttrs attrs2;
-                    attrs2["name"] = j.first;
-                    if (j.second)
-                        attrs2["path"] = store.printStorePath(*j.second);
-                    xml.writeEmptyElement("output", attrs2);
+                    auto drvName = DrvName(i.queryName(*state));
+                    attrs["name"] = drvName.fullName;
+                    attrs["pname"] = drvName.name;
+                    attrs["version"] = drvName.version;
+                } else if (printName) {
+                    columns.push_back(i.queryName(*state));
                 }
-                if (printMeta) {
-                    StringSet metaNames = i.queryMetaNames(*state);
-                    for (auto & j : metaNames) {
+
+                if (compareVersions) {
+                    /* Compare this element against the versions of the
+                       same named packages in either the set of available
+                       elements, or the set of installed elements.  !!!
+                       This is O(N * M), should be O(N * lg M). */
+                    std::string version;
+                    VersionDiff diff = compareVersionAgainstSet(*state, i, otherElems, version);
+
+                    char ch;
+                    switch (diff) {
+                    case cvLess:
+                        ch = '>';
+                        break;
+                    case cvEqual:
+                        ch = '=';
+                        break;
+                    case cvGreater:
+                        ch = '<';
+                        break;
+                    case cvUnavail:
+                        ch = '-';
+                        break;
+                    default:
+                        abort();
+                    }
+
+                    if (xmlOutput) {
+                        if (diff != cvUnavail) {
+                            attrs["versionDiff"] = ch;
+                            attrs["maxComparedVersion"] = version;
+                        }
+                    } else {
+                        auto column = (std::string) "" + ch + " " + version;
+                        if (diff == cvGreater && shouldANSI(StandardOutputStream::Stdout)) {
+                            column = ANSI_RED + column + ANSI_NORMAL;
+                        }
+                        columns.push_back(column);
+                    }
+                }
+
+                if (xmlOutput) {
+                    if (i.querySystem(*state) != "") {
+                        attrs["system"] = i.querySystem(*state);
+                    }
+                } else if (printSystem) {
+                    columns.push_back(i.querySystem(*state));
+                }
+
+                if (printDrvPath) {
+                    auto drvPath = i.queryDrvPath(*state);
+                    if (xmlOutput) {
+                        if (drvPath) {
+                            attrs["drvPath"] = store.printStorePath(*drvPath);
+                        }
+                    } else {
+                        columns.push_back(drvPath ? store.printStorePath(*drvPath) : "-");
+                    }
+                }
+
+                if (xmlOutput) {
+                    attrs["outputName"] = i.queryOutputName(*state);
+                }
+
+                if (printOutPath && !xmlOutput) {
+                    DrvInfo::Outputs outputs = i.queryOutputs(*state);
+                    std::string s;
+                    for (auto & j : outputs) {
+                        if (!s.empty()) {
+                            s += ';';
+                        }
+                        if (j.first != "out") {
+                            s += j.first;
+                            s += "=";
+                        }
+                        s += store.printStorePath(*j.second);
+                    }
+                    columns.push_back(s);
+                }
+
+                if (printDescription) {
+                    auto descr = i.queryMetaString(*state, "description");
+                    if (xmlOutput) {
+                        if (descr != "") {
+                            attrs["description"] = descr;
+                        }
+                    } else {
+                        columns.push_back(descr);
+                    }
+                }
+
+                if (xmlOutput) {
+                    XMLOpenElement item(xml, "item", attrs);
+                    DrvInfo::Outputs outputs = i.queryOutputs(*state, printOutPath);
+                    for (auto & j : outputs) {
                         XMLAttrs attrs2;
-                        attrs2["name"] = j;
-                        Value * v = i.queryMeta(*state, j);
-                        if (!v)
-                            printError(
-                                "derivation '%s' has invalid meta attribute '%s'",
-                                i.queryName(*state), j);
-                        else {
-                            if (v->type() == nString) {
-                                attrs2["type"] = "string";
-                                attrs2["value"] = v->str();
-                                xml.writeEmptyElement("meta", attrs2);
-                            } else if (v->type() == nInt) {
-                                attrs2["type"] = "int";
-                                attrs2["value"] = fmt("%1%", v->integer());
-                                xml.writeEmptyElement("meta", attrs2);
-                            } else if (v->type() == nFloat) {
-                                attrs2["type"] = "float";
-                                attrs2["value"] = fmt("%1%", v->fpoint());
-                                xml.writeEmptyElement("meta", attrs2);
-                            } else if (v->type() == nBool) {
-                                attrs2["type"] = "bool";
-                                attrs2["value"] = v->boolean() ? "true" : "false";
-                                xml.writeEmptyElement("meta", attrs2);
-                            } else if (v->type() == nList) {
-                                attrs2["type"] = "strings";
-                                XMLOpenElement m(xml, "meta", attrs2);
-                                for (auto & elem : v->listItems()) {
-                                    if (elem.type() != nString) {
-                                        continue;
+                        attrs2["name"] = j.first;
+                        if (j.second) {
+                            attrs2["path"] = store.printStorePath(*j.second);
+                        }
+                        xml.writeEmptyElement("output", attrs2);
+                    }
+                    if (printMeta) {
+                        StringSet metaNames = i.queryMetaNames(*state);
+                        for (auto & j : metaNames) {
+                            XMLAttrs attrs2;
+                            attrs2["name"] = j;
+                            Value * v = i.queryMeta(*state, j);
+                            if (!v) {
+                                printError(
+                                    "derivation '%s' has invalid meta attribute '%s'", i.queryName(*state), j
+                                );
+                            } else {
+                                if (v->type() == nString) {
+                                    attrs2["type"] = "string";
+                                    attrs2["value"] = v->str();
+                                    xml.writeEmptyElement("meta", attrs2);
+                                } else if (v->type() == nInt) {
+                                    attrs2["type"] = "int";
+                                    attrs2["value"] = fmt("%1%", v->integer());
+                                    xml.writeEmptyElement("meta", attrs2);
+                                } else if (v->type() == nFloat) {
+                                    attrs2["type"] = "float";
+                                    attrs2["value"] = fmt("%1%", v->fpoint());
+                                    xml.writeEmptyElement("meta", attrs2);
+                                } else if (v->type() == nBool) {
+                                    attrs2["type"] = "bool";
+                                    attrs2["value"] = v->boolean() ? "true" : "false";
+                                    xml.writeEmptyElement("meta", attrs2);
+                                } else if (v->type() == nList) {
+                                    attrs2["type"] = "strings";
+                                    XMLOpenElement m(xml, "meta", attrs2);
+                                    for (auto & elem : v->listItems()) {
+                                        if (elem.type() != nString) {
+                                            continue;
+                                        }
+                                        XMLAttrs attrs3;
+                                        attrs3["value"] = elem.str();
+                                        xml.writeEmptyElement("string", attrs3);
                                     }
-                                    XMLAttrs attrs3;
-                                    attrs3["value"] = elem.str();
-                                    xml.writeEmptyElement("string", attrs3);
+                                } else if (v->type() == nAttrs) {
+                                    attrs2["type"] = "strings";
+                                    XMLOpenElement m(xml, "meta", attrs2);
+                                    Bindings & attrs = *v->attrs();
+                                    for (auto & i : attrs) {
+                                        const Attr & a(*attrs.get(i.name));
+                                        if (a.value.type() != nString) {
+                                            continue;
+                                        }
+                                        XMLAttrs attrs3;
+                                        attrs3["type"] = globals.state->symbols[i.name];
+                                        attrs3["value"] = a.value.str();
+                                        xml.writeEmptyElement("string", attrs3);
+                                    }
                                 }
-                            } else if (v->type() == nAttrs) {
-                                attrs2["type"] = "strings";
-                                XMLOpenElement m(xml, "meta", attrs2);
-                                Bindings & attrs = *v->attrs();
-                                for (auto &i : attrs) {
-                                    const Attr & a(*attrs.get(i.name));
-                                    if (a.value.type() != nString) {
-                                        continue;
-                                    }
-                                    XMLAttrs attrs3;
-                                    attrs3["type"] = globals.state->symbols[i.name];
-                                    attrs3["value"] = a.value.str();
-                                    xml.writeEmptyElement("string", attrs3);
-                            }
                             }
                         }
                     }
+                } else {
+                    table.push_back(columns);
                 }
-            } else
-                table.push_back(columns);
 
-            cout.flush();
+                cout.flush();
 
-        } catch (AssertionError & e) {
-            printMsg(lvlTalkative, "skipping derivation named '%1%' which gives an assertion failure", i.queryName(*state));
-        } catch (Error & e) {
-            e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*state));
-            throw;
+            } catch (AssertionError & e) {
+                printMsg(
+                    lvlTalkative,
+                    "skipping derivation named '%1%' which gives an assertion failure",
+                    i.queryName(*state)
+                );
+            } catch (Error & e) {
+                e.addTrace(nullptr, "while querying the derivation named '%1%'", i.queryName(*state));
+                throw;
+            }
+        }
+
+        if (!xmlOutput) {
+            std::cout << printTable(table);
         }
     }
-
-    if (!xmlOutput) {
-        std::cout << printTable(table);
-    }
 }
-
 
 static void opSwitchProfile(Globals & globals, Strings opFlags, Strings opArgs)
 {
