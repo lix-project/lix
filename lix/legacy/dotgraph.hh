@@ -5,6 +5,5 @@
 
 namespace nix {
 
-kj::Promise<Result<void>> printDotGraph(ref<Store> store, StorePathSet && roots);
-
+kj::Promise<Result<std::string>> printDotGraph(ref<Store> store, StorePathSet && roots);
 }

@@ -4,9 +4,7 @@
 #include "lix/libutil/result.hh"
 
 #include <iostream>
-
-
-using std::cout;
+#include <sstream>
 
 namespace nix {
 
@@ -42,31 +40,31 @@ static std::string makeNode(std::string_view id, std::string_view label,
         dotQuote(id), dotQuote(label), dotQuote(colour));
 }
 
-
-kj::Promise<Result<void>> printDotGraph(ref<Store> store, StorePathSet && roots)
+kj::Promise<Result<std::string>> printDotGraph(ref<Store> store, StorePathSet && roots)
 try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;
+    std::stringstream result;
 
-    cout << "digraph G {\n";
+    result << "digraph G {\n";
 
     while (!workList.empty()) {
         auto path = std::move(workList.extract(workList.begin()).value());
 
         if (!doneSet.insert(path).second) continue;
 
-        cout << makeNode(std::string(path.to_string()), path.name(), "#ff0000");
+        result << makeNode(std::string(path.to_string()), path.name(), "#ff0000");
 
         for (auto & p : TRY_AWAIT(store->queryPathInfo(path))->references) {
             if (p != path) {
                 workList.insert(p);
-                cout << makeEdge(std::string(p.to_string()), std::string(path.to_string()));
+                result << makeEdge(std::string(p.to_string()), std::string(path.to_string()));
             }
         }
     }
 
-    cout << "}\n";
-    co_return result::success();
+    result << "}\n";
+    co_return result.str();
 } catch (...) {
     co_return result::current_exception();
 }
