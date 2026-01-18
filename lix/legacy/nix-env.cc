@@ -892,8 +892,7 @@ static bool cmpElemByName(EvalState & state, DrvInfo & a, DrvInfo & b)
 
 typedef std::list<Strings> Table;
 
-
-void printTable(Table & table)
+std::string printTable(Table & table)
 {
     auto nrColumns = table.size() > 0 ? table.front().size() : 0;
 
@@ -908,18 +907,22 @@ void printTable(Table & table)
             if (j->size() > widths[column]) widths[column] = j->size();
     }
 
+    std::stringstream result;
+
     for (auto & i : table) {
         Strings::iterator j;
         size_t column;
         for (j = i.begin(), column = 0; j != i.end(); ++j, ++column) {
             std::string s = *j;
             replace(s.begin(), s.end(), '\n', ' ');
-            cout << s;
+            result << s;
             if (column < nrColumns - 1)
-                cout << std::string(widths[column] - s.size() + 2, ' ');
+                result << std::string(widths[column] - s.size() + 2, ' ');
         }
-        cout << std::endl;
+        result << std::endl;
     }
+
+    return result.str();
 }
 
 
@@ -1329,7 +1332,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         }
     }
 
-    if (!xmlOutput) printTable(table);
+    if (!xmlOutput) {
+        std::cout << printTable(table);
+    }
 }
 
 
