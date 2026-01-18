@@ -5,9 +5,7 @@
 #include "lix/libutil/result.hh"
 
 #include <iostream>
-
-
-using std::cout;
+#include <sstream>
 
 namespace nix {
 
@@ -47,21 +45,21 @@ static std::string makeNode(const ValidPathInfo & info)
         (info.path.isDerivation() ? "derivation" : "output-path"));
 }
 
-
-kj::Promise<Result<void>> printGraphML(ref<Store> store, StorePathSet && roots)
+kj::Promise<Result<std::string>> printGraphML(ref<Store> store, StorePathSet && roots)
 try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;
     std::pair<StorePathSet::iterator, bool> ret;
+    std::stringstream result;
 
-    cout << "<?xml version='1.0' encoding='utf-8'?>\n"
-         << "<graphml xmlns='http://graphml.graphdrawing.org/xmlns'\n"
-         << "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
-         << "    xsi:schemaLocation='http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd'>\n"
-         << "<key id='narSize' for='node' attr.name='narSize' attr.type='long'/>"
-         << "<key id='name' for='node' attr.name='name' attr.type='string'/>"
-         << "<key id='type' for='node' attr.name='type' attr.type='string'/>"
-         << "<graph id='G' edgedefault='directed'>\n";
+    result << "<?xml version='1.0' encoding='utf-8'?>\n"
+           << "<graphml xmlns='http://graphml.graphdrawing.org/xmlns'\n"
+           << "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
+           << "    xsi:schemaLocation='http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd'>\n"
+           << "<key id='narSize' for='node' attr.name='narSize' attr.type='long'/>"
+           << "<key id='name' for='node' attr.name='name' attr.type='string'/>"
+           << "<key id='type' for='node' attr.name='type' attr.type='string'/>"
+           << "<graph id='G' edgedefault='directed'>\n";
 
     while (!workList.empty()) {
         auto path = std::move(workList.extract(workList.begin()).value());
@@ -70,20 +68,20 @@ try {
         if (ret.second == false) continue;
 
         auto info = TRY_AWAIT(store->queryPathInfo(path));
-        cout << makeNode(*info);
+        result << makeNode(*info);
 
         for (auto & p : info->references) {
             if (p != path) {
                 workList.insert(p);
-                cout << makeEdge(path.to_string(), p.to_string());
+                result << makeEdge(path.to_string(), p.to_string());
             }
         }
 
     }
 
-    cout << "</graph>\n";
-    cout << "</graphml>\n";
-    co_return result::success();
+    result << "</graph>\n";
+    result << "</graphml>\n";
+    co_return result.str();
 } catch (...) {
     co_return result::current_exception();
 }

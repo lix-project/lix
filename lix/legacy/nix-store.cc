@@ -503,7 +503,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 {
                     roots.insert(j);
                 }
-            aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
+            std::cout << aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
