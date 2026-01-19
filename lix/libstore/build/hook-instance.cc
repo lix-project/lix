@@ -1,20 +1,24 @@
 #include "lix/libstore/build/child.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/build/hook-instance.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/logging-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
+#include <fcntl.h>
 #include <kj/memory.h>
 #include <memory>
 #include <string_view>
+#include <unistd.h>
 
 namespace nix {
 
@@ -72,34 +76,30 @@ try {
     auto buildHook = canonPath(buildHookArgs.front());
     buildHookArgs.pop_front();
 
-    Strings args;
-    args.push_back(std::string(baseNameOf(buildHook)));
-
-    for (auto & arg : buildHookArgs)
-        args.push_back(arg);
-
-    args.push_back(std::to_string(verbosity));
-
     /* Create the communication pipes. */
     auto [selfRPC, hookRPC] = SocketPair::stream();
 
-    printMsg(lvlChatty, "running build hook: %s", concatMapStringsSep(" ", args, shellEscape));
+    AutoCloseFD devNull(open("/dev/null", O_RDWR | O_CLOEXEC));
+    if (!devNull) {
+        throw SysError("cannot open /dev/null");
+    }
+    RunOptions options{
+        .program = buildHook,
+        .searchPath = false,
+        .argv0 = std::string(baseNameOf(buildHook)),
+        .args = buildHookArgs,
+        .chdir = "/",
+        .createSession = true,
+        .redirections = {
+            {.dup = STDIN_FILENO, .from = devNull.get()},
+            {.dup = STDOUT_FILENO, .from = hookRPC.get()},
+        },
+    };
+
+    options.args.push_back(std::to_string(verbosity));
 
     /* Fork the hook. */
-    auto pid = startProcess([&]() {
-        commonExecveingChildInit();
-
-        if (chdir("/") == -1) throw SysError("changing into /");
-
-        /* Dup the communication pipes. */
-        if (dup2(hookRPC.get(), STDOUT_FILENO) == -1) {
-            throw SysError("dupping to-hook read side");
-        }
-
-        sys::execv(buildHook, args);
-
-        throw SysError("executing '%s'", buildHook);
-    });
+    auto [pid, _stdout] = runProgram2(options).release();
 
     pid.setSeparatePG(true);
 
