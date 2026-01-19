@@ -3,11 +3,8 @@
 #include <unistd.h>
 
 #include "test-session.hh"
-#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/escape-char.hh"
-#include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
-#include "lix/libutil/strings.hh"
 
 namespace nix {
 
@@ -15,8 +12,6 @@ static constexpr const bool DEBUG_REPL_PARSER = false;
 
 RunningProcess RunningProcess::start(std::string executable, Strings args)
 {
-    args.push_front(executable);
-
     Pipe procStdin{};
     Pipe procStdout{};
 
@@ -24,21 +19,17 @@ RunningProcess RunningProcess::start(std::string executable, Strings args)
     procStdout.create();
 
     // This is separate from runProgram2 because we have different IO requirements
-    auto pid = startProcess([&]() {
-        if (dup2(procStdout.writeSide.get(), STDOUT_FILENO) == -1) {
-            throw SysError("dupping stdout");
-        }
-        if (dup2(procStdin.readSide.get(), STDIN_FILENO) == -1) {
-            throw SysError("dupping stdin");
-        }
-        procStdin.writeSide.close();
-        procStdout.readSide.close();
-        if (dup2(STDOUT_FILENO, STDERR_FILENO) == -1) {
-            throw SysError("dupping stderr");
-        }
-        sys::execv(executable, args);
-        throw SysError("exec did not happen");
+    auto proc = runProgram2({
+        .program = executable,
+        .searchPath = false,
+        .args = args,
+        .redirections = {
+            {.dup = STDIN_FILENO, .from = procStdin.readSide.get()},
+            {.dup = STDOUT_FILENO, .from = procStdout.writeSide.get()},
+            {.dup = STDERR_FILENO, .from = STDOUT_FILENO},
+        },
     });
+    auto [pid, _stdout] = proc.release();
 
     procStdout.writeSide.close();
     procStdin.readSide.close();
