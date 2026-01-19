@@ -502,7 +502,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     roots.insert(j);
                 }
             }
-            pager << aio.blockOn(printDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
+            pager << aio.blockOn(formatDotGraph(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 
@@ -516,7 +516,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     roots.insert(j);
                 }
             }
-            pager << aio.blockOn(printGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
+            pager << aio.blockOn(formatGraphML(ref<Store>::unsafeFromPtr(store), std::move(roots)));
             break;
         }
 

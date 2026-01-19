@@ -40,7 +40,7 @@ static std::string makeNode(std::string_view id, std::string_view label,
         dotQuote(id), dotQuote(label), dotQuote(colour));
 }
 
-kj::Promise<Result<std::string>> printDotGraph(ref<Store> store, StorePathSet && roots)
+kj::Promise<Result<std::string>> formatDotGraph(ref<Store> store, StorePathSet && roots)
 try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;

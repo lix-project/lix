@@ -45,7 +45,7 @@ static std::string makeNode(const ValidPathInfo & info)
         (info.path.isDerivation() ? "derivation" : "output-path"));
 }
 
-kj::Promise<Result<std::string>> printGraphML(ref<Store> store, StorePathSet && roots)
+kj::Promise<Result<std::string>> formatGraphML(ref<Store> store, StorePathSet && roots)
 try {
     StorePathSet workList(std::move(roots));
     StorePathSet doneSet;

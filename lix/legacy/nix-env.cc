@@ -892,7 +892,7 @@ static bool cmpElemByName(EvalState & state, DrvInfo & a, DrvInfo & b)
 
 typedef std::list<Strings> Table;
 
-std::string printTable(Table & table)
+std::string formatTable(Table & table)
 {
     auto nrColumns = table.size() > 0 ? table.front().size() : 0;
 
@@ -1367,7 +1367,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         }
 
         if (!xmlOutput) {
-            pager << printTable(table);
+            pager << formatTable(table);
         } else {
             pager << xmlStream.str();
         }
