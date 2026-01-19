@@ -18,7 +18,6 @@ RunningProcess RunningProcess::start(std::string executable, Strings args)
     procStdin.create();
     procStdout.create();
 
-    // This is separate from runProgram2 because we have different IO requirements
     auto proc = runProgram2({
         .program = executable,
         .searchPath = false,
