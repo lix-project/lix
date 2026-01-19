@@ -6,6 +6,7 @@
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include <sys/socket.h>
@@ -54,8 +55,6 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 {
     auto [parent, child] = SocketPair::stream();
     auto conn = std::make_unique<Connection>();
-    ProcessOptions options;
-    options.dieWithParent = false;
 
     std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
     if (!fakeSSH) {
@@ -63,41 +62,29 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
         resumeLoggerDefer.emplace([&]() { logger->resume(); });
     }
 
-    Strings args;
+    RunOptions options;
 
     // We specifically spawn bash here, to (hopefully) get
     // reasonably POSIX-y semantics for the things we're about
     // to do next.
     if (fakeSSH) {
-        args = {"bash", "-c", command};
+        options.program = "bash";
+        options.args = {"-c", command};
     } else {
-        args = {"ssh", host.c_str(), "-x", "-T"};
-        addCommonSSHOpts(args);
-        args.push_back(command);
+        options.program = "ssh";
+        options.args = {host.c_str(), "-x", "-T"};
+        addCommonSSHOpts(options.args);
+        options.args.push_back(command);
     }
 
-    printMsg(lvlChatty, "running ssh: %s", concatMapStringsSep(" ", args, shellEscape));
+    options.redirections.push_back({.dup = STDIN_FILENO, .from = child.get()});
+    options.redirections.push_back({.dup = STDOUT_FILENO, .from = child.get()});
+    if (logFD != -1) {
+        options.redirections.push_back({.dup = STDERR_FILENO, .from = logFD});
+    }
 
-    conn->sshPid = startProcess([&]() {
-        restoreProcessContext();
-
-        parent.close();
-
-        if (dup2(child.get(), STDIN_FILENO) == -1) {
-            throw SysError("duping over stdin");
-        }
-        if (dup2(child.get(), STDOUT_FILENO) == -1) {
-            throw SysError("duping over stdout");
-        }
-        if (logFD != -1 && dup2(logFD, STDERR_FILENO) == -1) {
-            throw SysError("duping over stderr");
-        }
-
-        sys::execvp(*args.begin(), args);
-
-        // could not exec ssh/bash
-        throw SysError("unable to execute '%s'", args.front());
-    }, options);
+    auto [pid, _stdout] = runProgram2(options).release();
+    conn->sshPid = std::move(pid);
 
     child.close();
 
