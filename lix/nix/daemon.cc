@@ -363,7 +363,8 @@ try {
                     *forceTrustClientOpt ? "--force-trusted" : "--force-untrusted"
                 );
             }
-            runProgram2(options).release();
+            auto [pid, _stdout] = runProgram2(options).release();
+            pid.release();
         } catch (Error & error) {
             auto ei = error.info();
             // FIXME: add to trace?

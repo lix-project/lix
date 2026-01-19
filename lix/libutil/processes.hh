@@ -121,7 +121,7 @@ public:
 
     explicit operator bool() const { return bool(pid); }
 
-    std::tuple<pid_t, std::unique_ptr<AsyncFdIoStream>> release();
+    std::tuple<Pid, std::unique_ptr<AsyncFdIoStream>> release();
 
     int kill();
     [[nodiscard]]

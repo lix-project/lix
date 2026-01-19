@@ -306,9 +306,9 @@ RunningProgram::~RunningProgram()
     }
 }
 
-std::tuple<pid_t, std::unique_ptr<AsyncFdIoStream>> RunningProgram::release()
+std::tuple<Pid, std::unique_ptr<AsyncFdIoStream>> RunningProgram::release()
 {
-    return {pid.release(), std::move(childStdout)};
+    return {std::move(pid), std::move(childStdout)};
 }
 
 int RunningProgram::kill()
