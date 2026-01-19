@@ -348,94 +348,99 @@ RunningProgram runProgram2(const RunOptions & options)
     printMsg(lvlChatty, "running command: %s", concatMapStringsSep(" ", options.args, shellEscape));
 
     /* Fork. */
-    Pid pid{startProcess([&]() {
-        if (options.environment)
-            replaceEnv(*options.environment);
-        if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1)
-            throw SysError("dupping stdout");
-        for (auto redirection : options.redirections) {
-            if (redirection.dup == redirection.from) {
-                if (int flags = fcntl(redirection.from, F_GETFD);
-                    flags < 0 || fcntl(redirection.from, F_SETFD, flags & ~FD_CLOEXEC) < 0)
+    Pid pid{startProcess(
+        [&]() {
+            if (options.environment) {
+                replaceEnv(*options.environment);
+            }
+            if (options.captureStdout && dup2(out.writeSide.get(), STDOUT_FILENO) == -1) {
+                throw SysError("dupping stdout");
+            }
+            for (auto redirection : options.redirections) {
+                if (redirection.dup == redirection.from) {
+                    if (int flags = fcntl(redirection.from, F_GETFD);
+                        flags < 0 || fcntl(redirection.from, F_SETFD, flags & ~FD_CLOEXEC) < 0)
+                    {
+                        throw SysError("clearing O_CLOEXEC of fd %i", redirection.dup);
+                    }
+                } else if (dup2(redirection.from, redirection.dup) == -1) {
+                    throw SysError("dupping fd %i to %i", redirection.dup, redirection.from);
+                }
+            }
+
+            if (options.chdir && sys::chdir(*options.chdir) == -1) {
+                throw SysError("chdir failed");
+            }
+
+#if __linux__
+            if (!options.caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
+                throw SysError("setting keep-caps failed");
+            }
+#endif
+
+            if (options.gid && setgid(*options.gid) == -1)
+                throw SysError("setgid failed");
+            /* Drop all other groups if we're setgid. */
+            if (options.gid && setgroups(0, 0) == -1)
+                throw SysError("setgroups failed");
+            if (options.uid && setuid(*options.uid) == -1)
+                throw SysError("setuid failed");
+
+#if __linux__
+            if (!options.caps.empty()) {
+                if (prctl(PR_SET_KEEPCAPS, 0)) {
+                    throw SysError("clearing keep-caps failed");
+                }
+
+                // we do the capability dance like this to avoid a dependency
+                // on libcap, which has a rather large build closure and many
+                // more features that we need for now. maybe some other time.
+                static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
+                static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
+                struct user_cap_header_struct
                 {
-                    throw SysError("clearing O_CLOEXEC of fd %i", redirection.dup);
+                    uint32_t version;
+                    int pid;
+                } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
+                struct user_cap_data_struct
+                {
+                    uint32_t effective;
+                    uint32_t permitted;
+                    uint32_t inheritable;
+                } data[LINUX_CAPABILITY_U32S_3] = {};
+                for (auto cap : options.caps) {
+                    assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
+                    data[cap / 32].permitted |= 1 << (cap % 32);
+                    data[cap / 32].inheritable |= 1 << (cap % 32);
                 }
-            } else if (dup2(redirection.from, redirection.dup) == -1) {
-                throw SysError("dupping fd %i to %i", redirection.dup, redirection.from);
-            }
-        }
+                if (syscall(SYS_capset, &hdr, data)) {
+                    throw SysError("couldn't set capabilities");
+                }
 
-        if (options.chdir && sys::chdir(*options.chdir) == -1) {
-            throw SysError("chdir failed");
-        }
-
-#if __linux__
-        if (!options.caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
-            throw SysError("setting keep-caps failed");
-        }
-#endif
-
-        if (options.gid && setgid(*options.gid) == -1)
-            throw SysError("setgid failed");
-        /* Drop all other groups if we're setgid. */
-        if (options.gid && setgroups(0, 0) == -1)
-            throw SysError("setgroups failed");
-        if (options.uid && setuid(*options.uid) == -1)
-            throw SysError("setuid failed");
-
-#if __linux__
-        if (!options.caps.empty()) {
-            if (prctl(PR_SET_KEEPCAPS, 0)) {
-                throw SysError("clearing keep-caps failed");
-            }
-
-            // we do the capability dance like this to avoid a dependency
-            // on libcap, which has a rather large build closure and many
-            // more features that we need for now. maybe some other time.
-            static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
-            static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
-            struct user_cap_header_struct
-            {
-                uint32_t version;
-                int pid;
-            } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
-            struct user_cap_data_struct
-            {
-                uint32_t effective;
-                uint32_t permitted;
-                uint32_t inheritable;
-            } data[LINUX_CAPABILITY_U32S_3] = {};
-            for (auto cap : options.caps) {
-                assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
-                data[cap / 32].permitted |= 1 << (cap % 32);
-                data[cap / 32].inheritable |= 1 << (cap % 32);
-            }
-            if (syscall(SYS_capset, &hdr, data)) {
-                throw SysError("couldn't set capabilities");
-            }
-
-            for (auto cap : options.caps) {
-                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
-                    throw SysError("couldn't set ambient caps");
+                for (auto cap : options.caps) {
+                    if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
+                        throw SysError("couldn't set ambient caps");
+                    }
                 }
             }
-        }
 #endif
 
-        Strings args_(options.args);
-        args_.push_front(options.argv0.value_or(options.program));
+            Strings args_(options.args);
+            args_.push_front(options.argv0.value_or(options.program));
 
-        restoreProcessContext();
+            restoreProcessContext();
 
-        if (options.searchPath) {
-            sys::execvp(options.program, args_);
-            // This allows you to refer to a program with a pathname relative
-            // to the PATH variable.
-        } else
-            sys::execv(options.program, args_);
+            if (options.searchPath) {
+                sys::execvp(options.program, args_);
+                // This allows you to refer to a program with a pathname relative
+                // to the PATH variable.
+            } else
+                sys::execv(options.program, args_);
 
-        throw SysError("executing '%1%'", options.program);
-    }, processOptions)};
+            throw SysError("executing '%1%'", options.program);
+        },
+        processOptions
+    )};
 
     out.writeSide.close();
 
