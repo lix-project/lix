@@ -350,6 +350,9 @@ RunningProgram runProgram2(const RunOptions & options)
     /* Fork. */
     Pid pid{startProcess(
         [&]() {
+            if (options.createSession && setsid() == -1) {
+                throw SysError("setsid");
+            }
             if (options.environment) {
                 replaceEnv(*options.environment);
             }
