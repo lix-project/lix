@@ -11,3 +11,10 @@ run_pager = executable(
   install : true,
   install_dir : libexecdir / 'lix',
 )
+
+unix_bind_connect = executable(
+  'unix-bind-connect',
+  files('unix-bind-connect.cc'),
+  install : true,
+  install_dir : libexecdir / 'lix',
+)

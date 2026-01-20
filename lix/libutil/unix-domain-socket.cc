@@ -4,6 +4,7 @@
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libutil/strings.hh"
 
+#include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -64,36 +65,12 @@ static void bindConnectProcHelper(
     auto * psaddr = reinterpret_cast<struct sockaddr *>(&addr);
 
     if (path.size() + 1 >= sizeof(addr.sun_path)) {
-        Pipe pipe;
-        pipe.create();
-        Pid pid{startProcess([&] {
-            try {
-                pipe.readSide.close();
-                Path dir = dirOf(path);
-                if (sys::chdir(dir) == -1) {
-                    throw SysError("chdir to '%s' failed", dir);
-                }
-                std::string base(baseNameOf(path));
-                if (base.size() + 1 >= sizeof(addr.sun_path))
-                    throw Error("socket path '%s' is too long", base);
-                memcpy(addr.sun_path, base.c_str(), base.size() + 1);
-                if (operation(fd, psaddr, sizeof(addr)) == -1)
-                    throw SysError("cannot %s to socket at '%s'", operationName, path);
-                writeFull(pipe.writeSide.get(), "0\n");
-            } catch (SysError & e) {
-                writeFull(pipe.writeSide.get(), fmt("%d\n", e.errNo));
-            } catch (...) {
-                writeFull(pipe.writeSide.get(), "-1\n");
-            }
-        })};
-        pipe.writeSide.close();
-        auto errNo = string2Int<int>(chomp(drainFD(pipe.readSide.get())));
-        if (!errNo || *errNo == -1)
-            throw Error("cannot %s to socket at '%s'", operationName, path);
-        else if (*errNo > 0) {
-            errno = *errNo;
-            throw SysError("cannot %s to socket at '%s'", operationName, path);
-        }
+        runHelper(
+            "unix-bind-connect",
+            {.args =
+                 {std::to_string(fd), std::string(operationName), dirOf(path), std::string(baseNameOf(path))},
+             .redirections = {{.dup = fd, .from = fd}}}
+        ).waitAndCheck();
     } else {
         memcpy(addr.sun_path, path.c_str(), path.size() + 1);
         if (operation(fd, psaddr, sizeof(addr)) == -1)

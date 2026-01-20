@@ -1,15 +1,19 @@
 #pragma once
 ///@file common setup/utility header for libexec helpers
 
+#include <cctype>
 #include <cerrno>
+#include <cinttypes>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <format> // IWYU pragma: keep
+#include <limits>
 #include <span>
 #include <string> // IWYU pragma: keep
 #include <string_view>
+#include <type_traits>
 #include <unistd.h>
 
 /// file descriptor of the error reporting pipe. anything written to this pipe
@@ -35,6 +39,34 @@ inline void die(std::string_view msg)
 {
     writeErrPipe(msg);
     exit(252);
+}
+
+/// converts an argument to an integer or dies with a message.
+template<typename T, size_t N>
+    requires std::is_integral_v<T>
+T argToInt(const char (&argName)[N], const char * str)
+{
+    // this should really just wrap std::from_chars, but macos doesn't have it.
+    for (const auto c : std::string_view(str)) {
+        if (c != '-' && !std::isdigit(c)) {
+            die(std::format("invalid {} argument", argName));
+        }
+    }
+
+    char * end = nullptr;
+    const auto tmp = [&] {
+        if constexpr (std::is_signed_v<T>) {
+            return std::strtoimax(str, &end, 10); // NOLINT(lix-unsafe-c-calls): str is a C string
+        } else {
+            return std::strtoumax(str, &end, 10); // NOLINT(lix-unsafe-c-calls): str is a C string
+        }
+    }();
+
+    if (!end || *end || tmp < std::numeric_limits<T>::min() || tmp > std::numeric_limits<T>::max()) {
+        die(std::format("invalid {} argument", argName));
+    }
+
+    return tmp;
 }
 
 /// check syscall result and immediately terminate with a message on failure.
