@@ -130,42 +130,7 @@ void killUser(uid_t uid)
 
     assert(uid != 0); /* just to be safe... */
 
-    /* The system call kill(-1, sig) sends the signal `sig' to all
-       users to which the current process can send signals.  So we
-       fork a process, switch to uid, and send a mass kill. */
-
-    Pid pid{startProcess([&]() {
-
-        if (setuid(uid) == -1)
-            throw SysError("setting uid");
-
-        while (true) {
-#ifdef __APPLE__
-            /* OSX's kill syscall takes a third parameter that, among
-               other things, determines if kill(-1, signo) affects the
-               calling process. In the OSX libc, it's set to true,
-               which means "follow POSIX", which we don't want here
-                 */
-            if (syscall(SYS_kill, -1, SIGKILL, false) == 0) break;
-#else
-            if (kill(-1, SIGKILL) == 0) break;
-#endif
-            if (errno == ESRCH || errno == EPERM) break; /* no more processes */
-            if (errno != EINTR)
-                throw SysError("cannot kill processes for uid '%1%'", uid);
-        }
-
-        _exit(0);
-    })};
-
-    int status = pid.wait();
-    if (status != 0)
-        throw Error("cannot kill processes for uid '%1%': %2%", uid, statusToString(status));
-
-    /* !!! We should really do some check to make sure that there are
-       no processes left running under `uid', but there is no portable
-       way to do so (I think).  The most reliable way may be `ps -eo
-       uid | grep -q $uid'. */
+    runHelper("kill-user", {.args = {std::to_string(uid)}}).waitAndCheck();
 }
 
 
