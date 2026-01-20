@@ -7,6 +7,7 @@
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/build/local-derivation-goal.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/namespaces.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/build/hook-instance.hh" // IWYU pragma: keep
 #include <boost/outcome/try.hpp>
@@ -25,7 +26,7 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 } errorHandler;
 }
 
-Worker::Worker(Store & store, Store & evalStore)
+Worker::Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces)
     : act(logger->startActivity(actRealise))
     , actDerivations(logger->startActivity(actBuilds))
     , actSubstitutions(logger->startActivity(actCopyPaths))
@@ -36,6 +37,7 @@ Worker::Worker(Store & store, Store & evalStore)
     , substitutions(std::max<unsigned>(1, settings.maxSubstitutionJobs))
     , localBuilds(settings.maxBuildJobs)
     , children(errorHandler)
+    , namespaces(namespaces)
 {
     /* Debugging: prevent recursive workers. */
 

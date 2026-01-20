@@ -4,6 +4,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/async-semaphore.hh"
 #include "lix/libutil/concepts.hh"
+#include "lix/libutil/namespaces.hh"
 #include "lix/libutil/notifying-counter.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/cgroup.hh"
@@ -233,8 +234,10 @@ public:
     NotifyingCounter<uint64_t> expectedNarSize{[this] { updateStatisticsLater(); }};
     NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
+    const AvailableNamespaces namespaces;
+
 private:
-    Worker(Store & store, Store & evalStore);
+    Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces);
     ~Worker();
 
     /**
@@ -319,7 +322,8 @@ template<typename MkGoals>
 kj::Promise<Result<Worker::Results>>
 processGoals(Store & store, Store & evalStore, MkGoals && mkGoals) noexcept
 try {
-    co_return co_await Worker(store, evalStore).run(std::forward<MkGoals>(mkGoals));
+    co_return co_await Worker(store, evalStore, LIX_TRY_AWAIT(queryAvailableNamespaces()))
+        .run(std::forward<MkGoals>(mkGoals));
 } catch (...) {
     co_return result::current_exception();
 }

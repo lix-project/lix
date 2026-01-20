@@ -982,8 +982,9 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
         // we can't actually run it. not doing so hides bugs and impairs purity.
         if (settings.pastaPath != "" || privateNetwork)
             options.cloneFlags |= CLONE_NEWNET;
-        if (usingUserNamespace)
+        if (worker.namespaces.user) {
             options.cloneFlags |= CLONE_NEWUSER;
+        }
 
         pid_t child = startProcess([&]() { runChild(); }, options).release();
 
@@ -1008,7 +1009,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
     assert(ss.size() == 1);
     Pid pid = Pid{string2Int<pid_t>(ss[0]).value()};
 
-    if (usingUserNamespace) {
+    if (worker.namespaces.user) {
         /* Set the UID/GID mapping of the builder's user namespace
            such that the sandbox user maps to the build user, or to
            the calling user (if build users are disabled). */
@@ -1079,7 +1080,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
         }
 
         AutoCloseFD userns;
-        if (usingUserNamespace) {
+        if (worker.namespaces.user) {
             userns =
                 AutoCloseFD(sys::open(fmt("/proc/%i/ns/user", pid.get()), O_RDONLY | O_CLOEXEC));
             if (!userns) {

@@ -65,12 +65,6 @@ struct LocalDerivationGoal : public DerivationGoal
     Pipe userNamespaceSync;
 
     /**
-     * On Linux, whether we're doing the build in its own user
-     * namespace.
-     */
-    bool usingUserNamespace = true;
-
-    /**
      * Whether we're currently doing a chroot build.
      */
     bool useChroot = false;
@@ -139,8 +133,8 @@ struct LocalDerivationGoal : public DerivationGoal
      */
     std::map<Path, ValidPathInfo> prevInfos;
 
-    uid_t sandboxUid() { return usingUserNamespace ? (!buildUser || buildUser->getUIDCount() == 1 ? 1000 : 0) : buildUser->getUID(); }
-    gid_t sandboxGid() { return usingUserNamespace ? (!buildUser || buildUser->getUIDCount() == 1 ? 100  : 0) : buildUser->getGID(); }
+    uid_t sandboxUid();
+    gid_t sandboxGid();
 
     const static Path homeDir;
 

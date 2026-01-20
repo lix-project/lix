@@ -176,6 +176,17 @@ void LocalDerivationGoal::killSandbox(bool getStats)
     }
 }
 
+uid_t LocalDerivationGoal::sandboxUid()
+{
+    return worker.namespaces.user ? (!buildUser || buildUser->getUIDCount() == 1 ? 1000 : 0)
+                                  : buildUser->getUID();
+}
+
+gid_t LocalDerivationGoal::sandboxGid()
+{
+    return worker.namespaces.user ? (!buildUser || buildUser->getUIDCount() == 1 ? 100 : 0)
+                                  : buildUser->getGID();
+}
 
 kj::Promise<Result<Goal::WorkResult>> LocalDerivationGoal::tryLocalBuild() noexcept
 try {
@@ -265,9 +276,8 @@ retry:
         // FIXME: should user namespaces being unsupported also require
         // sandbox-fallback to be allowed? I don't think so, since they aren't a
         // huge security win to have enabled.
-        usingUserNamespace = userNamespacesSupported();
 
-        if (!mountAndPidNamespacesSupported()) {
+        if (!worker.namespaces.mountAndPid) {
             if (!settings.sandboxFallback)
                 throw Error("this system does not support the kernel namespaces that are required for sandboxing; use '--no-sandbox' to disable sandboxing. Pass --debug for diagnostics on what is broken.");
             if (!sandboxFallbackAllowed)
@@ -276,7 +286,7 @@ retry:
             useChroot = false;
         }
 
-        if (!usingUserNamespace && !buildUser) {
+        if (!worker.namespaces.user && !buildUser) {
             throw Error("cannot perform a sandboxed build because user namespaces are not available.\nIn this Lix's configuration, user namespaces are required due to either being non-root, or build-users-group being disabled without also enabling auto-allocate-uids");
         }
     }

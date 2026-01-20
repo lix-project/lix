@@ -1,3 +1,12 @@
+if is_linux
+  check_namespace_support = executable(
+    'check-namespace-support',
+    files('check-namespace-support.cc'),
+    install : true,
+    install_dir : libexecdir / 'lix',
+  )
+endif
+
 kill_user = executable(
   'kill-user',
   files('kill-user.cc'),

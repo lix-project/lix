@@ -22,13 +22,11 @@ void restoreMountNamespace();
  */
 void unshareFilesystem();
 
+struct AvailableNamespaces
+{
+    bool user = false;
+    bool mountAndPid = false;
+};
 
-#if __linux__
-
-bool userNamespacesSupported();
-
-bool mountAndPidNamespacesSupported();
-
-#endif
-
+kj::Promise<Result<AvailableNamespaces>> queryAvailableNamespaces();
 }

@@ -6,6 +6,8 @@
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/strings.hh"
 
+#include <kj/common.h>
+#include <ranges>
 #include <sys/mount.h>
 
 #if __linux__
@@ -99,64 +101,39 @@ static void diagnoseUserNamespaces()
     }
 }
 
-bool userNamespacesSupported()
-{
-    static auto res = [&]() -> bool
-    {
-        try {
-            Pid pid = startProcess([&]() { _exit(0); }, {.cloneFlags = CLONE_NEWUSER});
+kj::Promise<Result<AvailableNamespaces>> queryAvailableNamespaces()
+try {
+    AvailableNamespaces result{};
 
-            auto r = pid.wait();
-            assert(!r);
-        } catch (SysError & e) {
-            printTaggedWarning("user namespaces do not work on this system: %s", e.msg());
+    auto helper = runHelper("check-namespace-support", {.captureStdout = true});
+    KJ_DEFER(helper.waitAndCheck());
+    const auto results = tokenizeString<Strings>(TRY_AWAIT(helper.getStdout()->drain()), "\n");
+
+    for (auto line : results) {
+        if (line == "user") {
+            result.user = true;
+        } else if (line.starts_with("user ")) {
+            printTaggedWarning("user namespaces do not work on this system: %s", line.substr(5));
             diagnoseUserNamespaces();
-            return false;
+        } else if (line == "mount-pid") {
+            result.mountAndPid = true;
+        } else if (line.starts_with("mount-pid")) {
+            debug("mount namespaces do not work on this system: %s", line.substr(9));
+        } else {
+            throw Error("unexpected namespace check status: %s", line);
         }
+    }
 
-        return true;
-    }();
-    return res;
+    co_return result;
+} catch (...) {
+    co_return result::current_exception();
 }
-
-bool mountAndPidNamespacesSupported()
-{
-    static auto res = [&]() -> bool
-    {
-        try {
-
-            Pid pid = startProcess([&]() {
-                /* Make sure we don't remount the parent's /proc. */
-                if (mount(0, "/", 0, MS_PRIVATE | MS_REC, 0) == -1)
-                    _exit(1);
-
-                /* Test whether we can remount /proc. The kernel disallows
-                   this if /proc is not fully visible, i.e. if there are
-                   filesystems mounted on top of files inside /proc.  See
-                   https://lore.kernel.org/lkml/87tvsrjai0.fsf@xmission.com/T/. */
-                if (mount("none", "/proc", "proc", 0, 0) == -1)
-                    _exit(2);
-
-                _exit(0);
-            }, {
-                .cloneFlags = CLONE_NEWNS | CLONE_NEWPID | (userNamespacesSupported() ? CLONE_NEWUSER : 0)
-            });
-
-            if (pid.wait()) {
-                debug("PID namespaces do not work on this system: cannot remount /proc");
-                return false;
-            }
-
-        } catch (SysError & e) {
-            debug("mount namespaces do not work on this system: %s", e.msg());
-            return false;
-        }
-
-        return true;
-    }();
-    return res;
+#else
+kj::Promise<Result<AvailableNamespaces>> queryAvailableNamespaces()
+try {
+    return {AvailableNamespaces{}};
+} catch (...) {
+    return {result::current_exception()};
 }
-
 #endif
-
 }
