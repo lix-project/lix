@@ -65,7 +65,7 @@ inline void die(std::string_view msg)
         }                                                                                \
                                                                                          \
         DIE_UNLESS_SYS("error pipe fcntl", fcntl(ERR_PIPE, F_SETFD, FD_CLOEXEC));        \
-        return helperMain(argv[0], {argv + 2, argv + argc - 2});                         \
+        return helperMain(argv[0], {argv + 2, argv + argc});                             \
     }
 
 int helperMain(const char * name, std::span<char *> args) noexcept;
