@@ -84,7 +84,7 @@ private:
      * Set up system call filtering using seccomp, unless disabled at build time.
      * This also sets the NO_NEW_PRIVS flag.
      */
-    void setupSyscallFilter() override;
+    void setupSyscallFilter();
 
     bool supportsUidRange() override
     {

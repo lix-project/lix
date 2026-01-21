@@ -317,12 +317,6 @@ protected:
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
 
     /**
-     * Set up the system call filtering required for the sandbox.
-     * This currently only has an effect on Linux.
-     */
-    virtual void setupSyscallFilter() {}
-
-    /**
      * Prepare the sandbox. Currently only used on linux to build the sandbox namespace,
      * write configuration files inside it, and to set up networking with pasta enabled.
      * Returns `true` if sandbox is running under the same credentials as the daemon, or

@@ -1127,8 +1127,6 @@ void LocalDerivationGoal::runChild()
 
         commonExecveingChildInit();
 
-        setupSyscallFilter();
-
         /* Make the contents of netrc and the CA certificate bundle
            available to builtin:fetchurl (which may run under a
            different uid and/or in a sandbox). */

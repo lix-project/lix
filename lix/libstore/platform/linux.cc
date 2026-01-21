@@ -907,6 +907,8 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
 
 bool LinuxLocalDerivationGoal::prepareChildSetup()
 {
+    setupSyscallFilter();
+
     if (!useChroot) {
         return true;
     }
