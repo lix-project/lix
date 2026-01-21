@@ -1161,8 +1161,9 @@ void LocalDerivationGoal::runChild()
 
             userNamespaceSync.writeSide.reset();
 
-            if (drainFD(userNamespaceSync.readSide.get()) != "1")
+            if (drainFD(userNamespaceSync.readSide.get()) != "1") {
                 throw Error("user namespace initialisation failed");
+            }
 
             userNamespaceSync.readSide.reset();
 
@@ -1170,22 +1171,27 @@ void LocalDerivationGoal::runChild()
 
                 /* Initialise the loopback interface. */
                 AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
-                if (!fd) throw SysError("cannot open IP socket");
+                if (!fd) {
+                    throw SysError("cannot open IP socket");
+                }
 
                 struct ifreq ifr;
                 strcpy(ifr.ifr_name, "lo");
                 ifr.ifr_flags = IFF_UP | IFF_LOOPBACK | IFF_RUNNING;
-                if (ioctl(fd.get(), SIOCSIFFLAGS, &ifr) == -1)
+                if (ioctl(fd.get(), SIOCSIFFLAGS, &ifr) == -1) {
                     throw SysError("cannot set loopback interface flags");
+                }
             }
 
             /* Set the hostname etc. to fixed values. */
             char hostname[] = "localhost";
-            if (sethostname(hostname, sizeof(hostname)) == -1)
+            if (sethostname(hostname, sizeof(hostname)) == -1) {
                 throw SysError("cannot set host name");
+            }
             char domainname[] = "(none)"; // kernel default
-            if (setdomainname(domainname, sizeof(domainname)) == -1)
+            if (setdomainname(domainname, sizeof(domainname)) == -1) {
                 throw SysError("cannot set domain name");
+            }
 
             /* Make all filesystems private.  This is necessary
                because subtrees may have been mounted as "shared"
@@ -1195,8 +1201,9 @@ void LocalDerivationGoal::runChild()
                outside of the namespace.  Making a subtree private is
                local to the namespace, though, so setting MS_PRIVATE
                does not affect the outside world. */
-            if (mount(0, "/", 0, MS_PRIVATE | MS_REC, 0) == -1)
+            if (mount(0, "/", 0, MS_PRIVATE | MS_REC, 0) == -1) {
                 throw SysError("unable to make '/' private");
+            }
 
             /* Bind-mount chroot directory to itself, to treat it as a
                different filesystem from /, as needed for pivot_root. */
@@ -1229,9 +1236,7 @@ void LocalDerivationGoal::runChild()
                 createDirs(chrootRootDir + "/dev/shm");
                 createDirs(chrootRootDir + "/dev/pts");
                 ss.push_back("/dev/full");
-                if (worker.store.config().systemFeatures.get().count("kvm")
-                    && pathExists("/dev/kvm"))
-                {
+                if (worker.store.config().systemFeatures.get().count("kvm") && pathExists("/dev/kvm")) {
                     ss.push_back("/dev/kvm");
                 }
                 ss.push_back("/dev/null");
@@ -1258,7 +1263,7 @@ void LocalDerivationGoal::runChild()
                 /* N.B. it is realistic that these paths might not exist. It
                    happens when testing Nix building fixed-output derivations
                    within a pure derivation. */
-                for (auto & path : { "/etc/services", "/etc/hosts" })
+                for (auto & path : {"/etc/services", "/etc/hosts"}) {
                     if (pathAccessible(path, true)) {
                         // Copy the actual file, not the symlink, because we don't know where
                         // the symlink is pointing, and we don't want to chase down the entire
@@ -1276,7 +1281,7 @@ void LocalDerivationGoal::runChild()
                         //
                         // I also just generally feel icky about modifying sandbox state under a build,
                         // even though it really shouldn't be a big deal. -K900
-                        copyFile(path, chrootRootDir + path, { .followSymlinks = true });
+                        copyFile(path, chrootRootDir + path, {.followSymlinks = true});
                     } else if (pathExists(path)) {
                         // The path exist but we were not able to access it. This is not a fatal
                         // error, warn about this so the user can remediate.
@@ -1286,6 +1291,7 @@ void LocalDerivationGoal::runChild()
                             path
                         );
                     }
+                }
 
                 if (pathAccessible("/etc/resolv.conf", true)) {
                     const auto resolvConf = rewriteResolvConf(readFile("/etc/resolv.conf"));
@@ -1301,25 +1307,29 @@ void LocalDerivationGoal::runChild()
                 }
             }
 
-            for (auto & i : ss) pathsInChroot.emplace(i, i);
+            for (auto & i : ss) {
+                pathsInChroot.emplace(i, i);
+            }
 
             /* Bind-mount all the directories from the "host"
                filesystem that we want in the chroot
                environment. */
             for (auto & i : pathsInChroot) {
-                if (i.second.source == "/proc") continue; // backwards compatibility
+                if (i.second.source == "/proc") {
+                    continue; // backwards compatibility
+                }
 
-                #if HAVE_EMBEDDED_SANDBOX_SHELL
+#if HAVE_EMBEDDED_SANDBOX_SHELL
                 if (i.second.source == "__embedded_sandbox_shell__") {
                     static unsigned char sh[] = {
-                        #include "embedded-sandbox-shell.gen.hh"
+#include "embedded-sandbox-shell.gen.hh"
                     };
                     auto dst = chrootRootDir + i.first;
                     createDirs(dirOf(dst));
                     writeFile(dst, std::string_view((const char *) sh, sizeof(sh)));
                     chmodPath(dst, 0555);
                 } else
-                #endif
+#endif
                     bindPath(i.second.source, chrootRootDir + i.first, i.second.optional);
             }
 
@@ -1355,13 +1365,10 @@ void LocalDerivationGoal::runChild()
                requires the kernel to be compiled with
                CONFIG_DEVPTS_MULTIPLE_INSTANCES=y (which is the case
                if /dev/ptx/ptmx exists). */
-            if (pathExists("/dev/pts/ptmx") &&
-                !pathExists(chrootRootDir + "/dev/ptmx")
+            if (pathExists("/dev/pts/ptmx") && !pathExists(chrootRootDir + "/dev/ptmx")
                 && !pathsInChroot.count("/dev/pts"))
             {
-                if (sys::mount(
-                        "none", (chrootRootDir + "/dev/pts"), "devpts", 0, "newinstance,mode=0620"
-                    )
+                if (sys::mount("none", (chrootRootDir + "/dev/pts"), "devpts", 0, "newinstance,mode=0620")
                     == 0)
                 {
                     createSymlink("/dev/pts/ptmx", chrootRootDir + "/dev/ptmx");
@@ -1370,16 +1377,18 @@ void LocalDerivationGoal::runChild()
                        Linux versions, it is created with permissions 0.  */
                     chmodPath(chrootRootDir + "/dev/pts/ptmx", 0666);
                 } else {
-                    if (errno != EINVAL)
+                    if (errno != EINVAL) {
                         throw SysError("mounting /dev/pts");
+                    }
                     bindPath("/dev/pts", chrootRootDir + "/dev/pts");
                     bindPath("/dev/ptmx", chrootRootDir + "/dev/ptmx");
                 }
             }
 
             /* Make /etc unwritable */
-            if (!parsedDrv->useUidRange())
+            if (!parsedDrv->useUidRange()) {
                 chmodPath(chrootRootDir + "/etc", 0555);
+            }
 
             /* The comment below is now outdated. Recursive Nix has been removed.
              * So there's no need to make path appear in the sandbox.
@@ -1395,50 +1404,61 @@ void LocalDerivationGoal::runChild()
                sandboxMountNamespace. Since we made /nix/store a
                shared subtree above, this allows addDependency() to
                make paths appear in the sandbox. */
-            if (unshare(CLONE_NEWNS) == -1)
+            if (unshare(CLONE_NEWNS) == -1) {
                 throw SysError("unsharing mount namespace");
+            }
 
-            /* Creating a new cgroup namespace is independent of whether we enabled the cgroup experimental feature.
-             * We always create a new cgroup namespace from a sandboxing perspective. */
+            /* Creating a new cgroup namespace is independent of whether we enabled the cgroup experimental
+             * feature. We always create a new cgroup namespace from a sandboxing perspective. */
             /* Unshare the cgroup namespace. This means
                /proc/self/cgroup will show the child's cgroup as '/'
                rather than whatever it is in the parent. */
-            if (unshare(CLONE_NEWCGROUP) == -1)
+            if (unshare(CLONE_NEWCGROUP) == -1) {
                 throw SysError("unsharing cgroup namespace");
+            }
 
             /* Do the chroot(). */
             if (sys::chdir(chrootRootDir) == -1) {
                 throw SysError("cannot change directory to '%1%'", chrootRootDir);
             }
 
-            if (mkdir("real-root", 0) == -1)
+            if (mkdir("real-root", 0) == -1) {
                 throw SysError("cannot create real-root directory");
+            }
 
-            if (pivot_root(".", "real-root") == -1)
+            if (pivot_root(".", "real-root") == -1) {
                 throw SysError("cannot pivot old root directory onto '%1%'", (chrootRootDir + "/real-root"));
+            }
 
-            if (chroot(".") == -1)
+            if (chroot(".") == -1) {
                 throw SysError("cannot change root directory to '%1%'", chrootRootDir);
+            }
 
-            if (umount2("real-root", MNT_DETACH) == -1)
+            if (umount2("real-root", MNT_DETACH) == -1) {
                 throw SysError("cannot unmount real root filesystem");
+            }
 
-            if (rmdir("real-root") == -1)
+            if (rmdir("real-root") == -1) {
                 throw SysError("cannot remove real-root directory");
+            }
 
             /* Switch to the sandbox uid/gid in the user namespace,
                which corresponds to the build user or calling user in
                the parent namespace. */
-            if (setgid(sandboxGid()) == -1)
+            if (setgid(sandboxGid()) == -1) {
                 throw SysError("setgid failed");
-            if (setuid(sandboxUid()) == -1)
+            }
+            if (setuid(sandboxUid()) == -1) {
                 throw SysError("setuid failed");
+            }
 
             if (runPasta) {
                 // wait for the pasta interface to appear. pasta can't signal us when
                 // it's done setting up the namespace, so we have to wait for a while
                 AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
-                if (!fd) throw SysError("cannot open IP socket");
+                if (!fd) {
+                    throw SysError("cannot open IP socket");
+                }
 
                 struct ifreq ifr;
                 strcpy(ifr.ifr_name, LinuxLocalDerivationGoal::PASTA_NS_IFNAME);
@@ -1446,7 +1466,7 @@ void LocalDerivationGoal::runChild()
                 // we are either grossly overloaded, or pasta startup failed somehow.
                 static constexpr int SINGLE_WAIT_US = 1000;
                 static constexpr int TOTAL_WAIT_US = 120'000'000;
-                for (unsigned tries = 0; ; tries++) {
+                for (unsigned tries = 0;; tries++) {
                     if (tries > TOTAL_WAIT_US / SINGLE_WAIT_US) {
                         throw Error(
                             "sandbox network setup timed out, please check daemon logs for "
@@ -1552,7 +1572,8 @@ void LocalDerivationGoal::runChild()
                 pathsInChroot[p] = p;
             }
 
-            /* Violations will go to the syslog if you set this. Unfortunately the destination does not appear to be configurable */
+            /* Violations will go to the syslog if you set this. Unfortunately the destination does not appear
+             * to be configurable */
             if (settings.darwinLogSandboxViolations) {
                 sandboxProfile += "(deny default)\n";
             } else {
@@ -1560,18 +1581,20 @@ void LocalDerivationGoal::runChild()
             }
 
             sandboxProfile +=
-                #include "sandbox-defaults.sb"
+#include "sandbox-defaults.sb"
                 ;
 
-            if (!derivationType->isSandboxed())
+            if (!derivationType->isSandboxed()) {
                 sandboxProfile +=
-                    #include "sandbox-network.sb"
+#include "sandbox-network.sb"
                     ;
+            }
 
             /* Add the output paths we'll use at build-time to the chroot */
             sandboxProfile += "(allow file-read* file-write* process-exec\n";
-            for (auto & [_, path] : scratchOutputs)
+            for (auto & [_, path] : scratchOutputs) {
                 sandboxProfile += fmt("\t(subpath \"%s\")\n", worker.store.printStorePath(path));
+            }
 
             sandboxProfile += ")\n";
 
@@ -1590,22 +1613,27 @@ void LocalDerivationGoal::runChild()
                     debug("Sandbox break: %d %d", sandboxProfile.length(), breakpoint);
                     sandboxProfile += ")\n(allow file-read* file-write* process-exec\n";
                 }
-                if (i.first != i.second.source)
+                if (i.first != i.second.source) {
                     throw Error(
                         "can't map '%1%' to '%2%': mismatched impure paths not supported on Darwin",
-                        i.first, i.second.source);
+                        i.first,
+                        i.second.source
+                    );
+                }
 
                 std::string path = i.first;
                 struct stat st;
                 if (lstat(path.c_str(), &st)) {
-                    if (i.second.optional && errno == ENOENT)
+                    if (i.second.optional && errno == ENOENT) {
                         continue;
+                    }
                     throw SysError("getting attributes of path '%s", path);
                 }
-                if (S_ISDIR(st.st_mode))
+                if (S_ISDIR(st.st_mode)) {
                     sandboxProfile += fmt("\t(subpath \"%s\")\n", path);
-                else
+                } else {
                     sandboxProfile += fmt("\t(literal \"%s\")\n", path);
+                }
             }
             sandboxProfile += ")\n";
 
@@ -1617,21 +1645,25 @@ void LocalDerivationGoal::runChild()
             sandboxProfile += ")\n";
 
             sandboxProfile += additionalSandboxProfile;
-        } else
+        } else {
             sandboxProfile +=
-                #include "sandbox-minimal.sb"
+#include "sandbox-minimal.sb"
                 ;
+        }
 
         debug("Generated sandbox profile: %1%", sandboxProfile);
 
         bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
 
-        /* The tmpDir in scope points at the temporary build directory for our derivation. Some packages try different mechanisms
-           to find temporary directories, so we want to open up a broader place for them to put their files, if needed. */
+        /* The tmpDir in scope points at the temporary build directory for our derivation. Some packages try
+           different mechanisms to find temporary directories, so we want to open up a broader place for them
+           to put their files, if needed. */
         Path globalTmpDir = canonPath(defaultTempDir(), true);
 
         /* They don't like trailing slashes on subpath directives */
-        if (globalTmpDir.back() == '/') globalTmpDir.pop_back();
+        if (globalTmpDir.back() == '/') {
+            globalTmpDir.pop_back();
+        }
 
         if (getEnv("_NIX_TEST_NO_SANDBOX") != "1") {
             Strings sandboxArgs;
@@ -1643,7 +1675,10 @@ void LocalDerivationGoal::runChild()
                 sandboxArgs.push_back("_ALLOW_LOCAL_NETWORKING");
                 sandboxArgs.push_back("1");
             }
-            if (sandbox_init_with_parameters(sandboxProfile.c_str(), 0, stringsToCharPtrs(sandboxArgs).data(), nullptr)) {
+            if (sandbox_init_with_parameters(
+                    sandboxProfile.c_str(), 0, stringsToCharPtrs(sandboxArgs).data(), nullptr
+                ))
+            {
                 writeFull(STDERR_FILENO, "failed to configure sandbox\n");
                 _exit(1);
             }
