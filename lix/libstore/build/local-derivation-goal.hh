@@ -60,11 +60,6 @@ struct LocalDerivationGoal : public DerivationGoal
     AutoCloseFD builderOutPTY;
 
     /**
-     * Pipe for synchronising updates to the builder namespaces.
-     */
-    Pipe userNamespaceSync;
-
-    /**
      * Whether we're currently doing a chroot build.
      */
     bool useChroot = false;
@@ -326,6 +321,18 @@ protected:
      * This currently only has an effect on Linux.
      */
     virtual void setupSyscallFilter() {}
+
+    /**
+     * Prepare the sandbox. Currently only used on linux to build the sandbox namespace,
+     * write configuration files inside it, and to set up networking with pasta enabled.
+     * Returns `true` if sandbox is running under the same credentials as the daemon, or
+     * `false` if this step has changed our credentials to the build user/group already.
+     */
+    [[nodiscard]]
+    virtual bool prepareChildSetup()
+    {
+        return true;
+    }
 
     /**
      * Create a special accessor that can access paths that were built within the sandbox's
