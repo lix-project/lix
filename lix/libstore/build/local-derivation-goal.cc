@@ -802,9 +802,7 @@ try {
             throw SysError("changing mode of pseudoterminal slave");
         }
 
-        if (sys::chown(slaveName, buildUser->getUID(), 0)) {
-            throw SysError("changing owner of pseudoterminal slave");
-        }
+        // don't chown yet so we can open the pty without DAC override capabilities
     }
 #if __APPLE__
     else {
@@ -816,13 +814,22 @@ try {
     if (unlockpt(builderOutPTY.get()))
         throw SysError("unlocking pseudoterminal");
 
-    /* Open the slave side of the pseudoterminal and use it as stderr. */
-    auto openSlave = [&]() {
-        AutoCloseFD builderOut{sys::open(slaveName, O_RDWR | O_NOCTTY)};
-        if (!builderOut)
-            throw SysError("opening pseudoterminal slave");
+    /* We need to open the slave early, before CLONE_NEWUSER. Otherwise we get
+       EPERM when running as root. */
+    AutoCloseFD builderOut{sys::open(slaveName, O_RDWR | O_NOCTTY | O_CLOEXEC)};
+    if (!builderOut) {
+        throw SysError("opening pseudoterminal slave");
+    }
 
-        // Put the pt into raw mode to prevent \n -> \r\n translation.
+    // *now* we chown the pty device node for sandbox processes
+    if (buildUser) {
+        if (sys::chown(slaveName, buildUser->getUID(), 0)) {
+            throw SysError("changing owner of pseudoterminal slave");
+        }
+    }
+
+    // Put the pt into raw mode to prevent \n -> \r\n translation.
+    {
         struct termios term;
         if (tcgetattr(builderOut.get(), &term))
             throw SysError("getting pseudoterminal attributes");
@@ -831,15 +838,12 @@ try {
 
         if (tcsetattr(builderOut.get(), TCSANOW, &term))
             throw SysError("putting pseudoterminal into raw mode");
-
-        if (dup2(builderOut.get(), STDERR_FILENO) == -1)
-            throw SysError("cannot pipe standard error into log file");
-    };
+    }
 
     buildResult.startTime = time(0);
 
     /* Fork a child to build the package. */
-    pid = startChild(openSlave);
+    pid = startChild(std::move(builderOut));
 
     /* parent */
     pid.setSeparatePG(true);
@@ -875,13 +879,16 @@ try {
     co_return result::current_exception();
 }
 
-Pid LocalDerivationGoal::startChild(std::function<void()> openSlave) {
+Pid LocalDerivationGoal::startChild(AutoCloseFD logPTY)
+{
     return startProcess([&]() {
-        openSlave();
+        if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
+            throw SysError("failed to redirect build output to log file");
+        }
+        closeOnExec(STDERR_FILENO, false);
         runChild();
     });
 }
-
 
 void LocalDerivationGoal::initTmpDir() {
     /* In a sandbox, for determinism, always use the same temporary

@@ -898,7 +898,7 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
     return std::regex_replace(fromHost, lineRegex, "") + nsInSandbox;
 }
 
-Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
+Pid LinuxLocalDerivationGoal::startChild(AutoCloseFD logPTY)
 {
 #if HAVE_SECCOMP
     // Our seccomp filter program is surprisingly expensive to compile (~10ms).
@@ -909,7 +909,7 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
 
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(openSlave);
+        return LocalDerivationGoal::startChild(std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -962,10 +962,9 @@ Pid LinuxLocalDerivationGoal::startChild(std::function<void()> openSlave)
     Pid helper = startProcess([&]() {
         sendPid.readSide.close();
 
-        /* We need to open the slave early, before
-           CLONE_NEWUSER. Otherwise we get EPERM when running as
-           root. */
-        openSlave();
+        if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
+            throw SysError("failed to redirect build output to log file");
+        }
 
         /* Drop additional groups here because we can't do it
            after we've created the new user namespace. */

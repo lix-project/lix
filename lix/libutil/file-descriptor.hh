@@ -108,9 +108,9 @@ private:
 void closeExtraFDs();
 
 /**
- * Set the close-on-exec flag for the given file descriptor.
+ * Set or clear the close-on-exec flag for the given file descriptor.
  */
-void closeOnExec(int fd);
+void closeOnExec(int fd, bool doClose = true);
 
 enum class FdBlockingState : int {};
 

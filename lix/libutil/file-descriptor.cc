@@ -314,13 +314,14 @@ void closeExtraFDs()
         close(fd); /* ignore result */
 }
 
-
-void closeOnExec(int fd)
+void closeOnExec(int fd, bool doClose)
 {
     int prev;
-    if ((prev = fcntl(fd, F_GETFD, 0)) == -1 ||
-        fcntl(fd, F_SETFD, prev | FD_CLOEXEC) == -1)
+    if ((prev = fcntl(fd, F_GETFD, 0)) == -1
+        || fcntl(fd, F_SETFD, doClose ? prev | FD_CLOEXEC : prev & ~FD_CLOEXEC) == -1)
+    {
         throw SysError("setting close-on-exec flag");
+    }
 }
 
 FdBlockingState makeNonBlocking(int fd)
