@@ -1157,8 +1157,6 @@ void LocalDerivationGoal::runChild()
         /* Close all other file descriptors. */
         closeExtraFDs();
 
-        setPersonality(drv->platform);
-
         /* Disable core dumps by default. */
         struct rlimit limit = { 0, RLIM_INFINITY };
         if (settings.enableCoreDumps) {

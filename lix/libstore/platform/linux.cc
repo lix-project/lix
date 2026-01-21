@@ -1,3 +1,4 @@
+#include "build/personality.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"
@@ -1228,6 +1229,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
             }
         }
     }
+
+    setPersonality(drv->platform);
 
     return false;
 }
