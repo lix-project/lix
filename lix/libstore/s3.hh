@@ -3,6 +3,7 @@
 
 #if ENABLE_S3
 
+#include "lix/libutil/types.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/ref.hh"
 
@@ -20,9 +21,24 @@ struct S3Helper
     ref<Aws::Client::ClientConfiguration> config;
     ref<Aws::S3::S3Client> client;
 
-    S3Helper(const std::string & profile, const std::string & region, const std::string & scheme, const std::string & endpoint);
+    S3Helper(
+        const std::string & profile,
+        const std::string & region,
+        const std::string & scheme,
+        const std::string & endpoint,
 
-    ref<Aws::Client::ClientConfiguration> makeConfig(const std::string & region, const std::string & scheme, const std::string & endpoint);
+        /* Exception names that can be retried even though the AWS SDK does not specify as such.
+         * Required for compatibility with non-AWS S3 implementations.
+         */
+        const Strings & retryableExceptionNames = {}
+    );
+
+    ref<Aws::Client::ClientConfiguration> makeConfig(
+        const std::string & region,
+        const std::string & scheme,
+        const std::string & endpoint,
+        const Strings & retryableExceptionNames = {}
+    );
 
     struct FileTransferResult
     {

@@ -23,7 +23,7 @@
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/AsyncCallerContext.h>
 #include <aws/core/client/ClientConfiguration.h>
-#include <aws/core/client/DefaultRetryStrategy.h>
+#include <aws/core/client/SpecifiedRetryableErrorsRetryStrategy.h>
 #include <aws/core/utils/logging/FormattedLogSystem.h>
 #include <aws/core/utils/logging/LogMacros.h>
 #include <aws/core/utils/threading/Executor.h>
@@ -136,31 +136,35 @@ S3Helper::S3Helper(
     const std::string & profile,
     const std::string & region,
     const std::string & scheme,
-    const std::string & endpoint
+    const std::string & endpoint,
+    const Strings & retryableExceptionNames
 )
-    : config(makeConfig(region, scheme, endpoint))
-    , client(make_ref<Aws::S3::S3Client>(
-          profile == "" ? std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
-                              std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>()
-                          )
-                        : std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
-                              std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
-                                  profile.c_str()
-                              )
-                          ),
-          *config,
-          Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::RequestDependent,
-          endpoint.empty()
-      ))
+    : config(makeConfig(region, scheme, endpoint, retryableExceptionNames))
+    , client(
+          make_ref<Aws::S3::S3Client>(
+              profile == ""
+                  ? std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
+                        std::make_shared<Aws::Auth::DefaultAWSCredentialsProviderChain>()
+                    )
+                  : std::dynamic_pointer_cast<Aws::Auth::AWSCredentialsProvider>(
+                        std::make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(profile.c_str())
+                    ),
+              *config,
+              Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::RequestDependent,
+              endpoint.empty()
+          )
+      )
 {
 }
 
 /* Log AWS retries. */
-class RetryStrategy : public Aws::Client::DefaultRetryStrategy
+class RetryStrategy : public Aws::Client::SpecifiedRetryableErrorsRetryStrategy
 {
+    using Aws::Client::SpecifiedRetryableErrorsRetryStrategy::SpecifiedRetryableErrorsRetryStrategy;
+
     bool ShouldRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>& error, long attemptedRetries) const override
     {
-        auto retry = Aws::Client::DefaultRetryStrategy::ShouldRetry(error, attemptedRetries);
+        auto retry = Aws::Client::SpecifiedRetryableErrorsRetryStrategy::ShouldRetry(error, attemptedRetries);
         if (retry) {
             if (error.GetExceptionName() != "") {
                 printError(
@@ -186,7 +190,9 @@ class RetryStrategy : public Aws::Client::DefaultRetryStrategy
 ref<Aws::Client::ClientConfiguration> S3Helper::makeConfig(
     const std::string & region,
     const std::string & scheme,
-    const std::string & endpoint)
+    const std::string & endpoint,
+    const Strings & retryableExceptionNames
+)
 {
     initAWS();
     auto res = make_ref<Aws::Client::ClientConfiguration>();
@@ -199,7 +205,8 @@ ref<Aws::Client::ClientConfiguration> S3Helper::makeConfig(
     }
     res->requestTimeoutMs = 600l * 1000;
     res->connectTimeoutMs = 5l * 1000;
-    res->retryStrategy = std::make_shared<RetryStrategy>();
+    std::vector<std::string> excNames(retryableExceptionNames.begin(), retryableExceptionNames.end());
+    res->retryStrategy = std::make_shared<RetryStrategy>(excNames);
     res->caFile = settings.caFile;
     // Use the system proxy env-vars in curl for s3, which is off by default for some reason
     res->allowSystemProxy = true;
@@ -320,6 +327,14 @@ struct S3BinaryCacheStoreConfig final : BinaryCacheStoreConfig
         "Size (in bytes) of each part in multi-part uploads."
     };
 
+    const Setting<Strings> retryableExceptionNames{
+        this,
+        {},
+        "retryable-exception-names",
+        "List of exception names that can be retried even though the AWS SDK does not mark them as such. "
+        "Useful for non-AWS implementations or misbehaving implementations."
+    };
+
     const std::string name() override { return "S3 Binary Cache Store"; }
 
     std::string doc() override
@@ -376,7 +391,13 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         , S3BinaryCacheStore(w, config)
         , config_(std::move(config))
         , bucketName(bucketName)
-        , s3Helper(config_.profile, config_.region, config_.scheme, config_.endpoint)
+        , s3Helper(
+              config_.profile,
+              config_.region,
+              config_.scheme,
+              config_.endpoint,
+              config_.retryableExceptionNames
+          )
     {
         diskCache = getNarInfoDiskCache();
     }

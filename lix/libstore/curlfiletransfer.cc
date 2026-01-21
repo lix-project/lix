@@ -165,8 +165,10 @@ try {
         std::string region = getOr(params, "region", Aws::Region::US_EAST_1);
         std::string scheme = getOr(params, "scheme", "");
         std::string endpoint = getOr(params, "endpoint", "");
+        auto retryableExceptionNames =
+            tokenizeString<Strings>(getOr(params, "retryable-exception-names", ""), ",");
 
-        S3Helper s3Helper(profile, region, scheme, endpoint);
+        S3Helper s3Helper(profile, region, scheme, endpoint, retryableExceptionNames);
 
         // FIXME: implement ETag
         auto s3Res = TRY_AWAIT(s3Helper.getObject(bucketName, key));
