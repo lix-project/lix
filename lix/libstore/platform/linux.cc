@@ -20,6 +20,7 @@
 #include <memory>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <optional>
 #include <regex>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -1237,7 +1238,11 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
     return false;
 }
 
-Pid LinuxLocalDerivationGoal::startChild(AutoCloseFD logPTY)
+Pid LinuxLocalDerivationGoal::startChild(
+    const std::optional<std::string> & netrcData,
+    const std::optional<std::string> & caFileData,
+    AutoCloseFD logPTY
+)
 {
 #if HAVE_SECCOMP
     // Our seccomp filter program is surprisingly expensive to compile (~10ms).
@@ -1248,7 +1253,7 @@ Pid LinuxLocalDerivationGoal::startChild(AutoCloseFD logPTY)
 
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(std::move(logPTY));
+        return LocalDerivationGoal::startChild(netrcData, caFileData, std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -1324,7 +1329,7 @@ Pid LinuxLocalDerivationGoal::startChild(AutoCloseFD logPTY)
             options.cloneFlags |= CLONE_NEWUSER;
         }
 
-        pid_t child = startProcess([&]() { runChild(); }, options).release();
+        pid_t child = startProcess([&]() { runChild(netrcData, caFileData); }, options).release();
 
         writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
         _exit(0);

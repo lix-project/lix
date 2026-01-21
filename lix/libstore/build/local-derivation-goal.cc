@@ -35,6 +35,7 @@
 #include <cstddef>
 #include <dirent.h>
 #include <exception>
+#include <optional>
 #include <regex>
 #include <queue>
 
@@ -836,8 +837,31 @@ try {
 
     buildResult.startTime = time(0);
 
+    /* Make the contents of netrc and the CA certificate bundle
+       available to builtin:fetchurl (which may run under a
+       different uid and/or in a sandbox). */
+    std::optional<std::string> netrcData;
+    std::optional<std::string> caFileData;
+    if (drv->isBuiltin() && drv->builder == "builtin:fetchurl" && !derivationType->isSandboxed()) {
+        try {
+            netrcData = readFile(settings.netrcFile);
+        } catch (SysError &) {
+            netrcData = "";
+        }
+
+        try {
+            caFileData = readFile(settings.caFile);
+        } catch (SysError &) {
+            caFileData = "";
+        }
+    }
+
+    if (!derivationType->isSandboxed()) {
+        setupConfiguredCertificateAuthority();
+    }
+
     /* Fork a child to build the package. */
-    pid = startChild(std::move(builderOut));
+    pid = startChild(netrcData, caFileData, std::move(builderOut));
 
     /* parent */
     pid.setSeparatePG(true);
@@ -873,14 +897,18 @@ try {
     co_return result::current_exception();
 }
 
-Pid LocalDerivationGoal::startChild(AutoCloseFD logPTY)
+Pid LocalDerivationGoal::startChild(
+    const std::optional<std::string> & netrcData,
+    const std::optional<std::string> & caFileData,
+    AutoCloseFD logPTY
+)
 {
     return startProcess([&]() {
         if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
             throw SysError("failed to redirect build output to log file");
         }
         closeOnExec(STDERR_FILENO, false);
-        runChild();
+        runChild(netrcData, caFileData);
     });
 }
 
@@ -1115,8 +1143,9 @@ void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
         throw SysError("cannot change ownership of file '%1%'", fd.guessOrInventPath());
 }
 
-
-void LocalDerivationGoal::runChild()
+void LocalDerivationGoal::runChild(
+    const std::optional<std::string> & netrcData, const std::optional<std::string> & caFileData
+)
 {
     /* Warning: in the child we should absolutely not make any SQLite
        calls! */
@@ -1126,25 +1155,6 @@ void LocalDerivationGoal::runChild()
     try { /* child */
 
         commonExecveingChildInit();
-
-        /* Make the contents of netrc and the CA certificate bundle
-           available to builtin:fetchurl (which may run under a
-           different uid and/or in a sandbox). */
-        std::string netrcData;
-        std::string caFileData;
-        if (drv->isBuiltin() && drv->builder == "builtin:fetchurl" && !derivationType->isSandboxed()) {
-            try {
-                netrcData = readFile(settings.netrcFile);
-            } catch (SysError &) { }
-
-            try {
-                caFileData = readFile(settings.caFile);
-            } catch (SysError &) { }
-        }
-
-        if (!derivationType->isSandboxed()) {
-            setupConfiguredCertificateAuthority();
-        }
 
         const bool setUser = prepareChildSetup();
 
@@ -1217,14 +1227,17 @@ void LocalDerivationGoal::runChild()
                 for (auto & e : drv2.env)
                     e.second = rewriteStrings(e.second, inputRewrites);
 
-                if (drv->builder == "builtin:fetchurl")
-                    builtinFetchurl(drv2, netrcData, caFileData);
-                else if (drv->builder == "builtin:buildenv")
+                if (drv->builder == "builtin:fetchurl") {
+                    assert(netrcData.has_value());
+                    assert(caFileData.has_value());
+                    builtinFetchurl(drv2, netrcData.value(), caFileData.value());
+                } else if (drv->builder == "builtin:buildenv") {
                     builtinBuildenv(drv2);
-                else if (drv->builder == "builtin:unpack-channel")
+                } else if (drv->builder == "builtin:unpack-channel") {
                     builtinUnpackChannel(drv2);
-                else
+                } else {
                     throw Error("unsupported builtin builder '%1%'", drv->builder.substr(8));
+                }
                 _exit(0);
             } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
                 writeFull(STDERR_FILENO, e.what() + std::string("\n"));

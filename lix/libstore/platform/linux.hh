@@ -73,7 +73,11 @@ private:
      * Start child process in new namespaces,
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
-    Pid startChild(AutoCloseFD logPTY) override;
+    Pid startChild(
+        const std::optional<std::string> & netrcData,
+        const std::optional<std::string> & caFileData,
+        AutoCloseFD logPTY
+    ) override;
 
     /**
      * Kill all processes by build user.
