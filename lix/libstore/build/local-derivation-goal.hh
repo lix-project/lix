@@ -335,6 +335,11 @@ protected:
     }
 
     /**
+     * Finish sandbox setup and prepare for actually executing the builder processes.
+     */
+    virtual void finishChildSetup() {}
+
+    /**
      * Create a special accessor that can access paths that were built within the sandbox's
      * chroot.
      */

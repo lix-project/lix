@@ -43,6 +43,8 @@ private:
      */
     void prepareSandbox() override{};
 
+    void finishChildSetup() override;
+
     /**
      * Set process flags to enter or leave rosetta, then execute the builder
      */
