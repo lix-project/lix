@@ -1241,6 +1241,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
 Pid LinuxLocalDerivationGoal::startChild(
     const std::optional<std::string> & netrcData,
     const std::optional<std::string> & caFileData,
+    const Strings & envStrs,
+    const Strings & args,
     AutoCloseFD logPTY
 )
 {
@@ -1253,7 +1255,7 @@ Pid LinuxLocalDerivationGoal::startChild(
 
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(netrcData, caFileData, std::move(logPTY));
+        return LocalDerivationGoal::startChild(netrcData, caFileData, envStrs, args, std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -1329,7 +1331,8 @@ Pid LinuxLocalDerivationGoal::startChild(
             options.cloneFlags |= CLONE_NEWUSER;
         }
 
-        pid_t child = startProcess([&]() { runChild(netrcData, caFileData); }, options).release();
+        pid_t child =
+            startProcess([&]() { runChild(netrcData, caFileData, envStrs, args); }, options).release();
 
         writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
         _exit(0);

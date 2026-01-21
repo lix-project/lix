@@ -860,8 +860,23 @@ try {
         setupConfiguredCertificateAuthority();
     }
 
+    /* Fill in the environment. */
+    Strings envStrs;
+    for (auto & i : env) {
+        envStrs.push_back(rewriteStrings(i.first + "=" + i.second, inputRewrites));
+    }
+
+    /* Fill in the arguments. */
+    Strings args;
+
+    args.push_back(std::string(baseNameOf(drv->builder)));
+
+    for (auto & i : drv->args) {
+        args.push_back(rewriteStrings(i, inputRewrites));
+    }
+
     /* Fork a child to build the package. */
-    pid = startChild(netrcData, caFileData, std::move(builderOut));
+    pid = startChild(netrcData, caFileData, envStrs, args, std::move(builderOut));
 
     /* parent */
     pid.setSeparatePG(true);
@@ -900,6 +915,8 @@ try {
 Pid LocalDerivationGoal::startChild(
     const std::optional<std::string> & netrcData,
     const std::optional<std::string> & caFileData,
+    const Strings & envStrs,
+    const Strings & args,
     AutoCloseFD logPTY
 )
 {
@@ -908,7 +925,7 @@ Pid LocalDerivationGoal::startChild(
             throw SysError("failed to redirect build output to log file");
         }
         closeOnExec(STDERR_FILENO, false);
-        runChild(netrcData, caFileData);
+        runChild(netrcData, caFileData, envStrs, args);
     });
 }
 
@@ -1144,7 +1161,10 @@ void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
 }
 
 void LocalDerivationGoal::runChild(
-    const std::optional<std::string> & netrcData, const std::optional<std::string> & caFileData
+    const std::optional<std::string> & netrcData,
+    const std::optional<std::string> & caFileData,
+    const Strings & envStrs,
+    const Strings & args
 )
 {
     /* Warning: in the child we should absolutely not make any SQLite
@@ -1174,11 +1194,6 @@ void LocalDerivationGoal::runChild(
 
         // FIXME: set other limits to deterministic values?
 
-        /* Fill in the environment. */
-        Strings envStrs;
-        for (auto & i : env)
-            envStrs.push_back(rewriteStrings(i.first + "=" + i.second, inputRewrites));
-
         /* If we are running in `build-users' mode, then switch to the
            user we allocated above.  Make sure that we drop all root
            privileges.  Note that above we have closed all file
@@ -1204,14 +1219,6 @@ void LocalDerivationGoal::runChild(
         }
 
         finishChildSetup();
-
-        /* Fill in the arguments. */
-        Strings args;
-
-        args.push_back(std::string(baseNameOf(drv->builder)));
-
-        for (auto & i : drv->args)
-            args.push_back(rewriteStrings(i, inputRewrites));
 
         /* Indicate that we managed to set up the build environment. */
         writeFull(STDERR_FILENO, std::string("\2\n"));

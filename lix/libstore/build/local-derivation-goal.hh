@@ -214,8 +214,12 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Run the builder's process.
      */
-    void
-    runChild(const std::optional<std::string> & netrcData, const std::optional<std::string> & caFileData);
+    void runChild(
+        const std::optional<std::string> & netrcData,
+        const std::optional<std::string> & caFileData,
+        const Strings & envStrs,
+        const Strings & args
+    );
 
     /**
      * Check that the derivation outputs all exist and register them
@@ -315,6 +319,8 @@ protected:
     virtual Pid startChild(
         const std::optional<std::string> & netrcData,
         const std::optional<std::string> & caFileData,
+        const Strings & envStrs,
+        const Strings & args,
         AutoCloseFD logPTY
     );
 
