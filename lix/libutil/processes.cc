@@ -288,6 +288,11 @@ int RunningProgram::wait()
     return pid.wait();
 }
 
+int RunningHelper::killProcessGroup()
+{
+    return ProcessGroup{std::move(pid)}.kill();
+}
+
 void RunningProgram::waitAndCheck()
 {
     if (std::uncaught_exceptions() == 0) {

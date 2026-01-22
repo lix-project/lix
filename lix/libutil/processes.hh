@@ -123,7 +123,7 @@ struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
 {
     friend RunningProgram runProgram2(const RunOptions & options);
 
-private:
+protected:
     Path program;
     Pid pid;
     std::unique_ptr<AsyncFdIoStream> childStdout;
@@ -186,6 +186,12 @@ public:
     using RunningProgram::getStdoutFD;
     using RunningProgram::kill;
     using RunningProgram::wait;
+
+    /**
+     * Kill the entire process group the helper runs in. This is usually **unsafe**
+     * unless the helper process has made itself a process group or session leader!
+     */
+    int killProcessGroup();
 
     void waitAndCheck();
 };

@@ -15,6 +15,7 @@
 #include "lix/libutil/logging-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
 #include <fcntl.h>
+#include <kj/common.h>
 #include <kj/memory.h>
 #include <memory>
 #include <string_view>
@@ -74,32 +75,27 @@ try {
         throw Error("'build-hook' setting is empty");
 
     auto buildHook = canonPath(buildHookArgs.front());
-    buildHookArgs.pop_front();
+    buildHookArgs.emplace(std::next(buildHookArgs.begin()), baseNameOf(buildHook));
+    buildHookArgs.push_back(std::to_string(verbosity));
 
     /* Create the communication pipes. */
     auto [selfRPC, hookRPC] = SocketPair::stream();
 
-    AutoCloseFD devNull(open("/dev/null", O_RDWR | O_CLOEXEC));
-    if (!devNull) {
-        throw SysError("cannot open /dev/null");
-    }
-    RunOptions options{
-        .program = buildHook,
-        .searchPath = false,
-        .argv0 = std::string(baseNameOf(buildHook)),
-        .args = buildHookArgs,
-        .chdir = "/",
-        .createSession = true,
-        .redirections = {
-            {.dup = STDIN_FILENO, .from = devNull.get()},
-            {.dup = STDOUT_FILENO, .from = hookRPC.get()},
-        },
-    };
-
-    options.args.push_back(std::to_string(verbosity));
-
     /* Fork the hook. */
-    auto [pid, _stdout] = runProgram2(options).release();
+    auto pid = runHelper(
+        "run-build-hook",
+        {
+            .args = buildHookArgs,
+            .redirections = {{.dup = STDOUT_FILENO, .from = hookRPC.get()}},
+        }
+    );
+    KJ_DEFER({
+        // kill the hook if the promise is cancelled. the hook helper creates
+        // a session, so we'll kill the entire process group just to be safe.
+        if (pid) {
+            pid.killProcessGroup();
+        }
+    });
 
     std::map<std::string, Config::SettingInfo> settings;
     globalConfig.getSettings(settings, true);
@@ -116,7 +112,7 @@ try {
     }
 
     co_return std::make_unique<HookInstance>(
-        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), ProcessGroup(std::move(pid))
+        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), std::move(pid)
     );
 } catch (...) {
     co_return result::current_exception();
