@@ -42,7 +42,7 @@ Pid::Pid()
 {
 }
 
-Pid::Pid(Pid && other) : pid(other.pid), separatePG(other.separatePG)
+Pid::Pid(Pid && other) : pid(other.pid)
 {
     other.pid = -1;
 }
@@ -52,7 +52,6 @@ Pid & Pid::operator=(Pid && other)
 {
     Pid tmp(std::move(other));
     std::swap(pid, tmp.pid);
-    std::swap(separatePG, tmp.separatePG);
     return *this;
 }
 
@@ -69,17 +68,9 @@ int Pid::kill()
 
     debug("killing process %1%", pid);
 
-    /* Send the requested signal to the child.  If it has its own
-       process group, send the signal to every process in the child
-       process group (which hopefully includes *all* its children). */
-    if (::kill(separatePG ? -pid : pid, SIGKILL) != 0) {
-        /* On BSDs, killing a process group will return EPERM if all
-           processes in the group are zombies (or something like
-           that). So try to detect and ignore that situation. */
-#if __FreeBSD__ || __APPLE__
-        if (errno != EPERM || ::kill(pid, 0) != 0)
-#endif
-            logError(SysError("killing process %d", pid).info());
+    /* Send the requested signal to the child. */
+    if (::kill(pid, SIGKILL) != 0) {
+        logError(SysError("killing process %d", pid).info());
     }
 
     return wait();
@@ -102,12 +93,6 @@ int Pid::wait()
     }
 }
 
-
-void Pid::setSeparatePG(bool separatePG)
-{
-    this->separatePG = separatePG;
-}
-
 pid_t Pid::release()
 {
     pid_t p = pid;
@@ -115,6 +100,33 @@ pid_t Pid::release()
     return p;
 }
 
+int ProcessGroup::kill()
+{
+    assert(leader);
+
+    debug("killing process group %1%", leader.get());
+
+    /* Send the requested signal to every process in the child
+       process group (which hopefully includes *all* its children). */
+    if (::kill(-leader.get(), SIGKILL) != 0) {
+        /* On BSDs, killing a process group will return EPERM if all
+           processes in the group are zombies (or something like
+           that). So try to detect and ignore that situation. */
+#if __FreeBSD__ || __APPLE__
+        if (errno != EPERM || ::kill(leader.get(), 0) != 0)
+#endif
+            logError(SysError("killing process group %d", leader.get()).info());
+    }
+
+    return wait();
+}
+
+ProcessGroup::~ProcessGroup() noexcept(false)
+{
+    if (leader) {
+        kill();
+    }
+}
 
 void killUser(uid_t uid)
 {
@@ -254,8 +266,8 @@ RunningProgram::~RunningProgram()
 {
     if (pid) {
         // we will not kill a subprocess because we *can't* kill a subprocess
-        // reliably without placing it in its own process group, and cleaning
-        // up a subprocess only when `separatePG` is set is a loaded footgun.
+        // reliably without placing it in its own process group, and then too
+        // we could not be sure to terminate the entire subprocess hierarchy.
         assert(false && "destroying un-wait()ed running process");
         std::terminate();
     }

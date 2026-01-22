@@ -25,7 +25,6 @@ struct Source;
 class Pid
 {
     pid_t pid = -1;
-    bool separatePG = false;
 public:
     Pid();
     explicit Pid(pid_t pid): pid(pid) {}
@@ -36,9 +35,31 @@ public:
     int kill();
     int wait();
 
-    void setSeparatePG(bool separatePG);
     pid_t release();
     pid_t get() const { return pid; }
+};
+
+class ProcessGroup
+{
+    Pid leader;
+
+public:
+    ProcessGroup() = default;
+    explicit ProcessGroup(Pid leader) : leader(std::move(leader)) {}
+    ProcessGroup(ProcessGroup &&) = default;
+    ProcessGroup & operator=(ProcessGroup &&) = default;
+    ~ProcessGroup() noexcept(false);
+
+    explicit operator bool() const
+    {
+        return bool(leader);
+    }
+
+    int wait()
+    {
+        return leader.wait();
+    }
+    int kill();
 };
 
 /**

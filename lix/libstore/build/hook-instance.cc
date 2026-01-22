@@ -101,8 +101,6 @@ try {
     /* Fork the hook. */
     auto [pid, _stdout] = runProgram2(options).release();
 
-    pid.setSeparatePG(true);
-
     std::map<std::string, Config::SettingInfo> settings;
     globalConfig.getSettings(settings, true);
 
@@ -118,7 +116,7 @@ try {
     }
 
     co_return std::make_unique<HookInstance>(
-        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), std::move(pid)
+        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), ProcessGroup(std::move(pid))
     );
 } catch (...) {
     co_return result::current_exception();

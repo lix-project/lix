@@ -148,17 +148,15 @@ LocalStore & LocalDerivationGoal::getLocalStore()
 
 void LocalDerivationGoal::killChild()
 {
-    if (pid) {
+    if (pg) {
         /* If we're using a build user, then there is a tricky race
            condition: if we kill the build user before the child has
            done its setuid() to the build user uid, then it won't be
            killed, and we'll potentially lock up in pid.wait().  So
            also send a conventional kill to the child. */
-        ::kill(-pid.get(), SIGKILL); /* ignore the result */
+        pg.kill();
 
         killSandbox(true);
-
-        pid.wait();
     }
 
     DerivationGoal::killChild();
@@ -339,7 +337,7 @@ extern void replaceValidPath(const Path & storePath, const Path & tmpPath);
 
 int LocalDerivationGoal::getChildStatus()
 {
-    return hook ? DerivationGoal::getChildStatus() : pid.kill();
+    return hook ? DerivationGoal::getChildStatus() : pg.kill();
 }
 
 void LocalDerivationGoal::closeReadPipes()
@@ -879,10 +877,7 @@ try {
     }
 
     /* Fork a child to build the package. */
-    pid = startChild(netrcData, caFileData, envStrs, args, std::move(builderOut));
-
-    /* parent */
-    pid.setSeparatePG(true);
+    pg = ProcessGroup{startChild(netrcData, caFileData, envStrs, args, std::move(builderOut))};
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -891,7 +886,7 @@ try {
             try {
                 return readLine(builderOutPTY.get());
             } catch (Error & e) {
-                auto status = pid.wait();
+                auto status = pg.wait();
                 e.addTrace({}, "while waiting for the build environment for '%s' to initialize (%s, previous messages: %s)",
                     worker.store.printStorePath(drvPath),
                     statusToString(status),

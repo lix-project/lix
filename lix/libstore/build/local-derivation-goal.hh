@@ -34,9 +34,9 @@ struct LocalDerivationGoal : public DerivationGoal
     BuildContext context;
 
     /**
-     * The process ID of the builder.
+     * The process group of the builder.
      */
-    Pid pid;
+    ProcessGroup pg;
 
     /**
      * The temporary directory.

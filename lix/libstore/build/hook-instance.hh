@@ -34,42 +34,42 @@ struct HookInstance
 
     static kj::Promise<Result<std::unique_ptr<HookInstance>>> create(const Activity & act);
 
-    HookInstance(kj::Own<rpc::build_remote::HookInstance::Client> rpc, Pid pid)
+    HookInstance(kj::Own<rpc::build_remote::HookInstance::Client> rpc, ProcessGroup pg)
         : rpc(std::move(rpc))
-        , pidOrStatus(std::move(pid))
+        , pgOrStatus(std::move(pg))
     {
     }
     ~HookInstance();
 
     int wait()
     {
-        return childStatusOr<&Pid::wait>();
+        return childStatusOr<&ProcessGroup::wait>();
     }
 
     int kill()
     {
-        return childStatusOr<&Pid::kill>();
+        return childStatusOr<&ProcessGroup::kill>();
     }
 
 private:
     /**
-     * The process ID of the hook if it's running, or its exit status if not.
+     * The process group of the hook if it's running, or its exit status if not.
      */
-    std::variant<Pid, int> pidOrStatus;
+    std::variant<ProcessGroup, int> pgOrStatus;
 
-    template<int (Pid::*fn)()>
+    template<int (ProcessGroup::*fn)()>
     int childStatusOr()
     {
         return std::visit(
             overloaded{
-                [&](Pid & pid) {
-                    int status = (pid.*fn)();
-                    pidOrStatus = status;
+                [&](ProcessGroup & pg) {
+                    int status = (pg.*fn)();
+                    pgOrStatus = status;
                     return status;
                 },
                 [](int status) { return status; },
             },
-            pidOrStatus
+            pgOrStatus
         );
     }
 };
