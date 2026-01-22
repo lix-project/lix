@@ -13,6 +13,7 @@
 #include "sync.hh"
 
 #include <cerrno>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
@@ -41,8 +42,7 @@ Pid::Pid()
 {
 }
 
-
-Pid::Pid(Pid && other) : pid(other.pid), separatePG(other.separatePG), killSignal(other.killSignal)
+Pid::Pid(Pid && other) : pid(other.pid), separatePG(other.separatePG)
 {
     other.pid = -1;
 }
@@ -53,7 +53,6 @@ Pid & Pid::operator=(Pid && other)
     Pid tmp(std::move(other));
     std::swap(pid, tmp.pid);
     std::swap(separatePG, tmp.separatePG);
-    std::swap(killSignal, tmp.killSignal);
     return *this;
 }
 
@@ -73,7 +72,7 @@ int Pid::kill()
     /* Send the requested signal to the child.  If it has its own
        process group, send the signal to every process in the child
        process group (which hopefully includes *all* its children). */
-    if (::kill(separatePG ? -pid : pid, killSignal) != 0) {
+    if (::kill(separatePG ? -pid : pid, SIGKILL) != 0) {
         /* On BSDs, killing a process group will return EPERM if all
            processes in the group are zombies (or something like
            that). So try to detect and ignore that situation. */
@@ -108,13 +107,6 @@ void Pid::setSeparatePG(bool separatePG)
 {
     this->separatePG = separatePG;
 }
-
-
-void Pid::setKillSignal(int signal)
-{
-    this->killSignal = signal;
-}
-
 
 pid_t Pid::release()
 {

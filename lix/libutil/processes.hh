@@ -12,7 +12,6 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <signal.h>
 
 #include <functional>
 #include <map>
@@ -27,7 +26,6 @@ class Pid
 {
     pid_t pid = -1;
     bool separatePG = false;
-    int killSignal = SIGKILL;
 public:
     Pid();
     explicit Pid(pid_t pid): pid(pid) {}
@@ -39,7 +37,6 @@ public:
     int wait();
 
     void setSeparatePG(bool separatePG);
-    void setKillSignal(int signal);
     pid_t release();
     pid_t get() const { return pid; }
 };
