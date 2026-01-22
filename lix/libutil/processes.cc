@@ -350,9 +350,6 @@ RunningProgram runProgram2(const RunOptions & options)
     /* Fork. */
     Pid pid{startProcess(
         [&]() {
-            if (options.createSession && setsid() == -1) {
-                throw SysError("setsid");
-            }
             if (options.environment) {
                 replaceEnv(*options.environment);
             }
@@ -369,10 +366,6 @@ RunningProgram runProgram2(const RunOptions & options)
                 } else if (dup2(redirection.from, redirection.dup) == -1) {
                     throw SysError("dupping fd %i to %i", redirection.dup, redirection.from);
                 }
-            }
-
-            if (options.chdir && sys::chdir(*options.chdir) == -1) {
-                throw SysError("chdir failed");
             }
 
 #if __linux__

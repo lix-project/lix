@@ -109,10 +109,8 @@ struct RunOptions
     Strings args = {};
     std::optional<uid_t> uid = {};
     std::optional<uid_t> gid = {};
-    std::optional<Path> chdir = {};
     std::optional<std::map<std::string, std::string>> environment = {};
     bool captureStdout = false;
-    bool createSession = false;
     std::vector<Redirection> redirections;
 #if __linux__
     std::set<long> caps;
