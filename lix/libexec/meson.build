@@ -14,6 +14,13 @@ kill_user = executable(
   install_dir : libexecdir / 'lix',
 )
 
+run_diff_hook = executable(
+  'run-diff-hook',
+  files('run-diff-hook.cc'),
+  install : true,
+  install_dir : libexecdir / 'lix',
+)
+
 run_pager = executable(
   'run-pager',
   files('run-pager.cc'),

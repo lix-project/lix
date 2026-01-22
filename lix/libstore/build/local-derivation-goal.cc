@@ -18,6 +18,7 @@
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
+#include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
@@ -41,6 +42,7 @@
 
 #include <stdexcept>
 #include <sys/stat.h>
+#include <string>
 #include <sys/un.h>
 #include <fcntl.h>
 #include <termios.h>
@@ -84,23 +86,24 @@ try {
     if (diffHookOpt && settings.runDiffHook) {
         auto & diffHook = *diffHookOpt;
         try {
-            auto diffRes = TRY_AWAIT(runProgram(RunOptions{
-                .program = diffHook,
-                .searchPath = true,
-                .args = {tryA, tryB, drvPath, tmpDir},
-                .uid = uid,
-                .gid = gid,
-                .chdir = "/"
-            }));
-            if (!statusOk(diffRes.first))
-                throw ExecError(diffRes.first,
-                    "diff-hook program '%1%' %2%",
-                    diffHook,
-                    statusToString(diffRes.first));
-
-            if (diffRes.second != "") {
-                printError("%1%", Uncolored(chomp(diffRes.second)));
-            }
+            auto hook = runHelper(
+                "run-diff-hook",
+                {
+                    .args =
+                        {uid ? std::to_string(*uid) : "-",
+                         gid ? std::to_string(*gid) : "-",
+                         diffHook,
+                         tryA,
+                         tryB,
+                         drvPath,
+                         tmpDir},
+                    .captureStdout = true,
+                }
+            );
+            auto diffRes = TRY_AWAIT(hook.getStdout()->drain());
+            hook.waitAndCheck();
+            if (diffRes != "")
+                printError("%1%", Uncolored(chomp(diffRes)));
         } catch (Error & error) {
             ErrorInfo ei = error.info();
             // FIXME: wrap errors.
