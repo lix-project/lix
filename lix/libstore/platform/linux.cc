@@ -1306,6 +1306,9 @@ Pid LinuxLocalDerivationGoal::startChild(
     sendPid.create();
 
     Pid helper = startProcess([&]() {
+        if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
+            throw SysError("setting death signal");
+
         sendPid.readSide.close();
 
         if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
@@ -1331,8 +1334,11 @@ Pid LinuxLocalDerivationGoal::startChild(
             options.cloneFlags |= CLONE_NEWUSER;
         }
 
-        pid_t child =
-            startProcess([&]() { runChild(netrcData, caFileData, envStrs, args); }, options).release();
+        pid_t child = startProcess([&]() {
+            if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
+                throw SysError("setting death signal");
+            runChild(netrcData, caFileData, envStrs, args);
+        }, options).release();
 
         writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
         _exit(0);

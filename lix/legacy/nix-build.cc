@@ -545,13 +545,12 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
 
         printMsg(lvlChatty, "running shell: %s", concatMapStringsSep(" ", args, shellEscape));
 
-        RunningProgram proc = runProgram2(
-            {.program = *shell,
-             .searchPath = true,
-             .args = args,
-             .environment = env,
-             .dieWithParent = true}
-        );
+        RunningProgram proc = runProgram2({
+            .program = *shell,
+            .searchPath = true,
+            .args = args,
+            .environment = env,
+        });
 
         // NOTE: we wait and return the status check immediately.
         // If there's interruption, we will swallow it and wait again for termination.

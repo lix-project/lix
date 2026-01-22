@@ -160,10 +160,6 @@ Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
     std::function<void()> wrapper = [&]() {
         logger = makeSimpleLogger();
         try {
-#if __linux__
-            if (options.dieWithParent && prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
-                throw SysError("setting death signal");
-#endif
             fun();
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             try {
@@ -338,9 +334,7 @@ RunningProgram runProgram2(const RunOptions & options)
     Pipe out;
     if (options.captureStdout) out.create();
 
-    ProcessOptions processOptions {
-        .dieWithParent = options.dieWithParent,
-    };
+    ProcessOptions processOptions{};
 
     printMsg(lvlChatty, "running command: %s", concatMapStringsSep(" ", options.args, shellEscape));
 

@@ -57,7 +57,6 @@ void killUser(uid_t uid);
  */
 struct ProcessOptions
 {
-    bool dieWithParent = true;
     /**
      * use clone() with the specified flags (Linux only)
      */
@@ -94,7 +93,6 @@ struct RunOptions
     std::optional<uid_t> gid = {};
     std::optional<Path> chdir = {};
     std::optional<std::map<std::string, std::string>> environment = {};
-    bool dieWithParent = true;
     bool captureStdout = false;
     bool createSession = false;
     std::vector<Redirection> redirections;
