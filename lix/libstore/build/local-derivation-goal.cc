@@ -72,8 +72,8 @@
 namespace nix {
 
 static kj::Promise<Result<void>> handleDiffHook(
-    uid_t uid,
-    uid_t gid,
+    std::optional<uid_t> uid,
+    std::optional<uid_t> gid,
     const Path & tryA,
     const Path & tryB,
     const Path & drvPath,
@@ -1773,8 +1773,8 @@ try {
                     movePath(actualPath, dst);
 
                     TRY_AWAIT(handleDiffHook(
-                        buildUser ? buildUser->getUID() : getuid(),
-                        buildUser ? buildUser->getGID() : getgid(),
+                        buildUser ? std::optional(buildUser->getUID()) : std::nullopt,
+                        buildUser ? std::optional(buildUser->getGID()) : std::nullopt,
                         finalDestPath,
                         dst,
                         worker.store.printStorePath(drvPath),

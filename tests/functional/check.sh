@@ -139,3 +139,11 @@ nix-store -q --references "$obtained" >/dev/null
 nix-build check.nix -A nondeterministic --no-out-link
 nix-build check.nix -A nondeterministic -A hashmismatch --no-out-link --check --keep-going || status=$?
 [ "$status" = "110" ]
+
+
+# basic check that diff hooks are started at all
+STDERR=$(expectStderr 104 nix-build check.nix -A nondeterministic \
+  --diff-hook "$PWD/diff-hook.sh" \
+  --run-diff-hook \
+  --check 2>&1)
+grep "diff-hook ran" <<<"$STDERR"
