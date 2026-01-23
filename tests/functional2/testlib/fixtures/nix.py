@@ -290,7 +290,7 @@ class Nix:
         """
         Clears the test-owned store (and state) and resets them to an empty state
         """
-        nix_store_dir = self.env.dirs.nix_store_dir
+        nix_store_dir = self.env.dirs.real_store_dir
         state_dir = self.env.dirs.nix_state_dir
 
         # Make store writable
