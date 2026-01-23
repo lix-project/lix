@@ -11,6 +11,13 @@ class FeatureTypeNames(NamedTuple):
     doc_tag: str
 
 
+class TimelineEvent(NamedTuple):
+    date: str
+    release: str
+    message: str
+    cls: list[int]
+
+
 class FeatureType(FeatureTypeNames, Enum):
     experimental = FeatureTypeNames("Xp", "xp")
     deprecated = FeatureTypeNames("Dep", "dp")
@@ -21,6 +28,7 @@ class ExtraFeature:
     name: str
     internal_name: str
     documentation: str
+    timeline: list[TimelineEvent] = dataclasses.field(default_factory=list)
 
     type: ClassVar[FeatureType]
 
@@ -36,10 +44,29 @@ class ExtraFeature:
 
     @property
     def docs(self) -> str:
+        timeline = (
+            f"""
+
+            ### Timeline
+
+            {
+                "\n            ".join(
+                    [
+                        f"- {event.date}, {event.release}: {event.message} [{", ".join([f'[CL {cl}](https://git.lix.systems/c/lix/+/{cl})' for cl in event.cls])}]"
+                        for event in self.timeline
+                    ]
+                )
+            }
+        """
+            if self.timeline
+            else ""
+        )
         return dedent(f"""
             ## [`{self.name}`]{{#{ExtraFeature.type.doc_tag}-feature-{self.name}}}
 
-            {self.documentation}
+            {self.documentation.replace("\n", f"\n{'    ' * 3}")}
+
+            {timeline}
 
         """)
 
@@ -57,7 +84,11 @@ def main():
 
     ExtraFeature.type = FeatureType.deprecated if args.deprecated else FeatureType.experimental
 
-    features = load_data(args.defs, ExtraFeature)
+    def load(**kwargs) -> ExtraFeature:
+        kwargs["timeline"] = [TimelineEvent(**args) for args in kwargs.get("timeline", [])]
+        return ExtraFeature(**kwargs)
+
+    features = load_data(args.defs, load)
 
     generate_file(
         args.header,
