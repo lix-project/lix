@@ -43,7 +43,7 @@ def nix_command_feature(nix: Nix):
     # "flakes" seems to be the feature actually responsible for
     # resolving the completions correctly
     #
-    # Commentator2.0: no clue why...
+    # rootile: no clue why...
     nix.settings.feature("nix-command", "flakes")
 
 

@@ -73,7 +73,7 @@ class NixSettings:
         # FIXME(Jade): #953 this is annoying in the CLI too, we should fix it!
 
         def serialise(value: Any) -> str:
-            # TODO(Commentator2.0): why exactly are ints supported?
+            # TODO(rootile): why exactly are ints supported?
             if is_value_of_type(value, set[str | int] | list[str | int]):
                 return " ".join(serialise(e) for e in value)
             if is_value_of_type(value, str | int):
@@ -145,7 +145,7 @@ class Nix:
         settings = dataclasses.replace(self.settings)
         if flake:
             settings.feature("nix-command", "flakes")
-        # FIXME(Commentator2.0): Darwin needs special handling here, as it does not support (non-root) chroots...
+        # FIXME(rootile): Darwin needs special handling here, as it does not support (non-root) chroots...
         #  Hence, it cannot build using a relocated store so we just use the local (aka global) store instead
         #  This is kinda ugly but what else can one do
         if sys.platform == "darwin":

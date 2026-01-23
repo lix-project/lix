@@ -103,9 +103,7 @@ def test_parallel_same(nix: Nix):
     nix.nix_build(["fixed.nix", "-A", "parallelSame", "--no-out-link", "-j2"]).run().ok()
 
 
-@pytest.mark.skip(
-    "TODO(Commentator2.0, 2025-10): Doesn't work for some reason, f1 test is kept for now"
-)
+@pytest.mark.skip("TODO(rootile, 2025-10): Doesn't work for some reason, f1 test is kept for now")
 @with_files(get_global_asset_pack("fixed"))
 def test_same_as_add(nix: Nix, files: Path):
     """

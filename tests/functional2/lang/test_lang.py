@@ -57,7 +57,7 @@ def _cleanup_output(stdout: str, stderr: str, origin: Path) -> tuple[str, str]:
 def test_parse_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(
         ["--parse", *flags, files / "in.nix"],
-        # TODO(Commentator2.0): Mirrors behavior of init.sh from functional
+        # TODO(rootile): Mirrors behavior of init.sh from functional
         #  keep this for migration, but make it declarative afterwards
         #  and only active for the tests which need it
         flake=True,

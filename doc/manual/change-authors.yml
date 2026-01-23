@@ -61,11 +61,6 @@ cole-h:
   display_name: Cole Helbling
   github: cole-h
 
-commentator2.0:
-  display_name: Commentator2.0 (Rutile)
-  forgejo: commentatorforall
-  github: CommentatorForAll
-
 delan:
   display_name: delan
   forgejo: delan
@@ -246,6 +241,10 @@ raito:
 roberth:
   display_name: Robert Hensing
   github: roberth
+
+rootile:
+  display_name: rootile (Rutile)
+  forgejo: rootile
 
 seppel3210:
   github: Seppel3210

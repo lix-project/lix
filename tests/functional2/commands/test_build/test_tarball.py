@@ -85,7 +85,7 @@ def tar_hash(files: Path, nix: Nix) -> str:
     ],
 )
 def test_fetch_tarball(nix: Nix, tarball: Path, tar_hash: str, flags: list[str]):
-    # HACK(Commentator2.0): if we don't create a copy, we'd try to format it twice, as it is the same list used in other test calls
+    # HACK(rootile): if we don't create a copy, we'd try to format it twice, as it is the same list used in other test calls
     flags = flags[:]
 
     flags[-1] = flags[-1].format(tarball=tarball, tar_hash=tar_hash)

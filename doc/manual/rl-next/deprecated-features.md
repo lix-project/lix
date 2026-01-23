@@ -3,7 +3,7 @@ synopsis: 'more deprecated features'
 issues: []
 cls: [2092, 2310, 2311, 4638, 4652, 4764]
 category: Breaking Changes
-credits: [piegames, commentator2.0]
+credits: [piegames, rootile]
 ---
 This release cycle features a new batch of deprecated (anti-)features.
 You can opt in into the old behavior with `--extra-deprecated-features` or any equivalent configuration option.

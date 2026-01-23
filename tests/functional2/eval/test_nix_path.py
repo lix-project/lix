@@ -27,9 +27,7 @@ def test_nix_path(env: ManagedEnv, nix: Nix, prefix: str):
     assert path == expected_path
 
 
-@pytest.mark.skip(
-    "FIXME(Commentator2.0): for some reason the channel cannot be resolved on the builders"
-)
+@pytest.mark.skip("FIXME(rootile): for some reason the channel cannot be resolved on the builders")
 def test_nix_path_nixpkgs(env: ManagedEnv, nix: Nix):
     env.set_env(
         "NIX_PATH",
