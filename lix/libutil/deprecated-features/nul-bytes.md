@@ -1,6 +1,10 @@
 ---
 name: nul-bytes
 internalName: NulBytes
+timeline:
+  - date: 2025-02-05.
+    release: 2.93.0
+    cls: [2476]
+    message: Introduced as a parser error.
 ---
-Allow NUL bytes (`\0`) in Nix strings.
-Note however that due to Nix using NUL-terminated strings internally, this may cause undefined behavior.
+Raw NUL bytes (`\0`) in Nix string literals are deprecated.
