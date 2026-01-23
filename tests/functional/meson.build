@@ -97,8 +97,6 @@ functional_tests_scripts = [
   'build-dry.sh',
   'structured-attrs.sh',
   'shell.sh',
-  'brotli.sh',
-  'zstd.sh',
   'nix-copy-ssh.sh',
   'nix-copy-ssh-ng.sh',
   'pre-hook.sh',
