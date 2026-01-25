@@ -817,4 +817,21 @@ namespace nix {
         ASSERT_TRUE(e.is<std::invalid_argument>());
         ASSERT_NE(e.as<std::invalid_argument>(), nullptr);
     }
+
+    TEST(NulEscaping, function)
+    {
+        for (int c1 = CHAR_MIN; c1 < CHAR_MAX; c1++) {
+            for (int c2 = CHAR_MIN; c2 < CHAR_MAX; c2++) {
+                auto sequence = std::format("{}{}", char(c1), char(c2));
+                for (auto str : {sequence, "a" + sequence + "b"}) {
+                    ASSERT_EQ(unescapeNul(escapeNul(str)), str);
+                }
+            }
+        }
+
+        // unknown escapes are character identity for simplicity of use
+        ASSERT_EQ(unescapeNul("\\a"), "a");
+        // escape of end-of-string is dropped silently
+        ASSERT_EQ(unescapeNul("a\\"), "a");
+    }
 }

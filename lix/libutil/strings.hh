@@ -141,7 +141,15 @@ inline std::string rewriteStrings(std::string s, const StringMap & rewrites)
     return Rewriter(rewrites)(s);
 }
 
-
+/**
+ * Escape NUL bytes and `\` in a string by replacing them with `\0` and `\\` respectively.
+ */
+std::string escapeNul(const std::string & in);
+/**
+ * Undo replacements done by `escapeNul`. Other escape sequences (eg `\n`) are replaced by
+ * the second character in the sequence (eg `n`), `\` at the end of the string is dropped.
+ */
+std::string unescapeNul(const std::string & in);
 
 /**
  * Parse a string into an integer.

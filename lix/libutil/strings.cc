@@ -366,4 +366,27 @@ std::string showBytes(uint64_t bytes)
     return fmt("%.2f MiB", bytes / (1024.0 * 1024.0));
 }
 
+std::string escapeNul(const std::string & in)
+{
+    using std::operator""sv;
+    return replaceStrings(replaceStrings(std::move(in), R"(\)", R"(\\)"), "\0"sv, R"(\0)");
+}
+
+std::string unescapeNul(const std::string & in)
+{
+    std::string result;
+    result.reserve(in.size());
+    bool inSequence = false;
+    for (auto c : in) {
+        if (inSequence) {
+            result += c == '0' ? '\0' : c;
+            inSequence = false;
+        } else if (c == '\\') {
+            inSequence = true;
+        } else {
+            result += c;
+        }
+    }
+    return result;
+}
 }
