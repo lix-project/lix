@@ -215,8 +215,8 @@ struct LocalDerivationGoal : public DerivationGoal
      * Run the builder's process.
      */
     void runChild(
-        const std::optional<std::string> & netrcData,
-        const std::optional<std::string> & caFileData,
+        const std::string & netrcData,
+        const std::string & caFileData,
         const Strings & envStrs,
         const Strings & args
     );
@@ -317,8 +317,8 @@ protected:
      * On some platforms this process is created with sandboxing flags.
      */
     virtual Pid startChild(
-        const std::optional<std::string> & netrcData,
-        const std::optional<std::string> & caFileData,
+        const std::string & netrcData,
+        const std::string & caFileData,
         const Strings & envStrs,
         const Strings & args,
         AutoCloseFD logPTY

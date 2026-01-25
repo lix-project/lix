@@ -841,19 +841,17 @@ try {
     /* Make the contents of netrc and the CA certificate bundle
        available to builtin:fetchurl (which may run under a
        different uid and/or in a sandbox). */
-    std::optional<std::string> netrcData;
-    std::optional<std::string> caFileData;
+    std::string netrcData;
+    std::string caFileData;
     if (drv->isBuiltin() && drv->builder == "builtin:fetchurl" && !derivationType->isSandboxed()) {
         try {
             netrcData = readFile(settings.netrcFile);
         } catch (SysError &) {
-            netrcData = "";
         }
 
         try {
             caFileData = readFile(settings.caFile);
         } catch (SysError &) {
-            caFileData = "";
         }
     }
 
@@ -911,8 +909,8 @@ try {
 }
 
 Pid LocalDerivationGoal::startChild(
-    const std::optional<std::string> & netrcData,
-    const std::optional<std::string> & caFileData,
+    const std::string & netrcData,
+    const std::string & caFileData,
     const Strings & envStrs,
     const Strings & args,
     AutoCloseFD logPTY
@@ -1159,8 +1157,8 @@ void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
 }
 
 void LocalDerivationGoal::runChild(
-    const std::optional<std::string> & netrcData,
-    const std::optional<std::string> & caFileData,
+    const std::string & netrcData,
+    const std::string & caFileData,
     const Strings & envStrs,
     const Strings & args
 )
@@ -1233,9 +1231,7 @@ void LocalDerivationGoal::runChild(
                     e.second = rewriteStrings(e.second, inputRewrites);
 
                 if (drv->builder == "builtin:fetchurl") {
-                    assert(netrcData.has_value());
-                    assert(caFileData.has_value());
-                    builtinFetchurl(drv2, netrcData.value(), caFileData.value());
+                    builtinFetchurl(drv2, netrcData, caFileData);
                 } else if (drv->builder == "builtin:buildenv") {
                     builtinBuildenv(drv2);
                 } else if (drv->builder == "builtin:unpack-channel") {

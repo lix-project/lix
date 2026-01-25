@@ -1239,8 +1239,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
 }
 
 Pid LinuxLocalDerivationGoal::startChild(
-    const std::optional<std::string> & netrcData,
-    const std::optional<std::string> & caFileData,
+    const std::string & netrcData,
+    const std::string & caFileData,
     const Strings & envStrs,
     const Strings & args,
     AutoCloseFD logPTY

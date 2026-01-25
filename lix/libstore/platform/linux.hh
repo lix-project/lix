@@ -74,8 +74,8 @@ private:
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
     Pid startChild(
-        const std::optional<std::string> & netrcData,
-        const std::optional<std::string> & caFileData,
+        const std::string & netrcData,
+        const std::string & caFileData,
         const Strings & envStrs,
         const Strings & args,
         AutoCloseFD logPTY
