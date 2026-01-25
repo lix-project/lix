@@ -1,12 +1,24 @@
 #pragma once
 ///@file
 
-#include "lix/libstore/derivations.hh"
+#include "lix/libutil/hash.hh"
+#include "lix/libutil/types.hh"
 
 namespace nix {
 
 // TODO: make pluggable.
-void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData, const std::string & caFileData);
-void builtinUnpackChannel(const BasicDerivation & drv);
+struct BuiltinFetchurl
+{
+    Path storePath;
+    std::string mainUrl;
+    bool unpack;
+    bool executable;
+    std::optional<Hash> hash;
+    std::string netrcData;
+    std::string caFileData;
 
+    void run();
+};
+
+void builtinUnpackChannel(const Path & out, const std::string & channelName, const std::string & src);
 }

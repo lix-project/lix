@@ -43,6 +43,5 @@ typedef std::vector<Package> Packages;
 
 void buildProfile(const Path & out, Packages && pkgs);
 
-void builtinBuildenv(const BasicDerivation & drv);
-
+void builtinBuildenv(const Path & out, const Strings & derivations, const std::string & manifest);
 }

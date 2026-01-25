@@ -9,7 +9,7 @@
 
 namespace nix {
 
-void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData, const std::string & caFileData)
+void BuiltinFetchurl::run()
 {
     /* Make the host's netrc data available. Too bad curl requires
        this to be stored in a file. It would be nice if we could just
@@ -21,16 +21,6 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
 
     settings.caFile.override("ca-certificates.crt");
     writeFile(settings.caFile, caFileData, 0600);
-
-    auto getAttr = [&](const std::string & name) {
-        auto i = drv.env.find(name);
-        if (i == drv.env.end()) throw Error("attribute '%s' missing", name);
-        return i->second;
-    };
-
-    Path storePath = getAttr("out");
-    auto mainUrl = getAttr("url");
-    bool unpack = getOr(drv.env, "unpack", "") == "1";
 
     /* Note: have to use a fresh fileTransfer here because we're in
        a forked process. */
@@ -50,8 +40,7 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
         else
             aio.blockOn(writeFile(storePath, *decompressor));
 
-        auto executable = drv.env.find("executable");
-        if (executable != drv.env.end() && executable->second == "1") {
+        if (executable) {
             if (sys::chmod(storePath, 0755) == -1) {
                 throw SysError("making '%1%' executable", storePath);
             }
@@ -62,17 +51,16 @@ void builtinFetchurl(const BasicDerivation & drv, const std::string & netrcData,
         AsyncIoRoot aio;
 
         /* Try the hashed mirrors first. */
-        if (getAttr("outputHashMode") == "flat") {
+        if (hash) {
             for (auto hashedMirror : settings.hashedMirrors.get()) {
                 try {
                     if (!hashedMirror.ends_with("/")) {
                         hashedMirror += '/';
                     }
-                    std::optional<HashType> ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
-                    Hash h = newHashAllowEmpty(getAttr("outputHash"), ht);
                     fetch(
                         aio,
-                        hashedMirror + printHashType(h.type) + "/" + h.to_string(HashFormat::Base16, false)
+                        hashedMirror + printHashType(hash->type) + "/"
+                            + hash->to_string(HashFormat::Base16, false)
                     );
                     return;
                 } catch (Error & e) {

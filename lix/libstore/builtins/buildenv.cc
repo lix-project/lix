@@ -166,23 +166,14 @@ void buildProfile(const Path & out, Packages && pkgs)
     debug("created %d symlinks in user environment", state.symlinks);
 }
 
-void builtinBuildenv(const BasicDerivation & drv)
+void builtinBuildenv(const Path & out, const Strings & derivations, const std::string & manifest)
 {
-    auto getAttr = [&](const std::string & name) {
-        auto i = drv.env.find(name);
-        if (i == drv.env.end()) throw Error("attribute '%s' missing", name);
-        return i->second;
-    };
-
-    Path out = getAttr("out");
     createDirs(out);
 
     /* Convert the stuff we get from the environment back into a
      * coherent data type. */
     Packages pkgs;
     {
-        auto derivations = tokenizeString<Strings>(getAttr("derivations"));
-
         auto itemIt = derivations.begin();
         while (itemIt != derivations.end()) {
             /* !!! We're trusting the caller to structure derivations env var correctly */
@@ -198,7 +189,6 @@ void builtinBuildenv(const BasicDerivation & drv)
 
     buildProfile(out, std::move(pkgs));
 
-    createSymlink(getAttr("manifest"), out + "/manifest.nix");
+    createSymlink(manifest, out + "/manifest.nix");
 }
-
 }

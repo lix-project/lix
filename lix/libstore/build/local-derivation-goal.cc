@@ -15,6 +15,7 @@
 #include "lix/libstore/daemon.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/fmt.hh"
+#include "lix/libutil/hash.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -1230,12 +1231,36 @@ void LocalDerivationGoal::runChild(
                 for (auto & e : drv2.env)
                     e.second = rewriteStrings(e.second, inputRewrites);
 
+                auto getAttr = [&](const std::string & name) {
+                    auto i = drv2.env.find(name);
+                    if (i == drv2.env.end()) {
+                        throw Error("attribute '%s' missing", name);
+                    }
+                    return i->second;
+                };
+
                 if (drv->builder == "builtin:fetchurl") {
-                    builtinFetchurl(drv2, netrcData, caFileData);
+                    const auto hash = getAttr("outputHashMode") == "flat" ? [&] -> std::optional<Hash> {
+                        const auto ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
+                        return newHashAllowEmpty(getAttr("outputHash"), ht);
+                    }()
+                        : std::nullopt;
+                    BuiltinFetchurl{
+                        .storePath = getAttr("out"),
+                        .mainUrl = getAttr("url"),
+                        .unpack = getOr(drv2.env, "unpack", "") == "1",
+                        .executable = getOr(drv2.env, "executable", "") == "1",
+                        .hash = hash,
+                        .netrcData = netrcData,
+                        .caFileData = caFileData,
+                    }
+                        .run();
                 } else if (drv->builder == "builtin:buildenv") {
-                    builtinBuildenv(drv2);
+                    builtinBuildenv(
+                        getAttr("out"), tokenizeString<Strings>(getAttr("derivations")), getAttr("manifest")
+                    );
                 } else if (drv->builder == "builtin:unpack-channel") {
-                    builtinUnpackChannel(drv2);
+                    builtinUnpackChannel(getAttr("out"), getAttr("channelName"), getAttr("src"));
                 } else {
                     throw Error("unsupported builtin builder '%1%'", drv->builder.substr(8));
                 }
