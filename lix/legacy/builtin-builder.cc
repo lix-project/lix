@@ -34,10 +34,6 @@ static int main_builtin_builder(AsyncIoRoot & aio, std::string programName, Stri
         return *argvIt++;
     };
 
-    const auto unescapeNul = [](std::string in) {
-        return replaceStrings(replaceStrings(std::move(in), "\\0", "\0"sv), "\\\\", "\\");
-    };
-
     while (argvIt != argvEnd) {
         const auto arg = getArg("option");
         if (arg == "--") {
