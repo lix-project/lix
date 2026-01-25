@@ -868,23 +868,68 @@ try {
         setupConfiguredCertificateAuthority();
     }
 
-    /* Fill in the environment. */
+    Path builder;
     Strings envStrs;
-    for (auto & i : env) {
-        envStrs.push_back(rewriteStrings(i.first + "=" + i.second, inputRewrites));
-    }
-
-    /* Fill in the arguments. */
     Strings args;
 
-    args.push_back(std::string(baseNameOf(drv->builder)));
+    if (drv->isBuiltin()) {
+        args.push_back("builtin-builder");
 
-    for (auto & i : drv->args) {
-        args.push_back(rewriteStrings(i, inputRewrites));
+        std::map<std::string, AbstractConfig::SettingInfo> overriddenSettings;
+        settings.getSettings(overriddenSettings, true);
+
+        if (!netrcData.empty()) {
+            overriddenSettings[settings.netrcFile.name].value = tmpDirInSandbox + "/netrc";
+            auto path = tmpDir + "/netrc";
+            writeFile(path, netrcData, 0600);
+            chownToBuilder(path);
+        }
+        if (!caFileData.empty()) {
+            overriddenSettings[settings.caFile.name].value = tmpDirInSandbox + "/cafile";
+            auto path = tmpDir + "/cafile";
+            writeFile(path, caFileData, 0600);
+            chownToBuilder(path);
+        }
+
+        for (const auto & [setting, value] : overriddenSettings) {
+            args.push_back("--" + setting);
+            args.push_back(escapeNul(value.value));
+        }
+
+        args.push_back("--");
+
+        for (const auto & [k, v] : drv->env) {
+            args.push_back("--" + escapeNul(k));
+            args.push_back(rewriteStrings(escapeNul(v), inputRewrites));
+        }
+
+        // we pass on the *entire* daemon env to the builtin builder for historical
+        // reasons (libcurl inspects some env vars to modify how it behaves, and we
+        // are not fully sure yet that we pass through all of them to sandboxes. we
+        // should change this eventually. TODO: investigate curl env var use first)
+        for (auto & [k, v] : getEnv()) {
+            envStrs.emplace_back(k + "=" + v);
+        }
+
+        builder = LIX_LIBEXEC_DIR "/builtin-builder";
+    } else {
+        /* Fill in the environment. */
+        for (auto & i : env) {
+            envStrs.push_back(rewriteStrings(i.first + "=" + i.second, inputRewrites));
+        }
+
+        /* Fill in the arguments. */
+        args.push_back(std::string(baseNameOf(drv->builder)));
+
+        for (auto & i : drv->args) {
+            args.push_back(rewriteStrings(i, inputRewrites));
+        }
+
+        builder = drv->builder;
     }
 
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(netrcData, caFileData, envStrs, args, std::move(builderOut))};
+    pg = ProcessGroup{startChild(builder, envStrs, args, std::move(builderOut))};
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -918,11 +963,7 @@ try {
 }
 
 Pid LocalDerivationGoal::startChild(
-    const std::string & netrcData,
-    const std::string & caFileData,
-    const Strings & envStrs,
-    const Strings & args,
-    AutoCloseFD logPTY
+    const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
 )
 {
     return startProcess([&]() {
@@ -930,7 +971,7 @@ Pid LocalDerivationGoal::startChild(
             throw SysError("failed to redirect build output to log file");
         }
         closeOnExec(STDERR_FILENO, false);
-        runChild(netrcData, caFileData, envStrs, args);
+        runChild(builder, envStrs, args);
     });
 }
 
@@ -1165,12 +1206,7 @@ void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
         throw SysError("cannot change ownership of file '%1%'", fd.guessOrInventPath());
 }
 
-void LocalDerivationGoal::runChild(
-    const std::string & netrcData,
-    const std::string & caFileData,
-    const Strings & envStrs,
-    const Strings & args
-)
+void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs, const Strings & args)
 {
     /* Warning: in the child we should absolutely not make any SQLite
        calls! */
@@ -1231,53 +1267,7 @@ void LocalDerivationGoal::runChild(
         sendException = false;
 
         /* Execute the program.  This should not return. */
-        if (drv->isBuiltin()) {
-            Strings args{
-                "builtin-builder",
-            };
-
-            std::map<std::string, AbstractConfig::SettingInfo> overriddenSettings;
-            settings.getSettings(overriddenSettings, true);
-
-            if (!netrcData.empty()) {
-                auto path = tmpDirInSandbox + "/netrc";
-                overriddenSettings[settings.netrcFile.name].value = path;
-                writeFile(path, netrcData, 0600);
-            }
-            if (!caFileData.empty()) {
-                auto path = tmpDirInSandbox + "/cafile";
-                overriddenSettings[settings.caFile.name].value = path;
-                writeFile(path, caFileData, 0600);
-            }
-
-            for (const auto & [setting, value] : overriddenSettings) {
-                args.push_back("--" + setting);
-                args.push_back(escapeNul(value.value));
-            }
-
-            args.push_back("--");
-
-            for (const auto & [k, v] : drv->env) {
-                args.push_back("--" + escapeNul(k));
-                args.push_back(rewriteStrings(escapeNul(v), inputRewrites));
-            }
-
-            // we pass on the *entire* daemon env to the builtin builder for historical
-            // reasons (libcurl inspects some env vars to modify how it behaves, and we
-            // are not fully sure yet that we pass through all of them to sandboxes. we
-            // should change this eventually. TODO: investigate curl env var use first)
-            Strings envs;
-            for (auto & [k, v] : getEnv()) {
-                envs.emplace_back(k + "=" + v);
-            }
-
-            execBuilder(LIX_LIBEXEC_DIR "/builtin-builder", std::move(args), envs);
-
-            throw Error("builtin builder '%1%' failed to exec", drv->builder.substr(8));
-        }
-
-        execBuilder(drv->builder, args, envStrs);
-        // execBuilder should not return
+        execBuilder(builder, args, envStrs);
 
         throw SysError("executing '%1%'", drv->builder);
 

@@ -214,12 +214,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Run the builder's process.
      */
-    void runChild(
-        const std::string & netrcData,
-        const std::string & caFileData,
-        const Strings & envStrs,
-        const Strings & args
-    );
+    void runChild(const Path & builder, const Strings & envStrs, const Strings & args);
 
     /**
      * Check that the derivation outputs all exist and register them
@@ -316,13 +311,8 @@ protected:
      * Create a new process that runs `openSlave` and `runChild`
      * On some platforms this process is created with sandboxing flags.
      */
-    virtual Pid startChild(
-        const std::string & netrcData,
-        const std::string & caFileData,
-        const Strings & envStrs,
-        const Strings & args,
-        AutoCloseFD logPTY
-    );
+    virtual Pid
+    startChild(const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY);
 
     kj::Promise<Result<WorkResult>> handleRawChild() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;

@@ -1239,11 +1239,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
 }
 
 Pid LinuxLocalDerivationGoal::startChild(
-    const std::string & netrcData,
-    const std::string & caFileData,
-    const Strings & envStrs,
-    const Strings & args,
-    AutoCloseFD logPTY
+    const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
 )
 {
 #if HAVE_SECCOMP
@@ -1255,7 +1251,7 @@ Pid LinuxLocalDerivationGoal::startChild(
 
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(netrcData, caFileData, envStrs, args, std::move(logPTY));
+        return LocalDerivationGoal::startChild(builder, envStrs, args, std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -1337,7 +1333,7 @@ Pid LinuxLocalDerivationGoal::startChild(
         pid_t child = startProcess([&]() {
             if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
                 throw SysError("setting death signal");
-            runChild(netrcData, caFileData, envStrs, args);
+            runChild(builder, envStrs, args);
         }, options).release();
 
         writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
