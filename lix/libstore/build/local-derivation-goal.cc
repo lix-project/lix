@@ -847,23 +847,6 @@ try {
 
     buildResult.startTime = time(0);
 
-    /* Make the contents of netrc and the CA certificate bundle
-       available to builtin:fetchurl (which may run under a
-       different uid and/or in a sandbox). */
-    std::string netrcData;
-    std::string caFileData;
-    if (drv->isBuiltin() && drv->builder == "builtin:fetchurl" && !derivationType->isSandboxed()) {
-        try {
-            netrcData = readFile(settings.netrcFile);
-        } catch (SysError &) {
-        }
-
-        try {
-            caFileData = readFile(settings.caFile);
-        } catch (SysError &) {
-        }
-    }
-
     if (!derivationType->isSandboxed()) {
         setupConfiguredCertificateAuthority();
     }
@@ -878,17 +861,27 @@ try {
         std::map<std::string, AbstractConfig::SettingInfo> overriddenSettings;
         settings.getSettings(overriddenSettings, true);
 
-        if (!netrcData.empty()) {
-            overriddenSettings[settings.netrcFile.name].value = tmpDirInSandbox + "/netrc";
-            auto path = tmpDir + "/netrc";
-            writeFile(path, netrcData, 0600);
-            chownToBuilder(path);
-        }
-        if (!caFileData.empty()) {
-            overriddenSettings[settings.caFile.name].value = tmpDirInSandbox + "/cafile";
-            auto path = tmpDir + "/cafile";
-            writeFile(path, caFileData, 0600);
-            chownToBuilder(path);
+        /* Make the contents of netrc and the CA certificate bundle
+           available to builtin:fetchurl (which may run under a
+           different uid and/or in a sandbox). */
+        if (drv->isBuiltin() && drv->builder == "builtin:fetchurl" && !derivationType->isSandboxed()) {
+            const auto expose = [&](const Setting<Path> & thing) {
+                std::string data;
+                try {
+                    data = readFile(thing.get());
+                } catch (SysError &) {
+                }
+
+                if (!data.empty()) {
+                    overriddenSettings[thing.name].value = tmpDirInSandbox + "/" + thing.name;
+                    auto path = tmpDir + "/" + thing.name;
+                    writeFile(path, data, 0600);
+                    chownToBuilder(path);
+                }
+            };
+
+            expose(settings.netrcFile);
+            expose(settings.caFile);
         }
 
         for (const auto & [setting, value] : overriddenSettings) {
