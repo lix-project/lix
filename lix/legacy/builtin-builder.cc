@@ -62,7 +62,30 @@ static int main_builtin_builder(AsyncIoRoot & aio, std::string programName, Stri
 
     const auto builder = getAttr("builder");
 
-    throw Error("unknown builtin builder %s", builder);
+    if (builder == "builtin:fetchurl") {
+        const auto outputHashMode = getAttr("outputHashMode");
+        const auto hash = outputHashMode == "flat" ? [&] -> std::optional<Hash> {
+            const auto ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
+            return newHashAllowEmpty(getAttr("outputHash"), ht);
+        }()
+            : std::nullopt;
+        BuiltinFetchurl{
+            .storePath = getAttr("out"),
+            .mainUrl = getAttr("url"),
+            .unpack = getOr(env, "unpack", "0") == "1",
+            .executable = getOr(env, "executable", "0") == "1",
+            .hash = hash,
+        }
+            .run(aio);
+    } else if (builder == "builtin:buildenv") {
+        builtinBuildenv(getAttr("out"), tokenizeString<Strings>(getAttr("derivations")), getAttr("manifest"));
+    } else if (builder == "builtin:unpack-channel") {
+        builtinUnpackChannel(getAttr("out"), getAttr("channelName"), getAttr("src"));
+    } else {
+        throw Error("unknown builtin builder %s", builder);
+    }
+
+    return 0;
 }
 
 void registerLegacyBuiltinBuilder()

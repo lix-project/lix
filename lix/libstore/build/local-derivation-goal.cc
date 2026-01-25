@@ -72,6 +72,8 @@
 #include <grp.h>
 #include <iostream>
 
+using std::literals::operator""sv;
+
 namespace nix {
 
 static kj::Promise<Result<void>> handleDiffHook(
@@ -1230,51 +1232,48 @@ void LocalDerivationGoal::runChild(
 
         /* Execute the program.  This should not return. */
         if (drv->isBuiltin()) {
-            try {
-                logger = makeJSONLogger(*logger);
+            Strings args{
+                "builtin-builder",
+            };
 
-                BasicDerivation & drv2(*drv);
-                for (auto & e : drv2.env)
-                    e.second = rewriteStrings(e.second, inputRewrites);
+            std::map<std::string, AbstractConfig::SettingInfo> overriddenSettings;
+            settings.getSettings(overriddenSettings, true);
 
-                auto getAttr = [&](const std::string & name) {
-                    auto i = drv2.env.find(name);
-                    if (i == drv2.env.end()) {
-                        throw Error("attribute '%s' missing", name);
-                    }
-                    return i->second;
-                };
-
-                if (drv->builder == "builtin:fetchurl") {
-                    const auto hash = getAttr("outputHashMode") == "flat" ? [&] -> std::optional<Hash> {
-                        const auto ht = parseHashTypeOpt(getAttr("outputHashAlgo"));
-                        return newHashAllowEmpty(getAttr("outputHash"), ht);
-                    }()
-                        : std::nullopt;
-                    BuiltinFetchurl{
-                        .storePath = getAttr("out"),
-                        .mainUrl = getAttr("url"),
-                        .unpack = getOr(drv2.env, "unpack", "") == "1",
-                        .executable = getOr(drv2.env, "executable", "") == "1",
-                        .hash = hash,
-                        .netrcData = netrcData,
-                        .caFileData = caFileData,
-                    }
-                        .run();
-                } else if (drv->builder == "builtin:buildenv") {
-                    builtinBuildenv(
-                        getAttr("out"), tokenizeString<Strings>(getAttr("derivations")), getAttr("manifest")
-                    );
-                } else if (drv->builder == "builtin:unpack-channel") {
-                    builtinUnpackChannel(getAttr("out"), getAttr("channelName"), getAttr("src"));
-                } else {
-                    throw Error("unsupported builtin builder '%1%'", drv->builder.substr(8));
-                }
-                _exit(0);
-            } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-                writeFull(STDERR_FILENO, e.what() + std::string("\n"));
-                _exit(1);
+            if (!netrcData.empty()) {
+                auto path = tmpDirInSandbox + "/netrc";
+                overriddenSettings[settings.netrcFile.name].value = path;
+                writeFile(path, netrcData, 0600);
             }
+            if (!caFileData.empty()) {
+                auto path = tmpDirInSandbox + "/cafile";
+                overriddenSettings[settings.caFile.name].value = path;
+                writeFile(path, caFileData, 0600);
+            }
+
+            for (const auto & [setting, value] : overriddenSettings) {
+                args.push_back("--" + setting);
+                args.push_back(escapeNul(value.value));
+            }
+
+            args.push_back("--");
+
+            for (const auto & [k, v] : drv->env) {
+                args.push_back("--" + escapeNul(k));
+                args.push_back(rewriteStrings(escapeNul(v), inputRewrites));
+            }
+
+            // we pass on the *entire* daemon env to the builtin builder for historical
+            // reasons (libcurl inspects some env vars to modify how it behaves, and we
+            // are not fully sure yet that we pass through all of them to sandboxes. we
+            // should change this eventually. TODO: investigate curl env var use first)
+            Strings envs;
+            for (auto & [k, v] : getEnv()) {
+                envs.emplace_back(k + "=" + v);
+            }
+
+            execBuilder(LIX_LIBEXEC_DIR "/builtin-builder", std::move(args), envs);
+
+            throw Error("builtin builder '%1%' failed to exec", drv->builder.substr(8));
         }
 
         execBuilder(drv->builder, args, envStrs);

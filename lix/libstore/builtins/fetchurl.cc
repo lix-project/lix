@@ -9,22 +9,9 @@
 
 namespace nix {
 
-void BuiltinFetchurl::run()
+void BuiltinFetchurl::run(AsyncIoRoot & aio)
 {
-    /* Make the host's netrc data available. Too bad curl requires
-       this to be stored in a file. It would be nice if we could just
-       pass a pointer to the data. */
-    if (netrcData != "") {
-        settings.netrcFile.override("netrc");
-        writeFile(settings.netrcFile, netrcData, 0600);
-    }
-
-    settings.caFile.override("ca-certificates.crt");
-    writeFile(settings.caFile, caFileData, 0600);
-
-    /* Note: have to use a fresh fileTransfer here because we're in
-       a forked process. */
-    auto fileTransfer = makeFileTransfer();
+    auto fileTransfer = getFileTransfer();
 
     // we also have to run the remainder of this function in a fresh thread so
     // we can have an aio root. the existing root on the current thread is not
@@ -47,31 +34,27 @@ void BuiltinFetchurl::run()
         }
     };
 
-    std::async(std::launch::async, [&] {
-        AsyncIoRoot aio;
-
-        /* Try the hashed mirrors first. */
-        if (hash) {
-            for (auto hashedMirror : settings.hashedMirrors.get()) {
-                try {
-                    if (!hashedMirror.ends_with("/")) {
-                        hashedMirror += '/';
-                    }
-                    fetch(
-                        aio,
-                        hashedMirror + printHashType(hash->type) + "/"
-                            + hash->to_string(HashFormat::Base16, false)
-                    );
-                    return;
-                } catch (Error & e) {
-                    debug("%1%", Uncolored(e.what()));
+    /* Try the hashed mirrors first. */
+    if (hash) {
+        for (auto hashedMirror : settings.hashedMirrors.get()) {
+            try {
+                if (!hashedMirror.ends_with("/")) {
+                    hashedMirror += '/';
                 }
+                fetch(
+                    aio,
+                    hashedMirror + printHashType(hash->type) + "/"
+                        + hash->to_string(HashFormat::Base16, false)
+                );
+                return;
+            } catch (Error & e) {
+                debug("%1%", Uncolored(e.what()));
             }
         }
+    }
 
-        /* Otherwise try the specified URL. */
-        fetch(aio, mainUrl);
-    }).get();
+    /* Otherwise try the specified URL. */
+    fetch(aio, mainUrl);
 }
 
 }

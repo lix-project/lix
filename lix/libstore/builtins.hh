@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/async.hh"
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/types.hh"
 
@@ -14,10 +15,8 @@ struct BuiltinFetchurl
     bool unpack;
     bool executable;
     std::optional<Hash> hash;
-    std::string netrcData;
-    std::string caFileData;
 
-    void run();
+    void run(AsyncIoRoot & aio);
 };
 
 void builtinUnpackChannel(const Path & out, const std::string & channelName, const std::string & src);
