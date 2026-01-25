@@ -214,3 +214,11 @@ install_symlink(
   # The 'runtime' tag is what executables default to, which we want to emulate here.
   install_tag : 'runtime'
 )
+
+install_symlink(
+  'builtin-builder',
+  pointing_to : bindir / 'nix',
+  install_dir : libexecdir / 'lix',
+  # The 'runtime' tag is what executables default to, which we want to emulate here.
+  install_tag : 'runtime'
+)

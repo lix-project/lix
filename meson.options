@@ -104,3 +104,7 @@ option('lix-clang-tidy-checks-path', type : 'string', value : '',
 option('disable-fibers', type : 'boolean', value : false,
   description : 'whether to disable fibers. use only when building with musl; we can\'t detect this.',
 )
+
+option('builtin-dep-closure', type : 'array',
+  description : 'dependency closure used for builtin builder sandboxes. the install paths are included automatically.',
+)

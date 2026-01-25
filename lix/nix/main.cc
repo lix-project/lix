@@ -17,6 +17,7 @@
 #include "lix/libcmd/markdown.hh"
 #include "add-to-store.hh"
 #include "build-remote.hh"
+#include "builtin-builder.hh"
 #include "build.hh"
 #include "bundle.hh"
 #include "cat.hh"
@@ -88,6 +89,7 @@ void registerLegacyCommands()
     registerLegacyNixDaemon();
     registerLegacyNixPrefetchUrl();
     registerLegacyNixHash();
+    registerLegacyBuiltinBuilder();
 }
 
 void registerNixHelp();

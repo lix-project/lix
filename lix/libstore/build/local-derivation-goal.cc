@@ -659,6 +659,12 @@ try {
         }
         pathsInChroot[tmpDirInSandbox] = tmpDir;
 
+        if (drv->isBuiltin()) {
+            for (auto & path : settings.builtinBuilderSandboxPaths.get()) {
+                pathsInChroot[path] = path;
+            }
+        }
+
         /* Add the closure of store paths to the chroot. */
         StorePathSet closure;
         for (auto & i : pathsInChroot)

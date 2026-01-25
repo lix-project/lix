@@ -87,6 +87,7 @@ Settings::Settings()
 #if defined(__linux__) && defined(PASTA_PATH)
     pastaPath.setDefault(PASTA_PATH);
 #endif
+    builtinBuilderSandboxPaths.setDefault(PathSet{BUILTIN_DEP_CLOSURE});
 
     /* chroot-like behavior from Apple's sandbox */
 #if __APPLE__

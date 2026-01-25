@@ -83,6 +83,8 @@ foreach optname : path_opts
   endif
 endforeach
 
+builtin_dep_closure = get_option('builtin-dep-closure') + [ prefix ]
+
 # sysconfdir doesn't get anything installed to directly, and is only used to
 # tell Lix where to look for nix.conf, so it doesn't get appended to prefix.
 sysconfdir = get_option('sysconfdir')

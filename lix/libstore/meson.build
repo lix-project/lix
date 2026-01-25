@@ -90,6 +90,7 @@ libstore_setting_definitions = files(
   'settings/build-users-group.md',
   'settings/builders-use-substitutes.md',
   'settings/builders.md',
+  'settings/builtin-builder-sandbox-paths.md',
   'settings/compress-build-log.md',
   'settings/cores.md',
   'settings/darwin-log-sandbox-violations.md',

@@ -62,6 +62,14 @@ foreach name, value : cpp_str_defines
   ]
 endforeach
 
+builtin_dep_closure_set = []
+foreach path : builtin_dep_closure
+  # replace all `)"` substrings with `))" R"("`, ie split the `)"` into two chars and
+  # have the preprocessor concatenate our literals at the break. this way we can just
+  # use raw strings to represent all paths without worrying about any other escaping.
+  builtin_dep_closure_set += [ 'R"(' + path.replace(')"', '))" R"("') + ')"' ]
+endforeach
+
 configdata.set('HAVE_STRUCT_DIRENT_D_TYPE', 1) # FIXME: actually check this for solaris
 configdata.set('LIX_MAJOR', lix_major)
 configdata.set('LIX_MINOR', lix_minor)
@@ -72,6 +80,7 @@ configdata.set_quoted('PACKAGE_TARNAME', meson.project_name())
 configdata.set_quoted('PACKAGE_STRING', meson.project_name() + ' ' + meson.project_version())
 configdata.set_quoted('SYSTEM', host_system)
 configdata.set_quoted('LIX_LIBEXEC_DIR', libexecdir / 'lix')
+configdata.set('BUILTIN_DEP_CLOSURE', ', '.join(builtin_dep_closure_set))
 
 config_h = configure_file(
   configuration : configdata,

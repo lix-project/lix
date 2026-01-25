@@ -3,6 +3,8 @@
   pkgsStatic,
   lib,
   stdenv,
+  closureInfo,
+  runCommand,
   aws-sdk-cpp,
   # If the patched version of Boehm isn't passed, then patch it based off of
   # pkgs.boehmgc. This allows `callPackage`ing this file without needing to
@@ -183,19 +185,45 @@ let
 
   # Reimplementation of Nixpkgs' Meson cross file, with some additions to make
   # it actually work.
-  mesonCrossFile = builtins.toFile "lix-cross-file.conf" ''
-    [properties]
-    # Meson is convinced that if !buildPlatform.canExecute hostPlatform then we cannot
-    # build anything at all, which is not at all correct. If we can't execute the host
-    # platform, we'll just disable tests and doc gen.
-    needs_exe_wrapper = false
+  mesonCrossFile =
+    deps:
+    runCommand "lix-cross-file.conf"
+      {
+        input = ''
+          [properties]
+          # Meson is convinced that if !buildPlatform.canExecute hostPlatform then we cannot
+          # build anything at all, which is not at all correct. If we can't execute the host
+          # platform, we'll just disable tests and doc gen.
+          needs_exe_wrapper = false
 
-    [binaries]
-    # Meson refuses to consider any CMake binary during cross compilation if it's
-    # not explicitly specified here, in the cross file.
-    # https://github.com/mesonbuild/meson/blob/0ed78cf6fa6d87c0738f67ae43525e661b50a8a2/mesonbuild/cmake/executor.py#L72
-    cmake = 'cmake'
-  '';
+          [binaries]
+          # Meson refuses to consider any CMake binary during cross compilation if it's
+          # not explicitly specified here, in the cross file.
+          # https://github.com/mesonbuild/meson/blob/0ed78cf6fa6d87c0738f67ae43525e661b50a8a2/mesonbuild/cmake/executor.py#L72
+          cmake = 'cmake'
+
+          [project options]
+          builtin-dep-closure = @deps@
+        '';
+        passAsFile = [ "input" ];
+      }
+      ''
+        substitute $inputPath $out --replace-fail @deps@ "$(cat ${deps})"
+      '';
+
+  mesonNativeFile =
+    deps:
+    runCommand "lix-native-file.conf"
+      {
+        input = ''
+          [project options]
+          builtin-dep-closure = @deps@
+        '';
+        passAsFile = [ "input" ];
+      }
+      ''
+        substitute $inputPath $out --replace-fail @deps@ "$(cat ${deps})"
+      '';
 
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
@@ -352,7 +380,12 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.mesonBool "enable-docs" canRunInstalled)
       (lib.mesonBool "werror" werror)
     ]
-    ++ lib.optional (hostPlatform != buildPlatform) "--cross-file=${mesonCrossFile}"
+    ++ lib.optional (
+      hostPlatform != buildPlatform
+    ) "--cross-file=${mesonCrossFile finalAttrs.builtinDeps}"
+    ++ lib.optional (
+      hostPlatform == buildPlatform
+    ) "--native-file=${mesonNativeFile finalAttrs.builtinDeps}"
     # Temporary workaround for https://git.lix.systems/lix-project/lix/issues/832
     ++ lib.optional (hostPlatform.isDarwin) "-Db_lto=false"
     ++ sanitizeOpts;
@@ -462,6 +495,37 @@ stdenv.mkDerivation (finalAttrs: {
     buildPackages.python3
     finalAttrs.lixPythonForBuild
   ];
+
+  # dep closure for builtin builders in meson array form for immediate use
+  builtinDeps =
+    if hostPlatform.isStatic then
+      builtins.toFile "lix-static-dep-closure" "[]"
+    else
+      runCommand "lix-builtin-dep-closure"
+        {
+          closure = closureInfo {
+            # closureInfo does not work all that well for things like lowdown,
+            # where it finds only -out but not -lib. we'll take -out and -lib,
+            # ignoring -bin, -man, -dev, etc. and hope that'll be good enough.
+            rootPaths = lib.flatten (
+              map
+                (drv: [
+                  (drv.out or [ ])
+                  (drv.lib or [ ])
+                ])
+                (
+                  lib.subtractLists finalAttrs.disallowedReferences (
+                    finalAttrs.buildInputs ++ finalAttrs.propagatedBuildInputs
+                  )
+                )
+            );
+          };
+        }
+        ''
+          closure=($(cat $closure/store-paths))
+          closure="$(printf ", '%s'" "''${closure[@]}")"
+          printf "[%s]" "''${closure:2}" >$out
+        '';
 
   env = {
     # Meson allows referencing a /usr/share/cargo/registry shaped thing for subproject sources.
