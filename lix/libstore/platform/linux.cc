@@ -231,6 +231,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     // Run check-syscalls to determine which new syscalls should be added.
     // New syscalls must be audited and handled in a way that blocks the following dangerous operations:
     // * Creation of non-empty setuid/setgid files
+    // * Creation of extended attributes (including ACLs)
     //
     // BEGIN extract-syscalls
     allowSyscall(ctx, SCMP_SYS(accept));
@@ -320,7 +321,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(fork));
     allowSyscall(ctx, SCMP_SYS(fremovexattr));
     allowSyscall(ctx, SCMP_SYS(fsconfig));
-    allowSyscall(ctx, SCMP_SYS(fsetxattr));
+    // skip fsetxattr (dangerous)
     allowSyscall(ctx, SCMP_SYS(fsmount));
     allowSyscall(ctx, SCMP_SYS(fsopen));
     allowSyscall(ctx, SCMP_SYS(fspick));
@@ -424,7 +425,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(lookup_dcookie));
     allowSyscall(ctx, SCMP_SYS(lremovexattr));
     allowSyscall(ctx, SCMP_SYS(lseek));
-    allowSyscall(ctx, SCMP_SYS(lsetxattr));
+    // skip lsetxattr (dangerous)
     allowSyscall(ctx, SCMP_SYS(lstat));
     allowSyscall(ctx, SCMP_SYS(lstat64));
     allowSyscall(ctx, SCMP_SYS(madvise));
@@ -622,7 +623,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(set_tls));
     allowSyscall(ctx, SCMP_SYS(setuid));
     allowSyscall(ctx, SCMP_SYS(setuid32));
-    allowSyscall(ctx, SCMP_SYS(setxattr));
+    // skip setxattr (dangerous)
     allowSyscall(ctx, SCMP_SYS(sgetmask));
     allowSyscall(ctx, SCMP_SYS(shmat));
     allowSyscall(ctx, SCMP_SYS(shmctl));
@@ -728,6 +729,15 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmod), 1);
     ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmodat), 2);
     ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmodat2), 2);
+
+    // setxattr family: prevent creation of extended attributes or ACLs.
+    // Not all filesystems support them, and they're incompatible with the NAR format.
+    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(setxattr), 0) != 0
+        || seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(lsetxattr), 0) != 0
+        || seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(fsetxattr), 0) != 0)
+    {
+        throw SysError("unable to add seccomp rule");
+    }
 
     Pipe filterPipe;
     filterPipe.create();
