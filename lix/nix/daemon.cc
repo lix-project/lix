@@ -173,6 +173,7 @@ struct PeerInfo
     std::optional<pid_t> pid;
     uid_t uid;
     gid_t gid;
+    std::vector<gid_t> supplementaryGids;
 };
 
 
@@ -181,13 +182,50 @@ struct PeerInfo
  */
 static PeerInfo getPeerInfo(int remote)
 {
+    std::vector<gid_t> supplementaryGids;
 
 #if defined(SO_PEERCRED)
     ucred cred;
     socklen_t credLen = sizeof(cred);
     if (getsockopt(remote, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) == -1)
         throw SysError("getting peer credentials");
-    PeerInfo peer = {cred.pid, cred.uid, cred.gid};
+
+#if defined(SO_PEERGROUPS)
+    // NOTE(Raito):
+    // Linux can go up to NGROUPS_MAX supplementary groups (65K).
+    // It is safe to assume that most users will have a couple of supplementary
+    // groups by default (here, my Linux user has ~7).
+    // We allocate 128 because integers are tiny.
+    supplementaryGids.resize(128);
+
+    // Initially attempt to retrieve 128 groups.
+    socklen_t nrSupplementaryGids = supplementaryGids.size();
+
+    while (true) {
+
+        if (getsockopt(remote, SOL_SOCKET, SO_PEERGROUPS, supplementaryGids.data(), &nrSupplementaryGids)
+                == -1
+            && errno != ERANGE)
+        {
+            throw SysError("getting peer groups");
+        }
+
+        // If the number of groups returned is less than the requested size, we are done.
+        if (nrSupplementaryGids <= supplementaryGids.size()) {
+            // We ensure the vector matches exactly the number of groups to avoid
+            // letting the rest of the vector imply that the vector is full of `root` groups.
+            supplementaryGids.resize(nrSupplementaryGids);
+            break;
+        }
+
+        // Otherwise, the vector is too small. Resize and try again.
+        nrSupplementaryGids *= 2;
+
+        // We ensure the vector is big enough in response to our latest known allocation requirement.
+        supplementaryGids.resize(nrSupplementaryGids);
+    }
+#endif
+    PeerInfo peer = {cred.pid, cred.uid, cred.gid, supplementaryGids};
 
 #elif defined(LOCAL_PEERCRED)
 
