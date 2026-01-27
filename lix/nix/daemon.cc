@@ -130,22 +130,21 @@ static bool matchUser(const std::string & user, const struct group & gr)
     return false;
 }
 
-
 /**
- * Does the given user (specified by user name and primary group name)
+ * Does the given user (specified by user name, primary group name and supplementary group names)
  * match the given user/group whitelist?
  *
  * If the list allows all users: Yes.
  *
  * If the username is in the set: Yes.
  *
- * If the groupname is in the set: Yes.
- *
  * If the user is in another group which is in the set: yes.
+ * If the groups intersects in the set: Yes.
  *
  * Otherwise: No.
  */
-static bool matchUser(const std::string & user, const std::string & group, const Strings & users)
+static bool
+matchUser(const std::string & user, const std::unordered_set<std::string> & groups, const Strings & users)
 {
     if (find(users.begin(), users.end(), "*") != users.end())
         return true;
@@ -156,7 +155,7 @@ static bool matchUser(const std::string & user, const std::string & group, const
     for (auto & i : users)
         if (i.substr(0, 1) == "@") {
             auto rest = i.substr(1);
-            if (group == rest) {
+            if (groups.contains(rest)) {
                 return true;
             }
             struct group * gr = sys::getgrnam(rest);
@@ -292,26 +291,41 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
     struct passwd * pw = getpwuid(peer.uid);
     std::string user = pw ? pw->pw_name : std::to_string(peer.uid);
 
-    struct group * gr = getgrgid(peer.gid);
-    std::string group = gr ? gr->gr_name : std::to_string(peer.gid);
+    auto assertHealthyGroup = [&](const std::string & group) {
+        if (group == settings.buildUsersGroup) {
+            throw Error(
+                "the user '%1%' is not allowed to connect to the Nix daemon as its group is '%2%', "
+                "which is the group of users running the sandboxed builds.",
+                user,
+                group
+            );
+        }
+    };
 
-    if (group == settings.buildUsersGroup) {
-        throw Error(
-            "the user '%1%' is not allowed to connect to the Nix daemon as its group is '%2%', "
-            "which is the group of users running the sandboxed builds.",
-            user,
-            group
-        );
+    std::unordered_set<std::string> groups;
+
+    auto insertGroup = [&](gid_t gid) {
+        auto gr = getgrgid(gid);
+        std::string group = gr ? gr->gr_name : std::to_string(gid);
+        assertHealthyGroup(group);
+        groups.insert(group);
+    };
+
+    // This ensures that the `groups` set is always non-empty with the primary group name.
+    insertGroup(peer.gid);
+
+    for (const gid_t suppGid : peer.supplementaryGids) {
+        insertGroup(suppGid);
     }
 
     const Strings & trustedUsers = authorizationSettings.trustedUsers;
     const Strings & allowedUsers = authorizationSettings.allowedUsers;
 
-    if (matchUser(user, group, trustedUsers)) {
+    if (matchUser(user, groups, trustedUsers)) {
         trusted = Trusted;
     }
 
-    if (!trusted && !matchUser(user, group, allowedUsers)) {
+    if (!trusted && !matchUser(user, groups, allowedUsers)) {
         throw Error("user '%1%' is not allowed to connect to the Nix daemon", user);
     }
 
