@@ -154,7 +154,7 @@ void loadConfFile()
     globalConfig.resetOverridden();
 
     auto files = settings.nixUserConfFiles;
-    auto home = getHome();
+    auto home = tryGetHome();
     for (auto file = files.rbegin(); file != files.rend(); file++) {
         applyConfigFile(ApplyConfigOptions{.path = *file, .home = home});
     }
