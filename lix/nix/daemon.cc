@@ -236,7 +236,11 @@ static PeerInfo getPeerInfo(int remote)
     socklen_t credLen = sizeof(cred);
     if (getsockopt(remote, SOL_LOCAL, LOCAL_PEERCRED, &cred, &credLen) == -1)
         throw SysError("getting peer credentials");
-    PeerInfo peer = {std::nullopt, cred.cr_uid, cred.cr_gid};
+
+    size_t nrGroups = cred.cr_ngroups;
+    std::copy(cred.cr_groups, cred.cr_groups + nrGroups, std::back_inserter(supplementaryGids));
+
+    PeerInfo peer = {std::nullopt, cred.cr_uid, cred.cr_gid, supplementaryGids};
 
 #if defined(LOCAL_PEERPID)
     socklen_t pidLen = sizeof(peer.pid);
