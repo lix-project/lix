@@ -10,9 +10,9 @@ namespace nix {
 std::string getUserName();
 
 /**
- * @return the given user's home directory from /etc/passwd.
+ * @return $HOME or the user's home directory from /etc/passwd, if available.
  */
-Path getHomeOf(uid_t userId);
+std::optional<Path> tryGetHome();
 
 /**
  * @return $HOME or the user's home directory from /etc/passwd.

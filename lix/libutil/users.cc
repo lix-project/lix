@@ -19,21 +19,21 @@ std::string getUserName()
     return name;
 }
 
-Path getHomeOf(uid_t userId)
+static std::optional<Path> tryGetHomeOf(uid_t userId)
 {
     std::vector<char> buf(16384);
     struct passwd pwbuf;
     struct passwd * pw;
-    if (getpwuid_r(userId, &pwbuf, buf.data(), buf.size(), &pw) != 0
-        || !pw || !pw->pw_dir || !pw->pw_dir[0])
-        throw Error("cannot determine user's home directory");
+    if (getpwuid_r(userId, &pwbuf, buf.data(), buf.size(), &pw) != 0 || !pw || !pw->pw_dir || !pw->pw_dir[0])
+    {
+        return std::nullopt;
+    }
     return pw->pw_dir;
 }
 
-Path getHome()
+std::optional<Path> tryGetHome()
 {
-    static Path homeDir = []()
-    {
+    static std::optional<Path> homeDir = []() {
         std::optional<std::string> unownedUserHomeDir = {};
         auto homeDir = getEnv("HOME");
         if (homeDir) {
@@ -55,8 +55,8 @@ Path getHome()
             }
         }
         if (!homeDir) {
-            homeDir = getHomeOf(geteuid());
-            if (unownedUserHomeDir.has_value() && unownedUserHomeDir != homeDir) {
+            homeDir = tryGetHomeOf(geteuid());
+            if (homeDir && unownedUserHomeDir && unownedUserHomeDir != homeDir) {
                 printTaggedWarning(
                     "$HOME ('%s') is not owned by you, falling back to the one defined in the "
                     "'passwd' file ('%s')",
@@ -65,11 +65,19 @@ Path getHome()
                 );
             }
         }
-        return *homeDir;
+        return homeDir;
     }();
     return homeDir;
 }
 
+Path getHome()
+{
+    if (auto home = tryGetHome()) {
+        return std::move(*home);
+    } else {
+        throw Error("cannot determine user's home directory");
+    }
+}
 
 Path getCacheDir()
 {
@@ -102,13 +110,15 @@ Path getConfigDir()
 
 std::vector<Path> getConfigDirs()
 {
-    Path configHome = getConfigDir();
     auto configDirs = getEnv("XDG_CONFIG_DIRS").value_or("/etc/xdg");
     std::vector<Path> result = tokenizeString<std::vector<std::string>>(configDirs, ":");
-    result.insert(result.begin(), configHome);
+    if (auto configHome = getEnv("XDG_CONFIG_HOME")) {
+        result.insert(result.begin(), *configHome);
+    } else if (auto userHome = tryGetHome()) {
+        result.insert(result.begin(), *userHome + "/.config");
+    }
     return result;
 }
-
 
 Path getDataDir()
 {
