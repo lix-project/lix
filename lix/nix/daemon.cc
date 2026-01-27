@@ -170,11 +170,8 @@ static bool matchUser(const std::string & user, const std::string & group, const
 
 struct PeerInfo
 {
-    bool pidKnown;
-    pid_t pid;
-    bool uidKnown;
+    std::optional<pid_t> pid;
     uid_t uid;
-    bool gidKnown;
     gid_t gid;
 };
 
@@ -184,15 +181,13 @@ struct PeerInfo
  */
 static PeerInfo getPeerInfo(int remote)
 {
-    PeerInfo peer = { false, 0, false, 0, false, 0 };
 
 #if defined(SO_PEERCRED)
-
     ucred cred;
     socklen_t credLen = sizeof(cred);
     if (getsockopt(remote, SOL_SOCKET, SO_PEERCRED, &cred, &credLen) == -1)
         throw SysError("getting peer credentials");
-    peer = { true, cred.pid, true, cred.uid, true, cred.gid };
+    PeerInfo peer = {cred.pid, cred.uid, cred.gid};
 
 #elif defined(LOCAL_PEERCRED)
 
@@ -204,19 +199,26 @@ static PeerInfo getPeerInfo(int remote)
     socklen_t credLen = sizeof(cred);
     if (getsockopt(remote, SOL_LOCAL, LOCAL_PEERCRED, &cred, &credLen) == -1)
         throw SysError("getting peer credentials");
-    peer = { false, 0, true, cred.cr_uid, true, cred.cr_gid };
+    PeerInfo peer = {std::nullopt, cred.cr_uid, cred.cr_gid};
 
 #if defined(LOCAL_PEERPID)
     socklen_t pidLen = sizeof(peer.pid);
-    if (!getsockopt(remote, SOL_LOCAL, LOCAL_PEERPID, &peer.pid, &pidLen))
-        peer.pidKnown = true;
+    pid_t peerPid;
+    if (!getsockopt(remote, SOL_LOCAL, LOCAL_PEERPID, &peerPid, &pidLen)) {
+        peer.pid = peerPid;
+    }
+
 #endif
+
+#else
+
+#error \
+    "Your platform does not provide a mean (SO_PEERCRED or LOCAL_PEERCRED) to receive the user credentials when a connection to a socket is made. Please provide one."
 
 #endif
 
     return peer;
 }
-
 
 #define SD_LISTEN_FDS_START 3
 
@@ -249,10 +251,10 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
 {
     TrustedFlag trusted = NotTrusted;
 
-    struct passwd * pw = peer.uidKnown ? getpwuid(peer.uid) : 0;
+    struct passwd * pw = getpwuid(peer.uid);
     std::string user = pw ? pw->pw_name : std::to_string(peer.uid);
 
-    struct group * gr = peer.gidKnown ? getgrgid(peer.gid) : 0;
+    struct group * gr = getgrgid(peer.gid);
     std::string group = gr ? gr->gr_name : std::to_string(peer.gid);
 
     if (group == settings.buildUsersGroup) {
@@ -318,10 +320,7 @@ try {
             closeOnExec(remote.get());
 
             PeerInfo peer = getPeerInfo(remote.get());
-            printInfo(
-                "accepted connection from %1%",
-                peer.pidKnown ? fmt("pid %1%", peer.pid) : "unknown peer"
-            );
+            printInfo("accepted connection from %1%", peer.pid ? fmt("pid %1%", *peer.pid) : "unknown peer");
 
             // Fork a child to handle the connection. make sure it's called with
             // argv0 `nix-daemon` so we don't try to run `nix --for` when called
@@ -332,7 +331,7 @@ try {
                 .args =
                     {
                         "--for",
-                        peer.pidKnown ? fmt("%1%", peer.pid) : "unknown",
+                        peer.pid ? fmt("%1%", *peer.pid) : "unknown",
                         "--log-level",
                         fmt("%1%", int(verbosity)),
                     },
@@ -425,8 +424,8 @@ daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt
 
     // replace peerPidArg contents with the peer pid if possible. the forking daemon does
     // this as a debugging aid and it is easy enough to do it here also, so we just do it
-    if (peerPidArg && peer.pidKnown) {
-        auto pidForArgv = std::to_string(peer.pid);
+    if (peerPidArg && peer.pid) {
+        auto pidForArgv = std::to_string(*peer.pid);
         if (pidForArgv.size() < strlen(peerPidArg)) {
             memset(peerPidArg, ' ', strlen(peerPidArg));
             peerPidArg[0] = '\0';
@@ -442,8 +441,8 @@ daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt
 
     printInfo(
         "%1% is %2% (%3%%4%)",
-        Uncolored(peer.pidKnown ? fmt("remote pid %s", peer.pid) : "remote with unknown pid"),
-        peer.uidKnown ? fmt("user %s", user) : "unknown user",
+        Uncolored(peer.pid ? fmt("remote pid %s", *peer.pid) : "remote with unknown pid"),
+        peer.uid ? fmt("user %s", user) : "unknown user",
         trusted ? "trusted" : "untrusted",
         forceTrustClientOpt ? " by override" : ""
     );
@@ -454,7 +453,7 @@ daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt
     }
 
     auto store = aio.blockOn(openUncachedStore(AllowDaemon::Disallow));
-    if (auto local = dynamic_cast<LocalStore *>(&*store); local && peer.uidKnown && peer.gidKnown) {
+    if (auto local = dynamic_cast<LocalStore *>(&*store); local) {
         local->associateWithCredentials(peer.uid, peer.gid);
     }
 
