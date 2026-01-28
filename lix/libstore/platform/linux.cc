@@ -1479,6 +1479,11 @@ Pid LinuxLocalDerivationGoal::startChild(
             throw SysError("failed to redirect build output to log file");
         }
 
+        /* Migrate the child inside the available control group. */
+        if (context.cgroup) {
+            context.cgroup->adoptProcess(getpid());
+        }
+
         /* Drop additional groups here because we can't do it
            after we're in the new user namespace. */
         if (setgroups(0, 0) == -1) {
@@ -1509,11 +1514,6 @@ Pid LinuxLocalDerivationGoal::startChild(
             options
         );
     });
-
-    /* Migrate the child inside the available control group. */
-    if (context.cgroup) {
-        context.cgroup->adoptProcess(pid.get());
-    }
 
     if (runPasta()) {
         // Bring up pasta, for handling FOD networking. We don't let it daemonize
