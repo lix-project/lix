@@ -2,6 +2,8 @@
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"
+#include "lix/libutil/concepts.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/finally.hh"
@@ -14,15 +16,19 @@
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
 
+#include <atomic>
 #include <csignal>
 #include <cstdlib>
+#include <exception>
 #include <grp.h>
 #include <memory>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <optional>
 #include <regex>
+#include <sched.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
@@ -45,6 +51,97 @@ namespace {
  */
 [[gnu::unused]]
 constexpr const std::string_view nativeSystem = SYSTEM;
+
+struct CloneStack
+{
+    // default stack size for children. 64k should be plenty for our purposees.
+    static constexpr size_t SIZE = 65536;
+
+    using Deleter = decltype([](void * v) {
+        try {
+            if (munmap(v, SIZE)) {
+                throw SysError("unmapping stack");
+            }
+        } catch (...) {
+            ignoreExceptionInDestructor();
+        }
+    });
+
+    std::unique_ptr<void, Deleter> raw;
+
+    CloneStack()
+    {
+        auto tmp = mmap(0, SIZE, PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
+        if (tmp == MAP_FAILED) {
+            throw SysError("allocating stack");
+        }
+        raw.reset(tmp);
+    }
+
+    void * top()
+    {
+        return static_cast<char *>(raw.get()) + SIZE;
+    }
+};
+}
+
+/**
+ * clone()s the process and runs the callback in the child, using the callback return
+ * value as the exit status of the child process. the SIGCHLD flag is always added by
+ * this function and need not be provided by the caller due to Pid::wait constraints.
+ */
+static Pid inClone(CloneStack & stack, int flags, InvocableR<int> auto fn)
+{
+    auto childFn = [](void * arg) {
+        try {
+            return (*static_cast<decltype(fn) *>(arg))();
+        } catch (...) {
+            return 255;
+        }
+    };
+    Pid result{clone(childFn, stack.top(), flags | SIGCHLD, &fn)};
+    if (!result) {
+        throw SysError("clone() failed");
+    }
+    return result;
+}
+
+/**
+ * runs a callback in a vforked child process that shares its address space with
+ * the current process. the child behaves much like a thread as a result and the
+ * callback must not make changes to process memory that we cannot undo from the
+ * parent, otherwise we may leak memory or fully trash the parent address space.
+ */
+static auto inVFork(int flags, auto fn)
+{
+    std::optional<Result<decltype(fn())>> result;
+
+    CloneStack stack;
+    auto child = inClone(stack, flags | CLONE_VM | CLONE_VFORK, [&] {
+        try {
+            result = result::success(fn());
+        } catch (...) {
+            result = result::current_exception();
+        }
+        // not necessary because we exit soon, but the compiler may like it
+        std::atomic_thread_fence(std::memory_order::release);
+        return 0;
+    });
+
+    if (int status = child.wait(); !statusOk(status)) {
+        throw Error("failed to run vfork child: %s", statusToString(status));
+    }
+
+    // synchronize with vfork child. if the compiler doesn't treat syscalls
+    // as optimization barriers for stack variables we would end up with an
+    // incorrect result value, and barriers are cheap compared to syscalls.
+    std::atomic_thread_fence(std::memory_order::acquire);
+
+    if (result) {
+        return std::move(result->value());
+    } else {
+        throw Error("vfork child unexpectedly did not produce a value");
+    }
 }
 
 void registerLocalStore() {
