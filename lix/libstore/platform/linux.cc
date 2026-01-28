@@ -1098,14 +1098,6 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
         return true;
     }
 
-    userNamespaceSync.writeSide.reset();
-
-    if (drainFD(userNamespaceSync.readSide.get()) != "1") {
-        throw Error("user namespace initialisation failed");
-    }
-
-    userNamespaceSync.readSide.reset();
-
     if (privateNetwork()) {
 
         /* Initialise the loopback interface. */
@@ -1416,7 +1408,68 @@ Pid LinuxLocalDerivationGoal::startChild(
        us.
     */
 
-    userNamespaceSync.create();
+    auto [userns, netns] = [&] -> std::pair<AutoCloseFD, AutoCloseFD> {
+        // we always want to create a new network namespace for pasta, even when
+        // we can't actually run it. not doing so hides bugs and impairs purity.
+        const bool wantNetNS = settings.pastaPath != "" || privateNetwork();
+        const bool wantUserNS = worker.namespaces.user;
+        if (!wantUserNS && !wantNetNS) {
+            return {};
+        }
+
+        CloneStack stack;
+        // vm and fd table can be *very* large and expensive to clone on busy daemons.
+        // since the child only stops itself forever there's no danger in sharing them
+        Pid pid{inClone(
+            stack,
+            (wantUserNS ? CLONE_NEWUSER : 0) | (wantNetNS ? CLONE_NEWNET : 0) | CLONE_VM | CLONE_FILES,
+            []() -> int {
+                for (;;) {
+                    raise(SIGSTOP);
+                }
+            }
+        )};
+
+        auto userns = !wantUserNS ? AutoCloseFD{} : [&] {
+            auto userns = AutoCloseFD{sys::open(std::format("/proc/{}/ns/user", pid.get()), O_RDONLY)};
+            if (!userns) {
+                throw SysError("failed to open user namespace");
+            }
+
+            /* Set the UID/GID mapping of the builder's user namespace
+               such that the sandbox user maps to the build user, or to
+               the calling user (if build users are disabled). */
+            uid_t hostUid = buildUser ? buildUser->getUID() : getuid();
+            uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
+            uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
+
+            writeFile(
+                std::format("/proc/{}/uid_map", pid.get()), fmt("%d %d %d", sandboxUid(), hostUid, nrIds)
+            );
+
+            if (!buildUser || buildUser->getUIDCount() == 1) {
+                writeFile(std::format("/proc/{}/setgroups", pid.get()), "deny");
+            }
+
+            writeFile(
+                std::format("/proc/{}/gid_map", pid.get()), fmt("%d %d %d", sandboxGid(), hostGid, nrIds)
+            );
+            return userns;
+        }();
+        if (!userns) {
+            debug("note: not using a user namespace");
+        }
+
+        auto netns = !wantNetNS ? AutoCloseFD{} : [&] {
+            auto netns = AutoCloseFD{sys::open(std::format("/proc/{}/ns/net", pid.get()), O_RDONLY)};
+            if (!netns) {
+                throw SysError("failed to open net namespace");
+            }
+            return netns;
+        }();
+
+        return {std::move(userns), std::move(netns)};
+    }();
 
     Pipe sendPid;
     sendPid.create();
@@ -1432,7 +1485,7 @@ Pid LinuxLocalDerivationGoal::startChild(
         }
 
         /* Drop additional groups here because we can't do it
-           after we've created the new user namespace. */
+           after we're in the new user namespace. */
         if (setgroups(0, 0) == -1) {
             if (errno != EPERM)
                 throw SysError("setgroups failed");
@@ -1440,16 +1493,16 @@ Pid LinuxLocalDerivationGoal::startChild(
                 throw Error("setgroups failed. Set the require-drop-supplementary-groups option to false to skip this step.");
         }
 
+        if (userns && setns(userns.get(), 0)) {
+            throw SysError("setns(userNS)");
+        }
+        if (netns && setns(netns.get(), 0)) {
+            throw SysError("setns(netNS)");
+        }
+
         ProcessOptions options;
-        options.cloneFlags = CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
-        // we always want to create a new network namespace for pasta, even when
-        // we can't actually run it. not doing so hides bugs and impairs purity.
-        if (settings.pastaPath != "" || privateNetwork()) {
-            options.cloneFlags |= CLONE_NEWNET;
-        }
-        if (worker.namespaces.user) {
-            options.cloneFlags |= CLONE_NEWUSER;
-        }
+        options.cloneFlags =
+            CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
 
         pid_t child = startProcess([&]() {
             if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
@@ -1466,45 +1519,14 @@ Pid LinuxLocalDerivationGoal::startChild(
     if (helper.wait() != 0)
         throw Error("unable to start build process");
 
-    userNamespaceSync.readSide.reset();
-
-    /* Close the write side to prevent runChild() from hanging
-       reading from this. */
-    Finally cleanup([&]() {
-        userNamespaceSync.writeSide.reset();
-    });
-
     auto ss = tokenizeString<std::vector<std::string>>(readLine(sendPid.readSide.get()));
     assert(ss.size() == 1);
     Pid pid = Pid{string2Int<pid_t>(ss[0]).value()};
-
-    if (worker.namespaces.user) {
-        /* Set the UID/GID mapping of the builder's user namespace
-           such that the sandbox user maps to the build user, or to
-           the calling user (if build users are disabled). */
-        uid_t hostUid = buildUser ? buildUser->getUID() : getuid();
-        uid_t hostGid = buildUser ? buildUser->getGID() : getgid();
-        uid_t nrIds = buildUser ? buildUser->getUIDCount() : 1;
-
-        writeFile("/proc/" + std::to_string(pid.get()) + "/uid_map",
-            fmt("%d %d %d", sandboxUid(), hostUid, nrIds));
-
-        if (!buildUser || buildUser->getUIDCount() == 1)
-            writeFile("/proc/" + std::to_string(pid.get()) + "/setgroups", "deny");
-
-        writeFile("/proc/" + std::to_string(pid.get()) + "/gid_map",
-            fmt("%d %d %d", sandboxGid(), hostGid, nrIds));
-    } else {
-        debug("note: not using a user namespace");
-    }
 
     /* Migrate the child inside the available control group. */
     if (context.cgroup) {
         context.cgroup->adoptProcess(pid.get());
     }
-
-    /* Signal the builder that we've updated its user namespace. */
-    writeFull(userNamespaceSync.writeSide.get(), "1");
 
     if (runPasta()) {
         // Bring up pasta, for handling FOD networking. We don't let it daemonize
