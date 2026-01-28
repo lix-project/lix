@@ -32,6 +32,8 @@
 #include <sys/mount.h>
 #include <sys/prctl.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #if __linux__
 #include <linux/capability.h>
@@ -111,8 +113,10 @@ static Pid inClone(CloneStack & stack, int flags, InvocableR<int> auto fn)
  * the current process. the child behaves much like a thread as a result and the
  * callback must not make changes to process memory that we cannot undo from the
  * parent, otherwise we may leak memory or fully trash the parent address space.
+ *
+ * \return pid and the result of the callback function (if the child has exited)
  */
-static auto inVFork(int flags, auto fn)
+static auto asVFork(int flags, auto fn) -> std::pair<Pid, std::optional<Result<decltype(fn())>>>
 {
     std::optional<Result<decltype(fn())>> result;
 
@@ -128,14 +132,40 @@ static auto inVFork(int flags, auto fn)
         return 0;
     });
 
-    if (int status = child.wait(); !statusOk(status)) {
-        throw Error("failed to run vfork child: %s", statusToString(status));
+    while (true) {
+        int status;
+        auto result = waitpid(child.get(), &status, WNOHANG);
+        if (result == child.get()) {
+            child.release(); // it's gone, don't wait for it again
+            if (!statusOk(status)) {
+                throw Error("failed to run vfork child: %s", statusToString(status));
+            }
+            break;
+        } else if (result == 0) {
+            break; // still running, so no exceptions thrown by callback
+        } else if (errno != EINTR) {
+            throw SysError("cannot get exit status of PID %d", child.get());
+        }
     }
 
     // synchronize with vfork child. if the compiler doesn't treat syscalls
     // as optimization barriers for stack variables we would end up with an
     // incorrect result value, and barriers are cheap compared to syscalls.
     std::atomic_thread_fence(std::memory_order::acquire);
+    return {std::move(child), std::move(result)};
+}
+
+/**
+ * runs a callback in a vforked child process that shares its address space with
+ * the current process. the child behaves much like a thread as a result and the
+ * callback must not make changes to process memory that we cannot undo from the
+ * parent, otherwise we may leak memory or fully trash the parent address space.
+ *
+ * throws an exception if the child exec's or otherwise doesn't return a result.
+ */
+static auto inVFork(int flags, auto fn)
+{
+    auto [pid, result] = asVFork(flags, fn);
 
     if (result) {
         return std::move(result->value());
