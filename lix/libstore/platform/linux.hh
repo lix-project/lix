@@ -101,6 +101,13 @@ private:
      * Pipe for synchronising updates to the builder namespaces.
      */
     Pipe userNamespaceSync;
-};
 
+    /**
+     * Whether to run the build in a private network namespace.
+     */
+    bool privateNetwork() const
+    {
+        return derivationType.value().isSandboxed();
+    }
+};
 }

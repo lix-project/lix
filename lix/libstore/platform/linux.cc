@@ -932,7 +932,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
 
     userNamespaceSync.readSide.reset();
 
-    if (privateNetwork) {
+    if (privateNetwork()) {
 
         /* Initialise the loopback interface. */
         AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
@@ -1299,12 +1299,9 @@ Pid LinuxLocalDerivationGoal::startChild(
        us.
     */
 
-    if (derivationType->isSandboxed())
-        privateNetwork = true;
-
     // don't launch pasta unless we have a tun device. in a build sandbox we
     // commonly do not, and trying to run pasta anyway naturally won't work.
-    runPasta = !privateNetwork && settings.pastaPath != "" && pathExists("/dev/net/tun");
+    runPasta = !privateNetwork() && settings.pastaPath != "" && pathExists("/dev/net/tun");
 
     userNamespaceSync.create();
 
@@ -1334,8 +1331,9 @@ Pid LinuxLocalDerivationGoal::startChild(
         options.cloneFlags = CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
         // we always want to create a new network namespace for pasta, even when
         // we can't actually run it. not doing so hides bugs and impairs purity.
-        if (settings.pastaPath != "" || privateNetwork)
+        if (settings.pastaPath != "" || privateNetwork()) {
             options.cloneFlags |= CLONE_NEWNET;
+        }
         if (worker.namespaces.user) {
             options.cloneFlags |= CLONE_NEWUSER;
         }
