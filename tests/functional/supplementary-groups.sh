@@ -21,13 +21,13 @@ unshare --mount --map-root-user bash <<EOF
   # Fails with default setting
   # TODO better error
   setLocalStore store1
-  expectStderr 1 "\${cmd[@]}" | grepQuiet "unable to start build process"
+  expectStderr 1 "\${cmd[@]}" | grepQuiet "setgroups failed"
 
   # Fails with `require-drop-supplementary-groups`
   # TODO better error
   setLocalStore store2
   NIX_CONFIG='require-drop-supplementary-groups = true' \
-    expectStderr 1 "\${cmd[@]}" | grepQuiet "unable to start build process"
+    expectStderr 1 "\${cmd[@]}" | grepQuiet "setgroups failed"
 
   # Works without `require-drop-supplementary-groups`
   setLocalStore store3

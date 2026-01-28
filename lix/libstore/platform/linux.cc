@@ -1471,14 +1471,9 @@ Pid LinuxLocalDerivationGoal::startChild(
         return {std::move(userns), std::move(netns)};
     }();
 
-    Pipe sendPid;
-    sendPid.create();
-
-    Pid helper = startProcess([&]() {
+    Pid pid = inVFork(/* flags*/ 0, [&]() {
         if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
             throw SysError("setting death signal");
-
-        sendPid.readSide.close();
 
         if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
             throw SysError("failed to redirect build output to log file");
@@ -1504,24 +1499,16 @@ Pid LinuxLocalDerivationGoal::startChild(
         options.cloneFlags =
             CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
 
-        pid_t child = startProcess([&]() {
-            if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
-                throw SysError("setting death signal");
-            runChild(builder, envStrs, args);
-        }, options).release();
-
-        writeFull(sendPid.writeSide.get(), fmt("%d\n", child));
-        _exit(0);
+        return startProcess(
+            [&]() {
+                if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+                    throw SysError("setting death signal");
+                }
+                runChild(builder, envStrs, args);
+            },
+            options
+        );
     });
-
-    sendPid.writeSide.close();
-
-    if (helper.wait() != 0)
-        throw Error("unable to start build process");
-
-    auto ss = tokenizeString<std::vector<std::string>>(readLine(sendPid.readSide.get()));
-    assert(ss.size() == 1);
-    Pid pid = Pid{string2Int<pid_t>(ss[0]).value()};
 
     /* Migrate the child inside the available control group. */
     if (context.cgroup) {
