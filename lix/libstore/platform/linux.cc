@@ -904,7 +904,7 @@ void LinuxLocalDerivationGoal::prepareSandbox()
 
 std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
 {
-    if (!runPasta) {
+    if (!runPasta()) {
         return fromHost;
     }
 
@@ -1211,7 +1211,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
         throw SysError("setuid failed");
     }
 
-    if (runPasta) {
+    if (runPasta()) {
         // wait for the pasta interface to appear. pasta can't signal us when
         // it's done setting up the namespace, so we have to wait for a while
         AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
@@ -1298,10 +1298,6 @@ Pid LinuxLocalDerivationGoal::startChild(
        CLONE_PARENT to ensure that the real builder is parented to
        us.
     */
-
-    // don't launch pasta unless we have a tun device. in a build sandbox we
-    // commonly do not, and trying to run pasta anyway naturally won't work.
-    runPasta = !privateNetwork() && settings.pastaPath != "" && pathExists("/dev/net/tun");
 
     userNamespaceSync.create();
 
@@ -1408,7 +1404,7 @@ Pid LinuxLocalDerivationGoal::startChild(
     /* Signal the builder that we've updated its user namespace. */
     writeFull(userNamespaceSync.writeSide.get(), "1");
 
-    if (runPasta) {
+    if (runPasta()) {
         // Bring up pasta, for handling FOD networking. We don't let it daemonize
         // itself for process managements reasons and kill it manually when done.
 

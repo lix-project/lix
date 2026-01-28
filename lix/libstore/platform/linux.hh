@@ -109,5 +109,20 @@ private:
     {
         return derivationType.value().isSandboxed();
     }
+
+    /**
+     * Whether to run pasta for network-endowed derivations. Running pasta
+     * currently requires actively waiting for its net-ns setup to finish.
+     */
+    bool runPasta()
+    {
+        if (!_runPasta) {
+            // don't launch pasta unless we have a tun device. in a build sandbox we
+            // commonly do not, and trying to run pasta anyway naturally won't work.
+            _runPasta = !privateNetwork() && settings.pastaPath != "" && pathExists("/dev/net/tun");
+        }
+        return *_runPasta;
+    }
+    std::optional<bool> _runPasta;
 };
 }

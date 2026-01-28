@@ -279,12 +279,6 @@ protected:
     using DerivationGoal::DerivationGoal;
 
     /**
-     * Whether to run pasta for network-endowed derivations. Running pasta
-     * currently requires actively waiting for its net-ns setup to finish.
-     */
-    bool runPasta = false;
-
-    /**
      * Setup dependencies outside the sandbox.
      * Called in the parent nix process.
      */
