@@ -1094,6 +1094,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
 {
     setupSyscallFilter();
 
+    KJ_DEFER(setPersonality(drv->platform));
+
     if (!useChroot) {
         return true;
     }
@@ -1351,8 +1353,6 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
             }
         }
     }
-
-    setPersonality(drv->platform);
 
     return false;
 }
