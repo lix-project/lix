@@ -1624,67 +1624,9 @@ Pid LinuxLocalDerivationGoal::startChild(
         return {std::move(userns), std::move(netns)};
     }();
 
-    Pid pid = inVFork(/* flags*/ 0, [&]() {
-        if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1)
-            throw SysError("setting death signal");
-
-        if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
-            throw SysError("failed to redirect build output to log file");
-        }
-
-        /* Migrate the child inside the available control group. */
-        if (context.cgroup) {
-            context.cgroup->adoptProcess(getpid());
-        }
-
-        // Drop additional groups here because we can't do it after we're in the
-        // new user namespace. check `asVFork` for why we use raw syscalls here.
-        if (syscall(SYS_setgroups, 0, nullptr) == -1) {
-            if (errno != EPERM)
-                throw SysError("setgroups failed");
-            if (settings.requireDropSupplementaryGroups)
-                throw Error("setgroups failed. Set the require-drop-supplementary-groups option to false to skip this step.");
-        }
-
-        if (userns && setns(userns.get(), 0)) {
-            throw SysError("setns(userNS)");
-        }
-        if (netns && setns(netns.get(), 0)) {
-            throw SysError("setns(netNS)");
-        }
-
-        ProcessOptions options;
-        options.cloneFlags =
-            CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
-
-        return startProcess(
-            [&]() {
-                if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
-                    throw SysError("setting death signal");
-                }
-                runChild(builder, envStrs, args);
-            },
-            options
-        );
-    });
-
     if (runPasta()) {
         // Bring up pasta, for handling FOD networking. We don't let it daemonize
         // itself for process managements reasons and kill it manually when done.
-
-        AutoCloseFD netns(sys::open(fmt("/proc/%i/ns/net", pid.get()), O_RDONLY | O_CLOEXEC));
-        if (!netns) {
-            throw SysError("failed to open netns");
-        }
-
-        AutoCloseFD userns;
-        if (worker.namespaces.user) {
-            userns =
-                AutoCloseFD(sys::open(fmt("/proc/%i/ns/user", pid.get()), O_RDONLY | O_CLOEXEC));
-            if (!userns) {
-                throw SysError("failed to open userns");
-            }
-        }
 
         // FIXME ideally we want a notification when pasta exits, but we cannot do
         // this at present. without such support we need to busy-wait for pasta to
@@ -1716,7 +1658,55 @@ Pid LinuxLocalDerivationGoal::startChild(
         );
     }
 
-    return pid;
+    return inVFork(/* flags*/ 0, [&]() {
+        if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+            throw SysError("setting death signal");
+        }
+
+        if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
+            throw SysError("failed to redirect build output to log file");
+        }
+
+        /* Migrate the child inside the available control group. */
+        if (context.cgroup) {
+            context.cgroup->adoptProcess(getpid());
+        }
+
+        // Drop additional groups here because we can't do it after we're in the
+        // new user namespace. check `asVFork` for why we use raw syscalls here.
+        if (syscall(SYS_setgroups, 0, nullptr) == -1) {
+            if (errno != EPERM) {
+                throw SysError("setgroups failed");
+            }
+            if (settings.requireDropSupplementaryGroups) {
+                throw Error(
+                    "setgroups failed. Set the require-drop-supplementary-groups option to false to skip "
+                    "this step."
+                );
+            }
+        }
+
+        if (userns && setns(userns.get(), 0)) {
+            throw SysError("setns(userNS)");
+        }
+        if (netns && setns(netns.get(), 0)) {
+            throw SysError("setns(netNS)");
+        }
+
+        ProcessOptions options;
+        options.cloneFlags =
+            CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
+
+        return startProcess(
+            [&]() {
+                if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+                    throw SysError("setting death signal");
+                }
+                runChild(builder, envStrs, args);
+            },
+            options
+        );
+    });
 }
 
 void LinuxLocalDerivationGoal::cleanupHookFinally()
