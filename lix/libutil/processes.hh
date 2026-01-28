@@ -107,14 +107,9 @@ struct RunOptions
     bool searchPath = true;
     std::optional<std::string> argv0;
     Strings args = {};
-    std::optional<uid_t> uid = {};
-    std::optional<uid_t> gid = {};
     std::optional<std::map<std::string, std::string>> environment = {};
     bool captureStdout = false;
     std::vector<Redirection> redirections;
-#if __linux__
-    std::set<long> caps;
-#endif
 };
 
 struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram
