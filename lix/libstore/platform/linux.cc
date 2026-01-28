@@ -831,6 +831,83 @@ void LinuxLocalDerivationGoal::prepareSandbox()
         chownToBuilder(chrootRootDir + "/etc");
     }
 
+    writeFile(
+        chrootRootDir + "/etc/passwd",
+        fmt("root:x:0:0:Nix build user:%3%:/noshell\n"
+            "nixbld:x:%1%:%2%:Nix build user:%3%:/noshell\n"
+            "nobody:x:65534:65534:Nobody:/:/noshell\n",
+            sandboxUid(),
+            sandboxGid(),
+            settings.sandboxBuildDir)
+    );
+
+    /* Declare the build user's group so that programs get a consistent
+       view of the system (e.g., "id -gn"). */
+    writeFile(
+        chrootRootDir + "/etc/group",
+        fmt("root:x:0:\n"
+            "nixbld:!:%1%:\n"
+            "nogroup:x:65534:\n",
+            sandboxGid())
+    );
+
+    /* Fixed-output derivations typically need to access the
+       network, so give them access to /etc/resolv.conf and so
+       on. */
+    if (!derivationType->isSandboxed()) {
+        // Only use nss functions to resolve hosts and
+        // services. Don’t use it for anything else that may
+        // be configured for this system. This limits the
+        // potential impurities introduced in fixed-outputs.
+        writeFile(chrootRootDir + "/etc/nsswitch.conf", "hosts: files dns\nservices: files\n");
+
+        /* N.B. it is realistic that these paths might not exist. It
+           happens when testing Nix building fixed-output derivations
+           within a pure derivation. */
+        for (auto & path : {"/etc/services", "/etc/hosts"}) {
+            if (pathAccessible(path, true)) {
+                // Copy the actual file, not the symlink, because we don't know where
+                // the symlink is pointing, and we don't want to chase down the entire
+                // chain.
+                //
+                // This means if your network config changes during a FOD build,
+                // the DNS in the sandbox will be wrong. However, this is pretty unlikely
+                // to actually be a problem, because FODs are generally pretty fast,
+                // and machines with often-changing network configurations probably
+                // want to run resolved or some other local resolver anyway.
+                //
+                // There's also just no simple way to do this correctly, you have to manually
+                // inotify watch the files for changes on the outside and update the sandbox
+                // while the build is running (or at least that's what Flatpak does).
+                //
+                // I also just generally feel icky about modifying sandbox state under a build,
+                // even though it really shouldn't be a big deal. -K900
+                copyFile(path, chrootRootDir + path, {.followSymlinks = true});
+            } else if (pathExists(path)) {
+                // The path exist but we were not able to access it. This is not a fatal
+                // error, warn about this so the user can remediate.
+                printTaggedWarning(
+                    "'%1%' exists but is inaccessible, it will not be copied in the "
+                    "sandbox",
+                    path
+                );
+            }
+        }
+
+        if (pathAccessible("/etc/resolv.conf", true)) {
+            const auto resolvConf = rewriteResolvConf(readFile("/etc/resolv.conf"));
+            writeFile(chrootRootDir + "/etc/resolv.conf", resolvConf);
+        } else if (pathExists("/etc/resolv.conf")) {
+            // The path exist but we were not able to access it. This is not a fatal error,
+            // warn about this so the user can remediate.
+            printTaggedWarning(
+                "'/etc/resolv.conf' exists but is inaccessible, it will not be rewritten "
+                "inside the sandbox; DNS operations inside the sandbox may be "
+                "non-functional."
+            );
+        }
+    }
+
     /* Create /etc/hosts with localhost entry. */
     if (derivationType->isSandboxed())
         writeFile(chrootRootDir + "/etc/hosts", "127.0.0.1 localhost\n::1 localhost\n");
@@ -1013,63 +1090,6 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
         createSymlink("/proc/self/fd/0", chrootRootDir + "/dev/stdin");
         createSymlink("/proc/self/fd/1", chrootRootDir + "/dev/stdout");
         createSymlink("/proc/self/fd/2", chrootRootDir + "/dev/stderr");
-    }
-
-    /* Fixed-output derivations typically need to access the
-       network, so give them access to /etc/resolv.conf and so
-       on. */
-    if (!derivationType->isSandboxed()) {
-        // Only use nss functions to resolve hosts and
-        // services. Don’t use it for anything else that may
-        // be configured for this system. This limits the
-        // potential impurities introduced in fixed-outputs.
-        writeFile(chrootRootDir + "/etc/nsswitch.conf", "hosts: files dns\nservices: files\n");
-
-        /* N.B. it is realistic that these paths might not exist. It
-           happens when testing Nix building fixed-output derivations
-           within a pure derivation. */
-        for (auto & path : {"/etc/services", "/etc/hosts"}) {
-            if (pathAccessible(path, true)) {
-                // Copy the actual file, not the symlink, because we don't know where
-                // the symlink is pointing, and we don't want to chase down the entire
-                // chain.
-                //
-                // This means if your network config changes during a FOD build,
-                // the DNS in the sandbox will be wrong. However, this is pretty unlikely
-                // to actually be a problem, because FODs are generally pretty fast,
-                // and machines with often-changing network configurations probably
-                // want to run resolved or some other local resolver anyway.
-                //
-                // There's also just no simple way to do this correctly, you have to manually
-                // inotify watch the files for changes on the outside and update the sandbox
-                // while the build is running (or at least that's what Flatpak does).
-                //
-                // I also just generally feel icky about modifying sandbox state under a build,
-                // even though it really shouldn't be a big deal. -K900
-                copyFile(path, chrootRootDir + path, {.followSymlinks = true});
-            } else if (pathExists(path)) {
-                // The path exist but we were not able to access it. This is not a fatal
-                // error, warn about this so the user can remediate.
-                printTaggedWarning(
-                    "'%1%' exists but is inaccessible, it will not be copied in the "
-                    "sandbox",
-                    path
-                );
-            }
-        }
-
-        if (pathAccessible("/etc/resolv.conf", true)) {
-            const auto resolvConf = rewriteResolvConf(readFile("/etc/resolv.conf"));
-            writeFile(chrootRootDir + "/etc/resolv.conf", resolvConf);
-        } else if (pathExists("/etc/resolv.conf")) {
-            // The path exist but we were not able to access it. This is not a fatal error,
-            // warn about this so the user can remediate.
-            printTaggedWarning(
-                "'/etc/resolv.conf' exists but is inaccessible, it will not be rewritten "
-                "inside the sandbox; DNS operations inside the sandbox may be "
-                "non-functional."
-            );
-        }
     }
 
     for (auto & i : ss) {
@@ -1380,21 +1400,6 @@ Pid LinuxLocalDerivationGoal::startChild(
     } else {
         debug("note: not using a user namespace");
     }
-
-    /* Now that we now the sandbox uid, we can write
-       /etc/passwd. */
-    writeFile(chrootRootDir + "/etc/passwd", fmt(
-            "root:x:0:0:Nix build user:%3%:/noshell\n"
-            "nixbld:x:%1%:%2%:Nix build user:%3%:/noshell\n"
-            "nobody:x:65534:65534:Nobody:/:/noshell\n",
-            sandboxUid(), sandboxGid(), settings.sandboxBuildDir));
-
-    /* Declare the build user's group so that programs get a consistent
-       view of the system (e.g., "id -gn"). */
-    writeFile(chrootRootDir + "/etc/group",
-        fmt("root:x:0:\n"
-            "nixbld:!:%1%:\n"
-            "nogroup:x:65534:\n", sandboxGid()));
 
     /* Migrate the child inside the available control group. */
     if (context.cgroup) {
