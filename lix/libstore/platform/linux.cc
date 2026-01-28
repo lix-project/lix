@@ -3,6 +3,7 @@
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"
 #include "lix/libutil/concepts.hh"
+#include "lix/libutil/current-process.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
@@ -21,6 +22,8 @@
 #include <cstdlib>
 #include <exception>
 #include <grp.h>
+#include <initializer_list>
+#include <iterator>
 #include <memory>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -114,6 +117,17 @@ static Pid inClone(CloneStack & stack, int flags, InvocableR<int> auto fn)
  * callback must not make changes to process memory that we cannot undo from the
  * parent, otherwise we may leak memory or fully trash the parent address space.
  *
+ * NOTE: vfork children that wish to use `setuid`, `setgid`, or `setgroups` must
+ * use raw syscalls for this purpose. linux has per-thread credentials while the
+ * posix standard mandates per-*process* credentials and libc must this wrap all
+ * of these; see `nptl(7)` for the full list. capabilities are *not* affected by
+ * such wrapping. we also don't make any provisions for signal safety, a vforked
+ * child shares signal handlers with the parent and can thus handle signals that
+ * should have been handled by the parent. as such we **must not** use handlers,
+ * only signalfd and other cooperative signal mechanisms are fully safe. we have
+ * only one handler with code (SIGSEGV), which immediately crashes lix. while we
+ * do *register* other handlers they execute no code and are thus not dangerous.
+ *
  * \return pid and the result of the callback function (if the child has exited)
  */
 static auto asVFork(int flags, auto fn) -> std::pair<Pid, std::optional<Result<decltype(fn())>>>
@@ -161,6 +175,8 @@ static auto asVFork(int flags, auto fn) -> std::pair<Pid, std::optional<Result<d
  * callback must not make changes to process memory that we cannot undo from the
  * parent, otherwise we may leak memory or fully trash the parent address space.
  *
+ * NOTE: see `asVFork` for safety information regarding credentials and signals.
+ *
  * throws an exception if the child exec's or otherwise doesn't return a result.
  */
 static auto inVFork(int flags, auto fn)
@@ -172,6 +188,113 @@ static auto inVFork(int flags, auto fn)
     } else {
         throw Error("vfork child unexpectedly did not produce a value");
     }
+}
+
+static Pid launchPasta(
+    const AutoCloseFD & logFD,
+    const Path & pasta,
+    std::initializer_list<const char *> args,
+    const AutoCloseFD & netns,
+    const AutoCloseFD & userns,
+    std::optional<uid_t> uid,
+    std::optional<gid_t> gid
+)
+{
+    // this is almost stringsToCharPtrs, but skips unnecessary string allocations
+    std::vector<const char *> execArgs;
+
+    execArgs.reserve(args.size() + 6); // 1 for argv0, 4 for namespaces, 1 for trailing nullptr
+    execArgs.push_back(baseNameOf(pasta).data());
+    std::ranges::copy(args, std::back_inserter(execArgs));
+    execArgs.push_back("--netns");
+    execArgs.push_back("/proc/self/fd/0");
+    if (userns) {
+        execArgs.push_back("--userns");
+        execArgs.push_back("/proc/self/fd/1");
+    }
+    execArgs.push_back(nullptr);
+
+    static constexpr unsigned ROOT_CAPS[] = {CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE};
+    const std::span<const unsigned> caps =
+        geteuid() == 0 ? std::span{ROOT_CAPS} : std::span<const unsigned>{};
+
+    auto [pid, result] = asVFork(/* flags */ 0, [&] -> std::tuple<> {
+        // TODO these redirections are crimes. pasta closes all non-stdio file
+        // descriptors very early and lacks fd arguments for the namespaces we
+        // want it to join. we cannot have pasta join the namespaces via pids;
+        // doing so requires capabilities which pasta *also* drops very early.
+        if (dup2(netns.get(), 0) == -1) {
+            throw SysError("dupping netns fd for pasta");
+        }
+        closeOnExec(0, false);
+        if (userns) {
+            if (dup2(userns.get(), 1) == -1) {
+                throw SysError("dupping userns fd for pasta");
+            }
+            closeOnExec(1, false);
+        }
+        if (!caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
+            throw SysError("setting keep-caps failed");
+        }
+        if (gid && syscall(SYS_setgid, *gid) == -1) {
+            throw SysError("setgid failed");
+        }
+        /* Drop all other groups if we're setgid. */
+        if (gid && syscall(SYS_setgroups, 0, 0) == -1 && errno != EPERM) {
+            throw SysError("setgroups failed");
+        }
+        if (uid && syscall(SYS_setuid, *uid) == -1) {
+            throw SysError("setuid failed");
+        }
+        if (!caps.empty()) {
+            if (prctl(PR_SET_KEEPCAPS, 0)) {
+                throw SysError("clearing keep-caps failed");
+            }
+
+            // we do the capability dance like this to avoid a dependency
+            // on libcap, which has a rather large build closure and many
+            // more features that we need for now. maybe some other time.
+            static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
+            static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
+            struct user_cap_header_struct
+            {
+                uint32_t version;
+                int pid;
+            } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
+            struct user_cap_data_struct
+            {
+                uint32_t effective;
+                uint32_t permitted;
+                uint32_t inheritable;
+            } data[LINUX_CAPABILITY_U32S_3] = {};
+            for (auto cap : caps) {
+                assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
+                data[cap / 32].permitted |= 1 << (cap % 32);
+                data[cap / 32].inheritable |= 1 << (cap % 32);
+            }
+            if (syscall(SYS_capset, &hdr, data)) {
+                throw SysError("couldn't set capabilities");
+            }
+
+            for (auto cap : caps) {
+                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
+                    throw SysError("couldn't set ambient caps");
+                }
+            }
+        }
+
+        restoreProcessContext();
+
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): pasta is a setting, the args came from C strings
+        ::execv(pasta.c_str(), const_cast<char * const *>(execArgs.data()));
+        throw SysError("could not exec pasta");
+    });
+
+    if (result) {
+        (void) result->value(); // must be an exception
+    }
+
+    return std::move(pid);
 }
 
 void registerLocalStore() {
@@ -1549,24 +1672,6 @@ Pid LinuxLocalDerivationGoal::startChild(
         // Bring up pasta, for handling FOD networking. We don't let it daemonize
         // itself for process managements reasons and kill it manually when done.
 
-        // TODO add a new sandbox mode flag to disable all or parts of this?
-        Strings args = {
-            // clang-format off
-            "--quiet",
-            "--foreground",
-            "--config-net",
-            "--gateway", PASTA_HOST_IPV4,
-            "--address", PASTA_CHILD_IPV4, "--netmask", PASTA_IPV4_NETMASK,
-            "--dns-forward", PASTA_HOST_IPV4,
-            "--gateway", PASTA_HOST_IPV6,
-            "--address", PASTA_CHILD_IPV6,
-            "--dns-forward", PASTA_HOST_IPV6,
-            "--ns-ifname", PASTA_NS_IFNAME,
-            "--no-netns-quit",
-            "--netns", "/proc/self/fd/0",
-            // clang-format on
-        };
-
         AutoCloseFD netns(sys::open(fmt("/proc/%i/ns/net", pid.get()), O_RDONLY | O_CLOEXEC));
         if (!netns) {
             throw SysError("failed to open netns");
@@ -1579,31 +1684,36 @@ Pid LinuxLocalDerivationGoal::startChild(
             if (!userns) {
                 throw SysError("failed to open userns");
             }
-            args.push_back("--userns");
-            args.push_back("/proc/self/fd/1");
         }
 
         // FIXME ideally we want a notification when pasta exits, but we cannot do
         // this at present. without such support we need to busy-wait for pasta to
         // set up the namespace completely and time out after a while for the case
         // of pasta launch failures. pasta logs go to syslog only for now as well.
-        pastaPid = runProgram2({
-            .program = settings.pastaPath,
-            .args = args,
-            .uid = useBuildUsers() ? std::optional(buildUser->getUID()) : std::nullopt,
-            .gid = useBuildUsers() ? std::optional(buildUser->getGID()) : std::nullopt,
-            // TODO these redirections are crimes. pasta closes all non-stdio file
-            // descriptors very early and lacks fd arguments for the namespaces we
-            // want it to join. we cannot have pasta join the namespaces via pids;
-            // doing so requires capabilities which pasta *also* drops very early.
-            .redirections =
-                {
-                    {.dup = 0, .from = netns.get()},
-                    {.dup = 1, .from = userns ? userns.get() : 1},
-                },
-            .caps = getuid() == 0 ? std::set<long>{CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE}
-                                  : std::set<long>{},
-        });
+        pastaPid = launchPasta(
+            logPTY,
+            settings.pastaPath,
+            {
+                // TODO add a new sandbox mode flag to disable all or parts of this?
+                // clang-format off
+                "--quiet",
+                "--foreground",
+                "--config-net",
+                "--gateway", PASTA_HOST_IPV4,
+                "--address", PASTA_CHILD_IPV4, "--netmask", PASTA_IPV4_NETMASK,
+                "--dns-forward", PASTA_HOST_IPV4,
+                "--gateway", PASTA_HOST_IPV6,
+                "--address", PASTA_CHILD_IPV6,
+                "--dns-forward", PASTA_HOST_IPV6,
+                "--ns-ifname", PASTA_NS_IFNAME,
+                "--no-netns-quit",
+                // clang-format on
+            },
+            netns,
+            userns,
+            useBuildUsers() ? std::optional(buildUser->getUID()) : std::nullopt,
+            useBuildUsers() ? std::optional(buildUser->getGID()) : std::nullopt
+        );
     }
 
     return pid;

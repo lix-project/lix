@@ -56,7 +56,7 @@ private:
      */
     void cleanupHookFinally() override;
 
-    RunningProgram pastaPid;
+    Pid pastaPid;
 
     /**
      * Create a special accessor that can access paths that were built within the sandbox's
