@@ -1637,9 +1637,9 @@ Pid LinuxLocalDerivationGoal::startChild(
             context.cgroup->adoptProcess(getpid());
         }
 
-        /* Drop additional groups here because we can't do it
-           after we're in the new user namespace. */
-        if (setgroups(0, 0) == -1) {
+        // Drop additional groups here because we can't do it after we're in the
+        // new user namespace. check `asVFork` for why we use raw syscalls here.
+        if (syscall(SYS_setgroups, 0, nullptr) == -1) {
             if (errno != EPERM)
                 throw SysError("setgroups failed");
             if (settings.requireDropSupplementaryGroups)
