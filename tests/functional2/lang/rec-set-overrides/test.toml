@@ -2,10 +2,8 @@
 runner = "parse-okay"
 flags = [ "--extra-deprecated-features", "rec-set-overrides rec-set-merges rec-set-dynamic-attrs" ]
 
-# Same as above but with deprecation warning
 [[test]]
-name = "parse-okay-deprecation-warning"
-runner = "parse-okay"
+runner = "parse-fail"
 flags = [ "--extra-deprecated-features", "rec-set-merges rec-set-dynamic-attrs" ]
 
 [[test]]

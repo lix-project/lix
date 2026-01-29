@@ -91,14 +91,14 @@ inline void State::dupAttr(Symbol attr, const PosIdx pos, const PosIdx prevPos)
 }
 
 inline void State::overridesFound(const PosIdx pos) {
-    // Added 2024-09-18, updated 2025-11-27. Turn into an error at some point in the future.
+    // Added 2024-09-18 as a warning, updated and made hard error 2025-11-27
     // See the documentation on deprecated features for more details.
-    logWarning({
+    throw ParseError({
         .msg = HintFmt(
             "%s attributes are deprecated and will be removed in the future. Use %s to silence this warning.",
             "__overrides",
-             "--extra-deprecated-features rec-set-overrides"
-            ),
+            "--extra-deprecated-features rec-set-overrides"
+        ),
         .pos = positions[pos],
     });
 }

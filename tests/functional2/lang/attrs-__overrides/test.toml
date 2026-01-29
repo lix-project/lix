@@ -1,7 +1,7 @@
 [[test]]
-name = "warning"
-runner = "eval-okay"
+runner = "parse-fail"
 flags = ["--extra-deprecated-features", "rec-set-dynamic-attrs"]
+in = [ "in.nix", "in-rec.nix" ]
 matrix = true
 
 [[test]]

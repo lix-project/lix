@@ -1,0 +1,6 @@
+error: __overrides attributes are deprecated and will be removed in the future. Use --extra-deprecated-features rec-set-overrides to silence this warning.
+       at /pwd/in.nix:3:17:
+            2|   # Should warn
+            3|   { a = rec {}; a.__overrides = {}; }
+             |                 ^
+            4|   rec { __overrides = {}; }
