@@ -17,6 +17,7 @@ let
     "rec-set-dynamic-attrs"
     "or-as-identifier"
     "tokens-no-whitespace"
+    "ancient-let"
   ];
 in
 

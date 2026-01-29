@@ -16,3 +16,4 @@ You can opt in into the old behavior with `--extra-deprecated-features` or any e
 - `or-as-identifier` `or` as an identifier has always been weird since the `or` (almost-)keyword has been introduced. We are deprecating the backcompat hacks from the early days of Nix in favor of making `or` a full and proper keyword.
 - `tokens-no-whitespace` Function applications without space around the arguments like `0a`, `0.00.0` or `foo"1"2` are now forbidden. The same applies to list elements. The primary reason for this deprecation is to remove foot guns around surprising tokenization rules regarding number literals, but this will also free up some syntax for other purposes (e.g. `r""` strings) for reuse at some point in the future.
 - `shadow-internal-symbols` has been expanded to also forbid shadowing `null`, `true` and `false`.
+- `ancient-let` deprecation has been turned into a full parser error instead of a warning.

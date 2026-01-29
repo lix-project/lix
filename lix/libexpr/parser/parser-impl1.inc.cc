@@ -913,18 +913,18 @@ template<> struct BuildAST<grammar::v1::expr::uri> {
 
 template<> struct BuildAST<grammar::v1::expr::ancient_let> : change_head<BindingsStateRecSet> {
     static void success(const auto & in, BindingsStateRecSet & b, ExprState & s, State & ps) {
-        // Added 2024-09-18. Turn into an error at some point in the future.
+        // Added 2024-09-18 as a warning, turned into error 2026-01-29.
         // See the documentation on deprecated features for more details.
         if (!ps.featureSettings.isEnabled(Dep::AncientLet))
             //FIXME: why aren't there any tests for this?
-            logWarning({
-                .msg = HintFmt(
-                    "%s is deprecated and will be removed in the future. Use %s to silence this warning.",
-                    "let {",
-                    "--extra-deprecated-features ancient-let"
-                    ),
-                .pos = ps.positions[ps.at(in)]
-            });
+            throw ParseError(
+                {.msg = HintFmt(
+                     "%s is deprecated and will be removed in the future. Use %s to silence this warning.",
+                     "let {",
+                     "--extra-deprecated-features ancient-let"
+                 ),
+                 .pos = ps.positions[ps.at(in)]}
+            );
 
         auto pos = ps.at(in);
         b.set.pos = pos;
