@@ -1035,6 +1035,13 @@ void LinuxLocalDerivationGoal::setupSyscallFilter()
 
 void LinuxLocalDerivationGoal::prepareSandbox()
 {
+#if HAVE_SECCOMP
+    // Our seccomp filter program is surprisingly expensive to compile (~10ms).
+    // For this reason, we precompile it once and then cache it.
+    // This has to be done in the parent so that all builds get to use the same cache.
+    getSyscallFilter();
+#endif
+
     /* Create a temporary directory in which we set up the chroot
        environment using bind-mounts.  We put it in the Nix store
        to ensure that we can create hard-links to non-directory
@@ -1514,13 +1521,6 @@ Pid LinuxLocalDerivationGoal::startChild(
     const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
 )
 {
-#if HAVE_SECCOMP
-    // Our seccomp filter program is surprisingly expensive to compile (~10ms).
-    // For this reason, we precompile it once and then cache it.
-    // This has to be done in the parent so that all builds get to use the same cache.
-    getSyscallFilter();
-#endif
-
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
         return LocalDerivationGoal::startChild(builder, envStrs, args, std::move(logPTY));
