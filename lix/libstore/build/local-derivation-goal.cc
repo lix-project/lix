@@ -499,7 +499,7 @@ try {
     }
     /* The TOCTOU between the previous mkdir call and this open call is unavoidable due to
      * POSIX semantics.*/
-    tmpDirRootFd = sys::open(tmpDirRoot, O_RDONLY | O_NOFOLLOW | O_DIRECTORY);
+    auto tmpDirRootFd = sys::open(tmpDirRoot, O_RDONLY | O_NOFOLLOW | O_DIRECTORY);
     if (!tmpDirRootFd) {
         throw SysError("failed to open the build temporary directory descriptor '%1%'", tmpDirRoot);
     }
@@ -2256,6 +2256,7 @@ void LocalDerivationGoal::finalizeTmpDir(bool force, bool duringDestruction)
             deletePath(tmpDirRoot);
         tmpDirRoot = "";
     }
+    tmpDirFd = {};
 }
 
 
