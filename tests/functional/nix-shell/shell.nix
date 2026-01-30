@@ -56,6 +56,18 @@ let pkgs = rec {
     outputs = ["dev" "out"];
   };
 
+  shellWithCerts = mkDerivation {
+    name = "shell-with-certs";
+    inherit stdenv;
+    SSL_CERT_FILE = "/path/to/a/real/cert.crt";
+  };
+
+  shellWithNoCerts = mkDerivation {
+    name = "shell-with-certs";
+    inherit stdenv;
+    SSL_CERT_FILE = "/no-cert-file.crt";
+  };
+
   # Used by nix-shell -p
   runCommand = name: args: buildCommand: mkDerivation (args // {
     inherit name buildCommand stdenv;

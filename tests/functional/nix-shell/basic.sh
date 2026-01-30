@@ -221,3 +221,7 @@ assert (!(args ? inNixShell));
 (import $shellDotNix { }).shellDrv
 EOF
 nix-shell $TEST_ROOT/shell-ellipsis.nix --run "true"
+
+# Test correct handling of SSL_CERT_FILE
+nix print-dev-env -f $shellDotNix shellWithCerts | grepQuiet "SSL_CERT_FILE='/path/to/a/real/cert.crt'"
+nix print-dev-env -f $shellDotNix shellWithNoCerts | grepInverse "SSL_CERT_FILE"

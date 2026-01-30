@@ -140,7 +140,19 @@ struct BuildEnvironment
     void toBash(std::ostream & out, const std::set<std::string> & ignoreVars) const
     {
         for (auto & [name, value] : vars) {
-            if (!ignoreVars.count(name)) {
+            // NOTE: Nixpkgs sets SSL_CERT_FILE to `/no-cert-file.crt` by default
+            //       which we want to filter out as it leads to broken shells
+            //       However, outright ignoring it means that it is impossible to
+            //       set a custom cert file using the env variable definition of a shell
+            //       which is stupid.
+            if (name == "SSL_CERT_FILE") {
+                if (auto str = std::get_if<String>(&value); str->value != "/no-cert-file.crt") {
+                    out << fmt("%s=%s\n", name, bashEscape(str->value));
+                    if (str->exported) {
+                        out << fmt("export %s\n", name);
+                    }
+                }
+            } else if (!ignoreVars.count(name)) {
                 if (auto str = std::get_if<String>(&value)) {
                     out << fmt("%s=%s\n", name, bashEscape(str->value));
                     if (str->exported)
@@ -305,7 +317,6 @@ struct Common : InstallableCommand, MixProfile
         "NIX_REMOTE",
         "PPID",
         "SHELLOPTS",
-        "SSL_CERT_FILE", // FIXME: only want to ignore /no-cert-file.crt
         "TEMP",
         "TEMPDIR",
         "TERM",
