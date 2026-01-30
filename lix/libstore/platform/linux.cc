@@ -1322,35 +1322,15 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
         throw SysError("unable to make '%s' shared", chrootStoreDir);
     }
 
-    /* Set up a nearly empty /dev, unless the user asked to
-       bind-mount the host /dev. */
-    Strings ss;
-    if (pathsInChroot.find("/dev") == pathsInChroot.end()) {
-        createDirs(chrootRootDir + "/dev/shm");
-        createDirs(chrootRootDir + "/dev/pts");
-        ss.push_back("/dev/full");
-        if (worker.store.config().systemFeatures.get().count("kvm") && pathExists("/dev/kvm")) {
-            ss.push_back("/dev/kvm");
-        }
-        ss.push_back("/dev/null");
-        ss.push_back("/dev/random");
-        ss.push_back("/dev/tty");
-        ss.push_back("/dev/urandom");
-        ss.push_back("/dev/zero");
-        createSymlink("/proc/self/fd", chrootRootDir + "/dev/fd");
-        createSymlink("/proc/self/fd/0", chrootRootDir + "/dev/stdin");
-        createSymlink("/proc/self/fd/1", chrootRootDir + "/dev/stdout");
-        createSymlink("/proc/self/fd/2", chrootRootDir + "/dev/stderr");
-    }
-
-    for (auto & i : ss) {
-        pathsInChroot.emplace(i, i);
-    }
+    bool devMounted = false;
+    bool devPtsMounted = false;
 
     /* Bind-mount all the directories from the "host"
        filesystem that we want in the chroot
        environment. */
     for (auto & i : pathsInChroot) {
+        devMounted |= i.first == "/dev";
+        devPtsMounted |= i.first == "/dev/pts";
         if (i.second.source == "/proc") {
             continue; // backwards compatibility
         }
@@ -1367,6 +1347,28 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
         } else
 #endif
             bindPath(i.second.source, chrootRootDir + i.first, i.second.optional);
+    }
+
+    /* Set up a nearly empty /dev, unless the user asked to
+       bind-mount the host /dev. */
+    if (!devMounted) {
+        const auto bind = [&](std::string item) { bindPath(item, chrootRootDir + item); };
+
+        createDirs(chrootRootDir + "/dev/shm");
+        createDirs(chrootRootDir + "/dev/pts");
+        bind("/dev/full");
+        if (settings.systemFeatures.get().count("kvm") && pathExists("/dev/kvm")) {
+            bind("/dev/kvm");
+        }
+        bind("/dev/null");
+        bind("/dev/random");
+        bind("/dev/tty");
+        bind("/dev/urandom");
+        bind("/dev/zero");
+        createSymlink("/proc/self/fd", chrootRootDir + "/dev/fd");
+        createSymlink("/proc/self/fd/0", chrootRootDir + "/dev/stdin");
+        createSymlink("/proc/self/fd/1", chrootRootDir + "/dev/stdout");
+        createSymlink("/proc/self/fd/2", chrootRootDir + "/dev/stderr");
     }
 
     /* Bind a new instance of procfs on /proc. */
@@ -1397,9 +1399,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
        requires the kernel to be compiled with
        CONFIG_DEVPTS_MULTIPLE_INSTANCES=y (which is the case
        if /dev/ptx/ptmx exists). */
-    if (pathExists("/dev/pts/ptmx") && !pathExists(chrootRootDir + "/dev/ptmx")
-        && !pathsInChroot.count("/dev/pts"))
-    {
+    if (pathExists("/dev/pts/ptmx") && !pathExists(chrootRootDir + "/dev/ptmx") && !devPtsMounted) {
         if (sys::mount("none", (chrootRootDir + "/dev/pts"), "devpts", 0, "newinstance,mode=0620") == 0) {
             createSymlink("/dev/pts/ptmx", chrootRootDir + "/dev/ptmx");
 
