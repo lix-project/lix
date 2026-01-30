@@ -288,15 +288,6 @@ protected:
     };
 
     /**
-     * Rewrite resolv.conf for use in the sandbox. Used in the linux platform
-     * to replace nameservers * when using pasta for fixed output derivations.
-     */
-    virtual std::string rewriteResolvConf(std::string fromHost)
-    {
-        return fromHost;
-    }
-
-    /**
      * Create a new process that runs `openSlave` and `runChild`
      * On some platforms this process is created with sandboxing flags.
      */

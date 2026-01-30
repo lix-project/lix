@@ -95,7 +95,7 @@ private:
 
     bool prepareChildSetup() override;
 
-    std::string rewriteResolvConf(std::string fromHost) override;
+    std::string rewriteResolvConf(std::string fromHost);
 
     /**
      * Whether to run the build in a private network namespace.
