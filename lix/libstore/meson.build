@@ -100,7 +100,6 @@ libstore_setting_definitions = files(
   'settings/hashed-mirrors.md',
   'settings/id-count.md',
   'settings/ignored-acls.md',
-  'settings/impersonate-linux-26.md',
   'settings/keep-build-log.md',
   'settings/keep-derivations.md',
   'settings/keep-env-derivations.md',
