@@ -41,10 +41,13 @@ manual = custom_target(
     '-euo', 'pipefail',
     '-c',
     '''
-        @0@ @INPUT0@ @CURRENT_SOURCE_DIR@ > @DEPFILE@
-        cd @3@
-        @1@ build . -d @2@ | { grep -Fv "because fragment resolution isn't implemented" || :; }
-        cd @SOURCE_ROOT@
+        @0@ @INPUT0@ @3@ > @DEPFILE@
+
+        # Needs to be in lix/doc/manual for e.g. substitute.py
+        pushd @3@
+        @1@ build . -d @2@
+        popd
+
         rm -rf @2@/manual
         mv @2@/html @2@/manual
         find @2@/manual -iname meson.build -delete
