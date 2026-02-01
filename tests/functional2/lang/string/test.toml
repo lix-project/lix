@@ -1,9 +1,0 @@
-[[test]]
-runner = "eval-okay"
-matrix = true
-flags = ["--extra-deprecated-features", "broken-string-escape"]
-in = ["in.nix", "in-backslash-newline.nix"]
-
-[[test]]
-runner = "eval-okay"
-in = "in-escapes.nix"

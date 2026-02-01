@@ -3,7 +3,7 @@ warning: \a is an ill-defined escape. You can drop the \ and simply write a inst
               1| "\a\n\{\$\"\'\r\v\\\t
                |   ^
               2| \f"
-warning: \{ is an ill-defined escape. You can drop the \ and simply write { instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: \{ is an ill-defined escape. You can drop the \ and simply write { instead. If you meant to escape an interpolation, write \${ instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:1:7:
               1| "\a\n\{\$\"\'\r\v\\\t
                |       ^

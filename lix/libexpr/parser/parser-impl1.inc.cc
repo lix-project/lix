@@ -698,7 +698,7 @@ template<> struct BuildAST<grammar::v1::string::escape> {
         if (!ps.featureSettings.isEnabled(Dep::BrokenStringEscape) && c != '\\' && c != '$'
             && c != '"' && c != 'r' && c != 'n' && c != 't')
         {
-            ps.badEscapeFound(ps.at(in), c, "\\");
+            ps.badEscapeFound(ps.at(in), c, false);
         }
         s.append(ps.at(in), "\\"); // FIXME compat with old parser
         s.append(ps.at(in), in.string_view());
@@ -769,7 +769,7 @@ template<> struct BuildAST<grammar::v1::ind_string::escape> {
             KJ_FALLTHROUGH;
         default:
             if (!ps.featureSettings.isEnabled(Dep::BrokenStringEscape)) {
-                ps.badEscapeFound(ps.at(in), c, "''\\");
+                ps.badEscapeFound(ps.at(in), c, true);
             }
 
             s.lines.back().parts.emplace_back(ps.at(in), in.string_view());

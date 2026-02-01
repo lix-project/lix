@@ -4,6 +4,7 @@
   (toString (/foo/bar + "/../xyzzy/." + "/foo.txt"))
   ("/../foo" + toString /x/y)
   "escape: \"quote\" \n \\"
+  "\${escaped interpolation}, $\{wrongly escaped interpolation}"
   "end
 of
 line"

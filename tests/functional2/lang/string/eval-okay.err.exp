@@ -1,0 +1,6 @@
+warning: \{ is an ill-defined escape. You can drop the \ and simply write { instead. If you meant to escape an interpolation, write \${ instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:7:33:
+              6|   "escape: \"quote\" \n \\"
+              7|   "\${escaped interpolation}, $\{wrongly escaped interpolation}"
+               |                                 ^
+              8|   "end

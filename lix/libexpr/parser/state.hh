@@ -38,7 +38,7 @@ struct State
     void badLineEndingFound(const PosIdx pos, bool warnOnly);
     void badFirstLineIndStringFound(const PosIdx pos);
     void badSingleLineIndStringFound(const PosIdx pos);
-    void badEscapeFound(const PosIdx pos, char found, std::string escape);
+    void badEscapeFound(const PosIdx pos, char found, bool isIndented);
     void nulFound(const PosIdx pos);
     void recSetMergeFound(const AttrPath & attrPath, const PosIdx pos);
     void recSetDynamicAttrFound(const PosIdx pos);
@@ -129,17 +129,61 @@ inline void State::badFirstLineIndStringFound(const PosIdx pos)
     });
 }
 // Added 2024-12-12, equally used in the wild.
-inline void State::badEscapeFound(const PosIdx pos, char found, std::string escape)
+inline void State::badEscapeFound(const PosIdx pos, char found, bool isIndented)
 {
-    logWarning({
-        .msg = HintFmt(
-            "%s is an ill-defined escape. You can drop the %s and simply write %s instead. Use %s "
-            "to silence this warning.",
+    auto escape = std::string(isIndented ? "''\\" : "\\");
+    auto interpolEscape = std::string(isIndented ? "''${" : "\\${");
+    HintFmt msg = HintFmt(
+        "%s is an ill-defined escape. You can drop the %s and simply write %s instead. "
+        "Use %s to silence this warning.",
+        escape + found,
+        escape,
+        found,
+        "--extra-deprecated-features broken-string-escape"
+    );
+    /* Special case some common escapes to provide better messages */
+    if (found == '$' || found == '{') {
+        /* Someone possibly tried to escape an interpolation but used the wrong sequence.
+         * We don't have the full context within this function to know for sure (extracting that information
+         * would require changing some parser rules), but we can at least add a hint about this to the default
+         * message.
+         */
+        msg = HintFmt(
+            "%s is an ill-defined escape. You can drop the %s and simply write %s instead. "
+            "If you meant to escape an interpolation, write %s instead. "
+            "Use %s to silence this warning.",
             escape + found,
             escape,
             found,
+            interpolEscape,
             "--extra-deprecated-features broken-string-escape"
-        ),
+        );
+    } else if (found == '\r' || found == '\n') {
+        /* Someone tried to escape a line break */
+        msg = HintFmt(
+            "%s at the end of a line is an ill-defined escape. Escaping line endings has no effect. "
+            "You can either drop the trailing %s, or use an explicit string concatenation instead. "
+            "Use %s to silence this warning.",
+            escape,
+            escape,
+            "--extra-deprecated-features broken-string-escape"
+        );
+    } else if (!isprint(found) || isspace(found)) {
+        /* Generic error message for all non-printable escape characters */
+        msg = HintFmt(
+            "Found an ill-defined escape. You can drop the %s, as it has no effect. %s"
+            "Use %s to silence this warning.",
+            escape,
+            isIndented
+                ? "(Note that an escaped space at the beginning of a string line may influence the string's "
+                  "indentation, however deliberately using this in strings is not supported.) "
+                : "",
+            "--extra-deprecated-features broken-string-escape"
+        );
+    }
+
+    logWarning({
+        .msg = msg,
         .pos = positions[pos],
     });
 }

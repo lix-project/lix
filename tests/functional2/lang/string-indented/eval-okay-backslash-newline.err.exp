@@ -1,0 +1,5 @@
+warning: ''\ at the end of a line is an ill-defined escape. Escaping line endings has no effect. You can either drop the trailing ''\, or use an explicit string concatenation instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+         at /pwd/in.nix:1:7:
+              1| ''a''\
+               |       ^
+              2| b''

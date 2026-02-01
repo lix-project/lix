@@ -1,1 +1,1 @@
-"a\n\nf{$\"'\rv\\\t\n'\${\"x\"}\n"
+"a\n\nf{$\"'\rv\\\t\n'\${\"x\"}\n''\n\${interpolation}\n\${bad interpolation 1}\n\${bad interpolation 2}\n"
