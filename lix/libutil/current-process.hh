@@ -14,12 +14,10 @@ namespace nix {
  */
 unsigned int getMaxCPU();
 
-
 /**
- * Change the stack size.
+ * Increase the stack size rlimit if it is currently smaller than `stackSize`.
  */
-void setStackSize(rlim_t stackSize);
-
+void ensureStackSizeAtLeast(rlim_t stackSize);
 
 /**
  * Restore the original inherited Unix process context (such as signal

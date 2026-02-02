@@ -127,7 +127,7 @@ void worker(nix::AutoCloseFD &to, nix::AutoCloseFD &from, MyArgs &args)
 try {
     // Increase the default stack size for the evaluator and for
     // libstdc++'s std::regex.
-    nix::setStackSize(64 * 1024 * 1024);
+    nix::ensureStackSizeAtLeast(64 * 1024 * 1024);
 
 #if HAVE_BOEHMGC
     // We are doing the garbage collection by killing forks.

@@ -54,8 +54,12 @@ unsigned int getMaxCPU()
 
 rlim_t savedStackSize = 0;
 
-void setStackSize(rlim_t stackSize)
+void ensureStackSizeAtLeast(rlim_t stackSize)
 {
+    if (savedStackSize >= stackSize) {
+        return;
+    }
+
     struct rlimit limit;
     if (getrlimit(RLIMIT_STACK, &limit) == 0 && limit.rlim_cur < stackSize) {
         savedStackSize = limit.rlim_cur;

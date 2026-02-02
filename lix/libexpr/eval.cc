@@ -4,6 +4,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/ansicolor.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/current-process.hh"
 #include "lix/libutil/deprecated-features.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/english.hh"
@@ -391,6 +392,11 @@ Evaluator::Evaluator(
 box_ptr<EvalState> Evaluator::begin(AsyncIoRoot & aio)
 {
     assert(!activeEval);
+
+    // Increase the default stack size for the evaluator and for
+    // libstdc++'s std::regex.
+    ensureStackSizeAtLeast(64ul * 1024 * 1024);
+
     return box_ptr<EvalState>::unsafeFromNonnull(
         std::unique_ptr<EvalState>(new EvalState(aio, *this))
     );
