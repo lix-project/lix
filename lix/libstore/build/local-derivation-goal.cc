@@ -1211,7 +1211,13 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
 
         logger = makeSimpleLogger();
 
-        restoreSignals();
+        {
+            sigset_t set;
+            sigemptyset(&set);
+            if (sigprocmask(SIG_SETMASK, &set, nullptr)) {
+                throw SysError("failed to unmask signals");
+            }
+        }
 
         /* Put the child in a separate session (and thus a separate
            process group) so that it has no controlling terminal (meaning
