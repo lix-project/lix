@@ -102,12 +102,6 @@ private:
 };
 
 /**
- * Close all file descriptors except stdio fds (ie 0, 1, 2).
- * Good practice in child processes.
- */
-void closeExtraFDs();
-
-/**
  * Set or clear the close-on-exec flag for the given file descriptor.
  */
 void closeOnExec(int fd, bool doClose = true);
