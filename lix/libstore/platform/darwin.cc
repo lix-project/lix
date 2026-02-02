@@ -421,11 +421,13 @@ void DarwinLocalDerivationGoal::execBuilder(build::Request::Reader request)
 
     posix_spawnattr_t attrp;
 
-    if (posix_spawnattr_init(&attrp))
+    if (posix_spawnattr_init(&attrp)) {
         throw SysError("failed to initialize builder");
+    }
 
-    if (posix_spawnattr_setflags(&attrp, POSIX_SPAWN_SETEXEC))
+    if (posix_spawnattr_setflags(&attrp, POSIX_SPAWN_SETEXEC)) {
         throw SysError("failed to initialize builder");
+    }
 
     const auto platform = rpc::to<std::string_view>(config.getPlatform());
 
