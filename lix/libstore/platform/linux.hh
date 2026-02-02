@@ -5,6 +5,7 @@
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/processes.hh"
+#include <unistd.h>
 
 namespace nix {
 
@@ -59,6 +60,12 @@ private:
     Pid pastaPid;
 
     /**
+     * used to initialize the parent death signal of children without racing
+     * with the parent dying before we got around to setting a death signal.
+     */
+    pid_t parentPid = getpid();
+
+    /**
      * Create a special accessor that can access paths that were built within the sandbox's
      * chroot.
      */
@@ -88,6 +95,8 @@ private:
     }
 
     bool prepareChildSetup() override;
+
+    void finishChildSetup() override;
 
     std::string rewriteResolvConf(std::string fromHost);
 

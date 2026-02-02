@@ -1518,6 +1518,16 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
     return false;
 }
 
+void LinuxLocalDerivationGoal::finishChildSetup()
+{
+    if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
+        throw SysError("setting death signal");
+    }
+    if (getppid() != parentPid) {
+        raise(SIGKILL);
+    }
+}
+
 Pid LinuxLocalDerivationGoal::startChild(
     const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
 )
@@ -1660,10 +1670,6 @@ Pid LinuxLocalDerivationGoal::startChild(
     }
 
     return inVFork(/* flags*/ 0, [&]() {
-        if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
-            throw SysError("setting death signal");
-        }
-
         if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
             throw SysError("failed to redirect build output to log file");
         }
@@ -1698,15 +1704,7 @@ Pid LinuxLocalDerivationGoal::startChild(
         options.cloneFlags =
             CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
 
-        return startProcess(
-            [&]() {
-                if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
-                    throw SysError("setting death signal");
-                }
-                runChild(builder, envStrs, args);
-            },
-            options
-        );
+        return startProcess([&]() { runChild(builder, envStrs, args); }, options);
     });
 }
 
