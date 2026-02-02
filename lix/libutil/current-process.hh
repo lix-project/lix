@@ -26,7 +26,7 @@ void ensureStackSizeAtLeast(rlim_t stackSize);
  *
  * See startSignalHandlerThread(), saveSignalMask().
  */
-void restoreProcessContext(bool restoreMounts = true);
+void restoreProcessContext();
 
 /**
  * @return the path of the current executable.

@@ -22,6 +22,7 @@
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/signals.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libstore/build/personality.hh"
@@ -1210,7 +1211,7 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
 
         logger = makeSimpleLogger();
 
-        restoreProcessContext(false);
+        restoreSignals();
 
         /* Put the child in a separate session (and thus a separate
            process group) so that it has no controlling terminal (meaning

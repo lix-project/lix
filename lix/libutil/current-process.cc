@@ -77,12 +77,10 @@ void ensureStackSizeAtLeast(rlim_t stackSize)
     }
 }
 
-void restoreProcessContext(bool restoreMounts)
+void restoreProcessContext()
 {
     restoreSignals();
-    if (restoreMounts) {
-        restoreMountNamespace();
-    }
+    restoreMountNamespace();
 
     if (savedStackSize) {
         struct rlimit limit;
