@@ -29,7 +29,6 @@
 #include "lix/libutil/namespaces.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/unix-domain-socket.hh"
-#include "lix/libutil/mount.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/thread-name.hh"
 #include "lix/libstore/platform/linux.hh"

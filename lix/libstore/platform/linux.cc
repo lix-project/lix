@@ -9,7 +9,6 @@
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libstore/gc-store.hh"
-#include "lix/libutil/mount.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
@@ -1232,6 +1231,40 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
     nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV4);
     nsInSandbox += fmt("nameserver %s\n", PASTA_HOST_IPV6);
     return std::regex_replace(fromHost, lineRegex, "") + nsInSandbox;
+}
+
+static void bindPath(const Path & source, const Path & target, bool optional = false)
+{
+    debug("bind mounting '%1%' to '%2%'", source, target);
+
+    auto bindMount = [&]() {
+        if (sys::mount(source, target, "", MS_BIND | MS_REC, 0) == -1) {
+            throw SysError("bind mount from '%1%' to '%2%' failed", source, target);
+        }
+    };
+
+    auto maybeSt = maybeLstat(source);
+    if (!maybeSt) {
+        if (optional) {
+            return;
+        } else {
+            throw SysError("getting attributes of path '%1%'", source);
+        }
+    }
+    auto st = *maybeSt;
+
+    if (S_ISDIR(st.st_mode)) {
+        createDirs(target);
+        bindMount();
+    } else if (S_ISLNK(st.st_mode)) {
+        // Symlinks can (apparently) not be bind-mounted, so just copy it
+        createDirs(dirOf(target));
+        copyFile(source, target, {});
+    } else {
+        createDirs(dirOf(target));
+        writeFile(target, "");
+        bindMount();
+    }
 }
 
 bool LinuxLocalDerivationGoal::prepareChildSetup()
