@@ -174,7 +174,6 @@ liblix_sources += files(
   # keep-sorted start
   'binary-cache-store.cc',
   'build-result.cc',
-  'build/child.cc',
   'build/derivation-goal.cc',
   'build/entry-points.cc',
   'build/goal.cc',
@@ -242,7 +241,6 @@ libstore_headers = files(
   # keep-sorted start
   'binary-cache-store.hh',
   'build-result.hh',
-  'build/child.hh',
   'build/derivation-goal.hh',
   'build/goal.hh',
   'build/hook-instance.hh',
