@@ -1367,7 +1367,7 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
 
         throw SysError("executing '%1%'", drv->builder);
 
-    } catch (Error & e) {
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         if (sendException) {
             writeFull(STDERR_FILENO, std::format("\1{}\n", e.what()));
         } else {
