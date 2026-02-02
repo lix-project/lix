@@ -37,11 +37,12 @@ public:
     using LocalDerivationGoal::LocalDerivationGoal;
 
 private:
+    std::string sandboxProfile;
+
     /**
-     * Prepare the sandbox: This is empty on Darwin since sandbox setup happens in
-     * enterSandbox
+     * Prepare the sandbox: generate the sandboxProfile
      */
-    void prepareSandbox() override{};
+    void prepareSandbox() override;
 
     void finishChildSetup() override;
 

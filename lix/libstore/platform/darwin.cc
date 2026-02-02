@@ -254,10 +254,10 @@ try {
     co_return result::current_exception();
 }
 
-void DarwinLocalDerivationGoal::finishChildSetup()
+void DarwinLocalDerivationGoal::prepareSandbox()
 {
     /* This has to appear before import statements. */
-    std::string sandboxProfile = "(version 1)\n";
+    sandboxProfile = "(version 1)\n";
 
     if (useChroot) {
 
@@ -369,7 +369,10 @@ void DarwinLocalDerivationGoal::finishChildSetup()
     }
 
     debug("Generated sandbox profile: %1%", sandboxProfile);
+}
 
+void DarwinLocalDerivationGoal::finishChildSetup()
+{
     bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
 
     /* The tmpDir in scope points at the temporary build directory for our derivation. Some packages try
