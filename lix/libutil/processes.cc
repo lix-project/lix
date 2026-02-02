@@ -380,7 +380,9 @@ RunningProgram runProgram2(const RunOptions & options)
             Strings args_(options.args);
             args_.push_front(options.argv0.value_or(options.program));
 
-            restoreProcessContext();
+            if (!options.keepContext) {
+                restoreProcessContext();
+            }
 
             if (options.searchPath) {
                 sys::execvp(options.program, args_);

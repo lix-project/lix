@@ -45,13 +45,6 @@ private:
 
     void fillBuilderConfig(build::Request::Builder config) override;
 
-    void finishChildSetup(build::Request::Reader request) override;
-
-    /**
-     * Set process flags to enter or leave rosetta, then execute the builder
-     */
-    void execBuilder(build::Request::Reader request) override;
-
     /**
      * Whether we need to rewrite output hashes.
      * Always true on Darwin since Darwin requires hash rewriting

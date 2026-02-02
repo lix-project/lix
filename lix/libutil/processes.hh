@@ -110,6 +110,7 @@ struct RunOptions
     std::optional<std::map<std::string, std::string>> environment = {};
     bool captureStdout = false;
     std::vector<Redirection> redirections;
+    bool keepContext = false;
 };
 
 struct [[nodiscard("you must call RunningProgram::wait()")]] RunningProgram

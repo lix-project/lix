@@ -7,6 +7,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/cgroup.hh"
+#include <capnp/message.h>
 
 namespace nix {
 
@@ -208,11 +209,6 @@ struct LocalDerivationGoal : public DerivationGoal
     int getChildStatus() override;
 
     /**
-     * Run the builder's process.
-     */
-    void runChild(build::Request::Reader request);
-
-    /**
      * Check that the derivation outputs all exist and register them
      * as valid.
      */
@@ -292,29 +288,12 @@ protected:
      * Create a new process that runs `openSlave` and `runChild`
      * On some platforms this process is created with sandboxing flags.
      */
-    virtual Pid startChild(build::Request::Reader request, AutoCloseFD logPTY);
+    virtual Pid startChild(AutoCloseFD setupFD, AutoCloseFD logPTY);
 
     kj::Promise<Result<WorkResult>> handleRawChild() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
 
     virtual void fillBuilderConfig(build::Request::Builder request) {}
-
-    /**
-     * Prepare the sandbox. Currently only used on linux to build the sandbox namespace,
-     * write configuration files inside it, and to set up networking with pasta enabled.
-     * Returns `true` if sandbox is running under the same credentials as the daemon, or
-     * `false` if this step has changed our credentials to the build user/group already.
-     */
-    [[nodiscard]]
-    virtual bool prepareChildSetup(build::Request::Reader request)
-    {
-        return true;
-    }
-
-    /**
-     * Finish sandbox setup and prepare for actually executing the builder processes.
-     */
-    virtual void finishChildSetup(build::Request::Reader request) {}
 
     /**
      * Create a special accessor that can access paths that were built within the sandbox's
@@ -324,12 +303,6 @@ protected:
     {
         return std::nullopt;
     };
-
-    /**
-     * Execute the builder, replacing the current process.
-     * Generally this means an `execve` call.
-     */
-    virtual void execBuilder(build::Request::Reader request);
 
     /**
      * Whether derivation can be built on current platform with `uid-range` feature

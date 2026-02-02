@@ -1,5 +1,6 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
 #include "derivation-goal.hh"
+#include "libutil/logging.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/current-process.hh"
@@ -37,7 +38,9 @@
 #include "request.capnp.h"
 
 #include <capnp/message.h>
+#include <capnp/serialize.h>
 #include <cstddef>
+#include <cstdio>
 #include <dirent.h>
 #include <exception>
 #include <optional>
@@ -943,11 +946,24 @@ try {
         auto groups = buildUser->getSupplementaryGIDs();
         creds.setSupplementaryGroups({groups.data(), groups.size()});
     }
+    request.setDebug(verbosity >= lvlDebug);
 
     fillBuilderConfig(request);
 
+    auto setupFD = sys::openat(tmpDirFd.get(), "build-request", O_RDWR | O_CREAT | O_CLOEXEC, 0400);
+    if (!setupFD) {
+        throw SysError("creating builder setup file");
+    }
+    if (sys::unlinkat(tmpDirFd.get(), "build-request", 0)) {
+        throw SysError("unlinking builder setup file");
+    }
+    capnp::writeMessageToFd(setupFD.get(), requestBuilder);
+    if (lseek(setupFD.get(), 0, SEEK_SET) == -1) {
+        throw SysError("seeking builder setup file");
+    }
+
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(request.asReader(), std::move(builderOut))};
+    pg = ProcessGroup{startChild(std::move(setupFD), std::move(builderOut))};
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -979,15 +995,19 @@ try {
     co_return result::current_exception();
 }
 
-Pid LocalDerivationGoal::startChild(build::Request::Reader request, AutoCloseFD logPTY)
+Pid LocalDerivationGoal::startChild(AutoCloseFD setupFD, AutoCloseFD logPTY)
 {
-    return startProcess([&]() {
-        if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
-            throw SysError("failed to redirect build output to log file");
-        }
-        closeOnExec(STDERR_FILENO, false);
-        runChild(request);
+    auto child = runProgram2({
+        .program = LIX_LIBEXEC_DIR "/launch-builder",
+        .searchPath = false,
+        .redirections =
+            {
+                {.dup = STDIN_FILENO, .from = setupFD.get()},
+                {.dup = STDERR_FILENO, .from = logPTY.get()},
+            },
+        .keepContext = true,
     });
+    return std::get<0>(child.release());
 }
 
 void LocalDerivationGoal::initTmpDir() {
@@ -1220,173 +1240,6 @@ void LocalDerivationGoal::chownToBuilder(const AutoCloseFD & fd)
     if (fchown(fd.get(), buildUser->getUID(), buildUser->getGID()) == -1)
         throw SysError("cannot change ownership of file '%1%'", fd.guessOrInventPath());
 }
-
-static void closeExtraFDs()
-{
-    constexpr int MAX_KEPT_FD = 2;
-    static_assert(std::max({STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO}) == MAX_KEPT_FD);
-
-    // Both Linux and FreeBSD support close_range.
-#if __linux__ || __FreeBSD__
-    auto closeRange = [](unsigned int first, unsigned int last, int flags) -> int {
-    // musl does not have close_range as of 2024-08-10
-    // patch: https://www.openwall.com/lists/musl/2024/08/01/9
-#if HAVE_CLOSE_RANGE
-        return close_range(first, last, flags);
-#else
-        return syscall(SYS_close_range, first, last, flags);
-#endif
-    };
-    // first try to close_range everything we don't care about. if this
-    // returns an error with these parameters we're running on a kernel
-    // that does not implement close_range (i.e. pre 5.9) and fall back
-    // to the old method. we should remove that though, in some future.
-    if (closeRange(3, ~0U, 0) == 0) {
-        return;
-    }
-#endif
-
-#if __linux__
-    try {
-        for (auto & s : std::filesystem::directory_iterator("/proc/self/fd")) {
-            auto fd = std::stoi(s.path().filename().c_str());
-            if (fd > MAX_KEPT_FD) {
-                debug("closing leaked FD %d", fd);
-                close(fd);
-            }
-        }
-        return;
-    } catch (std::exception &) { // NOLINT(lix-foreign-exceptions): that's what std::filesystem throws
-    }
-#endif
-
-    int maxFD = 0;
-    maxFD = sysconf(_SC_OPEN_MAX);
-    for (int fd = MAX_KEPT_FD + 1; fd < maxFD; ++fd) {
-        close(fd); /* ignore result */
-    }
-}
-
-void LocalDerivationGoal::runChild(build::Request::Reader request)
-{
-    /* Warning: in the child we should absolutely not make any SQLite
-       calls! */
-
-    bool sendException = true;
-
-    try { /* child */
-
-        logger = makeSimpleLogger();
-
-        {
-            sigset_t set;
-            sigemptyset(&set);
-            if (sigprocmask(SIG_SETMASK, &set, nullptr)) {
-                throw SysError("failed to unmask signals");
-            }
-        }
-
-        /* Put the child in a separate session (and thus a separate
-           process group) so that it has no controlling terminal (meaning
-           that e.g. ssh cannot open /dev/tty) and it doesn't receive
-           terminal signals. */
-        if (setsid() == -1) {
-            throw SysError("creating a new session");
-        }
-
-        /* Dup stderr to stdout. */
-        if (dup2(STDERR_FILENO, STDOUT_FILENO) == -1) {
-            throw SysError("cannot dup stderr into stdout");
-        }
-
-        /* Reroute stdin to /dev/null. */
-        kj::AutoCloseFd fdDevNull{open("/dev/null", O_RDWR)};
-        if (fdDevNull == nullptr) {
-            throw SysError("cannot open '%1%'", "/dev/null");
-        }
-        if (dup2(fdDevNull.get(), STDIN_FILENO) == -1) {
-            throw SysError("cannot dup null device into stdin");
-        }
-
-        const bool setUser = prepareChildSetup(request);
-
-        // NOLINTNEXTLINE(lix-unsafe-c-calls): we trust the parent here
-        if (chdir(rpc::to<std::string>(request.getWorkingDir()).c_str()) == -1) {
-            throw SysError("changing into '%1%'", rpc::to<std::string>(request.getWorkingDir()));
-        }
-
-        /* Close all other file descriptors. */
-        closeExtraFDs();
-
-        /* Disable core dumps by default. */
-        struct rlimit limit = { 0, RLIM_INFINITY };
-        if (request.getEnableCoreDumps()) {
-            limit.rlim_cur = RLIM_INFINITY;
-        }
-        setrlimit(RLIMIT_CORE, &limit);
-
-        // FIXME: set other limits to deterministic values?
-
-        /* If we are running in `build-users' mode, then switch to the
-           user we allocated above.  Make sure that we drop all root
-           privileges.  Note that above we have closed all file
-           descriptors except std*, so that's safe.  Also note that
-           setuid() when run as root sets the real, effective and
-           saved UIDs. */
-        if (setUser && request.hasCredentials()) {
-            auto creds = request.getCredentials();
-            /* Preserve supplementary groups of the build user, to allow
-               admins to specify groups such as "kvm".  */
-            std::vector<gid_t> gids;
-            std::copy(
-                creds.getSupplementaryGroups().begin(),
-                creds.getSupplementaryGroups().end(),
-                std::back_inserter(gids)
-            );
-            if (setgroups(gids.size(), gids.data()) == -1) {
-                throw SysError("cannot set supplementary groups of build user");
-            }
-
-            if (setgid(creds.getGid()) == -1 || getgid() != creds.getGid() || getegid() != creds.getGid()) {
-                throw SysError("setgid failed");
-            }
-
-            if (setuid(creds.getUid()) == -1 || getuid() != creds.getUid() || geteuid() != creds.getUid()) {
-                throw SysError("setuid failed");
-            }
-        }
-
-        finishChildSetup(request);
-
-        /* Indicate that we managed to set up the build environment. */
-        writeFull(STDERR_FILENO, std::string("\2\n"));
-
-        sendException = false;
-
-        /* Execute the program.  This should not return. */
-        execBuilder(request);
-
-        throw SysError("executing '%1%'", drv->builder);
-
-    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-        if (sendException) {
-            writeFull(STDERR_FILENO, std::format("\1{}\n", e.what()));
-        } else {
-            writeFull(STDERR_FILENO, e.what());
-        }
-        _exit(1);
-    }
-}
-
-void LocalDerivationGoal::execBuilder(build::Request::Reader request)
-{
-    sys::execve(
-        rpc::to<std::string>(request.getBuilder()),
-        rpc::to<Strings>(request.getArgs()),
-        rpc::to<Strings>(request.getEnvironment())
-    );
-}
-
 
 kj::Promise<Result<SingleDrvOutputs>> LocalDerivationGoal::registerOutputs()
 try {

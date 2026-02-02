@@ -76,7 +76,7 @@ private:
      * Start child process in new namespaces,
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
-    Pid startChild(build::Request::Reader request, AutoCloseFD logPTY) override;
+    Pid startChild(AutoCloseFD setupFD, AutoCloseFD logPTY) override;
 
     /**
      * Kill all processes by build user.
@@ -87,10 +87,6 @@ private:
     {
         return true;
     }
-
-    bool prepareChildSetup(build::Request::Reader request) override;
-
-    void finishChildSetup(build::Request::Reader request) override;
 
     std::string rewriteResolvConf(std::string fromHost);
 

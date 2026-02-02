@@ -51,6 +51,7 @@ struct Request {
   workingDir @3 :Data;
   enableCoreDumps @4 :Bool;
   credentials @5 :Credentials;
+  debug @8 :Bool;
 
   platform :union {
     linux @6 :LinuxPlatform;
