@@ -931,6 +931,18 @@ try {
     RPC_FILL(request, setBuilder, builder);
     RPC_FILL(request, initArgs, args);
     RPC_FILL(request, initEnvironment, envStrs);
+    RPC_FILL(request, setWorkingDir, tmpDirInSandbox);
+    request.setEnableCoreDumps(settings.enableCoreDumps);
+    if (buildUser) {
+        auto creds = request.initCredentials();
+        creds.setUid(buildUser->getUID());
+        creds.setGid(buildUser->getGID());
+        creds.setUidCount(buildUser->getUIDCount());
+        static_assert(std::is_same_v<uid_t, decltype(creds.getUid())>);
+        static_assert(std::is_same_v<gid_t, decltype(creds.getGid())>);
+        auto groups = buildUser->getSupplementaryGIDs();
+        creds.setSupplementaryGroups({groups.data(), groups.size()});
+    }
 
     fillBuilderConfig(request);
 
@@ -1299,8 +1311,8 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
 
         const bool setUser = prepareChildSetup(request);
 
-        if (sys::chdir(tmpDirInSandbox) == -1) {
-            throw SysError("changing into '%1%'", tmpDir);
+        if (sys::chdir(rpc::to<std::string>(request.getWorkingDir())) == -1) {
+            throw SysError("changing into '%1%'", rpc::to<std::string>(request.getWorkingDir()));
         }
 
         /* Close all other file descriptors. */
@@ -1308,7 +1320,7 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
 
         /* Disable core dumps by default. */
         struct rlimit limit = { 0, RLIM_INFINITY };
-        if (settings.enableCoreDumps) {
+        if (request.getEnableCoreDumps()) {
             limit.rlim_cur = RLIM_INFINITY;
         }
         setrlimit(RLIMIT_CORE, &limit);
@@ -1321,22 +1333,27 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
            descriptors except std*, so that's safe.  Also note that
            setuid() when run as root sets the real, effective and
            saved UIDs. */
-        if (setUser && buildUser) {
+        if (setUser && request.hasCredentials()) {
+            auto creds = request.getCredentials();
             /* Preserve supplementary groups of the build user, to allow
                admins to specify groups such as "kvm".  */
-            auto gids = buildUser->getSupplementaryGIDs();
-            if (setgroups(gids.size(), gids.data()) == -1)
+            std::vector<gid_t> gids;
+            std::copy(
+                creds.getSupplementaryGroups().begin(),
+                creds.getSupplementaryGroups().end(),
+                std::back_inserter(gids)
+            );
+            if (setgroups(gids.size(), gids.data()) == -1) {
                 throw SysError("cannot set supplementary groups of build user");
+            }
 
-            if (setgid(buildUser->getGID()) == -1 ||
-                getgid() != buildUser->getGID() ||
-                getegid() != buildUser->getGID())
+            if (setgid(creds.getGid()) == -1 || getgid() != creds.getGid() || getegid() != creds.getGid()) {
                 throw SysError("setgid failed");
+            }
 
-            if (setuid(buildUser->getUID()) == -1 ||
-                getuid() != buildUser->getUID() ||
-                geteuid() != buildUser->getUID())
+            if (setuid(creds.getUid()) == -1 || getuid() != creds.getUid() || geteuid() != creds.getUid()) {
                 throw SysError("setuid failed");
+            }
         }
 
         finishChildSetup(request);
