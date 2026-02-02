@@ -394,21 +394,19 @@ void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
         globalTmpDir.pop_back();
     }
 
-    if (getEnv("_NIX_TEST_NO_SANDBOX") != "1") {
-        Strings sandboxArgs;
+    if (auto env = getenv("_NIX_TEST_NO_SANDBOX"); env && env != std::string_view("1")) {
+        std::vector<const char *> sandboxArgs;
         sandboxArgs.push_back("_NIX_BUILD_TOP");
-        sandboxArgs.push_back(rpc::to<std::string>(config.getTempDir()));
+        sandboxArgs.push_back(config.getTempDir().cStr());
         sandboxArgs.push_back("_GLOBAL_TMP_DIR");
-        sandboxArgs.push_back(globalTmpDir);
+        sandboxArgs.push_back(globalTmpDir.c_str());
         if (config.getAllowLocalNetworking()) {
             sandboxArgs.push_back("_ALLOW_LOCAL_NETWORKING");
             sandboxArgs.push_back("1");
         }
+        sandboxArgs.push_back(nullptr);
         // NOLINTNEXTLINE(lix-unsafe-c-calls): all of these are env names or paths
-        if (sandbox_init_with_parameters(
-                config.getSandboxProfile().cStr(), 0, stringsToCharPtrs(sandboxArgs).data(), nullptr
-            ))
-        {
+        if (sandbox_init_with_parameters(config.getSandboxProfile().cStr(), 0, sandboxArgs.data(), nullptr)) {
             writeFull(STDERR_FILENO, "failed to configure sandbox\n");
             _exit(1);
         }

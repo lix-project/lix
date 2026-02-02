@@ -1248,15 +1248,15 @@ static void closeExtraFDs()
 
 #if __linux__
     try {
-        for (auto & s : readDirectory("/proc/self/fd")) {
-            auto fd = std::stoi(s.name);
+        for (auto & s : std::filesystem::directory_iterator("/proc/self/fd")) {
+            auto fd = std::stoi(s.path().filename().c_str());
             if (fd > MAX_KEPT_FD) {
                 debug("closing leaked FD %d", fd);
                 close(fd);
             }
         }
         return;
-    } catch (SysError &) {
+    } catch (std::exception &) { // NOLINT(lix-foreign-exceptions): that's what std::filesystem throws
     }
 #endif
 
@@ -1300,8 +1300,8 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
         }
 
         /* Reroute stdin to /dev/null. */
-        AutoCloseFD fdDevNull{open("/dev/null", O_RDWR)};
-        if (!fdDevNull) {
+        kj::AutoCloseFd fdDevNull{open("/dev/null", O_RDWR)};
+        if (fdDevNull == nullptr) {
             throw SysError("cannot open '%1%'", "/dev/null");
         }
         if (dup2(fdDevNull.get(), STDIN_FILENO) == -1) {
@@ -1310,7 +1310,8 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
 
         const bool setUser = prepareChildSetup(request);
 
-        if (sys::chdir(rpc::to<std::string>(request.getWorkingDir())) == -1) {
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): we trust the parent here
+        if (chdir(rpc::to<std::string>(request.getWorkingDir()).c_str()) == -1) {
             throw SysError("changing into '%1%'", rpc::to<std::string>(request.getWorkingDir()));
         }
 

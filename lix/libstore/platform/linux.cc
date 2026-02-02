@@ -54,6 +54,8 @@
 #include <seccomp.h>
 #endif
 
+namespace fs = std::filesystem;
+
 namespace nix {
 
 namespace {
@@ -1240,36 +1242,37 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
     return std::regex_replace(fromHost, lineRegex, "") + nsInSandbox;
 }
 
-static void bindPath(const Path & source, const Path & target, bool optional = false)
+static void bindPath(const fs::path & source, const fs::path & target, bool optional = false)
 {
     debug("bind mounting '%1%' to '%2%'", source, target);
 
     auto bindMount = [&]() {
-        if (sys::mount(source, target, "", MS_BIND | MS_REC, 0) == -1) {
-            throw SysError("bind mount from '%1%' to '%2%' failed", source, target);
+        if (mount(source.c_str(), target.c_str(), "", MS_BIND | MS_REC, 0) == -1) {
+            throw SysError("bind mount from %1% to %2% failed", source, target);
         }
     };
 
-    auto maybeSt = maybeLstat(source);
-    if (!maybeSt) {
+    auto st = fs::symlink_status(source);
+    if (st.type() == fs::file_type::not_found) {
         if (optional) {
             return;
         } else {
-            throw SysError("getting attributes of path '%1%'", source);
+            throw SysError("getting attributes of path %1%", source);
         }
     }
-    auto st = *maybeSt;
 
-    if (S_ISDIR(st.st_mode)) {
-        createDirs(target);
+    if (st.type() == fs::file_type::directory) {
+        fs::create_directories(target);
         bindMount();
-    } else if (S_ISLNK(st.st_mode)) {
+    } else if (st.type() == fs::file_type::symlink) {
         // Symlinks can (apparently) not be bind-mounted, so just copy it
-        createDirs(dirOf(target));
-        copyFile(source, target, {});
+        fs::create_directories(target.parent_path());
+        fs::copy_symlink(source, target);
     } else {
-        createDirs(dirOf(target));
-        writeFile(target, "");
+        fs::create_directories(target.parent_path());
+        if (kj::AutoCloseFd file{open(target.c_str(), O_RDWR | O_CREAT, 0644)}; file == nullptr) {
+            throw SysError("could not create %s", target);
+        }
         bindMount();
     }
 }
@@ -1310,12 +1313,18 @@ static bool prepareChildSetup_(build::Request::Reader request)
 
     auto sandbox = config.getSandbox();
 
-    const Path chrootRootDir{rpc::to<std::string_view>(sandbox.getChrootRootDir())};
+    // NOLINTBEGIN(lix-unsafe-c-calls): we trust the parent that all sandbox config is correct.
+    // no strings in the linux sandbox config can be set by normal users or derivation authors,
+    // except (in single-user instances) storeDir and chrootRootDir, which must be valid paths.
+    //
+    // NOLINTBEGIN(lix-foreign-exceptions): they're all properly caught by the builder main fn.
+
+    const fs::path chrootRootDir{rpc::to<std::string_view>(sandbox.getChrootRootDir())};
 
     if (sandbox.getPrivateNetwork()) {
         /* Initialise the loopback interface. */
-        AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
-        if (!fd) {
+        kj::AutoCloseFd fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
+        if (fd == nullptr) {
             throw SysError("cannot open IP socket");
         }
 
@@ -1345,14 +1354,17 @@ static bool prepareChildSetup_(build::Request::Reader request)
        outside of the namespace.  Making a subtree private is
        local to the namespace, though, so setting MS_PRIVATE
        does not affect the outside world. */
+    const fs::path storeDir{rpc::to<std::string>(sandbox.getStoreDir())};
+    const auto chrootStoreDir = chrootRootDir / storeDir.relative_path();
+
     if (mount(0, "/", 0, MS_PRIVATE | MS_REC, 0) == -1) {
         throw SysError("unable to make '/' private");
     }
 
     /* Bind-mount chroot directory to itself, to treat it as a
        different filesystem from /, as needed for pivot_root. */
-    if (sys::mount(chrootRootDir, chrootRootDir, "", MS_BIND, 0) == -1) {
-        throw SysError("unable to bind mount '%1%'", chrootRootDir);
+    if (mount(chrootRootDir.c_str(), chrootRootDir.c_str(), "", MS_BIND, 0) == -1) {
+        throw SysError("unable to bind mount %1%", chrootRootDir);
     }
 
     /* Bind-mount the sandbox's Nix store onto itself so that
@@ -1363,14 +1375,12 @@ static bool prepareChildSetup_(build::Request::Reader request)
 
        Marking chrootRootDir as MS_SHARED causes pivot_root()
        to fail with EINVAL. Don't know why. */
-    Path chrootStoreDir = chrootRootDir + rpc::to<std::string_view>(sandbox.getStoreDir());
-
-    if (sys::mount(chrootStoreDir, chrootStoreDir, "", MS_BIND, 0) == -1) {
-        throw SysError("unable to bind mount the Nix store", chrootStoreDir);
+    if (mount(chrootStoreDir.c_str(), chrootStoreDir.c_str(), "", MS_BIND, 0) == -1) {
+        throw SysError("unable to bind mount the Nix store");
     }
 
-    if (sys::mount("", chrootStoreDir, "", MS_SHARED, 0) == -1) {
-        throw SysError("unable to make '%s' shared", chrootStoreDir);
+    if (mount("", chrootStoreDir.c_str(), "", MS_SHARED, 0) == -1) {
+        throw SysError("unable to make %s shared", chrootStoreDir);
     }
 
     bool devMounted = false;
@@ -1380,8 +1390,8 @@ static bool prepareChildSetup_(build::Request::Reader request)
        filesystem that we want in the chroot
        environment. */
     for (auto path : sandbox.getPaths()) {
-        const std::string source{rpc::to<std::string_view>(path.getSource())};
-        const std::string target{rpc::to<std::string_view>(path.getTarget())};
+        const fs::path source{rpc::to<std::string_view>(path.getSource())};
+        const fs::path target{rpc::to<std::string_view>(path.getTarget())};
         devMounted |= target == "/dev";
         devPtsMounted |= target == "/dev/pts";
         if (source == "/proc") {
@@ -1393,22 +1403,22 @@ static bool prepareChildSetup_(build::Request::Reader request)
             static unsigned char sh[] = {
 #include "embedded-sandbox-shell.gen.hh"
                     };
-            auto dst = chrootRootDir + target;
-            createDirs(dirOf(dst));
+            const fs::path dst = chrootRootDir / target.relative_path();
+            fs::create_directories(dst.parent_path());
             writeFile(dst, std::string_view((const char *) sh, sizeof(sh)));
-            chmodPath(dst, 0555);
+            fs::permissions(dst, fs::perms(0555));
         } else
 #endif
-            bindPath(source, chrootRootDir + target, path.getOptional());
+            bindPath(source, chrootRootDir / target.relative_path(), path.getOptional());
     }
 
     /* Set up a nearly empty /dev, unless the user asked to
        bind-mount the host /dev. */
     if (!devMounted) {
-        const auto bind = [&](std::string item) { bindPath(item, chrootRootDir + item); };
+        const auto bind = [&](fs::path item) { bindPath(item, chrootRootDir / item.relative_path()); };
 
-        createDirs(chrootRootDir + "/dev/shm");
-        createDirs(chrootRootDir + "/dev/pts");
+        fs::create_directories(chrootRootDir / "dev/shm");
+        fs::create_directories(chrootRootDir / "dev/pts");
         bind("/dev/full");
         if (sandbox.getWantsKvm() && pathExists("/dev/kvm")) {
             bind("/dev/kvm");
@@ -1418,22 +1428,22 @@ static bool prepareChildSetup_(build::Request::Reader request)
         bind("/dev/tty");
         bind("/dev/urandom");
         bind("/dev/zero");
-        createSymlink("/proc/self/fd", chrootRootDir + "/dev/fd");
-        createSymlink("/proc/self/fd/0", chrootRootDir + "/dev/stdin");
-        createSymlink("/proc/self/fd/1", chrootRootDir + "/dev/stdout");
-        createSymlink("/proc/self/fd/2", chrootRootDir + "/dev/stderr");
+        fs::create_symlink("/proc/self/fd", chrootRootDir / "dev/fd");
+        fs::create_symlink("/proc/self/fd/0", chrootRootDir / "dev/stdin");
+        fs::create_symlink("/proc/self/fd/1", chrootRootDir / "dev/stdout");
+        fs::create_symlink("/proc/self/fd/2", chrootRootDir / "dev/stderr");
     }
 
     /* Bind a new instance of procfs on /proc. */
-    createDirs(chrootRootDir + "/proc");
-    if (sys::mount("none", chrootRootDir + "/proc", "proc", 0, 0) == -1) {
+    fs::create_directories(chrootRootDir / "proc");
+    if (mount("none", (chrootRootDir / "proc").c_str(), "proc", 0, 0) == -1) {
         throw SysError("mounting /proc");
     }
 
     /* Mount sysfs on /sys. */
     if (request.hasCredentials() && request.getCredentials().getUidCount() != 1) {
-        createDirs(chrootRootDir + "/sys");
-        if (sys::mount("none", chrootRootDir + "/sys", "sysfs", 0, 0) == -1) {
+        fs::create_directories(chrootRootDir / "sys");
+        if (mount("none", (chrootRootDir / "sys").c_str(), "sysfs", 0, 0) == -1) {
             throw SysError("mounting /sys");
         }
     }
@@ -1441,7 +1451,7 @@ static bool prepareChildSetup_(build::Request::Reader request)
     /* Mount a new tmpfs on /dev/shm to ensure that whatever
        the builder puts in /dev/shm is cleaned up automatically. */
     if (pathExists("/dev/shm")
-        && sys::mount("none", chrootRootDir + "/dev/shm", "tmpfs", 0, sandbox.getSandboxShmFlags().cStr())
+        && mount("none", (chrootRootDir / "dev/shm").c_str(), "tmpfs", 0, sandbox.getSandboxShmFlags().cStr())
             == -1)
     {
         throw SysError("mounting /dev/shm");
@@ -1451,25 +1461,25 @@ static bool prepareChildSetup_(build::Request::Reader request)
        requires the kernel to be compiled with
        CONFIG_DEVPTS_MULTIPLE_INSTANCES=y (which is the case
        if /dev/ptx/ptmx exists). */
-    if (pathExists("/dev/pts/ptmx") && !pathExists(chrootRootDir + "/dev/ptmx") && !devPtsMounted) {
-        if (sys::mount("none", (chrootRootDir + "/dev/pts"), "devpts", 0, "newinstance,mode=0620") == 0) {
-            createSymlink("/dev/pts/ptmx", chrootRootDir + "/dev/ptmx");
+    if (pathExists("/dev/pts/ptmx") && !pathExists(chrootRootDir / "dev/ptmx") && !devPtsMounted) {
+        if (mount("none", (chrootRootDir / "dev/pts").c_str(), "devpts", 0, "newinstance,mode=0620") == 0) {
+            fs::create_symlink("/dev/pts/ptmx", chrootRootDir / "dev/ptmx");
 
             /* Make sure /dev/pts/ptmx is world-writable.  With some
                Linux versions, it is created with permissions 0.  */
-            chmodPath(chrootRootDir + "/dev/pts/ptmx", 0666);
+            fs::permissions(chrootRootDir / "dev/pts/ptmx", fs::perms(0666));
         } else {
             if (errno != EINVAL) {
                 throw SysError("mounting /dev/pts");
             }
-            bindPath("/dev/pts", chrootRootDir + "/dev/pts");
-            bindPath("/dev/ptmx", chrootRootDir + "/dev/ptmx");
+            bindPath("/dev/pts", chrootRootDir / "dev/pts");
+            bindPath("/dev/ptmx", chrootRootDir / "dev/ptmx");
         }
     }
 
     /* Make /etc unwritable */
     if (!sandbox.getUseUidRange()) {
-        chmodPath(chrootRootDir + "/etc", 0555);
+        fs::permissions(chrootRootDir / "etc", fs::perms(0555));
     }
 
     /* The comment below is now outdated. Recursive Nix has been removed.
@@ -1500,8 +1510,8 @@ static bool prepareChildSetup_(build::Request::Reader request)
     }
 
     /* Do the chroot(). */
-    if (sys::chdir(chrootRootDir) == -1) {
-        throw SysError("cannot change directory to '%1%'", chrootRootDir);
+    if (chdir(chrootRootDir.c_str()) == -1) {
+        throw SysError("cannot change directory to %1%", chrootRootDir);
     }
 
     if (mkdir("real-root", 0) == -1) {
@@ -1509,11 +1519,11 @@ static bool prepareChildSetup_(build::Request::Reader request)
     }
 
     if (syscall(SYS_pivot_root, ".", "real-root") == -1) {
-        throw SysError("cannot pivot old root directory onto '%1%'", (chrootRootDir + "/real-root"));
+        throw SysError("cannot pivot old root directory onto %1%", chrootRootDir / "real-root");
     }
 
     if (chroot(".") == -1) {
-        throw SysError("cannot change root directory to '%1%'", chrootRootDir);
+        throw SysError("cannot change root directory to %1%", chrootRootDir);
     }
 
     if (umount2("real-root", MNT_DETACH) == -1) {
@@ -1537,13 +1547,12 @@ static bool prepareChildSetup_(build::Request::Reader request)
     if (sandbox.hasWaitForInterface()) {
         // wait for the pasta interface to appear. pasta can't signal us when
         // it's done setting up the namespace, so we have to wait for a while
-        AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
-        if (!fd) {
+        kj::AutoCloseFd fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
+        if (fd == nullptr) {
             throw SysError("cannot open IP socket");
         }
 
         struct ifreq ifr;
-        // NOLINTNEXTLINE(lix-unsafe-c-calls): we receive this as a c string
         strncpy(ifr.ifr_name, sandbox.getWaitForInterface().cStr(), sizeof(ifr.ifr_name));
         // wait two minutes for the interface to appear. if it does not do so
         // we are either grossly overloaded, or pasta startup failed somehow.
@@ -1551,9 +1560,8 @@ static bool prepareChildSetup_(build::Request::Reader request)
         static constexpr int TOTAL_WAIT_US = 120'000'000;
         for (unsigned tries = 0;; tries++) {
             if (tries > TOTAL_WAIT_US / SINGLE_WAIT_US) {
-                throw Error(
-                    "sandbox network setup timed out, please check daemon logs for "
-                    "possible error output."
+                throw std::runtime_error(
+                    "sandbox network setup timed out, please check daemon logs for possible error output."
                 );
             } else if (ioctl(fd.get(), SIOCGIFFLAGS, &ifr) == 0) {
                 if ((ifr.ifr_ifru.ifru_flags & IFF_UP) != 0) {
@@ -1566,6 +1574,9 @@ static bool prepareChildSetup_(build::Request::Reader request)
             }
         }
     }
+
+    // NOLINTEND(lix-foreign-exceptions)
+    // NOLINTEND(lix-unsafe-c-calls)
 
     return false;
 }
