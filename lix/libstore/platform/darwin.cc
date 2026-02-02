@@ -255,10 +255,12 @@ try {
     co_return result::current_exception();
 }
 
-void DarwinLocalDerivationGoal::prepareSandbox()
+void DarwinLocalDerivationGoal::fillBuilderConfig(build::Request::Builder request)
 {
+    auto config = request.getPlatform().getDarwin();
+
     /* This has to appear before import statements. */
-    sandboxProfile = "(version 1)\n";
+    std::string sandboxProfile = "(version 1)\n";
 
     if (useChroot) {
 
@@ -370,16 +372,22 @@ void DarwinLocalDerivationGoal::prepareSandbox()
     }
 
     debug("Generated sandbox profile: %1%", sandboxProfile);
+
+    config.setAllowLocalNetworking(parsedDrv->getBoolAttr("__darwinAllowLocalNetworking"));
+    RPC_FILL(config, setSandboxProfile, sandboxProfile);
+    RPC_FILL(config, setPlatform, drv->platform);
+    RPC_FILL(config, setTempDir, tmpDir);
+    RPC_FILL(config, setGlobalTempDir, canonPath(defaultTempDir(), true));
 }
 
 void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
 {
-    bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
+    auto config = request.getPlatform().getDarwin();
 
     /* The tmpDir in scope points at the temporary build directory for our derivation. Some packages try
        different mechanisms to find temporary directories, so we want to open up a broader place for them
        to put their files, if needed. */
-    Path globalTmpDir = canonPath(defaultTempDir(), true);
+    auto globalTmpDir = rpc::to<std::string>(config.getGlobalTempDir());
 
     /* They don't like trailing slashes on subpath directives */
     if (globalTmpDir.back() == '/') {
@@ -389,15 +397,16 @@ void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
     if (getEnv("_NIX_TEST_NO_SANDBOX") != "1") {
         Strings sandboxArgs;
         sandboxArgs.push_back("_NIX_BUILD_TOP");
-        sandboxArgs.push_back(tmpDir);
+        sandboxArgs.push_back(rpc::to<std::string>(config.getTempDir()));
         sandboxArgs.push_back("_GLOBAL_TMP_DIR");
         sandboxArgs.push_back(globalTmpDir);
-        if (allowLocalNetworking) {
+        if (config.getAllowLocalNetworking()) {
             sandboxArgs.push_back("_ALLOW_LOCAL_NETWORKING");
             sandboxArgs.push_back("1");
         }
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): all of these are env names or paths
         if (sandbox_init_with_parameters(
-                sandboxProfile.c_str(), 0, stringsToCharPtrs(sandboxArgs).data(), nullptr
+                config.getSandboxProfile().cStr(), 0, stringsToCharPtrs(sandboxArgs).data(), nullptr
             ))
         {
             writeFull(STDERR_FILENO, "failed to configure sandbox\n");
@@ -408,6 +417,8 @@ void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
 
 void DarwinLocalDerivationGoal::execBuilder(build::Request::Reader request)
 {
+    auto config = request.getPlatform().getDarwin();
+
     posix_spawnattr_t attrp;
 
     if (posix_spawnattr_init(&attrp))
@@ -416,14 +427,16 @@ void DarwinLocalDerivationGoal::execBuilder(build::Request::Reader request)
     if (posix_spawnattr_setflags(&attrp, POSIX_SPAWN_SETEXEC))
         throw SysError("failed to initialize builder");
 
-    if (drv->platform == "aarch64-darwin") {
+    const auto platform = rpc::to<std::string_view>(config.getPlatform());
+
+    if (platform == "aarch64-darwin") {
         // Unset kern.curproc_arch_affinity so we can escape Rosetta
         int affinity = 0;
         sysctlbyname("kern.curproc_arch_affinity", nullptr, nullptr, &affinity, sizeof(affinity));
 
         cpu_type_t cpu = CPU_TYPE_ARM64;
         posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, nullptr);
-    } else if (drv->platform == "x86_64-darwin") {
+    } else if (platform == "x86_64-darwin") {
         cpu_type_t cpu = CPU_TYPE_X86_64;
         posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, nullptr);
     }

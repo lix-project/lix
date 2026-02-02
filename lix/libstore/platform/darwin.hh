@@ -37,12 +37,13 @@ public:
     using LocalDerivationGoal::LocalDerivationGoal;
 
 private:
-    std::string sandboxProfile;
-
     /**
-     * Prepare the sandbox: generate the sandboxProfile
+     * no-op. sandbox profiles are generated in fillBuilderConfig, we only need
+     * to override this to signal that sandboxed builds are actually supported.
      */
-    void prepareSandbox() override;
+    void prepareSandbox() override {}
+
+    void fillBuilderConfig(build::Request::Builder config) override;
 
     void finishChildSetup(build::Request::Reader request) override;
 

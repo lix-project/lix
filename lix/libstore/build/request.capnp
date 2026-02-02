@@ -37,6 +37,14 @@ struct Request {
     parentPid @3 :Int32;
   }
 
+  struct DarwinPlatform {
+    allowLocalNetworking @0 :Bool;
+    sandboxProfile @1 :Text;
+    platform @2 :Data;
+    tempDir @3 :Text;
+    globalTempDir @4 :Text;
+  }
+
   builder @0 :Data;
   args @1 :List(Data);
   environment @2 :List(Data);
@@ -44,7 +52,8 @@ struct Request {
   enableCoreDumps @4 :Bool;
   credentials @5 :Credentials;
 
-  platform :group {
+  platform :union {
     linux @6 :LinuxPlatform;
+    darwin @7 :DarwinPlatform;
   }
 }
