@@ -80,13 +80,7 @@ private:
      * Start child process in new namespaces,
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
-    Pid startChild(
-        build::Request::Reader request,
-        const Path & builder,
-        const Strings & envStrs,
-        const Strings & args,
-        AutoCloseFD logPTY
-    ) override;
+    Pid startChild(build::Request::Reader request, AutoCloseFD logPTY) override;
 
     /**
      * Kill all processes by build user.

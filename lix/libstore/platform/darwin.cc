@@ -1,6 +1,7 @@
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/rpc.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/platform/darwin.hh"
 #include "lix/libutil/regex.hh"
@@ -405,9 +406,7 @@ void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
     }
 }
 
-void DarwinLocalDerivationGoal::execBuilder(
-    build::Request::Reader request, std::string builder, Strings args, Strings envStrs
-)
+void DarwinLocalDerivationGoal::execBuilder(build::Request::Reader request)
 {
     posix_spawnattr_t attrp;
 
@@ -429,6 +428,9 @@ void DarwinLocalDerivationGoal::execBuilder(
         posix_spawnattr_setbinpref_np(&attrp, 1, &cpu, nullptr);
     }
 
+    auto builder = rpc::to<std::string>(request.getBuilder());
+    auto args = rpc::to<Strings>(request.getArgs());
+    auto envStrs = rpc::to<Strings>(request.getEnvironment());
     posix_spawn(nullptr, builder.c_str(), nullptr, &attrp, stringsToCharPtrs(args).data(), stringsToCharPtrs(envStrs).data());
 }
 

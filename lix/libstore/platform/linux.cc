@@ -1561,17 +1561,11 @@ void LinuxLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
     }
 }
 
-Pid LinuxLocalDerivationGoal::startChild(
-    build::Request::Reader request,
-    const Path & builder,
-    const Strings & envStrs,
-    const Strings & args,
-    AutoCloseFD logPTY
-)
+Pid LinuxLocalDerivationGoal::startChild(build::Request::Reader request, AutoCloseFD logPTY)
 {
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(request, builder, envStrs, args, std::move(logPTY));
+        return LocalDerivationGoal::startChild(request, std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -1741,7 +1735,7 @@ Pid LinuxLocalDerivationGoal::startChild(
         options.cloneFlags =
             CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
 
-        return startProcess([&]() { runChild(request, builder, envStrs, args); }, options);
+        return startProcess([&]() { runChild(request); }, options);
     });
 }
 

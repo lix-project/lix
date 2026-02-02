@@ -22,6 +22,7 @@
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/rpc.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libutil/topo-sort.hh"
 #include "lix/libutil/json.hh"
@@ -927,10 +928,14 @@ try {
 
     auto request = requestBuilder.initRoot<build::Request>();
 
+    RPC_FILL(request, setBuilder, builder);
+    RPC_FILL(request, initArgs, args);
+    RPC_FILL(request, initEnvironment, envStrs);
+
     fillBuilderConfig(request);
 
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(request.asReader(), builder, envStrs, args, std::move(builderOut))};
+    pg = ProcessGroup{startChild(request.asReader(), std::move(builderOut))};
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -963,20 +968,14 @@ try {
     co_return result::current_exception();
 }
 
-Pid LocalDerivationGoal::startChild(
-    build::Request::Reader request,
-    const Path & builder,
-    const Strings & envStrs,
-    const Strings & args,
-    AutoCloseFD logPTY
-)
+Pid LocalDerivationGoal::startChild(build::Request::Reader request, AutoCloseFD logPTY)
 {
     return startProcess([&]() {
         if (dup2(logPTY.get(), STDERR_FILENO) == -1) {
             throw SysError("failed to redirect build output to log file");
         }
         closeOnExec(STDERR_FILENO, false);
-        runChild(request, builder, envStrs, args);
+        runChild(request);
     });
 }
 
@@ -1257,9 +1256,7 @@ static void closeExtraFDs()
     }
 }
 
-void LocalDerivationGoal::runChild(
-    build::Request::Reader request, const Path & builder, const Strings & envStrs, const Strings & args
-)
+void LocalDerivationGoal::runChild(build::Request::Reader request)
 {
     /* Warning: in the child we should absolutely not make any SQLite
        calls! */
@@ -1350,7 +1347,7 @@ void LocalDerivationGoal::runChild(
         sendException = false;
 
         /* Execute the program.  This should not return. */
-        execBuilder(request, builder, args, envStrs);
+        execBuilder(request);
 
         throw SysError("executing '%1%'", drv->builder);
 
@@ -1366,11 +1363,13 @@ void LocalDerivationGoal::runChild(
     }
 }
 
-void LocalDerivationGoal::execBuilder(
-    build::Request::Reader request, std::string builder, Strings args, Strings envStrs
-)
+void LocalDerivationGoal::execBuilder(build::Request::Reader request)
 {
-    sys::execve(builder, args, envStrs);
+    sys::execve(
+        rpc::to<std::string>(request.getBuilder()),
+        rpc::to<Strings>(request.getArgs()),
+        rpc::to<Strings>(request.getEnvironment())
+    );
 }
 
 

@@ -210,9 +210,7 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Run the builder's process.
      */
-    void runChild(
-        build::Request::Reader request, const Path & builder, const Strings & envStrs, const Strings & args
-    );
+    void runChild(build::Request::Reader request);
 
     /**
      * Check that the derivation outputs all exist and register them
@@ -294,13 +292,7 @@ protected:
      * Create a new process that runs `openSlave` and `runChild`
      * On some platforms this process is created with sandboxing flags.
      */
-    virtual Pid startChild(
-        build::Request::Reader request,
-        const Path & builder,
-        const Strings & envStrs,
-        const Strings & args,
-        AutoCloseFD logPTY
-    );
+    virtual Pid startChild(build::Request::Reader request, AutoCloseFD logPTY);
 
     kj::Promise<Result<WorkResult>> handleRawChild() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
@@ -337,8 +329,7 @@ protected:
      * Execute the builder, replacing the current process.
      * Generally this means an `execve` call.
      */
-    virtual void
-    execBuilder(build::Request::Reader request, std::string builder, Strings args, Strings envStrs);
+    virtual void execBuilder(build::Request::Reader request);
 
     /**
      * Whether derivation can be built on current platform with `uid-range` feature
