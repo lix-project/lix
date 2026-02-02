@@ -234,7 +234,7 @@ inline void State::recSetMergeFound(const AttrPath & attrPath, const PosIdx pos)
 // Added 2025-11-24
 inline void State::recSetDynamicAttrFound(const PosIdx pos)
 {
-    throw ParseError({
+    logWarning({
         .msg = HintFmt(
             "dynamic attributes are not allowed within recursive attrsets, because they would be "
             "evaluated separately from the other recursive attributes. Use %s to disable this "

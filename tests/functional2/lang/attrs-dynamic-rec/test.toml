@@ -1,5 +1,6 @@
 [[test]]
-runner = "parse-fail"
+name = "parse-okay-warn"
+runner = "parse-okay"
 matrix = true
 
 [[test]]
