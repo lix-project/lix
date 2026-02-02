@@ -69,7 +69,7 @@ let
     let
       result = squash ''
         - ${
-          if inlineHTML then ''<span id="conf-${name}">[`${name}`](#conf-${name})</span>'' else ''`${name}`''
+          if inlineHTML then ''<span id="conf-${name}">[`${name}`](#conf-${name})</span>'' else "`${name}`"
         }
 
         ${indent "  " body}

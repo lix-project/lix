@@ -42,7 +42,7 @@ pre-commit-run {
         "file"
       ];
       excludes = [
-        ''^lix/pch/.*$''
+        "^lix/pch/.*$"
         ''\.gen\.hh$''
       ];
       pass_filenames = false; # this will automatically format everything in the stage area of Git.
@@ -110,7 +110,7 @@ pre-commit-run {
         "header"
       ];
       excludes = [
-        ''^lix/pch/.*$''
+        "^lix/pch/.*$"
         # generated files; these will never actually be seen by this
         # check, and are left here as documentation
         ''(parser|lexer)-tab\.hh$''
@@ -130,7 +130,7 @@ pre-commit-run {
       enable = true;
       stages = [ "pre-commit" ];
       excludes = [
-        ''^tests/functional/lang/''
+        "^tests/functional/lang/"
         "^tests/functional2/.+\\.exp"
         "^tests/functional2/.+\\.nix"
         ''\.patch$''
