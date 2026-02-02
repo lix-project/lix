@@ -106,14 +106,23 @@ int ProcessGroup::kill()
 
     debug("killing process group %1%", leader.get());
 
+    // send a kill signal to the leader *only* first. the leader we know may not have
+    // actually set its pgid yet, in which case the following kill for the group will
+    // fail. if this happens we still want to clean up the whole (hopefully singular)
+    // group, thus we start small. we will always attempt to kill the group too; only
+    // when we've waited on the pid we know can it be reused as a pgid. we are not in
+    // danger of killing any other processes we don't want to be killing as a result.
+    const auto leaderKillResult = ::kill(leader.get(), SIGKILL);
+    (void) leaderKillResult;
+
     /* Send the requested signal to every process in the child
        process group (which hopefully includes *all* its children). */
-    if (::kill(-leader.get(), SIGKILL) != 0) {
+    if (::kill(-leader.get(), SIGKILL) != 0 && errno != ESRCH) {
         /* On BSDs, killing a process group will return EPERM if all
            processes in the group are zombies (or something like
            that). So try to detect and ignore that situation. */
 #if __FreeBSD__ || __APPLE__
-        if (errno != EPERM || ::kill(leader.get(), 0) != 0)
+        if (errno != EPERM || leaderKillResult != 0)
 #endif
             logError(SysError("killing process group %d", leader.get()).info());
     }
