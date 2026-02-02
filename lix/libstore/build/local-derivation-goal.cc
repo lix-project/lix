@@ -33,7 +33,9 @@
 #include "lix/libutil/thread-name.hh"
 #include "lix/libstore/platform/linux.hh"
 #include "lix/libstore/path-tree.hh"
+#include "request.capnp.h"
 
+#include <capnp/message.h>
 #include <cstddef>
 #include <dirent.h>
 #include <exception>
@@ -921,8 +923,14 @@ try {
         builder = drv->builder;
     }
 
+    capnp::MallocMessageBuilder requestBuilder;
+
+    auto request = requestBuilder.initRoot<build::Request>();
+
+    fillBuilderConfig(request);
+
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(builder, envStrs, args, std::move(builderOut))};
+    pg = ProcessGroup{startChild(request.asReader(), builder, envStrs, args, std::move(builderOut))};
 
     /* Check if setting up the build environment failed. */
     std::vector<std::string> msgs;
@@ -956,7 +964,11 @@ try {
 }
 
 Pid LocalDerivationGoal::startChild(
-    const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
+    build::Request::Reader request,
+    const Path & builder,
+    const Strings & envStrs,
+    const Strings & args,
+    AutoCloseFD logPTY
 )
 {
     return startProcess([&]() {
@@ -964,7 +976,7 @@ Pid LocalDerivationGoal::startChild(
             throw SysError("failed to redirect build output to log file");
         }
         closeOnExec(STDERR_FILENO, false);
-        runChild(builder, envStrs, args);
+        runChild(request, builder, envStrs, args);
     });
 }
 
@@ -1245,7 +1257,9 @@ static void closeExtraFDs()
     }
 }
 
-void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs, const Strings & args)
+void LocalDerivationGoal::runChild(
+    build::Request::Reader request, const Path & builder, const Strings & envStrs, const Strings & args
+)
 {
     /* Warning: in the child we should absolutely not make any SQLite
        calls! */
@@ -1286,7 +1300,7 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
             throw SysError("cannot dup null device into stdin");
         }
 
-        const bool setUser = prepareChildSetup();
+        const bool setUser = prepareChildSetup(request);
 
         if (sys::chdir(tmpDirInSandbox) == -1) {
             throw SysError("changing into '%1%'", tmpDir);
@@ -1328,7 +1342,7 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
                 throw SysError("setuid failed");
         }
 
-        finishChildSetup();
+        finishChildSetup(request);
 
         /* Indicate that we managed to set up the build environment. */
         writeFull(STDERR_FILENO, std::string("\2\n"));
@@ -1336,7 +1350,7 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
         sendException = false;
 
         /* Execute the program.  This should not return. */
-        execBuilder(builder, args, envStrs);
+        execBuilder(request, builder, args, envStrs);
 
         throw SysError("executing '%1%'", drv->builder);
 
@@ -1352,7 +1366,9 @@ void LocalDerivationGoal::runChild(const Path & builder, const Strings & envStrs
     }
 }
 
-void LocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
+void LocalDerivationGoal::execBuilder(
+    build::Request::Reader request, std::string builder, Strings args, Strings envStrs
+)
 {
     sys::execve(builder, args, envStrs);
 }

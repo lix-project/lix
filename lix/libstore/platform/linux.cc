@@ -1267,7 +1267,7 @@ static void bindPath(const Path & source, const Path & target, bool optional = f
     }
 }
 
-bool LinuxLocalDerivationGoal::prepareChildSetup()
+bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
 {
     // Set the NO_NEW_PRIVS prctl flag.
     // This both makes loading seccomp filters work for unprivileged users,
@@ -1551,7 +1551,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup()
     return false;
 }
 
-void LinuxLocalDerivationGoal::finishChildSetup()
+void LinuxLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
 {
     if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
         throw SysError("setting death signal");
@@ -1562,12 +1562,16 @@ void LinuxLocalDerivationGoal::finishChildSetup()
 }
 
 Pid LinuxLocalDerivationGoal::startChild(
-    const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
+    build::Request::Reader request,
+    const Path & builder,
+    const Strings & envStrs,
+    const Strings & args,
+    AutoCloseFD logPTY
 )
 {
     // If we're not sandboxing no need to faff about, use the fallback
     if (!useChroot) {
-        return LocalDerivationGoal::startChild(builder, envStrs, args, std::move(logPTY));
+        return LocalDerivationGoal::startChild(request, builder, envStrs, args, std::move(logPTY));
     }
     /* Set up private namespaces for the build:
 
@@ -1737,7 +1741,7 @@ Pid LinuxLocalDerivationGoal::startChild(
         options.cloneFlags =
             CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS | CLONE_PARENT | SIGCHLD;
 
-        return startProcess([&]() { runChild(builder, envStrs, args); }, options);
+        return startProcess([&]() { runChild(request, builder, envStrs, args); }, options);
     });
 }
 

@@ -2,6 +2,7 @@
 ///@file
 
 #include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libstore/build/request.capnp.h"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/processes.hh"
@@ -209,7 +210,9 @@ struct LocalDerivationGoal : public DerivationGoal
     /**
      * Run the builder's process.
      */
-    void runChild(const Path & builder, const Strings & envStrs, const Strings & args);
+    void runChild(
+        build::Request::Reader request, const Path & builder, const Strings & envStrs, const Strings & args
+    );
 
     /**
      * Check that the derivation outputs all exist and register them
@@ -291,11 +294,18 @@ protected:
      * Create a new process that runs `openSlave` and `runChild`
      * On some platforms this process is created with sandboxing flags.
      */
-    virtual Pid
-    startChild(const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY);
+    virtual Pid startChild(
+        build::Request::Reader request,
+        const Path & builder,
+        const Strings & envStrs,
+        const Strings & args,
+        AutoCloseFD logPTY
+    );
 
     kj::Promise<Result<WorkResult>> handleRawChild() noexcept;
     kj::Promise<Result<std::optional<WorkResult>>> handleRawChildStream() noexcept;
+
+    virtual void fillBuilderConfig(build::Request::Builder request) {}
 
     /**
      * Prepare the sandbox. Currently only used on linux to build the sandbox namespace,
@@ -304,7 +314,7 @@ protected:
      * `false` if this step has changed our credentials to the build user/group already.
      */
     [[nodiscard]]
-    virtual bool prepareChildSetup()
+    virtual bool prepareChildSetup(build::Request::Reader request)
     {
         return true;
     }
@@ -312,7 +322,7 @@ protected:
     /**
      * Finish sandbox setup and prepare for actually executing the builder processes.
      */
-    virtual void finishChildSetup() {}
+    virtual void finishChildSetup(build::Request::Reader request) {}
 
     /**
      * Create a special accessor that can access paths that were built within the sandbox's
@@ -327,7 +337,8 @@ protected:
      * Execute the builder, replacing the current process.
      * Generally this means an `execve` call.
      */
-    virtual void execBuilder(std::string builder, Strings args, Strings envStrs);
+    virtual void
+    execBuilder(build::Request::Reader request, std::string builder, Strings args, Strings envStrs);
 
     /**
      * Whether derivation can be built on current platform with `uid-range` feature

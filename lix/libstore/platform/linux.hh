@@ -81,7 +81,11 @@ private:
      * create /etc/passwd and /etc/group based on discovered uid/gid
      */
     Pid startChild(
-        const Path & builder, const Strings & envStrs, const Strings & args, AutoCloseFD logPTY
+        build::Request::Reader request,
+        const Path & builder,
+        const Strings & envStrs,
+        const Strings & args,
+        AutoCloseFD logPTY
     ) override;
 
     /**
@@ -94,9 +98,9 @@ private:
         return true;
     }
 
-    bool prepareChildSetup() override;
+    bool prepareChildSetup(build::Request::Reader request) override;
 
-    void finishChildSetup() override;
+    void finishChildSetup(build::Request::Reader request) override;
 
     std::string rewriteResolvConf(std::string fromHost);
 

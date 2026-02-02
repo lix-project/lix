@@ -44,12 +44,13 @@ private:
      */
     void prepareSandbox() override;
 
-    void finishChildSetup() override;
+    void finishChildSetup(build::Request::Reader request) override;
 
     /**
      * Set process flags to enter or leave rosetta, then execute the builder
      */
-    void execBuilder(std::string builder, Strings args, Strings envStrs) override;
+    void
+    execBuilder(build::Request::Reader request, std::string builder, Strings args, Strings envStrs) override;
 
     /**
      * Whether we need to rewrite output hashes.

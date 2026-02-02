@@ -371,7 +371,7 @@ void DarwinLocalDerivationGoal::prepareSandbox()
     debug("Generated sandbox profile: %1%", sandboxProfile);
 }
 
-void DarwinLocalDerivationGoal::finishChildSetup()
+void DarwinLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
 {
     bool allowLocalNetworking = parsedDrv->getBoolAttr("__darwinAllowLocalNetworking");
 
@@ -405,7 +405,9 @@ void DarwinLocalDerivationGoal::finishChildSetup()
     }
 }
 
-void DarwinLocalDerivationGoal::execBuilder(std::string builder, Strings args, Strings envStrs)
+void DarwinLocalDerivationGoal::execBuilder(
+    build::Request::Reader request, std::string builder, Strings args, Strings envStrs
+)
 {
     posix_spawnattr_t attrp;
 

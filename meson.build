@@ -293,6 +293,7 @@ configdata.set('HAVE_BOEHMGC', boehm.found().to_int())
 
 boost = dependency('boost', required : true, include_type : 'system')
 kj = dependency('kj-async', required : true, include_type : 'system')
+capnp = dependency('capnp', required : true, include_type : 'system')
 capnp_rpc = dependency('capnp-rpc', required : true, include_type : 'system')
 
 # cpuid only makes sense on x86_64
