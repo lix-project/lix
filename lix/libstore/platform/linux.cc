@@ -190,6 +190,40 @@ static auto inVFork(int flags, auto fn)
     }
 }
 
+static void raiseAmbientCaps(std::span<const unsigned> caps)
+{
+    // we do the capability dance like this to avoid a dependency
+    // on libcap, which has a rather large build closure and many
+    // more features that we need for now. maybe some other time.
+    static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
+    static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
+    struct user_cap_header_struct
+    {
+        uint32_t version;
+        int pid;
+    } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
+    struct user_cap_data_struct
+    {
+        uint32_t effective;
+        uint32_t permitted;
+        uint32_t inheritable;
+    } data[LINUX_CAPABILITY_U32S_3] = {};
+    for (auto cap : caps) {
+        assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
+        data[cap / 32].permitted |= 1 << (cap % 32);
+        data[cap / 32].inheritable |= 1 << (cap % 32);
+    }
+    if (syscall(SYS_capset, &hdr, data)) {
+        throw SysError("couldn't set capabilities");
+    }
+
+    for (auto cap : caps) {
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
+            throw SysError("couldn't set ambient caps");
+        }
+    }
+}
+
 static Pid launchPasta(
     const AutoCloseFD & logFD,
     const Path & pasta,
@@ -215,8 +249,7 @@ static Pid launchPasta(
     execArgs.push_back(nullptr);
 
     static constexpr unsigned ROOT_CAPS[] = {CAP_SYS_ADMIN, CAP_NET_BIND_SERVICE};
-    const std::span<const unsigned> caps =
-        geteuid() == 0 ? std::span{ROOT_CAPS} : std::span<const unsigned>{};
+    const bool needsCaps = geteuid() == 0;
 
     auto [pid, result] = asVFork(/* flags */ 0, [&] -> std::tuple<> {
         // TODO these redirections are crimes. pasta closes all non-stdio file
@@ -233,7 +266,7 @@ static Pid launchPasta(
             }
             closeOnExec(1, false);
         }
-        if (!caps.empty() && prctl(PR_SET_KEEPCAPS, 1) < 0) {
+        if (needsCaps && prctl(PR_SET_KEEPCAPS, 1) < 0) {
             throw SysError("setting keep-caps failed");
         }
         if (gid && syscall(SYS_setgid, *gid) == -1) {
@@ -246,41 +279,12 @@ static Pid launchPasta(
         if (uid && syscall(SYS_setuid, *uid) == -1) {
             throw SysError("setuid failed");
         }
-        if (!caps.empty()) {
+        if (needsCaps) {
             if (prctl(PR_SET_KEEPCAPS, 0)) {
                 throw SysError("clearing keep-caps failed");
             }
 
-            // we do the capability dance like this to avoid a dependency
-            // on libcap, which has a rather large build closure and many
-            // more features that we need for now. maybe some other time.
-            static constexpr uint32_t LINUX_CAPABILITY_VERSION_3 = 0x20080522;
-            static constexpr uint32_t LINUX_CAPABILITY_U32S_3 = 2;
-            struct user_cap_header_struct
-            {
-                uint32_t version;
-                int pid;
-            } hdr = {LINUX_CAPABILITY_VERSION_3, 0};
-            struct user_cap_data_struct
-            {
-                uint32_t effective;
-                uint32_t permitted;
-                uint32_t inheritable;
-            } data[LINUX_CAPABILITY_U32S_3] = {};
-            for (auto cap : caps) {
-                assert(cap / 32 < LINUX_CAPABILITY_U32S_3);
-                data[cap / 32].permitted |= 1 << (cap % 32);
-                data[cap / 32].inheritable |= 1 << (cap % 32);
-            }
-            if (syscall(SYS_capset, &hdr, data)) {
-                throw SysError("couldn't set capabilities");
-            }
-
-            for (auto cap : caps) {
-                if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
-                    throw SysError("couldn't set ambient caps");
-                }
-            }
+            raiseAmbientCaps(ROOT_CAPS);
         }
 
         restoreProcessContext();
