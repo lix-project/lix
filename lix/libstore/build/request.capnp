@@ -11,10 +11,40 @@ struct Request {
     supplementaryGroups @3 :List(UInt32);
   }
 
+  struct LinuxPlatform {
+    struct BoundPath {
+      source @0 :Data;
+      target @1 :Data;
+      optional @2 :Bool;
+    }
+
+    struct Sandbox {
+      paths @0 :List(BoundPath);
+      privateNetwork @1 :Bool;
+      chrootRootDir @2 :Data;
+      storeDir @3 :Data;
+      wantsKvm @4 :Bool;
+      sandboxShmFlags @5 :Text;
+      useUidRange @6 :Bool;
+      uid @7 :UInt32;
+      gid @8 :UInt32;
+      waitForInterface @9 :Text;
+    }
+
+    seccompFilters @0 :Data;
+    sandbox @1 :Sandbox;
+    platform @2 :Data;
+    parentPid @3 :Int32;
+  }
+
   builder @0 :Data;
   args @1 :List(Data);
   environment @2 :List(Data);
   workingDir @3 :Data;
   enableCoreDumps @4 :Bool;
   credentials @5 :Credentials;
+
+  platform :group {
+    linux @6 :LinuxPlatform;
+  }
 }

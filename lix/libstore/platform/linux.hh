@@ -60,16 +60,12 @@ private:
     Pid pastaPid;
 
     /**
-     * used to initialize the parent death signal of children without racing
-     * with the parent dying before we got around to setting a death signal.
-     */
-    pid_t parentPid = getpid();
-
-    /**
      * Create a special accessor that can access paths that were built within the sandbox's
      * chroot.
      */
     std::optional<ref<FSAccessor>> getChrootDirAwareFSAccessor() override;
+
+    void fillBuilderConfig(build::Request::Builder request) override;
 
     /**
      * Create and populate chroot

@@ -1,4 +1,5 @@
 #include "lix/libstore/build/personality.hh"
+#include "lix/libstore/build/request.capnp.h"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/cgroup.hh"
@@ -11,13 +12,17 @@
 #include "lix/libstore/gc-store.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/result.hh"
+#include "lix/libutil/rpc.hh"
 #include "lix/libutil/signals.hh"
 #include "lix/libstore/platform/linux.hh"
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/types.hh"
 
 #include <atomic>
+#include <capnp/message.h>
 #include <csignal>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <grp.h>
@@ -29,6 +34,7 @@
 #include <optional>
 #include <regex>
 #include <sched.h>
+#include <string_view>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/mount.h>
@@ -36,6 +42,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <type_traits>
 
 #if __linux__
 #include <linux/capability.h>
@@ -1267,8 +1274,10 @@ static void bindPath(const Path & source, const Path & target, bool optional = f
     }
 }
 
-bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
+static bool prepareChildSetup_(build::Request::Reader request)
 {
+    auto config = request.getPlatform().getLinux();
+
     // Set the NO_NEW_PRIVS prctl flag.
     // This both makes loading seccomp filters work for unprivileged users,
     // and is an additional security measure in its own right.
@@ -1276,26 +1285,34 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
         throw SysError("PR_SET_NO_NEW_PRIVS failed");
     }
 #if HAVE_SECCOMP
-    const auto & seccompBPF = getSyscallFilter();
-    assert(seccompBPF.size() <= std::numeric_limits<unsigned short>::max());
-    struct sock_fprog fprog = {
-        .len = static_cast<unsigned short>(seccompBPF.size()),
-        // the kernel does not actually write to the filter
-        .filter = const_cast<struct sock_filter *>(seccompBPF.data()),
-    };
-    if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0) {
-        throw SysError("unable to load seccomp BPF program");
+    if (config.hasSeccompFilters()) {
+        const auto seccompBPF = config.getSeccompFilters();
+        const auto entries = seccompBPF.size() / sizeof(struct sock_filter);
+        assert(entries <= std::numeric_limits<unsigned short>::max());
+        struct sock_fprog fprog = {
+            .len = static_cast<unsigned short>(entries),
+            // the kernel does not actually write to the filter, and doesn't care about alignment
+            .filter = const_cast<struct sock_filter *>(
+                reinterpret_cast<const struct sock_filter *>(seccompBPF.begin())
+            ),
+        };
+        if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0) {
+            throw SysError("unable to load seccomp BPF program");
+        }
     }
 #endif
 
-    KJ_DEFER(setPersonality(drv->platform));
+    KJ_DEFER(setPersonality(rpc::to<std::string_view>(config.getPlatform())));
 
-    if (!useChroot) {
+    if (!config.hasSandbox()) {
         return true;
     }
 
-    if (privateNetwork()) {
+    auto sandbox = config.getSandbox();
 
+    const Path chrootRootDir{rpc::to<std::string_view>(sandbox.getChrootRootDir())};
+
+    if (sandbox.getPrivateNetwork()) {
         /* Initialise the loopback interface. */
         AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
         if (!fd) {
@@ -1346,7 +1363,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
 
        Marking chrootRootDir as MS_SHARED causes pivot_root()
        to fail with EINVAL. Don't know why. */
-    Path chrootStoreDir = chrootRootDir + worker.store.config().storeDir;
+    Path chrootStoreDir = chrootRootDir + rpc::to<std::string_view>(sandbox.getStoreDir());
 
     if (sys::mount(chrootStoreDir, chrootStoreDir, "", MS_BIND, 0) == -1) {
         throw SysError("unable to bind mount the Nix store", chrootStoreDir);
@@ -1362,25 +1379,27 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
     /* Bind-mount all the directories from the "host"
        filesystem that we want in the chroot
        environment. */
-    for (auto & i : pathsInChroot) {
-        devMounted |= i.first == "/dev";
-        devPtsMounted |= i.first == "/dev/pts";
-        if (i.second.source == "/proc") {
+    for (auto path : sandbox.getPaths()) {
+        const std::string source{rpc::to<std::string_view>(path.getSource())};
+        const std::string target{rpc::to<std::string_view>(path.getTarget())};
+        devMounted |= target == "/dev";
+        devPtsMounted |= target == "/dev/pts";
+        if (source == "/proc") {
             continue; // backwards compatibility
         }
 
 #if HAVE_EMBEDDED_SANDBOX_SHELL
-        if (i.second.source == "__embedded_sandbox_shell__") {
+        if (source == "__embedded_sandbox_shell__") {
             static unsigned char sh[] = {
 #include "embedded-sandbox-shell.gen.hh"
                     };
-            auto dst = chrootRootDir + i.first;
+            auto dst = chrootRootDir + target;
             createDirs(dirOf(dst));
             writeFile(dst, std::string_view((const char *) sh, sizeof(sh)));
             chmodPath(dst, 0555);
         } else
 #endif
-            bindPath(i.second.source, chrootRootDir + i.first, i.second.optional);
+            bindPath(source, chrootRootDir + target, path.getOptional());
     }
 
     /* Set up a nearly empty /dev, unless the user asked to
@@ -1391,7 +1410,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
         createDirs(chrootRootDir + "/dev/shm");
         createDirs(chrootRootDir + "/dev/pts");
         bind("/dev/full");
-        if (settings.systemFeatures.get().count("kvm") && pathExists("/dev/kvm")) {
+        if (sandbox.getWantsKvm() && pathExists("/dev/kvm")) {
             bind("/dev/kvm");
         }
         bind("/dev/null");
@@ -1412,7 +1431,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
     }
 
     /* Mount sysfs on /sys. */
-    if (buildUser && buildUser->getUIDCount() != 1) {
+    if (request.hasCredentials() && request.getCredentials().getUidCount() != 1) {
         createDirs(chrootRootDir + "/sys");
         if (sys::mount("none", chrootRootDir + "/sys", "sysfs", 0, 0) == -1) {
             throw SysError("mounting /sys");
@@ -1422,9 +1441,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
     /* Mount a new tmpfs on /dev/shm to ensure that whatever
        the builder puts in /dev/shm is cleaned up automatically. */
     if (pathExists("/dev/shm")
-        && sys::mount(
-               "none", chrootRootDir + "/dev/shm", "tmpfs", 0, fmt("size=%s", settings.sandboxShmSize).c_str()
-           ) == -1)
+        && sys::mount("none", chrootRootDir + "/dev/shm", "tmpfs", 0, sandbox.getSandboxShmFlags().cStr())
+            == -1)
     {
         throw SysError("mounting /dev/shm");
     }
@@ -1450,7 +1468,7 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
     }
 
     /* Make /etc unwritable */
-    if (!parsedDrv->useUidRange()) {
+    if (!sandbox.getUseUidRange()) {
         chmodPath(chrootRootDir + "/etc", 0555);
     }
 
@@ -1509,14 +1527,14 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
     /* Switch to the sandbox uid/gid in the user namespace,
        which corresponds to the build user or calling user in
        the parent namespace. */
-    if (setgid(sandboxGid()) == -1) {
+    if (setgid(sandbox.getGid()) == -1) {
         throw SysError("setgid failed");
     }
-    if (setuid(sandboxUid()) == -1) {
+    if (setuid(sandbox.getUid()) == -1) {
         throw SysError("setuid failed");
     }
 
-    if (runPasta()) {
+    if (sandbox.hasWaitForInterface()) {
         // wait for the pasta interface to appear. pasta can't signal us when
         // it's done setting up the namespace, so we have to wait for a while
         AutoCloseFD fd(socket(PF_INET, SOCK_DGRAM, IPPROTO_IP));
@@ -1525,7 +1543,8 @@ bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
         }
 
         struct ifreq ifr;
-        strcpy(ifr.ifr_name, LinuxLocalDerivationGoal::PASTA_NS_IFNAME);
+        // NOLINTNEXTLINE(lix-unsafe-c-calls): we receive this as a c string
+        strncpy(ifr.ifr_name, sandbox.getWaitForInterface().cStr(), sizeof(ifr.ifr_name));
         // wait two minutes for the interface to appear. if it does not do so
         // we are either grossly overloaded, or pasta startup failed somehow.
         static constexpr int SINGLE_WAIT_US = 1000;
@@ -1556,9 +1575,54 @@ void LinuxLocalDerivationGoal::finishChildSetup(build::Request::Reader request)
     if (prctl(PR_SET_PDEATHSIG, SIGKILL) == -1) {
         throw SysError("setting death signal");
     }
-    if (getppid() != parentPid) {
+    if (getppid() != request.getPlatform().getLinux().getParentPid()) {
         raise(SIGKILL);
     }
+}
+
+void LinuxLocalDerivationGoal::fillBuilderConfig(build::Request::Builder request)
+{
+    auto config = request.getPlatform().getLinux();
+
+#if HAVE_SECCOMP
+    {
+        const auto & filters = std::span{getSyscallFilter()};
+        auto builder = config.initSeccompFilters(filters.size_bytes());
+        memcpy(builder.begin(), filters.data(), builder.size());
+    }
+#endif
+
+    if (useChroot) {
+        auto sandbox = config.initSandbox();
+        {
+            auto builder = sandbox.initPaths(pathsInChroot.size());
+            for (const auto & [idx, path] : enumerate(pathsInChroot)) {
+                const auto & [target, binding] = path;
+                RPC_FILL(builder[idx], setTarget, target);
+                RPC_FILL(builder[idx], setSource, binding.source);
+                builder[idx].setOptional(binding.optional);
+            }
+        }
+        sandbox.setPrivateNetwork(privateNetwork());
+        RPC_FILL(sandbox, setChrootRootDir, chrootRootDir);
+        RPC_FILL(sandbox, setStoreDir, worker.store.config().storeDir);
+        sandbox.setWantsKvm(settings.systemFeatures.get().contains("kvm"));
+        RPC_FILL(sandbox, setSandboxShmFlags, fmt("size=%s", settings.sandboxShmSize));
+        sandbox.setUseUidRange(parsedDrv->useUidRange());
+        sandbox.setUid(sandboxUid());
+        sandbox.setGid(sandboxGid());
+        if (runPasta()) {
+            sandbox.setWaitForInterface(LinuxLocalDerivationGoal::PASTA_NS_IFNAME);
+        }
+    }
+
+    RPC_FILL(config, setPlatform, drv->platform);
+    config.setParentPid(getpid());
+}
+
+bool LinuxLocalDerivationGoal::prepareChildSetup(build::Request::Reader request)
+{
+    return prepareChildSetup_(request);
 }
 
 Pid LinuxLocalDerivationGoal::startChild(build::Request::Reader request, AutoCloseFD logPTY)
