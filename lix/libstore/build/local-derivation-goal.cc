@@ -1,5 +1,6 @@
 #include "lix/libstore/build/local-derivation-goal.hh"
 #include "derivation-goal.hh"
+#include "libutil/async-collect.hh"
 #include "libutil/logging.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -38,6 +39,7 @@
 #include "request.capnp.h"
 
 #include <capnp/message.h>
+#include <capnp/serialize-async.h>
 #include <capnp/serialize.h>
 #include <cstddef>
 #include <cstdio>
@@ -950,45 +952,50 @@ try {
 
     fillBuilderConfig(request);
 
-    auto setupFD = sys::openat(tmpDirFd.get(), "build-request", O_RDWR | O_CREAT | O_CLOEXEC, 0400);
-    if (!setupFD) {
-        throw SysError("creating builder setup file");
-    }
-    if (sys::unlinkat(tmpDirFd.get(), "build-request", 0)) {
-        throw SysError("unlinking builder setup file");
-    }
-    capnp::writeMessageToFd(setupFD.get(), requestBuilder);
-    if (lseek(setupFD.get(), 0, SEEK_SET) == -1) {
-        throw SysError("seeking builder setup file");
-    }
+    auto [setupParentFD, setupChildFD] = SocketPair::stream();
+    auto setupParent = AIO().lowLevelProvider.wrapSocketFd(setupParentFD.get());
 
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(std::move(setupFD), std::move(builderOut))};
+    pg = ProcessGroup{startChild(std::move(setupChildFD), std::move(builderOut))};
+
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto sendSetup = [&] -> kj::Promise<Result<void>> {
+        try {
+            co_await capnp::writeMessage(*setupParent, requestBuilder);
+            co_return result::success();
+        } catch (...) {
+            co_return {result::current_exception()};
+        }
+    };
+
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto waitForChildSetup = [&] -> kj::Promise<Result<void>> {
+        try {
+            while (true) {
+                KJ_IF_MAYBE (msg, co_await capnp::tryReadMessage(*setupParent)) {
+                    auto response = (*msg)->getRoot<build::SetupResponse>();
+                    if (response.isLogLine()) {
+                        debug(
+                            "sandbox setup: %1%", Uncolored(rpc::to<std::string_view>(response.getLogLine()))
+                        );
+                    } else if (response.isFatalError()) {
+                        Error ex("%s", Uncolored(rpc::to<std::string_view>(response.getFatalError())));
+                        ex.addTrace({}, "while setting up the build environment");
+                        throw ex;
+                    } else {
+                        throw Error("unexpected setup response");
+                    }
+                } else {
+                    co_return result::success();
+                }
+            }
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
 
     /* Check if setting up the build environment failed. */
-    std::vector<std::string> msgs;
-    while (true) {
-        std::string msg = [&]() {
-            try {
-                return readLine(builderOutPTY.get());
-            } catch (Error & e) {
-                auto status = pg.wait();
-                e.addTrace({}, "while waiting for the build environment for '%s' to initialize (%s, previous messages: %s)",
-                    worker.store.printStorePath(drvPath),
-                    statusToString(status),
-                    concatStringsSep("|", msgs));
-                throw;
-            }
-        }();
-        if (msg.substr(0, 1) == "\2") break;
-        if (msg.substr(0, 1) == "\1") {
-            Error ex("%s", Uncolored(msg.substr(1)));
-            ex.addTrace({}, "while setting up the build environment");
-            throw ex;
-        }
-        debug("sandbox setup: %1%", Uncolored(msg));
-        msgs.push_back(std::move(msg));
-    }
+    TRY_AWAIT(asyncJoin(sendSetup(), waitForChildSetup()));
 
     co_return result::success();
 } catch (...) {

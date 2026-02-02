@@ -2,7 +2,10 @@
 ///@file
 
 #include "lix/libstore/build/request.capnp.h"
+#include "lix/libutil/rpc.hh"
 #include <boost/format.hpp>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
 #include <cstring>
 #include <exception>
 #include <memory>
@@ -60,13 +63,17 @@ inline void printDebugLog(auto fmt, const auto &... args)
 {
     auto format = boost::format(fmt);
     ((format % args), ...);
-    writeFull(STDERR_FILENO, format.str());
+
+    capnp::MallocMessageBuilder builder;
+    auto log = builder.getRoot<build::SetupResponse>();
+    RPC_FILL(log, setLogLine, format.str());
+    capnp::writeMessageToFd(STDIN_FILENO, builder);
 }
 
-#define debug(msg, ...)                           \
-    do {                                          \
-        if (::nix::printDebugLogs) {              \
-            printDebugLog(msg "\n", __VA_ARGS__); \
-        }                                         \
+#define debug(msg, ...)                      \
+    do {                                     \
+        if (::nix::printDebugLogs) {         \
+            printDebugLog(msg, __VA_ARGS__); \
+        }                                    \
     } while (0)
 }

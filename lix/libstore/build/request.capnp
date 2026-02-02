@@ -3,6 +3,13 @@
 using Cxx = import "/capnp/c++.capnp";
 $Cxx.namespace("nix::build");
 
+struct SetupResponse {
+  union {
+    logLine @0 :Data;
+    fatalError @1 :Data;
+  }
+}
+
 struct Request {
   struct Credentials {
     uid @0 :UInt32;

@@ -143,15 +143,6 @@ int main(int argc, char * argv[])
             throw SysError("cannot dup stderr into stdout");
         }
 
-        /* Reroute stdin to /dev/null. */
-        kj::AutoCloseFd fdDevNull{open("/dev/null", O_RDWR)};
-        if (fdDevNull == nullptr) {
-            throw SysError("cannot open /dev/null");
-        }
-        if (dup2(fdDevNull.get(), STDIN_FILENO) == -1) {
-            throw SysError("cannot dup null device into stdin");
-        }
-
         const bool setUser = prepareChildSetup(request);
 
         // NOLINTNEXTLINE(lix-unsafe-c-calls): we trust the parent here
@@ -199,18 +190,28 @@ int main(int argc, char * argv[])
 
         finishChildSetup(request);
 
-        /* Indicate that we managed to set up the build environment. */
-        writeFull(STDERR_FILENO, std::string("\2\n"));
-
         /* Close all other file descriptors. */
         closeExtraFDs();
+
+        // Reroute stdin to /dev/null. closing the setup socket fd also signals
+        // successful setup of the builder, all other errors must go to stderr.
+        kj::AutoCloseFd fdDevNull{open("/dev/null", O_RDWR | O_CLOEXEC)};
+        if (fdDevNull == nullptr) {
+            throw SysError("cannot open /dev/null");
+        }
+        if (dup2(fdDevNull.get(), STDIN_FILENO) == -1) {
+            throw SysError("cannot dup null device into stdin");
+        }
 
         sendException = false;
 
         execBuilder(request);
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         if (sendException) {
-            writeFull(STDERR_FILENO, std::format("\1{}\n", e.what()));
+            capnp::MallocMessageBuilder builder;
+            auto error = builder.getRoot<build::SetupResponse>();
+            RPC_FILL(error, setFatalError, e.what());
+            capnp::writeMessageToFd(STDIN_FILENO, builder);
         } else {
             writeFull(STDERR_FILENO, e.what());
         }
