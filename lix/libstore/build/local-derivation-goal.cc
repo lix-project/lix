@@ -966,8 +966,7 @@ try {
         }();
         if (msg.substr(0, 1) == "\2") break;
         if (msg.substr(0, 1) == "\1") {
-            FdSource source(builderOutPTY.get());
-            auto ex = readError(source);
+            Error ex("%s", Uncolored(msg.substr(1)));
             ex.addTrace({}, "while setting up the build environment");
             throw ex;
         }
@@ -1370,12 +1369,10 @@ void LocalDerivationGoal::runChild(build::Request::Reader request)
 
     } catch (Error & e) {
         if (sendException) {
-            writeFull(STDERR_FILENO, "\1\n");
-            FdSink sink(STDERR_FILENO);
-            sink << e;
-            sink.flush();
-        } else
-            std::cerr << e.msg();
+            writeFull(STDERR_FILENO, std::format("\1{}\n", e.what()));
+        } else {
+            writeFull(STDERR_FILENO, e.what());
+        }
         _exit(1);
     }
 }
