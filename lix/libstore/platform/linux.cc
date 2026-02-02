@@ -1017,26 +1017,6 @@ static const std::vector<struct sock_filter> &getSyscallFilter()
 
 #endif
 
-void LinuxLocalDerivationGoal::setupSyscallFilter()
-{
-    // Set the NO_NEW_PRIVS prctl flag.
-    // This both makes loading seccomp filters work for unprivileged users,
-    // and is an additional security measure in its own right.
-    if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) == -1)
-        throw SysError("PR_SET_NO_NEW_PRIVS failed");
-#if HAVE_SECCOMP
-    const auto &seccompBPF = getSyscallFilter();
-    assert(seccompBPF.size() <= std::numeric_limits<unsigned short>::max());
-    struct sock_fprog fprog = {
-        .len = static_cast<unsigned short>(seccompBPF.size()),
-        // the kernel does not actually write to the filter
-        .filter = const_cast<struct sock_filter *>(seccompBPF.data()),
-    };
-    if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0)
-        throw SysError("unable to load seccomp BPF program");
-#endif
-}
-
 void LinuxLocalDerivationGoal::prepareSandbox()
 {
 #if HAVE_SECCOMP
@@ -1256,7 +1236,24 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
 
 bool LinuxLocalDerivationGoal::prepareChildSetup()
 {
-    setupSyscallFilter();
+    // Set the NO_NEW_PRIVS prctl flag.
+    // This both makes loading seccomp filters work for unprivileged users,
+    // and is an additional security measure in its own right.
+    if (prctl(PR_SET_NO_NEW_PRIVS, 1L, 0L, 0L, 0L) == -1) {
+        throw SysError("PR_SET_NO_NEW_PRIVS failed");
+    }
+#if HAVE_SECCOMP
+    const auto & seccompBPF = getSyscallFilter();
+    assert(seccompBPF.size() <= std::numeric_limits<unsigned short>::max());
+    struct sock_fprog fprog = {
+        .len = static_cast<unsigned short>(seccompBPF.size()),
+        // the kernel does not actually write to the filter
+        .filter = const_cast<struct sock_filter *>(seccompBPF.data()),
+    };
+    if (syscall(SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0, &fprog) != 0) {
+        throw SysError("unable to load seccomp BPF program");
+    }
+#endif
 
     KJ_DEFER(setPersonality(drv->platform));
 
