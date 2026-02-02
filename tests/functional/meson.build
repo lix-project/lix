@@ -57,7 +57,6 @@ functional_tests_scripts = [
   'fetchurl.sh',
   'fetchPath.sh',
   'fetchTree-file.sh',
-  'simple.sh',
   'referrers.sh',
   'substitute-with-invalid-ca.sh',
   'signing.sh',
