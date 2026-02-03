@@ -1248,7 +1248,7 @@ std::string LinuxLocalDerivationGoal::rewriteResolvConf(std::string fromHost)
 
 void LinuxLocalDerivationGoal::fillBuilderConfig(build::Request::Builder request)
 {
-    auto config = request.getPlatform().getLinux();
+    auto config = request.getPlatform().initLinux();
 
 #if HAVE_SECCOMP
     {

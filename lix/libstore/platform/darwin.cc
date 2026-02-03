@@ -252,7 +252,7 @@ try {
 
 void DarwinLocalDerivationGoal::fillBuilderConfig(build::Request::Builder request)
 {
-    auto config = request.getPlatform().getDarwin();
+    auto config = request.getPlatform().initDarwin();
 
     /* This has to appear before import statements. */
     std::string sandboxProfile = "(version 1)\n";
