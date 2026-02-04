@@ -36,9 +36,9 @@ struct LocalDerivationGoal : public DerivationGoal
     BuildContext context;
 
     /**
-     * The process group of the builder.
+     * The process group of the builder, or its exit status.
      */
-    ProcessGroup pg;
+    std::variant<ProcessGroup, int> pg;
 
     /**
      * The temporary directory.

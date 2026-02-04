@@ -45,6 +45,7 @@
 #include <cstdio>
 #include <dirent.h>
 #include <exception>
+#include <kj/exception.h>
 #include <optional>
 #include <regex>
 #include <queue>
@@ -159,13 +160,13 @@ LocalStore & LocalDerivationGoal::getLocalStore()
 
 void LocalDerivationGoal::killChild()
 {
-    if (pg) {
+    if (auto running = std::get_if<ProcessGroup>(&pg); running && *running) {
         /* If we're using a build user, then there is a tricky race
            condition: if we kill the build user before the child has
            done its setuid() to the build user uid, then it won't be
            killed, and we'll potentially lock up in pid.wait().  So
            also send a conventional kill to the child. */
-        pg.kill();
+        pg = running->kill();
 
         killSandbox(true);
     }
@@ -348,7 +349,13 @@ extern void replaceValidPath(const Path & storePath, const Path & tmpPath);
 
 int LocalDerivationGoal::getChildStatus()
 {
-    return hook ? DerivationGoal::getChildStatus() : pg.kill();
+    if (hook) {
+        return DerivationGoal::getChildStatus();
+    }
+    if (auto running = std::get_if<ProcessGroup>(&pg)) {
+        pg = running->kill();
+    }
+    return std::get<int>(pg);
 }
 
 void LocalDerivationGoal::closeReadPipes()
@@ -956,46 +963,57 @@ try {
     auto setupParent = AIO().lowLevelProvider.wrapSocketFd(setupParentFD.get());
 
     /* Fork a child to build the package. */
-    pg = ProcessGroup{startChild(std::move(setupChildFD), std::move(builderOut))};
+    this->pg = ProcessGroup{startChild(std::move(setupChildFD), std::move(builderOut))};
+    auto & pg = std::get<ProcessGroup>(this->pg);
 
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    auto sendSetup = [&] -> kj::Promise<Result<void>> {
-        try {
-            co_await capnp::writeMessage(*setupParent, requestBuilder);
-            co_return result::success();
-        } catch (...) {
-            co_return {result::current_exception()};
-        }
-    };
-
-    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    auto waitForChildSetup = [&] -> kj::Promise<Result<void>> {
-        try {
-            while (true) {
-                KJ_IF_MAYBE (msg, co_await capnp::tryReadMessage(*setupParent)) {
-                    auto response = (*msg)->getRoot<build::SetupResponse>();
-                    if (response.isLogLine()) {
-                        debug(
-                            "sandbox setup: %1%", Uncolored(rpc::to<std::string_view>(response.getLogLine()))
-                        );
-                    } else if (response.isFatalError()) {
-                        Error ex("%s", Uncolored(rpc::to<std::string_view>(response.getFatalError())));
-                        ex.addTrace({}, "while setting up the build environment");
-                        throw ex;
-                    } else {
-                        throw Error("unexpected setup response");
-                    }
-                } else {
-                    co_return result::success();
-                }
+    // set up the child. we do not use rpc here because we want the build launcher to be
+    // as simple as possible, and that excludes using an event loop. we'll handle errors
+    // by killing the child instead and have the caller handle child stderr as it wants.
+    try {
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto sendSetup = [&] -> kj::Promise<Result<void>> {
+            try {
+                co_await capnp::writeMessage(*setupParent, requestBuilder);
+                co_return result::success();
+            } catch (...) {
+                co_return {result::current_exception()};
             }
-        } catch (...) {
-            co_return result::current_exception();
-        }
-    };
+        };
 
-    /* Check if setting up the build environment failed. */
-    TRY_AWAIT(asyncJoin(sendSetup(), waitForChildSetup()));
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        auto waitForChildSetup = [&] -> kj::Promise<Result<void>> {
+            try {
+                while (true) {
+                    KJ_IF_MAYBE (msg, co_await capnp::tryReadMessage(*setupParent)) {
+                        auto response = (*msg)->getRoot<build::SetupResponse>();
+                        if (response.isLogLine()) {
+                            debug(
+                                "sandbox setup: %1%",
+                                Uncolored(rpc::to<std::string_view>(response.getLogLine()))
+                            );
+                        } else if (response.isFatalError()) {
+                            Error ex("%s", Uncolored(rpc::to<std::string_view>(response.getFatalError())));
+                            ex.addTrace({}, "while setting up the build environment");
+                            throw ex;
+                        } else {
+                            throw Error("unexpected setup response");
+                        }
+                    } else {
+                        co_return result::success();
+                    }
+                }
+            } catch (...) {
+                co_return result::current_exception();
+            }
+        };
+
+        /* Check if setting up the build environment failed. */
+        TRY_AWAIT(asyncJoin(sendSetup(), waitForChildSetup()));
+    } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
+        printError("child setup for %s failed: %s", name, e.getDescription().cStr());
+        this->pg = pg.kill();
+        co_return result::success();
+    }
 
     co_return result::success();
 } catch (...) {
