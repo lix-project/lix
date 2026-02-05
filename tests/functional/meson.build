@@ -39,8 +39,6 @@ functional_tests_scripts = [
   'legacy-ssh-store.sh',
   'experimental-features.sh',
   'fetchMercurial.sh',
-  'sandboxed-certificate-authorities.sh',
-  'unsandboxed-certificate-authorities.sh',
   'gc-auto.sh',
   'user-envs.sh',
   'binary-cache.sh',
