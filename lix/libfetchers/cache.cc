@@ -70,12 +70,20 @@ struct CacheImpl : Cache
         const StorePath & storePath,
         bool locked) override
     try {
-        _state.lock()->add.use()
-            (attrsToJSON(inAttrs).dump())
-            (attrsToJSON(infoAttrs).dump())
-            (store->printStorePath(storePath))
-            (locked)
-            (time(0)).exec();
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+        TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+            try {
+                 _state.lock()->add.use()
+                     (attrsToJSON(inAttrs).dump())
+                     (attrsToJSON(infoAttrs).dump())
+                     (store->printStorePath(storePath))
+                     (locked)
+                     (time(0)).exec();
+                 co_return result::success();
+             } catch (...) {
+                 co_return result::current_exception();
+             }
+        }));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
