@@ -992,9 +992,7 @@ try {
                                 Uncolored(rpc::to<std::string_view>(response.getLogLine()))
                             );
                         } else if (response.isFatalError()) {
-                            Error ex("%s", Uncolored(rpc::to<std::string_view>(response.getFatalError())));
-                            ex.addTrace({}, "while setting up the build environment");
-                            throw ex;
+                            throw Error("%s", Uncolored(rpc::to<std::string_view>(response.getFatalError())));
                         } else {
                             throw Error("unexpected setup response");
                         }
@@ -1009,10 +1007,12 @@ try {
 
         /* Check if setting up the build environment failed. */
         TRY_AWAIT(asyncJoin(sendSetup(), waitForChildSetup()));
-    } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
-        printError("child setup for %s failed: %s", name, e.getDescription().cStr());
+    } catch (Error & e) {
+        e.addTrace({}, "while setting up the build environment for %s", worker.store.printStorePath(drvPath));
+        logErrorInfo(lvlError, e.info());
+        // don't rethrow, make sure the child is *dead* and have the callers handle this error
+        // as a builder failure instead. that way we will get stderr outputs for this as well.
         this->pg = pg.kill();
-        co_return result::success();
     }
 
     co_return result::success();
