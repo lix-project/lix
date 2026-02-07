@@ -146,10 +146,6 @@ void initNix()
 
     registerCrashHandler();
 
-    /* Turn on buffering for cerr. */
-    static char buf[1024];
-    std::cerr.rdbuf()->pubsetbuf(buf, sizeof(buf));
-
     // libutil
     GlobalConfig::registerGlobalConfig(loggerSettings);
     GlobalConfig::registerGlobalConfig(featureSettings);
