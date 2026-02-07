@@ -135,3 +135,16 @@ class TestCertClobberingInFODs:
         assert assess_cert_presence_in_builds(
             nix, "clobbering-impurities", sandboxed=sandboxed
         ).outcomes == ({"present", "present-env-var"} if sandboxed else {"present-env-var"})
+
+    def test_warning_presence(self, nix: Nix, sandboxed: bool):
+        warning_prefix = "'NIX_SSL_CERT_FILE' is an impure environment variable"
+
+        # Under impureEnvVars set, Lix will always make `NIX_SSL_CERT_FILE` exist in the environment
+        # of the builder with an empty value.
+        # This should cause the warning to be trigger because `"" != "/nowhere"`.
+        nix.env.unset_env("NIX_SSL_CERT_FILE")
+        assessment = assess_cert_presence_in_builds(
+            nix, "clobbering-impurities", cert="cert", sandboxed=sandboxed
+        )
+
+        assert any(w.startswith(warning_prefix) for w in assessment.warnings)
