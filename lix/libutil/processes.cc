@@ -354,7 +354,15 @@ RunningProgram runProgram2(const RunOptions & options)
 
     ProcessOptions processOptions{};
 
-    printMsg(lvlChatty, "running command: %s", concatMapStringsSep(" ", options.args, shellEscape));
+    printMsg(
+        lvlChatty,
+        "running command%s%s: %s %s%s",
+        Uncolored(options.searchPath ? " from PATH" : ""),
+        Uncolored(options.argv0 ? " with explicit argv0" : ""),
+        shellEscape(options.program),
+        options.argv0 ? shellEscape(*options.argv0) + " " : "",
+        concatMapStringsSep(" ", options.args, shellEscape)
+    );
 
     /* Fork. */
     Pid pid{startProcess(
