@@ -261,17 +261,23 @@ StringSet Settings::getDefaultExtraPlatforms()
         if (!null) {
             throw Error("could not open /dev/null");
         }
-        if (runProgram2(RunOptions{
-                            .program = "arch",
-                            .args = {"-arch", "x86_64", "/usr/bin/true"},
-                            .redirections =
-                                {{.dup = STDOUT_FILENO, .from = null.get()},
-                                 {.dup = STDERR_FILENO, .from = null.get()}}
-                        }
-            ).wait()
-            == 0)
-        {
-            extraPlatforms.insert("x86_64-darwin");
+        try {
+            if (runProgram2(
+                    RunOptions{
+                        .program = "/usr/bin/arch",
+                        .searchPath = false,
+                        .args = {"-arch", "x86_64", "/usr/bin/true"},
+                        .redirections =
+                            {{.dup = STDOUT_FILENO, .from = null.get()},
+                             {.dup = STDERR_FILENO, .from = null.get()}}
+                    }
+                ).wait()
+                == 0)
+            {
+                extraPlatforms.insert("x86_64-darwin");
+            }
+        } catch (ExecError & e) {
+            debug("could not run /usr/bin/arch, not adding x86_64: %s", e.msg());
         }
     }
 #endif

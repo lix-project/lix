@@ -68,23 +68,6 @@ public:
  */
 void killUser(uid_t uid);
 
-
-/**
- * Fork a process that runs the given function, and return the child
- * pid to the caller.
- */
-struct ProcessOptions
-{
-    /**
-     * use clone() with the specified flags (Linux only)
-     */
-    int cloneFlags = 0;
-};
-
-[[nodiscard]]
-Pid startProcess(std::function<void()> fun, const ProcessOptions & options = ProcessOptions());
-
-
 /**
  * Run a program and return its stdout in a string (i.e., like the
  * shell backtick operator).

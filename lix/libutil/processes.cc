@@ -149,65 +149,6 @@ void killUser(uid_t uid)
 
 //////////////////////////////////////////////////////////////////////
 
-
-static pid_t doFork(std::function<void()> fun)
-{
-    pid_t pid = fork();
-    if (pid != 0) return pid;
-    fun();
-    abort();
-}
-
-#if __linux__
-static int childEntry(void * arg)
-{
-    auto main = static_cast<std::function<void()> *>(arg);
-    (*main)();
-    return 1;
-}
-#endif
-
-
-Pid startProcess(std::function<void()> fun, const ProcessOptions & options)
-{
-    std::function<void()> wrapper = [&]() {
-        logger = makeSimpleLogger();
-        try {
-            fun();
-        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            try {
-                std::cerr << e.what() << "\n";
-            } catch (...) { }
-        } catch (...) { }
-        _exit(1);
-    };
-
-    pid_t pid = -1;
-
-    if (options.cloneFlags) {
-        #ifdef __linux__
-        // Not supported, since then we don't know when to free the stack.
-        assert(!(options.cloneFlags & CLONE_VM));
-
-        size_t stackSize = 1ul * 1024 * 1024;
-        auto stack = static_cast<char *>(mmap(0, stackSize,
-            PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0));
-        if (stack == MAP_FAILED) throw SysError("allocating stack");
-
-        Finally freeStack([&]() { munmap(stack, stackSize); });
-
-        pid = clone(childEntry, stack + stackSize, options.cloneFlags | SIGCHLD, &wrapper);
-        #else
-        throw Error("clone flags are only supported on Linux");
-        #endif
-    } else
-        pid = doFork(wrapper);
-
-    if (pid == -1) throw SysError("unable to fork");
-
-    return Pid{pid};
-}
-
 kj::Promise<Result<std::string>>
 runProgram(Path program, bool searchPath, const Strings args, bool isInteractive)
 try {
@@ -352,8 +293,6 @@ RunningProgram runProgram2(const RunOptions & options)
     Pipe out;
     if (options.captureStdout) out.create();
 
-    ProcessOptions processOptions{};
-
     printMsg(
         lvlChatty,
         "running command%s%s: %s %s%s",
@@ -364,9 +303,44 @@ RunningProgram runProgram2(const RunOptions & options)
         concatMapStringsSep(" ", options.args, shellEscape)
     );
 
+    Pipe info;
+    info.create();
+
     /* Fork. */
-    Pid pid{startProcess(
-        [&]() {
+    Pid pid{fork()};
+    if (!pid) {
+        throw SysError("fork failed");
+    } else if (pid.get() > 0) {
+        info.writeSide.close();
+        auto status = readFile(info.readSide.get());
+        if (!status.empty()) {
+            auto result = pid.kill();
+            throw ExecError(result, "failed to run %s: %s", options.program, status);
+        } else {
+            return RunningProgram{
+                options.program,
+                std::move(pid),
+                options.captureStdout ? std::move(out.readSide) : AutoCloseFD{}
+            };
+        }
+    } else {
+        // nothing in the child may access global state like loggers, otherwise the
+        // child may deadlock if we forked while a lock was held by another thread.
+
+        // we cannot use writeFull because it might throw, we want to exit instead.
+        auto writeStatus = [&](std::string_view data) {
+            while (!data.empty()) {
+                const auto sent = ::write(info.writeSide.get(), data.data(), data.size());
+                if (sent < 0) {
+                    _exit(255);
+                }
+                data.remove_prefix(sent);
+            }
+        };
+
+        try {
+            info.readSide.close();
+
             if (options.environment) {
                 replaceEnv(*options.environment);
             }
@@ -396,21 +370,19 @@ RunningProgram runProgram2(const RunOptions & options)
                 sys::execvp(options.program, args_);
                 // This allows you to refer to a program with a pathname relative
                 // to the PATH variable.
-            } else
+            } else {
                 sys::execv(options.program, args_);
+            }
 
             throw SysError("executing '%1%'", options.program);
-        },
-        processOptions
-    )};
-
-    out.writeSide.close();
-
-    return RunningProgram{
-        options.program,
-        std::move(pid),
-        options.captureStdout ? std::move(out.readSide) : AutoCloseFD{}
-    };
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+            writeStatus(e.what());
+            _exit(254);
+        } catch (...) {
+            writeStatus("unknown exception");
+            _exit(253);
+        }
+    }
 }
 
 RunningHelper runHelper(const char * name, RunOptions options)
