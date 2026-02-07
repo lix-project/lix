@@ -21,11 +21,6 @@ rlimit getOpenFilesLimit();
 std::string readLine(int fd);
 
 /**
- * Write a line to a file descriptor.
- */
-void writeLine(int fd, std::string s);
-
-/**
  * Read the contents of a file into a string.
  */
 std::string readFile(int fd);

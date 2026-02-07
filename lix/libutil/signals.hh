@@ -97,13 +97,6 @@ void startSignalHandlerThread();
  */
 void saveSignalMask();
 
-/**
- * Sets the signal mask. Like saveSignalMask() but for a signal set that doesn't
- * necessarily match the current thread's mask.
- * See saveSignalMask() to set the saved mask to the current mask.
- */
-void setChildSignalMask(sigset_t *sigs);
-
 struct InterruptCallback
 {
     virtual ~InterruptCallback() { };

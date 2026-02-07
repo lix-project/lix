@@ -65,14 +65,6 @@ std::string readLine(int fd)
     }
 }
 
-
-void writeLine(int fd, std::string s)
-{
-    s += '\n';
-    writeFull(fd, s);
-}
-
-
 void readFull(int fd, char * buf, size_t count)
 {
     while (count) {

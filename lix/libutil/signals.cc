@@ -155,25 +155,6 @@ void triggerInterrupt()
 static sigset_t savedSignalMask;
 static bool savedSignalMaskIsSet = false;
 
-void setChildSignalMask(sigset_t * sigs)
-{
-    assert(sigs); // C style function, but think of sigs as a reference
-
-#if _POSIX_C_SOURCE >= 1 || _XOPEN_SOURCE || _POSIX_SOURCE
-    sigemptyset(&savedSignalMask);
-    // There's no "assign" or "copy" function, so we rely on (math) idempotence
-    // of the or operator: a or a = a.
-    sigorset(&savedSignalMask, sigs, sigs);
-#else
-    // Without sigorset, our best bet is to assume that sigset_t is a type that
-    // can be assigned directly, such as is the case for a sigset_t defined as
-    // an integer type.
-    savedSignalMask = *sigs;
-#endif
-
-    savedSignalMaskIsSet = true;
-}
-
 void saveSignalMask() {
     if (sigprocmask(SIG_BLOCK, nullptr, &savedSignalMask))
         throw SysError("querying signal mask");
