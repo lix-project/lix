@@ -1134,18 +1134,20 @@ void LocalDerivationGoal::setupConfiguredCertificateAuthority()
              * set. */
             auto impureVars = parsedDrv->getStringsAttr("impureEnvVars").value_or(Strings());
             if (std::find(impureVars.begin(), impureVars.end(), "NIX_SSL_CERT_FILE") != impureVars.end()
-                && env["NIX_SSL_CERT_FILE"] != settings.caFile)
+                && env.contains("NIX_SSL_CERT_FILE") && env["NIX_SSL_CERT_FILE"] != settings.caFile)
             {
                 printTaggedWarning(
-                    "'NIX_SSL_CERT_FILE' is an impure environment variable of this "
+                    "'NIX_SSL_CERT_FILE' is an impure environment variable (set to '%s') of this "
                     "derivation but a *DIFFERENT* `ssl-cert-file` was set in the settings "
-                    "which takes precedence.\n"
+                    "(set to '%s') which takes precedence.\n"
                     "If you use `ssl-cert-file`, the certificate gets copied in the builder "
                     "environment and the environment variables are set automatically.\n"
                     "If you set this environment variable to be an impure environment "
                     "variable, you need to ensure it is accessible to the sandbox via "
                     "`extra-sandbox-paths`.\n"
-                    "This warning may become a hard error in the future version of Lix."
+                    "This warning may become a hard error in the future version of Lix.",
+                    env["NIX_SSL_CERT_FILE"],
+                    settings.caFile
                 );
             }
 
@@ -1216,8 +1218,12 @@ void LocalDerivationGoal::initEnv()
        fixed-output derivations is by definition pure (since we
        already know the cryptographic hash of the output). */
     if (!derivationType->isSandboxed()) {
-        for (auto & i : parsedDrv->getStringsAttr("impureEnvVars").value_or(Strings()))
-            env[i] = getEnv(i).value_or("");
+        for (auto & i : parsedDrv->getStringsAttr("impureEnvVars").value_or(Strings())) {
+            auto value = getEnv(i);
+            if (value) {
+                env[i] = *value;
+            }
+        }
     }
 
     /* Currently structured log messages piggyback on stderr, but we
