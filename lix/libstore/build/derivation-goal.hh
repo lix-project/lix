@@ -246,7 +246,7 @@ struct DerivationGoal : public Goal
 
     WorkResult timedOut(Error && ex);
 
-    kj::Promise<Result<WorkResult>> workImpl() noexcept override;
+    kj::Promise<Result<WorkResult>> workImpl() noexcept override final;
 
     /**
      * Add wanted outputs to an already existing derivation goal.
@@ -307,6 +307,8 @@ struct DerivationGoal : public Goal
     virtual void cleanupPostOutputsRegisteredModeNonCheck();
 
 protected:
+    AsyncSemaphore::Token slotToken;
+
     kj::TimePoint lastChildActivity = kj::minValue;
 
     kj::Promise<Result<WorkResult>> wrapChildHandler(kj::Promise<Result<WorkResult>> handler

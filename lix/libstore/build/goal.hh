@@ -82,9 +82,6 @@ struct Goal
      */
     std::string name;
 
-protected:
-    AsyncSemaphore::Token slotToken;
-
 public:
     struct [[nodiscard]] WorkResult {
         ExitCode exitCode;

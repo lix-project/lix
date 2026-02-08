@@ -22,12 +22,6 @@ kj::Promise<void> Goal::waitForAWhile()
 
 kj::Promise<Result<Goal::WorkResult>> Goal::work() noexcept
 try {
-    // always clear the slot token, no matter what happens. not doing this
-    // can cause builds to get stuck on exceptions (or other early exist).
-    // ideally we'd use scoped slot tokens instead of keeping them in some
-    // goal member variable, but we cannot do this yet for legacy reasons.
-    KJ_DEFER({ slotToken = {}; });
-
     BOOST_OUTCOME_CO_TRY(auto result, co_await workImpl());
 
     trace("done");

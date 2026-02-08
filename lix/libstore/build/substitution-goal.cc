@@ -27,13 +27,6 @@ PathSubstitutionGoal::PathSubstitutionGoal(
     maintainExpectedSubstitutions = worker.expectedSubstitutions.addTemporarily(1);
 }
 
-
-PathSubstitutionGoal::~PathSubstitutionGoal()
-{
-    cleanup();
-}
-
-
 Goal::WorkResult PathSubstitutionGoal::done(
     ExitCode result,
     BuildResult::Status status,
@@ -75,8 +68,6 @@ try {
 kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryNext() noexcept
 try {
     trace("trying next substituter");
-
-    cleanup();
 
     if (subs.size() == 0) {
         /* None left.  Terminate this goal and let someone else deal
@@ -206,61 +197,36 @@ kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::tryToRun() noexcept
 try {
     trace("trying to run");
 
-    if (!slotToken.valid()) {
-        slotToken = co_await worker.substitutions.acquire();
-    }
-
-    maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
-
-    auto pipe = kj::newPromiseAndCrossThreadFulfiller<void>();
-    outPipe = kj::mv(pipe.fulfiller);
-
-    thr = std::async(std::launch::async, [this]() {
-        AsyncIoRoot aio;
-        /* Wake up the worker loop when we're done. */
-        Finally updateStats([this]() { outPipe->fulfill(); });
-
-        auto & fetchPath = subPath ? *subPath : storePath;
-        try {
-            ReceiveInterrupts receiveInterrupts;
-
-            auto act = logger->startActivity(
-                actSubstitute, Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()}
-            );
-
-            aio.blockOn(copyStorePath(
-                *sub,
-                worker.store,
-                fetchPath,
-                repair,
-                sub->config().isTrusted ? NoCheckSigs : CheckSigs,
-                &act
-            ));
-        } catch (const EndOfFile &) {
-            throw EndOfFile(
-                "NAR for '%s' fetched from '%s' is incomplete",
-                sub->printStorePath(fetchPath),
-                sub->getUri()
-            );
-        }
-    });
-
-    co_await pipe.promise;
-    co_return co_await finished();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
-kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished() noexcept
-try {
-    trace("substitute finished");
-
+    auto & fetchPath = subPath ? *subPath : storePath;
     do {
         try {
-            slotToken = {};
-            thr.get();
-            break;
+            try {
+                AsyncSemaphore::Token slotToken = co_await worker.substitutions.acquire();
+
+                auto act = logger->startActivity(
+                    actSubstitute,
+                    Logger::Fields{worker.store.printStorePath(storePath), sub->getUri()}
+                );
+
+                maintainRunningSubstitutions = worker.runningSubstitutions.addTemporarily(1);
+
+                TRY_AWAIT(copyStorePath(
+                    *sub,
+                    worker.store,
+                    fetchPath,
+                    repair,
+                    sub->config().isTrusted ? NoCheckSigs : CheckSigs,
+                    &act
+                ));
+
+                break;
+            } catch (const EndOfFile &) {
+                throw EndOfFile(
+                    "NAR for '%s' fetched from '%s' is incomplete",
+                    sub->printStorePath(fetchPath),
+                    sub->getUri()
+                );
+            }
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             printError("%1%", Uncolored(e.what()));
 
@@ -272,9 +238,19 @@ try {
                 substituterFailed = true;
             }
         }
-        /* Try the next substitute. */
+
+        /* Try the next substitute */
         co_return co_await tryNext();
     } while (false);
+
+    co_return co_await finished();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<Goal::WorkResult>> PathSubstitutionGoal::finished() noexcept
+try {
+    trace("substitute finished");
 
     worker.markContentsGood(storePath);
 
@@ -295,19 +271,4 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
-
-void PathSubstitutionGoal::cleanup()
-{
-    try {
-        if (thr.valid()) {
-            // FIXME: signal worker thread to quit.
-            thr.get();
-        }
-    } catch (...) {
-        ignoreExceptionInDestructor();
-    }
-}
-
-
 }

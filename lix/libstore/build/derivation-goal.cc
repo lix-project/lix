@@ -139,7 +139,14 @@ Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 
 kj::Promise<Result<Goal::WorkResult>> DerivationGoal::workImpl() noexcept
 {
-    KJ_DEFER({ actLock.reset(); });
+    // always clear the slot token, no matter what happens. not doing this
+    // can cause builds to get stuck on exceptions (or other early exits).
+    // ideally we'd use scoped slot tokens instead of keeping them in some
+    // goal member variable, but we cannot do this yet for legacy reasons.
+    KJ_DEFER({
+        actLock.reset();
+        slotToken = {};
+    });
 
     BOOST_OUTCOME_CO_TRY(auto result, co_await (useDerivation ? getDerivation() : haveDerivation()));
     result.storePath = drvPath;
