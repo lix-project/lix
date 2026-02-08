@@ -120,7 +120,8 @@ try {
             if (settings.tryFallback) {
                 logError(e.info());
             } else {
-                throw;
+                logErrorInfo(lvlWarn, e.info());
+                substituterFailed = true;
             }
         }
         co_return co_await tryNext();

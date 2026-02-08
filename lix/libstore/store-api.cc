@@ -563,6 +563,9 @@ try {
 kj::Promise<Result<void>> Store::querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos)
 try {
     if (!settings.useSubstitutes) co_return result::success();
+
+    std::unordered_map<StorePath, std::exception_ptr> errors;
+
     for (auto & sub : TRY_AWAIT(getDefaultSubstituters())) {
         for (auto & path : paths) {
             if (infos.count(path.first))
@@ -600,15 +603,22 @@ try {
                     .downloadSize = narInfo ? narInfo->fileSize : 0,
                     .narSize = info->narSize,
                 });
+                errors.erase(path.first);
             } catch (InvalidPath &) {
             } catch (SubstituterDisabled &) {
             } catch (Error & e) {
-                if (settings.tryFallback)
+                if (settings.tryFallback) {
                     logError(e.info());
-                else
-                    throw;
+                } else {
+                    logErrorInfo(lvlWarn, e.info());
+                    errors.emplace(path.first, std::current_exception());
+                }
             }
         }
+    }
+
+    if (!errors.empty() && !settings.tryFallback) {
+        std::rethrow_exception(errors.begin()->second);
     }
 
     co_return result::success();
