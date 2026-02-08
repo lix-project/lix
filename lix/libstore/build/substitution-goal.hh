@@ -49,11 +49,6 @@ struct PathSubstitutionGoal : public Goal
     kj::Own<kj::CrossThreadPromiseFulfiller<void>> outPipe;
 
     /**
-     * The substituter thread.
-     */
-    std::future<void> thr;
-
-    /**
      * Whether to try to repair a valid path.
      */
     RepairFlag repair;
@@ -85,7 +80,6 @@ public:
         RepairFlag repair = NoRepair,
         std::optional<ContentAddress> ca = std::nullopt
     );
-    ~PathSubstitutionGoal();
 
     kj::Promise<Result<WorkResult>> workImpl() noexcept override;
 
@@ -96,9 +90,6 @@ public:
     kj::Promise<Result<WorkResult>> referencesValid() noexcept;
     kj::Promise<Result<WorkResult>> tryToRun() noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
-
-    /* Called by destructor, can't be overridden */
-    void cleanup() override final;
 
     JobCategory jobCategory() const override {
         return JobCategory::Substitution;
