@@ -405,7 +405,7 @@ kj::Promise<void> Instance::init(InitContext context)
 }
 
 kj::Promise<void> Instance::buildImpl(BuildContext context)
-{
+try {
     if (!initialized) {
         throw Error("build hook not fully initialized");
     }
@@ -461,6 +461,8 @@ kj::Promise<void> Instance::buildImpl(BuildContext context)
 
     auto ac = context.getResults().initResult().initGood().initAccept();
     ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+} catch (...) {
+    RPC_FILL(context.getResults(), initResult, std::current_exception());
 }
 
 kj::Promise<void> Instance::build(BuildContext context)
