@@ -1,12 +1,12 @@
 import pytest
 
-from testlib.fixtures.file_helper import with_files, CopyFile
+from testlib.fixtures.file_helper import with_files
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset
 
 
 _mo_files = {
-    "multiple-outputs.nix": CopyFile("assets/test_build/multiple-outputs.nix"),
+    "multiple-outputs.nix": get_global_asset("multiple-outputs.nix"),
     "config.nix": get_global_asset("config.nix"),
 }
 _build_args = ["build", "-f", "multiple-outputs.nix", "--no-link", "--json"]
