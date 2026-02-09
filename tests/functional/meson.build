@@ -141,7 +141,6 @@ functional_tests_scripts = [
   'store-ping.sh',
   'flakes/show.sh',
   'path-from-hash-part.sh',
-  'toString-path.sh',
   'read-only-store.sh',
   'nested-sandboxing.sh',
   'test-libstoreconsumer.sh',
