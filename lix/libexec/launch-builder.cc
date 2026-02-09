@@ -116,9 +116,10 @@ int main(int argc, char * argv[])
     bool sendException = true;
 
     try {
-        capnp::StreamFdMessageReader reader(STDIN_FILENO);
+        capnp::MallocMessageBuilder buf;
+        capnp::readMessageCopyFromFd(STDIN_FILENO, buf);
 
-        auto request = reader.getRoot<build::Request>();
+        auto request = buf.getRoot<build::Request>().asReader();
 
         printDebugLogs = request.getDebug();
 
