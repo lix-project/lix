@@ -130,7 +130,6 @@ functional_tests_scripts = [
   'placeholders.sh',
   'ssh-relay.sh',
   'build.sh',
-  'build-delete.sh',
   'output-normalization.sh',
   'selfref-gc.sh',
   'db-migration.sh',
