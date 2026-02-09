@@ -11,7 +11,7 @@ def test_compression_levels(nix: Nix):
     cache_dir1 = nix.env.dirs.cache_dir / "test1"
     cache_dir2 = nix.env.dirs.cache_dir / "test2"
 
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
     res = nix.nix_build(["dependencies.nix", "--no-out-link"]).run().ok()
     out_path = res.stdout_plain
 

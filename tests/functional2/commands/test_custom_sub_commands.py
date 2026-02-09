@@ -95,7 +95,7 @@ def path_with_failure(
 @pytest.mark.usefixtures("path")
 def test_sub_commands(nix: Nix, custom_sub_command: str, nix_exe: str, flag: bool, expected: int):
     if flag:
-        nix.settings.feature("lix-custom-sub-commands")
+        nix.settings.add_xp_feature("lix-custom-sub-commands")
 
     # Test custom sub commands in various configurations
     nix.nix([custom_sub_command, "--version"], nix_exe=nix_exe).run().expect(expected)
@@ -110,7 +110,7 @@ def test_sub_commands(nix: Nix, custom_sub_command: str, nix_exe: str, flag: boo
 def test_sub_command_path_order(nix: Nix, failing_sub_command: str, expected: int):
     # Test handling of the order of the path for custom sub commands
     # Incidentally also tests passing through exit codes
-    nix.settings.feature("lix-custom-sub-commands")
+    nix.settings.add_xp_feature("lix-custom-sub-commands")
     nix.nix([failing_sub_command, "--version"], nix_exe="lix").run().expect(expected)
 
 
@@ -143,7 +143,7 @@ def test_custom_sub_command_signals(nix: Nix, custom_sub_command_path: Path):
     command.chmod(stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR)
 
     current_mask = signal.pthread_sigmask(signal.SIG_BLOCK, [])
-    nix.settings.feature("lix-custom-sub-commands")
+    nix.settings.add_xp_feature("lix-custom-sub-commands")
     result = nix.nix(["signals"], nix_exe="lix").run()
     result.ok()
     assert result.stdout_s.strip() == str(current_mask)

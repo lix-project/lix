@@ -4,7 +4,6 @@ import dataclasses
 import sys
 from functools import partialmethod
 from pathlib import Path
-from textwrap import dedent
 from typing import Any, Literal
 from collections.abc import Callable, Generator
 import shutil
@@ -18,91 +17,108 @@ from testlib.fixtures.env import ManagedEnv
 from testlib.utils import is_value_of_type
 
 
-@dataclasses.dataclass
+type _NixSettingValue = str | int | list[str] | bool | None
+
+
+def _serialise(value: Any) -> str:
+    if is_value_of_type(value, list[str]):
+        return " ".join(_serialise(e) for e in value)
+    if is_value_of_type(value, bool):
+        return "true" if value else "false"
+    if is_value_of_type(value, str | int):
+        return str(value)
+
+    msg = f"Value is unsupported in nix config: {value!r}, must be {_NixSettingValue.__value__}"
+    raise ValueError(msg)
+
+
 class NixSettings:
     """Settings for invoking Nix"""
 
-    experimental_features: set[str] | None = None
-    store: str | None = None
-    """
-    The store to operate on (may be a path or other thing, see `nix help-stores`).
-
-    Note that this can be set to the test's store directory if you want to use
-    /nix/store paths inside that test rather than NIX_STORE_DIR renaming
-    /nix/store to some unstable name (assuming that no builds are invoked).
-    """
-    nix_store_dir: Path | None = None
-    """
-    Alternative name to use for /nix/store: breaks all references and NAR imports if
-    set, but does allow builds in tests (since builds do not require chroots if
-    the store is relocated).
-    """
-
-    other_settings: dict[str, str | int | list[str] | set[str | int] | None] = dataclasses.field(
-        default_factory=lambda: {
-            "show-trace": "true",
-            "sandbox": "true",
-            # explicitly disable substitution by default, otherwise we may attempt to contact
-            # substituters and slow down many tests with pointless connection retry timeouts.
-            "substituters": [],
-        }
-    )
-    """
-    All other `nix.conf` settings. `None` values are not written to the config.
-    """
-
-    def feature(self, *names: str) -> "NixSettings":
-        """
-        Adds the given features to the list of enabled `experimental_features`
-        :param names: feature names to enable
-        :return: self, command is chainable
-        """
-        self.experimental_features = (self.experimental_features or set()) | set(names)
-        return self
-
-    def to_config(self, env: ManagedEnv) -> str:
-        config = dedent(f"""
+    def __init__(self):
+        self._settings: dict[str, _NixSettingValue] = {
             # Running the test suite creates a lot of stores in the test root (somewhere under TMPDIR).
             # Obviously, they are not critical for system operation, so there is no need to reserve space.
             # The cleanup will only happen a couple of runs later, wasting space in the meantime.
             # Effectively disable this space reserve to reduce the waste considerably (by about 98%).
-            gc-reserved-space = 0
-            extra-sandbox-paths = {" ".join(env.path.to_sandbox_paths())}
-        """)
-        # Note: newline at the end is required due to nix being nix;
-        # FIXME(Jade): #953 this is annoying in the CLI too, we should fix it!
+            "gc-reserved-space": 0,
+            "show-trace": True,
+            "sandbox": True,
+            # explicitly disable substitution by default, otherwise we may attempt to contact
+            # substituters and slow down many tests with pointless connection retry timeouts.
+            "substituters": [],
+            "extra-sandbox-paths": [],
+            "extra-experimental-features": [],
+            "extra-deprecated-features": [],
+        }
 
-        def serialise(value: Any) -> str:
-            # TODO(rootile): why exactly are ints supported?
-            if is_value_of_type(value, set[str | int] | list[str | int]):
-                return " ".join(serialise(e) for e in value)
-            if is_value_of_type(value, str | int):
-                return str(value)
+    def __getattr__(self, attr: str) -> _NixSettingValue:
+        if attr.startswith("__"):
+            return super().__getattr__(attr)
+        return self._settings[attr.replace("_", "-")]
 
-            msg = f"Value is unsupported in nix config: {value!r}, must bei either `str|int` or `set[str|int]` or `list[str|int]`"
-            raise ValueError(msg)
+    def __setattr__(self, attr: str, value: _NixSettingValue):
+        if attr == "_settings":
+            super().__setattr__(attr, value)
+        else:
+            self._settings[attr.replace("_", "-")] = value
 
-        def field_may(name: str, value: Any, serializer: Callable[[Any], str] = serialise):
+    def __getitem__(self, attr: str) -> _NixSettingValue:
+        return self._settings[attr]
+
+    def __setitem__(self, attr: str, value: str):
+        self._settings[attr] = value
+
+    def add_xp_feature(self, *names: list[str]):
+        self["extra-experimental-features"] += names
+
+    def add_dp_feature(self, *names: list[str]):
+        self["extra-deprecated-features"] += names
+
+    def update(self, args: dict[str, _NixSettingValue] | None = None, **kwargs):
+        """
+        Overrides the settings with the given dict or kwargs.
+        """
+        self._settings.update(kwargs | (args or {}))
+
+    def clone(self) -> "NixSettings":
+        """
+        shortcut to clone the settings to a new object
+        """
+        return self.with_settings()
+
+    def with_settings(
+        self, args: dict[str, _NixSettingValue] | None = None, **kwargs
+    ) -> "NixSettings":
+        """
+        Copies the current settings into a new object, overriding the provided ones.
+
+        :returns: A new Settings object with overridden settings
+        """
+        new_settings = NixSettings()
+        new_settings._settings = copy.deepcopy(self._settings)
+        new_settings.update(args, **kwargs)
+        return new_settings
+
+    def to_config(self, env: ManagedEnv) -> str:
+        config = ""
+
+        self["extra-sandbox-paths"] += env.path.to_sandbox_paths()
+
+        def field_may(name: str, value: Any, serializer: Callable[[Any], str] = _serialise):
             nonlocal config
             if value is not None:
                 config += f"{name} = {serializer(value)}\n"
 
-        for k, v in [("experimental-features", self.experimental_features), ("store", self.store)]:
-            assert k not in self.other_settings
-            field_may(k, v)
-        for k, v in self.other_settings.items():
-            field_may(k, v)
-        assert self.store or self.nix_store_dir, (
-            "Failing to set either nix_store_dir or store will cause accidental use of the system store."
-        )
+        for name, value in self._settings.items():
+            field_may(name, value)
+
         return config
 
     def to_env_overlay(self, env: ManagedEnv) -> None:
         cfg = self.to_config(env)
         (env.dirs.nix_conf_dir / "nix.conf").write_text(cfg)
         env.set_env("NIX_CONFIG", cfg)
-        if self.nix_store_dir:
-            env.dirs.nix_store_dir = self.nix_store_dir
 
 
 @dataclasses.dataclass
@@ -142,9 +158,9 @@ class Nix:
         :param build: if the executed command wants to build stuff. This is required due to darwin shenanigans. "auto" will try to autodetect, override using `True` or `False`. Has no effect on linux.
         """
         # Create a copy of settings to not have a writing side effect
-        settings = dataclasses.replace(self.settings)
+        settings = self.settings.clone()
         if flake:
-            settings.feature("nix-command", "flakes")
+            settings.add_xp_feature("nix-command", "flakes")
         # FIXME(rootile): Darwin needs special handling here, as it does not support (non-root) chroots...
         #  Hence, it cannot build using a relocated store so we just use the local (aka global) store instead
         #  This is kinda ugly but what else can one do
@@ -155,7 +171,7 @@ class Nix:
                 build == "auto" and (argv[0] == "nix-build" or argv[1:2] == ["build"])
             ):
                 settings.store = None
-                settings.nix_store_dir = self.env.dirs.real_store_dir
+                self.env.dirs.nix_store_dir = self.env.dirs.real_store_dir
 
         settings.to_env_overlay(self.env)
         return Command(argv=argv, exe=self._nix_executable, _env=self.env)
@@ -171,28 +187,32 @@ class Nix:
 
     @contextlib.contextmanager
     def daemon(
-        self, args: list[str] = [], settings: dict[str, str | list[str]] = {}, **kwargs
+        self,
+        args: list[str] | None = None,
+        settings: dict[str, _NixSettingValue] | None = None,
+        **kwargs,
     ) -> "Nix":
         daemon = copy.deepcopy(self)
-        daemon.settings.other_settings["allowed-users"] = ["*"]
-        daemon.settings.other_settings["trusted-users"] = []
+        daemon.logger = self.logger.getChild("daemon")
+        daemon.settings["allowed-users"] = ["*"]
+        daemon.settings["trusted-users"] = []
         daemon.settings.store = f"local?root={self.env.dirs.test_root}"
-        daemon.settings.other_settings |= settings
+        daemon.settings.update(settings)
 
         sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
         sockets = [sockets_dir / "socket"]
         for p in sockets:
             p.unlink(missing_ok=True)
 
-        proc = daemon.nix(args, nix_exe="nix-daemon", **kwargs).start()
+        proc = daemon.nix(args or [], nix_exe="nix-daemon", **kwargs).start()
 
         def log_daemon_result(result: CommandResult | None, level: int):
             if result:
-                self.logger.log(level, "daemon exited with code %i", result.rc)
-                self.logger.log(level, "stdout: %s", result.stdout_s)
-                self.logger.log(level, "stderr: %s", result.stderr_s)
+                daemon.logger.log(level, "daemon exited with code %i", result.rc)
+                daemon.logger.log(level, "stdout: %s", result.stdout_s)
+                daemon.logger.log(level, "stderr: %s", result.stderr_s)
             else:
-                self.logger.error("daemon exited unexpectedly")
+                daemon.logger.error("daemon exited unexpectedly")
 
         # wait for daemon to come up. this may take a while under load.
         # we only test the *last* socket in the list because that's the
@@ -237,9 +257,9 @@ class Nix:
         """
         if flags is None:
             flags = []
-        orig = dataclasses.replace(self.settings)
+        orig = self.settings.clone()
         self._settings = settings or self.settings
-        self.settings.feature("nix-command")
+        self.settings.add_xp_feature("nix-command")
 
         cmd = self.nix(["eval", "--json", *flags, "--expr", expr])
         # restore previous settings

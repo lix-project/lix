@@ -9,7 +9,7 @@ from testlib.fixtures.nix import Nix
 
 @pytest.fixture(autouse=True)
 def nix_command_feature(nix: Nix):
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
 
 
 @pytest.mark.parametrize(

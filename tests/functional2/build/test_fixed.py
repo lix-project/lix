@@ -33,7 +33,7 @@ def test_bad(nix: Nix):
     assert "hash mismatch in fixed-output derivation" in res.stderr_plain
     assert path.exists()
 
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
     res = nix.nix(["path-info", "--json", store_path], build=True).run().ok()
     assert res.json()[0]["ca"] == "fixed:md5:2qk15sxzzjlnpjk9brn7j8ppcd"
 

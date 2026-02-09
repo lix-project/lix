@@ -15,7 +15,7 @@ def test_substitute_truncated_nar(nix: Nix):
     cache_dir = nix.env.dirs.cache_dir
     cache_uri = f"file://{cache_dir}?compression=none"
     nar = cache_dir / "nar" / "0513ia03lmqyq8bipmvv0awjji48li22rbmm9p5iwzm08y8m810z.nar"
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
 
     res = nix.nix_build(["--no-out-link", "--expr", drv]).run().ok()
     out_path = res.stdout_plain

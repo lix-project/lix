@@ -20,7 +20,7 @@ def _setup_for_remote_builds(nix: Nix, env: ManagedEnv):
     # always add bash, otherwise lix can't execute the build hook
     env.path.add_program("bash")
     # we don't always use this feature, but it also doesn't hurt
-    nix.settings.feature("daemon-trust-override")
+    nix.settings.add_xp_feature("daemon-trust-override")
 
 
 def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:

@@ -17,7 +17,7 @@ _search_args = [*_exclude_args, ""]
 
 @pytest.fixture(autouse=True)
 def commands(nix: Nix):
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
 
 
 @with_files(_files)

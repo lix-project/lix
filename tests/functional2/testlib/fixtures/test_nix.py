@@ -1,4 +1,3 @@
-import re
 from pathlib import Path
 
 import pytest
@@ -7,33 +6,94 @@ from testlib.fixtures.env import ManagedEnv
 from testlib.fixtures.nix import NixSettings
 
 
-def test_nix_settings_serializes_xf(env: ManagedEnv):
-    settings = NixSettings(nix_store_dir=Path("/store/nix"))
-    settings.feature("a", "b")
+def test_nix_settings_set_item():
+    settings = NixSettings()
+    settings["hello"] = "world"
 
-    expected = r"(.|\n)*experimental-features = (a|b) (a|b)\n(.|\n)*"
-    assert re.fullmatch(expected, settings.to_config(env), re.MULTILINE)
+    assert settings._settings["hello"] == "world"
+
+
+def test_nix_settings_get_item():
+    settings = NixSettings()
+    assert settings["substituters"] == []
+
+
+def test_nix_settings_set_attr():
+    settings = NixSettings()
+    settings.cores = 5
+
+    assert settings._settings["cores"] == 5
+
+
+def test_nix_settings_get_attr():
+    settings = NixSettings()
+    assert settings.sandbox is True
+
+
+def test_nix_settings_get_attr_underscore():
+    settings = NixSettings()
+    assert settings.extra_deprecated_features == []
+
+    settings["extra-deprecated-features"] += ["ancient-let"]
+
+    assert settings.extra_deprecated_features == ["ancient-let"]
+
+
+def test_nix_settings_set_attr_underscore():
+    settings = NixSettings()
+    assert settings["extra-deprecated-features"] == []
+
+    settings.extra_deprecated_features += ["ancient-let"]
+    assert settings["extra-deprecated-features"] == ["ancient-let"]
+
+
+def test_nix_settings_update_replaces():
+    settings = NixSettings()
+    assert settings.sandbox is True
+
+    settings.update({"sandbox": False})
+    assert settings.sandbox is False
+
+    settings.update(sandbox=True)
+    assert settings.sandbox is True
+
+
+def test_nix_settings_with_doesnt_effect_orig():
+    orig = NixSettings()
+    orig["extra-experimental-features"] += ["nix-command"]
+
+    new = orig.with_settings({"extra-experimental-features": ["some-feature"]})
+    assert new["extra-experimental-features"] == ["some-feature"]
+    assert orig["extra-experimental-features"] == ["nix-command"]
+
+
+def test_nix_settings_serializes_xf(env: ManagedEnv):
+    settings = NixSettings()
+    settings["extra-experimental-features"] += ["a", "b"]
+
+    assert "extra-experimental-features = a b\n" in settings.to_config(env)
 
 
 def test_nix_settings_serializes_store(env: ManagedEnv):
-    settings = NixSettings(nix_store_dir=Path("/store/nix"))
-    settings.store = "some/path"
+    settings = NixSettings()
+    settings.store = "local?root=/some/path"
 
-    expected = "store = some/path\n"
-    assert expected in settings.to_config(env)
+    assert "store = local?root=/some/path\n" in settings.to_config(env)
 
 
 def test_nix_settings_serializes_both(env: ManagedEnv):
-    settings = NixSettings(nix_store_dir=Path("/store/nix"))
-    settings.feature("a", "b")
-    settings.store = "some/path"
+    settings = NixSettings()
+    settings["extra-experimental-features"] += ["a", "b"]
+    settings.store = "local?root=/some/path"
 
-    expected = "experimental-features = a b\nstore = some/path\n"
-    assert expected in settings.to_config(env)
+    serialized = settings.to_config(env)
+
+    assert "extra-experimental-features = a b\n" in serialized
+    assert "store = local?root=/some/path" in serialized
 
 
 def test_nix_settings_ser_fails_bad_top_level_type(env: ManagedEnv):
-    settings = NixSettings(nix_store_dir=Path("/store/nix"))
+    settings = NixSettings()
     settings.experimental_features = {"a": "b"}  # type: ignore we are testing the types here
 
     with pytest.raises(ValueError, match=r"Value is unsupported in nix config: {'a': 'b'}"):
@@ -41,37 +101,17 @@ def test_nix_settings_ser_fails_bad_top_level_type(env: ManagedEnv):
 
 
 def test_nix_settings_ser_fails_bad_sub_type(env: ManagedEnv):
-    settings = NixSettings(nix_store_dir=Path("/store/nix"))
+    settings = NixSettings()
     settings.experimental_features = [["a", "b"], "c"]  # type: ignore we are testing the types here
 
     with pytest.raises(ValueError, match=r"Value is unsupported in nix config: .+"):
         settings.to_config(env)
 
 
-def test_nix_settings_fails_without_store_and_store_dir(env: ManagedEnv):
-    settings = NixSettings()
-
-    with pytest.raises(
-        AssertionError,
-        match=r"Failing to set either nix_store_dir or store will cause accidental use of the system store.",
-    ):
-        settings.to_config(env)
-
-
 def test_nix_settings_to_env_overlay_no_store_dir(tmp_path: Path):
     env = ManagedEnv(tmp_path)
     settings = NixSettings()
-    settings.store = "some/path"
+    settings.store = "local?root=/some/path"
 
     settings.to_env_overlay(env)
-    assert "store = some/path\n" in env._env["NIX_CONFIG"]
-
-
-def test_nix_settings_to_env_overlay_store_dir(tmp_path: Path):
-    env = ManagedEnv(tmp_path)
-    settings = NixSettings()
-    settings.nix_store_dir = Path("/some/path")
-
-    settings.to_env_overlay(env)
-    assert "store = " not in env._env["NIX_CONFIG"]
-    assert str(env.dirs.nix_store_dir) == "/some/path"
+    assert "store = local?root=/some/path\n" in env._env["NIX_CONFIG"]

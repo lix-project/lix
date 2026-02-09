@@ -140,7 +140,7 @@ def test_build_unsafe_discard(nix: Nix):
 
 @pytest.fixture
 def drv(nix: Nix) -> str:
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
     return (
         nix.nix(["eval", "-f", "multiple-outputs.nix", "--raw", "a.drvPath"], build=True)
         .run()

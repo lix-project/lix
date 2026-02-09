@@ -44,7 +44,7 @@ def nix_command_feature(nix: Nix):
     # resolving the completions correctly
     #
     # rootile: no clue why...
-    nix.settings.feature("nix-command", "flakes")
+    nix.settings.add_xp_feature("nix-command", "flakes")
 
 
 def test_completions_valid(nix: Nix):

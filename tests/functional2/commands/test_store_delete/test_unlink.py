@@ -11,7 +11,7 @@ _mo_files = {"config.nix": get_global_asset("config.nix"), "drv.nix": CopyFile("
 
 @pytest.fixture(autouse=True)
 def commands(nix: Nix):
-    nix.settings.feature("nix-command")
+    nix.settings.add_xp_feature("nix-command")
 
 
 @pytest.mark.skipif(
