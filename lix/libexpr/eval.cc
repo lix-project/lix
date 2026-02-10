@@ -118,7 +118,11 @@ std::string showType(const Value & v)
 #pragma GCC diagnostic ignored "-Wswitch-enum"
     switch (v.internalType()) {
     case tString:
-        return v.string().context ? "a string with context" : "a string";
+        if (v.string().isPath()) {
+            return "a path";
+        } else {
+            return v.string().context ? "a string with context" : "a string";
+        }
     case tAuxiliary:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wswitch-enum"

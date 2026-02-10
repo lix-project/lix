@@ -210,6 +210,7 @@ libexpr_tests_sources = files(
   'libexpr/trivial.cc',
   'libexpr/value/context.cc',
   'libexpr/value/print.cc',
+  'libexpr/value/print-type.cc',
 )
 
 libexpr_tester = executable(
