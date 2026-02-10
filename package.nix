@@ -80,6 +80,8 @@
   # "address", "undefined", "thread".
   # Enabling the "address" sanitizer will disable garbage collection in the evaluator.
   sanitize ? null,
+  # include sanitizer libraries in the build closure (mostly for devshells)
+  includeSanitizerLibs ? sanitize != null,
   # Turn compiler warnings into errors.
   werror ? false,
 
@@ -515,7 +517,10 @@ stdenv.mkDerivation (finalAttrs: {
                 ])
                 (
                   lib.subtractLists finalAttrs.disallowedReferences (
-                    finalAttrs.buildInputs ++ finalAttrs.propagatedBuildInputs
+                    finalAttrs.buildInputs
+                    ++ finalAttrs.propagatedBuildInputs
+                    # include compiler wrapper as an input to get the sanitizer libraries too
+                    ++ lib.optional includeSanitizerLibs stdenv.cc
                   )
                 )
             );

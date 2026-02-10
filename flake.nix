@@ -542,6 +542,7 @@
                 inherit stdenv versionSuffix;
                 busybox-sandbox-shell = pkgs.busybox-sandbox-shell or pkgs.default-busybox-sandbox;
                 internalApiDocs = false;
+                includeSanitizerLibs = true;
                 # Use LLD in the dev shell by default for faster link times.
                 useLld = stdenv.hostPlatform.isLinux;
               };
