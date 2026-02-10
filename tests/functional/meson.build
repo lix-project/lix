@@ -135,7 +135,6 @@ functional_tests_scripts = [
   'db-migration.sh',
   'bash-profile.sh',
   'pass-as-file.sh',
-  'nix-profile.sh',
   'suggestions.sh',
   'store-ping.sh',
   'flakes/show.sh',

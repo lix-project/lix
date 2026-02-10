@@ -17,10 +17,12 @@ rec {
 
   shared = builtins.getEnv "_NIX_TEST_SHARED";
 
+  shell = "@shell@";
+
   mkDerivation = args:
     derivation ({
       inherit system;
-      builder = "@shell@";
+      builder = shell;
       args = ["-e" args.builder or (builtins.toFile "builder-${args.name}.sh" ''
         if [ -e "$NIX_ATTRS_SH_FILE" ]; then source $NIX_ATTRS_SH_FILE; fi;
         eval "$buildCommand"
