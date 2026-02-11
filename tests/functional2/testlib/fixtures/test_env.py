@@ -98,13 +98,7 @@ def test_env_dirs_created(env: ManagedEnv):
     fields = dataclasses.asdict(env.dirs).items()
     assert len(fields) > 1
     for name, field in fields:
-        field: Path | None
-        # we never want to set NIX_STORE_DIR on linux due to unfortunate config ordering.
-        # creating a fresh env should always have it unset, it'll only be set when needed
-        if name == "nix_store_dir":
-            assert field is None
-        else:
-            field.exists()
+        field.exists()
 
 
 def test_env_get_path_fails(env: ManagedEnv):
@@ -129,6 +123,7 @@ def test_env_to_env(tmp_path: Path):
         "NIX_STATE_DIR",
         "NIX_CONF_DIR",
         "NIX_BIN_DIR",
+        "NIX_STORE_DIR",
         "REAL_STORE_DIR",
         "CACHE_DIR",
         "XDG_CACHE_HOME",

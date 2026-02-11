@@ -8,7 +8,7 @@ import yaml
 from _pytest.python import Metafunc
 
 from lang.lang_util import LangTest, fetch_all_lang_tests, LangTestRunner
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, with_diverted_store
 from testlib.fixtures.snapshot import Snapshot
 
 
@@ -92,6 +92,7 @@ def test_parse_fail(files: Path, nix: Nix, flags: list[str], snapshot: Callable[
     assert snapshot("err.exp") == stderr
 
 
+@with_diverted_store
 def test_eval_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(["--eval", "--strict", *flags, files / "in.nix"], flake=True)
     result = nix_command.run().ok()
@@ -101,6 +102,7 @@ def test_eval_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[
     assert snapshot("err.exp") == stderr
 
 
+@with_diverted_store
 def test_eval_fail(files: Path, nix: Nix, flags: list[str], snapshot: Callable[[str], Snapshot]):
     nix_command = nix.nix_instantiate(
         ["--eval", "--strict", "--show-trace", *flags, files / "in.nix"], flake=True

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, with_diverted_store
 from testlib.nar import (
     DirectoryUnordered,
     NarItem,
@@ -102,6 +102,7 @@ EVIL_NARS: list[tuple[str, NarItem]] = [
 
 
 @pytest.mark.parametrize(("name", "nar"), EVIL_NARS, ids=next(zip(*EVIL_NARS)))
+@with_diverted_store
 def test_evil_nar(nix: Nix, name: str, nar: NarItem, logger: Logger):
     bio = BytesIO()
 

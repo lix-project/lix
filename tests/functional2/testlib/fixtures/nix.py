@@ -147,11 +147,19 @@ class Nix:
         if self._settings is None:
             self._settings = NixSettings()
             self._settings.store = f"local?root={self.env.dirs.test_root}"
+            if sys.platform == "linux":
+                # sandbox build dir cannot be withing store dir. choose a short non-overlapping path.
+                self._settings.sandbox_build_dir = (
+                    "/build-f2" if self.env.dirs.test_root.parts[1] != "build-f2" else "/build.f2"
+                )
 
         return self._settings
 
     def nix_cmd(
-        self, argv: list[str], flake: bool = False, build: bool | Literal["auto"] = "auto"
+        self,
+        argv: list[str],
+        flake: bool = False,
+        build: bool | Literal["auto"] = "auto",  # noqa: ARG002
     ) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
@@ -161,17 +169,6 @@ class Nix:
         settings = self.settings.clone()
         if flake:
             settings.add_xp_feature("nix-command", "flakes")
-        # FIXME(rootile): Darwin needs special handling here, as it does not support (non-root) chroots...
-        #  Hence, it cannot build using a relocated store so we just use the local (aka global) store instead
-        #  This is kinda ugly but what else can one do
-        if sys.platform == "darwin":
-            if build is True or (
-                # argv[1:2] does not throw a key error on empty lists
-                # hence not crashing this check on an empty `nix.nix([])` call
-                build == "auto" and (argv[0] == "nix-build" or argv[1:2] == ["build"])
-            ):
-                settings.store = None
-                self.env.dirs.nix_store_dir = self.env.dirs.real_store_dir
 
         settings.to_env_overlay(self.env)
         return Command(argv=argv, exe=self._nix_executable, _env=self.env)
@@ -352,3 +349,19 @@ def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Ni
     # for pytest to be able to delete the files during cleanup
     cmd = Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], _env=env)
     cmd.run().ok()
+
+
+@pytest.fixture
+def enable_diverted_store(nix: Nix):
+    """
+    clear NIX_STORE_DIR, resetting it to the default (ie /nix/store).
+    this makes builds impossible on platforms that cannot bind-mount,
+    (e.g. macos) but it is important for eval result reproducibility.
+    while builds may not work, substitution should still be possible.
+    """
+    nix.env.dirs.nix_store_dir = None
+    nix.settings.sandbox_build_dir = None
+
+
+def with_diverted_store(func: Callable[[Any], None]) -> Callable[[Any], None]:
+    return pytest.mark.usefixtures("enable_diverted_store")(func)

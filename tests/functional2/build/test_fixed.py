@@ -1,4 +1,3 @@
-import sys
 import re
 from pathlib import Path
 
@@ -24,7 +23,7 @@ def impure_vars(env: ManagedEnv):
 def test_bad(nix: Nix):
     res = nix.nix_instantiate(["fixed.nix", "-A", "good.0"], build=True).run().ok()
     store_path = nix.nix_store(["-q", res.stdout_plain], build=True).run().ok().stdout_plain
-    path = Path(f"{nix.env.dirs.test_root}{store_path}" if sys.platform != "darwin" else store_path)
+    path = Path(store_path)
     assert not path.exists()
 
     # Building with the bad hash should produce the "good" output path as

@@ -154,10 +154,6 @@ class _Dirs:
     tmpdir: Path | None
     """used for nar caching"""
     nix_store_dir: Path | None = None
-    """
-    store dir override for building on macos *specifically*. do not
-    use or set this for any other purpose or many tests will break.
-    """
 
     def get_env_keys(self) -> set[str]:
         return {f.name.upper() for f in dataclasses.fields(self)}
@@ -194,6 +190,7 @@ class ManagedEnv:
             nix_conf_dir=self._get_dir("etc/nix"),
             nix_bin_dir=lix_bin,
             real_store_dir=self._get_dir("nix/store"),
+            nix_store_dir=self._get_dir("nix/store"),
             cache_dir=self._get_dir("test-binary-cache"),
             xdg_cache_home=self._get_dir("test-home/.cache"),
             tmpdir=self._get_dir("tmp"),

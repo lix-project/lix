@@ -6,7 +6,7 @@ import pytest
 
 from testlib.fixtures.file_helper import File, with_files
 from testlib.fixtures.http_server import http_server
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, with_diverted_store
 
 
 class HTTPStore:
@@ -101,6 +101,7 @@ def nars_from_narinfo_cache(db_path: Path) -> list[dict[str, str | bool]]:
 
 
 @with_files({"test-file": File("hello world")})
+@with_diverted_store
 def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
     test_file = files / "test-file"
     result = nix.nix(cmd=["store", "add-file", test_file], flake=True).run()
