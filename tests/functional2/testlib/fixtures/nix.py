@@ -4,7 +4,7 @@ import dataclasses
 import sys
 from functools import partialmethod
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 from collections.abc import Callable, Generator
 import shutil
 import subprocess
@@ -155,12 +155,7 @@ class Nix:
 
         return self._settings
 
-    def nix_cmd(
-        self,
-        argv: list[str],
-        flake: bool = False,
-        build: bool | Literal["auto"] = "auto",  # noqa: ARG002
-    ) -> Command:
+    def nix_cmd(self, argv: list[str], flake: bool = False) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
         :param build: if the executed command wants to build stuff. This is required due to darwin shenanigans. "auto" will try to autodetect, override using `True` or `False`. Has no effect on linux.
@@ -173,14 +168,8 @@ class Nix:
         settings.to_env_overlay(self.env)
         return Command(argv=argv, exe=self._nix_executable, _env=self.env)
 
-    def nix(
-        self,
-        cmd: list[str],
-        nix_exe: str = "nix",
-        flake: bool = False,
-        build: bool | Literal["auto"] = "auto",
-    ) -> Command:
-        return self.nix_cmd([nix_exe, *cmd], flake=flake, build=build)
+    def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> Command:
+        return self.nix_cmd([nix_exe, *cmd], flake=flake)
 
     @contextlib.contextmanager
     def daemon(

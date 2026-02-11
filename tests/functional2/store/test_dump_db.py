@@ -9,22 +9,22 @@ from testlib.utils import get_global_asset_pack
 def test_dump_db(nix: Nix):
     nix.nix_build(["dependencies.nix", "-o", "result"]).run().ok()
 
-    res = nix.nix_store(["-qR", "result"], build=True).run().ok()
+    res = nix.nix_store(["-qR", "result"]).run().ok()
     deps = res.stdout_plain
 
-    res = nix.nix_store(["--dump-db"], build=True).run().ok()
+    res = nix.nix_store(["--dump-db"]).run().ok()
     dump = res.stdout
 
     shutil.rmtree(nix.env.dirs.nix_state_dir / "db")
 
-    nix.nix_store(["--load-db"], build=True).with_stdin(dump).run().ok()
+    nix.nix_store(["--load-db"]).with_stdin(dump).run().ok()
 
-    res = nix.nix_store(["-qR", "result"], build=True).run().ok()
+    res = nix.nix_store(["-qR", "result"]).run().ok()
     deps2 = res.stdout_plain
 
     assert deps == deps2
 
-    res = nix.nix_store(["--dump-db"], build=True).run().ok()
+    res = nix.nix_store(["--dump-db"]).run().ok()
     dump2 = res.stdout
 
     assert dump == dump2

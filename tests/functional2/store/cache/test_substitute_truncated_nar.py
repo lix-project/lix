@@ -25,7 +25,7 @@ def test_substitute_truncated_nar(nix: Nix):
 
     assert nar.exists()
 
-    res = nix.nix([], "nix-collect-garbage", build=True).run().ok()
+    res = nix.nix([], "nix-collect-garbage").run().ok()
     # .drv file + built path
     assert "2 store paths deleted" in res.stderr_plain
 

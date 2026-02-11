@@ -21,8 +21,8 @@ def impure_vars(env: ManagedEnv):
 
 @with_files(get_global_asset_pack("fixed"))
 def test_bad(nix: Nix):
-    res = nix.nix_instantiate(["fixed.nix", "-A", "good.0"], build=True).run().ok()
-    store_path = nix.nix_store(["-q", res.stdout_plain], build=True).run().ok().stdout_plain
+    res = nix.nix_instantiate(["fixed.nix", "-A", "good.0"]).run().ok()
+    store_path = nix.nix_store(["-q", res.stdout_plain]).run().ok().stdout_plain
     path = Path(store_path)
     assert not path.exists()
 
@@ -33,7 +33,7 @@ def test_bad(nix: Nix):
     assert path.exists()
 
     nix.settings.add_xp_feature("nix-command")
-    res = nix.nix(["path-info", "--json", store_path], build=True).run().ok()
+    res = nix.nix(["path-info", "--json", store_path]).run().ok()
     assert res.json()[0]["ca"] == "fixed:md5:2qk15sxzzjlnpjk9brn7j8ppcd"
 
 

@@ -20,7 +20,7 @@ def test_references_detected(nix: Nix):
     )
 
     refs_test1, refs_test2 = (
-        nix.nix_store(["-q", "--references", path], build=True).run().ok().stdout_plain.splitlines()
+        nix.nix_store(["-q", "--references", path]).run().ok().stdout_plain.splitlines()
         for path in [test1, test2]
     )
 
@@ -92,12 +92,7 @@ def test_disallowed_references(nix: Nix):
 def test_structured_attrs_discard(nix: Nix):
     result = nix.nix_build(["check-refs.nix", "-A", "test11"]).run().ok().stdout_plain.splitlines()
 
-    assert not (
-        nix.nix_store(["-q", "--references", *result], build=True)
-        .run()
-        .ok()
-        .stdout_plain.splitlines()
-    )
+    assert not (nix.nix_store(["-q", "--references", *result]).run().ok().stdout_plain.splitlines())
 
 
 @with_files(_files)
@@ -127,6 +122,6 @@ def test_regression_partial_build(nix: Nix):
         .stdout_plain.splitlines()
     )
 
-    nix.nix_store(["--delete", out], build=True).run().ok()
+    nix.nix_store(["--delete", out]).run().ok()
 
     nix.nix_build(["regression-reference-checks.nix", "-A", "out"]).run().ok()

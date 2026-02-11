@@ -142,7 +142,7 @@ def test_build_unsafe_discard(nix: Nix):
 def drv(nix: Nix) -> str:
     nix.settings.add_xp_feature("nix-command")
     return (
-        nix.nix(["eval", "-f", "multiple-outputs.nix", "--raw", "a.drvPath"], build=True)
+        nix.nix(["eval", "-f", "multiple-outputs.nix", "--raw", "a.drvPath"])
         .run()
         .ok()
         .stdout_plain

@@ -23,8 +23,7 @@ def test_compression_levels(nix: Nix):
                     "--to",
                     f"file://{c_dir}?compression=xz&compression-level={level}",
                     out_path,
-                ],
-                build=True,
+                ]
             )
             .run()
             .ok()

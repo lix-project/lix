@@ -85,7 +85,6 @@ def test_build_inaccessible_build_dir(nix: Nix):
                 "--no-link",
             ],
             flake=True,
-            build=True,
         ).run().ok()
     finally:
         # clean up perms

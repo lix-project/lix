@@ -59,7 +59,7 @@ def tarball(request: FixtureRequest, nix: Nix, files: Path) -> Path:
     )
     tarball_path.write_bytes(tarball_content)
 
-    res = nix.nix_env(["-f", f"file://{tarball_path}", "-qa", "--out-path"], build=True).run().ok()
+    res = nix.nix_env(["-f", f"file://{tarball_path}", "-qa", "--out-path"]).run().ok()
     assert "dependencies" in res.stdout_plain
 
     return tarball_path
@@ -154,7 +154,6 @@ def test_last_modified(nix: Nix, tarball: Path):
         nix.nix(
             ["eval", "--impure", "--expr", f'(fetchTree "file://{tarball}").lastModified'],
             flake=True,
-            build=True,
         )
         .run()
         .ok()
@@ -189,7 +188,6 @@ def test_no_submodules(nix: Nix, tarball: Path, tar_hash: str):
                 f'!((fetchTree {{ type = "tarball"; url = "file://{tarball}"; narHash = "{tar_hash}"; }})) ? submodules',
             ],
             flake=True,
-            build=True,
         )
         .run()
         .ok()

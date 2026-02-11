@@ -19,7 +19,7 @@ def build(nix: Nix, *args) -> CommandResult:
             outputHash = "sha256-AbpHGcgLb+kRsJGnwFEktk7uzpZOCcBY74+YBdrKVGs=";
         }
     """
-    return nix.nix_build(["-E", expr, "--no-link", "--no-require-sigs", *args], build=True).run()
+    return nix.nix_build(["-E", expr, "--no-link", "--no-require-sigs", *args]).run()
 
 
 @dataclasses.dataclass
