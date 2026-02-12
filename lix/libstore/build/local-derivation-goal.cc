@@ -872,9 +872,13 @@ try {
 
     if (drv->isBuiltin()) {
         args.push_back("builtin-builder");
+        args.push_back(std::to_string(verbosity));
 
-        std::map<std::string, AbstractConfig::SettingInfo> overriddenSettings;
-        settings.getSettings(overriddenSettings, true);
+        std::map<std::string, AbstractConfig::SettingInfo> changedSettings;
+        globalConfig.getChangedSettings(changedSettings);
+
+        // we won't need them since we're launching *into* a sandbox, and the list is quite large
+        changedSettings.erase(settings.builtinBuilderSandboxPaths.name);
 
         /* Make the contents of netrc and the CA certificate bundle
            available to builtin:fetchurl (which may run under a
@@ -888,7 +892,7 @@ try {
                 }
 
                 if (!data.empty()) {
-                    overriddenSettings[thing.name].value = tmpDirInSandbox + "/" + thing.name;
+                    changedSettings[thing.name].value = tmpDirInSandbox + "/" + thing.name;
                     auto path = tmpDir + "/" + thing.name;
                     writeFile(path, data, 0600);
                     chownToBuilder(path);
@@ -899,7 +903,7 @@ try {
             expose(settings.caFile);
         }
 
-        for (const auto & [setting, value] : overriddenSettings) {
+        for (const auto & [setting, value] : changedSettings) {
             args.push_back("--" + setting);
             args.push_back(escapeNul(value.value));
         }

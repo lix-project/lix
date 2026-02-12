@@ -34,6 +34,12 @@ static int main_builtin_builder(AsyncIoRoot & aio, std::string programName, Stri
         return *argvIt++;
     };
 
+    if (auto val = string2Int<int>(getArg("verbosity"))) {
+        verbosity = verbosityFromIntClamped(*val);
+    } else {
+        throw Error("expected a verbosity argument");
+    }
+
     while (argvIt != argvEnd) {
         const auto arg = getArg("option");
         if (arg == "--") {
@@ -41,7 +47,8 @@ static int main_builtin_builder(AsyncIoRoot & aio, std::string programName, Stri
         } else if (!arg.starts_with("--")) {
             throw Error("unexpected builtin option %s", arg);
         }
-        settings.set(arg.substr(2), unescapeNul(getArg(arg)));
+        auto value = unescapeNul(getArg(arg));
+        globalConfig.set(arg.substr(2), value);
     }
 
     while (argvIt != argvEnd) {
