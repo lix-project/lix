@@ -73,6 +73,15 @@ void Config::getSettings(std::map<std::string, SettingInfo> & res, bool overridd
             res.emplace(opt.first, SettingInfo{opt.second.setting->to_string(), opt.second.setting->description});
 }
 
+void Config::getChangedSettings(std::map<std::string, SettingInfo> & res)
+{
+    for (const auto & [name, data] : _settings) {
+        if (!data.isAlias && data.setting->isChanged()) {
+            res.emplace(name, SettingInfo{data.setting->to_string(), data.setting->description});
+        }
+    }
+}
+
 void Config::resetOverridden()
 {
     for (auto & s : _settings)
@@ -410,6 +419,13 @@ void GlobalConfig::getSettings(std::map<std::string, SettingInfo> & res, bool ov
 {
     for (auto & config : *configRegistrations)
         config->getSettings(res, overriddenOnly);
+}
+
+void GlobalConfig::getChangedSettings(std::map<std::string, SettingInfo> & res)
+{
+    for (auto & config : *configRegistrations) {
+        config->getChangedSettings(res);
+    }
 }
 
 void GlobalConfig::resetOverridden()

@@ -50,6 +50,14 @@ public:
     virtual void getSettings(std::map<std::string, SettingInfo> & res, bool overriddenOnly = false) = 0;
 
     /**
+     * Adds the currently known settings to the given result map `res` *if* they
+     * have non-default values.  This differs from overridden settings retrieved
+     * by `getSettings` in that this function returns all settings having a non-
+     * default value while overridden-ness can be reset using `resetOverridden`.
+     */
+    virtual void getChangedSettings(std::map<std::string, SettingInfo> & res) = 0;
+
+    /**
      * Resets the `overridden` flag of all Settings
      */
     virtual void resetOverridden() = 0;

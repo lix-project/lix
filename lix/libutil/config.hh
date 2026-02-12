@@ -92,6 +92,8 @@ public:
 
     void getSettings(std::map<std::string, SettingInfo> & res, bool overriddenOnly = false) override;
 
+    void getChangedSettings(std::map<std::string, SettingInfo> & res) override;
+
     void resetOverridden() override;
 
     JSON toJSON() override;
@@ -147,6 +149,7 @@ protected:
 
     bool isOverridden() const;
 
+    virtual bool isChanged() const = 0;
 };
 
 /**
@@ -246,6 +249,11 @@ public:
 
         return false;
     }
+
+    bool isChanged() const override
+    {
+        return value != defaultValue;
+    }
 };
 
 template<typename T>
@@ -311,6 +319,8 @@ public:
     bool set(const std::string & name, const std::string & value, const ApplyConfigOptions & options = {}) override;
 
     void getSettings(std::map<std::string, SettingInfo> & res, bool overriddenOnly = false) override;
+
+    void getChangedSettings(std::map<std::string, SettingInfo> & res) override;
 
     void resetOverridden() override;
 
