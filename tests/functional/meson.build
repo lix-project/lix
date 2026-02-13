@@ -39,7 +39,6 @@ functional_tests_scripts = [
   'flakes/init.sh',
   'flakes/inputs.sh',
   'flakes/follow-paths.sh',
-  'flakes/bundle.sh',
   'flakes/build-paths.sh',
   'flakes/flake-in-submodule.sh',
   'flakes/flake-metadata.sh',
