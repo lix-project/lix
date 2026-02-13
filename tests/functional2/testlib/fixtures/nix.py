@@ -155,7 +155,7 @@ class Nix:
 
         return self._settings
 
-    def nix_cmd(self, argv: list[str], flake: bool = False) -> Command:
+    def nix_cmd(self, argv: list[str], flake: bool = False, cwd: Path | None = None) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
         :param build: if the executed command wants to build stuff. This is required due to darwin shenanigans. "auto" will try to autodetect, override using `True` or `False`. Has no effect on linux.
@@ -166,10 +166,12 @@ class Nix:
             settings.add_xp_feature("nix-command", "flakes")
 
         settings.to_env_overlay(self.env)
-        return Command(argv=argv, exe=self._nix_executable, _env=self.env)
+        return Command(argv=argv, exe=self._nix_executable, _env=self.env, cwd=cwd)
 
-    def nix(self, cmd: list[str], nix_exe: str = "nix", flake: bool = False) -> Command:
-        return self.nix_cmd([nix_exe, *cmd], flake=flake)
+    def nix(
+        self, cmd: list[str], nix_exe: str = "nix", flake: bool = False, cwd: Path | None = None
+    ) -> Command:
+        return self.nix_cmd([nix_exe, *cmd], flake=flake, cwd=cwd)
 
     @contextlib.contextmanager
     def daemon(

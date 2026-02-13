@@ -89,7 +89,6 @@ functional_tests_scripts = [
   'secure-drv-outputs.sh',
   'restricted.sh',
   'fetchGitSubmodules.sh',
-  'flakes/search-root.sh',
   'readfile-context.sh',
   'nix-channel.sh',
   'dependencies.sh',
