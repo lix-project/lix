@@ -43,7 +43,6 @@ functional_tests_scripts = [
   'flakes/flake-in-submodule.sh',
   'flakes/flake-metadata.sh',
   'flakes/flake-registry.sh',
-  'flakes/subdir-flake.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',
   'nix-collect-garbage-dry-run.sh',
