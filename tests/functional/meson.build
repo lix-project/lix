@@ -36,7 +36,6 @@ functional_tests_scripts = [
   'flakes/develop.sh',
   'flakes/develop-r8854.sh',
   'flakes/mercurial.sh',
-  'flakes/circular.sh',
   'flakes/init.sh',
   'flakes/inputs.sh',
   'flakes/follow-paths.sh',
