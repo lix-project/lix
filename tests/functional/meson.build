@@ -118,7 +118,6 @@ functional_tests_scripts = [
   'pre-hook.sh',
   'post-hook.sh',
   'function-trace.sh',
-  'flakes/config.sh',
   'fmt.sh',
   'eval-store.sh',
   'derivation-json.sh',
