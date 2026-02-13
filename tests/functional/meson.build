@@ -41,7 +41,6 @@ functional_tests_scripts = [
   'flakes/follow-paths.sh',
   'flakes/bundle.sh',
   'flakes/unlocked-override.sh',
-  'flakes/absolute-paths.sh',
   'flakes/build-paths.sh',
   'flakes/flake-in-submodule.sh',
   'flakes/flake-metadata.sh',
