@@ -150,8 +150,15 @@ struct GitArchiveInputScheme : InputScheme
         auto ref = input.getRef();
         auto rev = input.getRev();
         auto path = owner + "/" + repo;
-        assert(!(ref && rev));
-        if (ref) path += "/" + *ref;
+        if (ref && rev) {
+            throw Error(
+                "input '%s:%s/%s' has both ref (%s) and rev (%s), which is not allowed",
+                schemeType(), owner, repo, *ref, rev->gitRev()
+            );
+        }
+        if (ref) {
+            path += "/" + *ref;
+        }
         if (rev) {
             path += "/" + rev->to_string(HashFormat::Base16, false);
         }

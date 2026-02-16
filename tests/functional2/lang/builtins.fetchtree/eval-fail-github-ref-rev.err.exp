@@ -1,0 +1,9 @@
+error:
+       … while calling the 'fetchTree' builtin
+         at /pwd/in.nix:3:1:
+            2| # https://git.lix.systems/lix-project/lix/issues/1133
+            3| builtins.fetchTree {
+             | ^
+            4|   type = "github";
+
+       error: input 'github:nixos/nixpkgs' has both ref (nixpkgs-unstable) and rev (e4bae1bd10c9c57b2cf517953ab70060a828ee6f), which is not allowed
