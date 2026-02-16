@@ -1,8 +1,11 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libutil/file-system.hh"
+#include "lix/libutil/json.hh"
 #include "add-to-store.hh"
 
 namespace nix {
@@ -11,6 +14,7 @@ struct CmdAddToStore : MixDryRun, StoreCommand
 {
     Path path;
     std::optional<std::string> namePart;
+    std::optional<Path> referencesListFile;
     FileIngestionMethod ingestionMethod;
 
     CmdAddToStore()
@@ -29,7 +33,14 @@ struct CmdAddToStore : MixDryRun, StoreCommand
 
     void run(ref<Store> store) override
     {
+        StorePathSet references{};
         if (!namePart) namePart = baseNameOf(path);
+        if (referencesListFile.has_value()) {
+            auto parsed = json::parse(readFile(*referencesListFile), "references list file");
+            for (auto it : parsed.get<std::vector<std::string_view>>()) {
+                references.insert(store->parseStorePath(it));
+            }
+        }
 
         StringSink sink;
         sink << dumpPath(path);
@@ -43,13 +54,13 @@ struct CmdAddToStore : MixDryRun, StoreCommand
             hash = hsink.finish().first;
         }
 
-        ValidPathInfo info {
+        ValidPathInfo info{
             *store,
             std::move(*namePart),
-            FixedOutputInfo {
+            FixedOutputInfo{
                 .method = std::move(ingestionMethod),
                 .hash = std::move(hash),
-                .references = {},
+                .references = {references},
             },
             narHash,
         };
@@ -89,6 +100,17 @@ struct CmdAddPath : CmdAddToStore
     CmdAddPath()
     {
         ingestionMethod = FileIngestionMethod::Recursive;
+
+        // References are only available for the recursive ingest method; the
+        // store will tell us "fixed output derivation is not allowed to refer
+        // to other store paths" for the flat ingest method.
+        addFlag({
+            .longName = "references-list-json",
+            .description = "File containing a JSON list of references of the to-be-added store path",
+            .labels = {"file"},
+            .handler = {&referencesListFile},
+            .completer = completePath,
+        });
     }
 
     std::string description() override
