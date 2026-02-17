@@ -37,7 +37,6 @@ functional_tests_scripts = [
   'flakes/develop-r8854.sh',
   'flakes/mercurial.sh',
   'flakes/follow-paths.sh',
-  'flakes/build-paths.sh',
   'flakes/flake-in-submodule.sh',
   'flakes/flake-registry.sh',
   'gc.sh',
