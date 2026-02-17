@@ -3,8 +3,7 @@ from pathlib import Path
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.file_helper import CopyFile, Symlink, with_files, File
 from testlib.utils import get_global_asset_pack
-from testlib.fixtures.command import Command
-from testlib.fixtures.env import ManagedEnv
+from testlib.fixtures.git import Git
 
 
 @with_files(
@@ -45,14 +44,12 @@ def test_symlink_points_to_dir_in_repo(nix: Nix, files: Path) -> None:
         | {"file": File("World"), "flake1_sym": Symlink("../repo1/subdir")},
     }
 )
-def test_symlink_from_repo_to_another(nix: Nix, files: Path, env: ManagedEnv) -> None:
-    env.path.add_program("git")
-
-    Command(["git", "add", "subdir/flake.nix", "file"], _env=env, cwd=files / "repo1").run().ok()
+def test_symlink_from_repo_to_another(nix: Nix, files: Path, git: Git) -> None:
+    git(files / "repo1", "add", "subdir/flake.nix", "file")
     result = nix.nix(["eval", f"{files}/repo1/subdir#x"], flake=True).run().ok()
     assert result.stdout_plain == '"Hello"'
 
-    Command(["git", "add", "flake1_sym", "file"], _env=env, cwd=files / "repo2").run().ok()
+    git(files / "repo2", "add", "flake1_sym", "file")
     result = nix.nix(["eval", f"{files}/repo2/flake1_sym#x"], flake=True).run().ok()
     assert result.stdout_plain == '"Hello"'
 
@@ -65,11 +62,9 @@ def test_symlink_from_repo_to_another(nix: Nix, files: Path, env: ManagedEnv) ->
         | {"flake.nix": CopyFile("assets/flake_b.nix"), "subdir_sym": Symlink("../repo1/subdir")},
     }
 )
-def test_symlink_to_subdir_without_flake(nix: Nix, files: Path, env: ManagedEnv) -> None:
-    env.path.add_program("git")
-
-    Command(["git", "add", "flake.nix", "subdir"], _env=env, cwd=files / "repo1").run().ok()
-    Command(["git", "add", "flake.nix", "subdir_sym"], _env=env, cwd=files / "repo2").run().ok()
+def test_symlink_to_subdir_without_flake(nix: Nix, files: Path, git: Git) -> None:
+    git(files / "repo1", "add", "flake.nix", "subdir")
+    git(files / "repo2", "add", "flake.nix", "subdir_sym")
 
     result = nix.nix(["eval", f"{files}/repo2/subdir_sym#x"], flake=True).run().ok()
     assert result.stdout_plain == '"b"'
