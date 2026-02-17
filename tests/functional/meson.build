@@ -39,7 +39,6 @@ functional_tests_scripts = [
   'flakes/follow-paths.sh',
   'flakes/build-paths.sh',
   'flakes/flake-in-submodule.sh',
-  'flakes/flake-metadata.sh',
   'flakes/flake-registry.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',

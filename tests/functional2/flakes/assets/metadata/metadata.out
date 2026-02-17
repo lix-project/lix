@@ -1,3 +1,5 @@
+Resolved URL:  path:$root/flake
+Locked URL:    path:$root/flake?lastModified=1000&narHash=sha256-V/Gp5MFC5UehsIwWzL2prFyG2j8jz5r4aLZIlvBzTjw%3D
 Path:          /nix/store/gaxb42z68bcr8lch467shvmnhjjzgd8b-source
 Last modified: 1970-01-01 00:16:40
 Inputs:
