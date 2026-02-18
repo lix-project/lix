@@ -1,13 +1,13 @@
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.file_helper import with_files
-from testlib.utils import get_global_asset, CopyTemplate
+from testlib.utils import get_global_asset, CopyTemplate, CopyFile
 from testlib.environ import environ
 import pytest
 
 
 @with_files(
     {
-        "shell-hello.nix": get_global_asset("shell-hello.nix"),
+        "shell-hello.nix": CopyFile("assets/shell-hello.nix"),
         "config.nix": get_global_asset("config.nix"),
         "flake.nix": CopyTemplate("assets/run/flake.nix", {"system": environ.get("system")}),
     }
