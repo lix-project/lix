@@ -33,7 +33,6 @@ functional_tests_scripts = [
   'init.sh',
   'test-infra.sh',
   'flakes/flakes.sh',
-  'flakes/develop.sh',
   'flakes/develop-r8854.sh',
   'flakes/mercurial.sh',
   'flakes/follow-paths.sh',
