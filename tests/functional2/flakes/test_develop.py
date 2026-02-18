@@ -1,13 +1,14 @@
 from testlib.fixtures.nix import Nix
+from testlib.fixtures.git import Git
 from testlib.fixtures.file_helper import with_files, File, EnvTemplate, CopyFile
 from testlib.environ import environ
-from testlib.utils import get_global_asset
+from testlib.utils import get_global_asset, get_global_asset_pack
 from pathlib import Path
 import pytest
 
 system = environ.get("system")
 
-files = {
+flake = {
     "flake.nix": EnvTemplate(f"""{{
         inputs.nixpkgs.url = "@HOME@/nixpkgs";
         outputs = {{self, nixpkgs}}: {{
@@ -21,15 +22,15 @@ files = {
     }}"""),
     "config.nix": get_global_asset("config.nix"),
     "shell-hello.nix": CopyFile("assets/shell-hello.nix"),
-    "nixpkgs": {
-        "flake.nix": File(f"""{{
-            outputs = {{self}}: {{
-              legacyPackages.{system}.bashInteractive = (import ./shell.nix {{}}).bashInteractive;
-            }};
-        }}"""),
-        "config.nix": get_global_asset("config.nix"),
-        "shell.nix": get_global_asset("shell.nix"),
-    },
+}
+nixpkgs = {
+    "flake.nix": File(f"""{{
+        outputs = {{self}}: {{
+          legacyPackages.{system}.bashInteractive = (import ./shell.nix {{}}).bashInteractive;
+        }};
+    }}"""),
+    "config.nix": get_global_asset("config.nix"),
+    "shell.nix": get_global_asset("shell.nix"),
 }
 
 
@@ -38,7 +39,7 @@ def common_init(nix: Nix):
     nix.settings.add_xp_feature("nix-command", "flakes")
 
 
-@with_files(files)
+@with_files(flake | {"nixpkgs": nixpkgs})
 class TestDevelop:
     def test_env_passthrough(self, nix: Nix):
         nix.env["ENVVAR"] = "a"
@@ -107,3 +108,15 @@ class TestDevelop:
             .ok()
         )
         assert result.stdout_s == "impure\n"
+
+
+@with_files(
+    {
+        "t": flake | get_global_asset_pack(".git") | {".gitignore": File("flake.lock\n")},
+        "nixpkgs": nixpkgs,
+    }
+)
+def test_ignoring_lockfile_does_not_break_develop(nix: Nix, files: Path, git: Git):
+    git(files / "t", "add", "config.nix", "shell-hello.nix", "flake.nix", ".gitignore")
+
+    nix.nix(["develop", ".#hello"], cwd=files / "t").with_stdin(b"true").run().ok()
