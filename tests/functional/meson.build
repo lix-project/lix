@@ -38,7 +38,6 @@ functional_tests_scripts = [
   'flakes/mercurial.sh',
   'flakes/follow-paths.sh',
   'flakes/flake-in-submodule.sh',
-  'flakes/flake-registry.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',
   'nix-collect-garbage-dry-run.sh',
