@@ -33,7 +33,7 @@ install: (install-custom)
 
 # Run tests (usually requires `install`) with extra options
 test *OPTIONS:
-    meson test -C build --print-errorlogs {{ OPTIONS }}
+    meson test -C build --print-errorlogs --max-lines 10000 {{ OPTIONS }}
 
 # Run unit tests only
 test-unit *OPTIONS: (test "--suite" "check")

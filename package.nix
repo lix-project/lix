@@ -279,6 +279,7 @@ stdenv.mkDerivation (finalAttrs: {
       (dontWrapPython p.pytest)
       p.pytest-xdist
       p.pytest-timeout
+      p.tappy
       p.ruff
       p.aiohttp
 
@@ -614,6 +615,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   mesonInstallCheckFlags = [
     "--suite=installcheck"
+    "--max-lines=10000"
   ];
 
   installCheckPhase = ''
@@ -697,6 +699,7 @@ stdenv.mkDerivation (finalAttrs: {
             (dontWrapPython p.pytest)
             p.pytest-xdist
             p.pytest-timeout
+            p.tappy
             p.ruff
             p.aiohttp
             p.python-frontmatter

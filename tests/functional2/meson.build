@@ -25,25 +25,20 @@ functional2_env.set('system', host_system)
 
 test(
   'functional2',
-  python,
+  bash,
   args : [
+    # FIXME: meson does not capture tap error reports; we duplicate them to stderr which is *does* capture,
+    # --max-lines then lets us print most/all of them (cf https://github.com/mesonbuild/meson/issues/11185)
+    files('meson-tap-wrap.sh'),
+    python,
     '-m', 'pytest',
-    '-v',
-    # Print out summaries of **f**ailed, **E**rrored and **s**kipped tests
-    '-r', 'fEs',
+    '--tap',
     xdist_opts,
     meson.current_source_dir()
   ],
   env : functional2_env,
   depends : nix,
-  # FIXME: Although we can trivially use TAP here with pytest-tap, due to a meson bug, it is unusable.
-  # (failure output does not get displayed to the console. at all. someone should go fix it):
-  # https://github.com/mesonbuild/meson/issues/11185
-  # protocol : 'tap',
+  protocol : 'tap',
   suite : 'installcheck',
   timeout : 300,
-  # Do not cut output of this runner on failure!
-  # As TAP is currently not supported (see above), we do need all lines to actually know
-  # why and how the failing tests actually failed
-  verbose: true,
 )
