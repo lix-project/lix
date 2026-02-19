@@ -250,7 +250,7 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
             debug("evaluating file '%1%'", path);
             Expr & e = state.ctx.parseExprFromFile(state.ctx.paths.resolveExprPath(path), staticEnv);
 
-            e.eval(state, *env, v);
+            v = e.eval(state, *env);
         }
     }
 }

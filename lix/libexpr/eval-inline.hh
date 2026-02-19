@@ -203,7 +203,7 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
             Expr & expr = *thunk.expr;
             thunk = Value::blackHole;
             try {
-                expr.eval(*this, *env, v);
+                v = expr.eval(*this, *env);
                 thunk.resolve(v);
             } catch (...) {
                 thunk = backup;

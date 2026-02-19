@@ -166,8 +166,7 @@ Symbol getName(const AttrName & name, EvalState & state, Env & env)
     if (name.symbol) {
         return name.symbol;
     } else {
-        Value nameValue;
-        name.expr->eval(state, env, nameValue);
+        Value nameValue = name.expr->eval(state, env);
         state.forceStringNoCtx(nameValue, name.expr->getPos(), "while evaluating an attribute name");
         return state.ctx.symbols.create(nameValue.str());
     }
@@ -976,7 +975,7 @@ void EvalState::resetFileCache()
 
 void EvalState::eval(Expr & e, Value & v)
 {
-    e.eval(*this, ctx.builtins.env, v);
+    v = e.eval(*this, ctx.builtins.env);
 }
 
 std::string showAttrPath(EvalState & state, Env & env, const AttrPath & attrPath)
@@ -1168,7 +1167,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 
             /* Evaluate the body. */
             try {
-                lambda.body->eval(*this, env2, vCur);
+                vCur = lambda.body->eval(*this, env2);
             } catch (Error & e) {
                 if (loggerSettings.showTrace.get()) {
                     e.addTrace(

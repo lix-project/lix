@@ -504,8 +504,7 @@ StringSet NixRepl::completePrefix(const std::string &prefix)
             auto cur2 = cur.substr(dot + 1);
 
             Expr & e = parseString(expr);
-            Value v;
-            e.eval(state, *env, v);
+            Value v = e.eval(state, *env);
             state.forceAttrs(v, noPos, "while evaluating an attrset for the purpose of completion (this error should not be displayed; file an issue?)");
 
             for (auto & i : *v.attrs()) {
@@ -656,8 +655,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
             overloaded{
                 [&](ExprReplBindings & b) {
                     for (auto & [name, e] : b.symbols) {
-                        Value v;
-                        e->eval(state, *env, v);
+                        Value v = e->eval(state, *env);
                         // NONEXTLINE(bugprone-unused-return-value): leak because of thunk
                         // references
                         (void) e.release();
@@ -665,8 +663,7 @@ ProcessLineResult NixRepl::processLine(std::string line)
                     }
                 },
                 [&](std::unique_ptr<Expr> & e) {
-                    Value v;
-                    e->eval(state, *env, v);
+                    Value v = e->eval(state, *env);
                     // NONEXTLINE(bugprone-unused-return-value): leak because of thunk references
                     (void) e.release();
                     state.forceValue(v, noPos);
@@ -1590,15 +1587,14 @@ std::variant<std::unique_ptr<Expr>, ExprReplBindings> NixRepl::parseReplString(s
 void NixRepl::evalString(std::string s, Value & v)
 {
     Expr & e = parseString(s);
-    e.eval(state, *env, v);
+    v = e.eval(state, *env);
     state.forceValue(v, noPos);
 }
 
 Value NixRepl::evalFile(SourcePath & path)
 {
     auto & expr = evaluator.parseExprFromFile(evaluator.paths.checkSourcePath(path), staticEnv);
-    Value result;
-    expr.eval(state, *env, result);
+    Value result = expr.eval(state, *env);
     state.forceValue(result, noPos);
     return result;
 }

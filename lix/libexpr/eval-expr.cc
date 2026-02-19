@@ -1,5 +1,4 @@
 #include "eval.hh"
-#include "eval-inline.hh"
 #include "primops.hh"
 #include "gc-small-vector.hh"
 
@@ -47,21 +46,21 @@ Value ExprList::maybeThunk(EvalState & state, Env & env)
     return Expr::maybeThunk(state, env);
 }
 
-void Expr::eval(EvalState & state, Env & env, Value & v)
+Value Expr::eval(EvalState & state, Env & env)
 {
     abort();
 }
 
-void ExprLiteral::eval(EvalState & state, Env & env, Value & v)
+Value ExprLiteral::eval(EvalState & state, Env & env)
 {
-    v = this->v;
+    return this->v;
 }
 
-void ExprInheritFrom::eval(EvalState & state, Env & env, Value & v)
+Value ExprInheritFrom::eval(EvalState & state, Env & env)
 {
     Value & v2 = env.values[displ];
     state.forceValue(v2, pos);
-    v = v2;
+    return v2;
 }
 
 Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
@@ -77,10 +76,10 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
     return &inheritEnv;
 }
 
-void ExprSet::eval(EvalState & state, Env & env, Value & v)
+Value ExprSet::eval(EvalState & state, Env & env)
 {
     Bindings::Size capacity = attrs.size() + dynamicAttrs.size();
-    v = {NewValueAs::attrs, state.ctx.buildBindings(capacity).finish()};
+    Value v = {NewValueAs::attrs, state.ctx.buildBindings(capacity).finish()};
     auto dynamicEnv = &env;
 
     if (recursive) {
@@ -167,7 +166,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
         {
             KJ_DEFER(v = vBackup);
             v = Value{NewValueAs::blackhole};
-            i.nameExpr->eval(state, *dynamicEnv, nameVal);
+            nameVal = i.nameExpr->eval(state, *dynamicEnv);
             state.forceValue(nameVal, i.pos);
             if (nameVal.type() == nNull) {
                 continue;
@@ -195,9 +194,10 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
     }
 
     v.attrs()->pos = pos;
+    return v;
 }
 
-void ExprLet::eval(EvalState & state, Env & env, Value & v)
+Value ExprLet::eval(EvalState & state, Env & env)
 {
     /* Create a new environment that contains the attributes in this
        `let'. */
@@ -214,19 +214,20 @@ void ExprLet::eval(EvalState & state, Env & env, Value & v)
         env2.values[displ++] = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
     }
 
-    body->eval(state, env2, v);
+    return body->eval(state, env2);
 }
 
-void ExprList::eval(EvalState & state, Env & env, Value & v)
+Value ExprList::eval(EvalState & state, Env & env)
 {
     auto result = state.ctx.mem.newList(elems.size());
-    v = {NewValueAs::list, result};
+    Value v = {NewValueAs::list, result};
     for (auto && [n, v2] : enumerate(result->span())) {
         v2 = elems[n]->maybeThunk(state, env);
     }
+    return v;
 }
 
-void ExprVar::eval(EvalState & state, Env & env, Value & v)
+Value ExprVar::eval(EvalState & state, Env & env)
 {
     Value * v2 = state.lookupVar(&env, *this, false);
     try {
@@ -238,123 +239,103 @@ void ExprVar::eval(EvalState & state, Env & env, Value & v)
         }
         throw;
     }
-    v = *v2;
+    return *v2;
 }
 
-void ExprWith::eval(EvalState & state, Env & env, Value & v)
+Value ExprWith::eval(EvalState & state, Env & env)
 {
     Env & env2(state.ctx.mem.allocEnv(1));
     env2.up = &env;
     env2.values[0] = attrs->maybeThunk(state, env);
 
-    body->eval(state, env2, v);
+    return body->eval(state, env2);
 }
 
-void ExprIf::eval(EvalState & state, Env & env, Value & v)
+Value ExprIf::eval(EvalState & state, Env & env)
 {
-    Value vCond;
-    cond->eval(state, env, vCond);
-    (state.checkBool(vCond, env, *cond) ? *then : *else_).eval(state, env, v);
+    Value vCond = cond->eval(state, env);
+    return (state.checkBool(vCond, env, *cond) ? *then : *else_).eval(state, env);
 }
 
-void ExprAssert::eval(EvalState & state, Env & env, Value & v)
+Value ExprAssert::eval(EvalState & state, Env & env)
 {
-    Value vCond;
-    cond->eval(state, env, vCond);
+    Value vCond = cond->eval(state, env);
     if (!state.checkBool(vCond, env, *cond)) {
         state.ctx.errors.make<AssertionError>("assertion failed")
             .atPos(pos)
             .withFrame(env, *this)
             .debugThrow();
     }
-    body->eval(state, env, v);
+    return body->eval(state, env);
 }
 
-void ExprOpNot::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpNot::eval(EvalState & state, Env & env)
 {
-    Value vInner;
-    e->eval(state, env, vInner);
-    v = {NewValueAs::boolean, !state.checkBool(vInner, env, *e)};
+    Value vInner = e->eval(state, env);
+    return {NewValueAs::boolean, !state.checkBool(vInner, env, *e)};
 }
 
-void ExprOpEq::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpEq::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
-    Value v2;
-    e2->eval(state, env, v2);
-    v = {NewValueAs::boolean, state.eqValues(v1, v2, pos, "while testing two values for equality")};
+    Value v1 = e1->eval(state, env);
+    Value v2 = e2->eval(state, env);
+    return {NewValueAs::boolean, state.eqValues(v1, v2, pos, "while testing two values for equality")};
 }
 
-void ExprOpNEq::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpNEq::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
-    Value v2;
-    e2->eval(state, env, v2);
-    v = {NewValueAs::boolean, !state.eqValues(v1, v2, pos, "while testing two values for inequality")};
+    Value v1 = e1->eval(state, env);
+    Value v2 = e2->eval(state, env);
+    return {NewValueAs::boolean, !state.eqValues(v1, v2, pos, "while testing two values for inequality")};
 }
 
-void ExprOpAnd::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpAnd::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
+    Value v1 = e1->eval(state, env);
     /* Explicitly short-circuit */
     if (!state.checkBool(v1, env, *e1)) {
-        v = {NewValueAs::boolean, false};
-        return;
+        return {NewValueAs::boolean, false};
     }
-    Value v2;
-    e2->eval(state, env, v2);
-    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
+    Value v2 = e2->eval(state, env);
+    return {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
-void ExprOpOr::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpOr::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
+    Value v1 = e1->eval(state, env);
     /* Explicitly short-circuit */
     if (state.checkBool(v1, env, *e1)) {
-        v = {NewValueAs::boolean, true};
-        return;
+        return {NewValueAs::boolean, true};
     }
-    Value v2;
-    e2->eval(state, env, v2);
-    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
+    Value v2 = e2->eval(state, env);
+    return {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
-void ExprOpImpl::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpImpl::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
+    Value v1 = e1->eval(state, env);
     /* Explicitly short-circuit (ex falso quodlibet) */
     if (!state.checkBool(v1, env, *e1)) {
-        v = {NewValueAs::boolean, true};
-        return;
+        return {NewValueAs::boolean, true};
     }
-    Value v2;
-    e2->eval(state, env, v2);
-    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
+    Value v2 = e2->eval(state, env);
+    return {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
-void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpUpdate::eval(EvalState & state, Env & env)
 {
-    Value v1;
-    e1->eval(state, env, v1);
+    Value v1 = e1->eval(state, env);
     state.checkAttrs(v1, env, *e1);
-    Value v2;
-    e2->eval(state, env, v2);
+    Value v2 = e2->eval(state, env);
     state.checkAttrs(v2, env, *e2);
 
     state.ctx.stats.nrOpUpdates++;
 
     if (v1.attrs()->size() == 0) {
-        v = v2;
-        return;
+        return v2;
     }
     if (v2.attrs()->size() == 0) {
-        v = v1;
-        return;
+        return v1;
     }
 
     auto attrs = state.ctx.buildBindings(v1.attrs()->size() + v2.attrs()->size());
@@ -383,40 +364,39 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
         attrs.insert(*j++);
     }
 
-    v = {NewValueAs::attrs, attrs.alreadySorted()};
+    Value v = {NewValueAs::attrs, attrs.alreadySorted()};
 
     state.ctx.stats.nrOpUpdateValuesCopied += v.attrs()->size();
+    return v;
 }
 
-void ExprOpConcatLists::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpConcatLists::eval(EvalState & state, Env & env)
 {
     state.ctx.stats.nrListConcats++;
 
     /* We don't call into `concatLists` as that loses the position information of the expressions. */
 
-    Value v1;
-    e1->eval(state, env, v1);
+    Value v1 = e1->eval(state, env);
     state.checkList(v1, env, *e1);
-    Value v2;
-    e2->eval(state, env, v2);
+    Value v2 = e2->eval(state, env);
     state.checkList(v2, env, *e2);
 
     size_t l1 = v1.listSize(), l2 = v2.listSize(), len = l1 + l2;
 
     if (l1 == 0) {
-        v = v2;
+        return v2;
     } else if (l2 == 0) {
-        v = v1;
+        return v1;
     } else {
         auto list = state.ctx.mem.newList(len);
-        v = {NewValueAs::list, list};
         auto out = list->elems;
         std::copy(v1.listElems(), v1.listElems() + l1, out);
         std::copy(v2.listElems(), v2.listElems() + l2, out + l1);
+        return {NewValueAs::list, list};
     }
 }
 
-void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
+Value ExprConcatStrings::eval(EvalState & state, Env & env)
 {
     NixStringContext context;
     std::vector<BackedStringView> s;
@@ -454,7 +434,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
 
     for (auto & [i_pos, i] : es) {
         Value & vTmp = *vTmpP++;
-        i->eval(state, env, vTmp);
+        vTmp = i->eval(state, env);
 
         /* If the first element is a path, then the result will also
            be a path, we don't copy anything (yet - that's done later,
@@ -528,9 +508,9 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
     }
 
     if (firstType == nInt) {
-        v = {NewValueAs::integer, n};
+        return {NewValueAs::integer, n};
     } else if (firstType == nFloat) {
-        v = {NewValueAs::floating, nf};
+        return {NewValueAs::floating, nf};
     } else if (firstType == nPath) {
         if (!context.empty()) {
             state.ctx.errors
@@ -539,26 +519,28 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
                 .withFrame(env, *this)
                 .debugThrow();
         }
-        v = {NewValueAs::path, CanonPath(canonPath(str()))};
+        return {NewValueAs::path, CanonPath(canonPath(str()))};
     } else {
-        v = {NewValueAs::string, gcStr(), context};
+        return {NewValueAs::string, gcStr(), context};
     }
 }
 
-void ExprPos::eval(EvalState & state, Env & env, Value & v)
+Value ExprPos::eval(EvalState & state, Env & env)
 {
+    Value v;
     state.mkPos(v, pos);
+    return v;
 }
 
-void ExprBlackHole::eval(EvalState & state, Env & env, Value & v)
+Value ExprBlackHole::eval(EvalState & state, Env & env)
 {
     state.ctx.errors.make<InfiniteRecursionError>("infinite recursion encountered").debugThrow();
 }
 
-void ExprDebugFrame::eval(EvalState & state, Env & env, Value & v)
+Value ExprDebugFrame::eval(EvalState & state, Env & env)
 {
     auto dts = makeDebugTraceStacker(state, *inner, env, state.ctx.positions[pos], message);
-    inner->eval(state, env, v);
+    return inner->eval(state, env);
 }
 
 /** Returns `nullptr` if we should be using a default instead. */
@@ -630,7 +612,7 @@ ExprSelect::selectSingleAttr(EvalState & state, Env & env, AttrName const & attr
     return attrIt;
 }
 
-void ExprSelect::eval(EvalState & state, Env & env, Value & v)
+Value ExprSelect::eval(EvalState & state, Env & env)
 {
     // Position for the current attrset Value in this select chain.
     PosIdx posCurrent;
@@ -640,7 +622,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     Value baseSelectee;
     try {
         // Evaluate the original thing we're selecting on.
-        e->eval(state, env, baseSelectee);
+        baseSelectee = e->eval(state, env);
     } catch (Error & e) {
         // clang-format off
         e.addTrace(state.ctx.positions[getPos()], HintFmt(
@@ -663,7 +645,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
             if (!attr) {
                 // Use default.
                 try {
-                    this->def->eval(state, env, v);
+                    return this->def->eval(state, env);
                 } catch (Error & err) {
                     err.addTrace(
                         state.ctx.positions[this->def->pos],
@@ -672,7 +654,6 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
                     );
                     throw;
                 }
-                return;
             }
 
             // The selection worked. If we have another iteration, then we use `attr->value`
@@ -689,7 +670,7 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
 
         state.forceValue(curSelectee.get(), posCurrent ? posCurrent : posCurrentSyntax);
 
-        v = curSelectee.get();
+        return curSelectee.get();
 
     } catch (Error & err) {
         auto const & lastPos = state.ctx.positions[posCurrent];
@@ -701,37 +682,33 @@ void ExprSelect::eval(EvalState & state, Env & env, Value & v)
     }
 }
 
-void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
+Value ExprOpHasAttr::eval(EvalState & state, Env & env)
 {
-    Value vTmp;
+    Value vTmp = e->eval(state, env);
     Value * vAttrs = &vTmp;
-
-    e->eval(state, env, vTmp);
 
     for (auto & i : attrPath) {
         state.forceValue(*vAttrs, getPos());
         const Attr * j;
         auto name = getName(i, state, env);
         if (vAttrs->type() != nAttrs || (j = vAttrs->attrs()->get(name)) == nullptr) {
-            v = {NewValueAs::boolean, false};
-            return;
+            return {NewValueAs::boolean, false};
         } else {
             vAttrs = &j->value;
         }
     }
 
-    v = {NewValueAs::boolean, true};
+    return {NewValueAs::boolean, true};
 }
 
-void ExprLambda::eval(EvalState & state, Env & env, Value & v)
+Value ExprLambda::eval(EvalState & state, Env & env)
 {
-    v = {NewValueAs::lambda, state.ctx.mem, env, *this};
+    return {NewValueAs::lambda, state.ctx.mem, env, *this};
 }
 
-void ExprCall::eval(EvalState & state, Env & env, Value & v)
+Value ExprCall::eval(EvalState & state, Env & env)
 {
-    Value vFun;
-    fun->eval(state, env, vFun);
+    Value vFun = fun->eval(state, env);
 
     // Empirical arity of Nixpkgs lambdas by regex e.g. ([a-zA-Z]+:(\s|(/\*.*\/)|(#.*\n))*){5}
     // 2: over 4000
@@ -745,7 +722,9 @@ void ExprCall::eval(EvalState & state, Env & env, Value & v)
         vArgs[i] = args[i]->maybeThunk(state, env);
     }
 
+    Value v;
     state.callFunction(vFun, vArgs, v, pos);
+    return v;
 }
 
 }

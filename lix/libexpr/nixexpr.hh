@@ -128,7 +128,7 @@ public:
 
     virtual JSON toJSON(const SymbolTable & symbols) const;
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
-    virtual void eval(EvalState & state, Env & env, Value & v);
+    virtual Value eval(EvalState & state, Env & env);
     virtual Value maybeThunk(EvalState & state, Env & env);
     virtual void setName(Symbol name);
     PosIdx getPos() const { return pos; }
@@ -167,7 +167,7 @@ struct ExprDebugFrame : Expr
     {
         return inner->toJSON(symbols);
     }
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -179,7 +179,7 @@ protected:
 public:
     Value maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -267,7 +267,7 @@ struct ExprVar : Expr
     ExprVar(const PosIdx & pos, Symbol name, bool needsRoot = false) : Expr(pos), name(name), needsRoot(needsRoot) { };
     Value maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -287,7 +287,7 @@ struct ExprInheritFrom : Expr
     }
 
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -309,7 +309,7 @@ struct ExprSelect : Expr
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath, std::unique_ptr<Expr> def) : Expr(pos), e(std::move(e)), def(std::move(def)), attrPath(std::move(attrPath)) { };
     ExprSelect(const PosIdx & pos, std::unique_ptr<Expr> e, const PosIdx namePos, Symbol name) : Expr(pos), e(std::move(e)) { attrPath.push_back(AttrName(namePos, name)); };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 
 private:
@@ -322,7 +322,7 @@ struct ExprOpHasAttr : Expr
     AttrPath attrPath;
     ExprOpHasAttr(const PosIdx & pos, std::unique_ptr<Expr> e, AttrPath attrPath) : Expr(pos), e(std::move(e)), attrPath(std::move(attrPath)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -392,7 +392,7 @@ struct ExprSet : Expr, ExprAttrs {
     ExprSet(const PosIdx &pos, bool recursive = false) : Expr(pos), recursive(recursive) { };
     ExprSet() { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -410,7 +410,7 @@ struct ExprList : Expr
     std::vector<std::unique_ptr<Expr>> elems;
     ExprList(PosIdx pos) : Expr(pos) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
     Value maybeThunk(EvalState & state, Env & env) override;
 };
@@ -528,7 +528,7 @@ struct ExprLambda : Expr
     }
 
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -540,7 +540,7 @@ struct ExprCall : Expr
         : Expr(pos), fun(std::move(fun)), args(std::move(args))
     { }
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -548,7 +548,7 @@ struct ExprLet : Expr, ExprAttrs
 {
     std::unique_ptr<Expr> body;
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -559,7 +559,7 @@ struct ExprWith : Expr
     ExprWith * parentWith;
     ExprWith(const PosIdx & pos, std::unique_ptr<Expr> attrs, std::unique_ptr<Expr> body) : Expr(pos), attrs(std::move(attrs)), body(std::move(body)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -568,7 +568,7 @@ struct ExprIf : Expr
     std::unique_ptr<Expr> cond, then, else_;
     ExprIf(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> then, std::unique_ptr<Expr> else_) : Expr(pos), cond(std::move(cond)), then(std::move(then)), else_(std::move(else_)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -577,7 +577,7 @@ struct ExprAssert : Expr
     std::unique_ptr<Expr> cond, body;
     ExprAssert(const PosIdx & pos, std::unique_ptr<Expr> cond, std::unique_ptr<Expr> body) : Expr(pos), cond(std::move(cond)), body(std::move(body)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -586,26 +586,28 @@ struct ExprOpNot : Expr
     std::unique_ptr<Expr> e;
     ExprOpNot(const PosIdx & pos, std::unique_ptr<Expr> e) : Expr(pos), e(std::move(e)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
-#define MakeBinOp(name, s) \
-    struct name : Expr \
-    { \
-        std::unique_ptr<Expr> e1, e2; \
-        name(std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : e1(std::move(e1)), e2(std::move(e2)) { }; \
-        name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : Expr(pos), e1(std::move(e1)), e2(std::move(e2)) { }; \
-        JSON toJSON(const SymbolTable & symbols) const override \
-        { \
-            return { \
-                {"_type", #name}, \
-                {"e1", e1->toJSON(symbols)}, \
-                {"e2", e2->toJSON(symbols)} \
-            };\
-        } \
-        void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); } \
-        void eval(EvalState & state, Env & env, Value & v) override; \
+#define MakeBinOp(name, s)                                                                                  \
+    struct name : Expr                                                                                      \
+    {                                                                                                       \
+        std::unique_ptr<Expr> e1, e2;                                                                       \
+        name(std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2) : e1(std::move(e1)), e2(std::move(e2)) {}; \
+        name(const PosIdx & pos, std::unique_ptr<Expr> e1, std::unique_ptr<Expr> e2)                        \
+            : Expr(pos)                                                                                     \
+            , e1(std::move(e1))                                                                             \
+            , e2(std::move(e2)) {};                                                                         \
+        JSON toJSON(const SymbolTable & symbols) const override                                             \
+        {                                                                                                   \
+            return {{"_type", #name}, {"e1", e1->toJSON(symbols)}, {"e2", e2->toJSON(symbols)}};            \
+        }                                                                                                   \
+        void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override                                 \
+        {                                                                                                   \
+            ev.visit(*this, ptr);                                                                           \
+        }                                                                                                   \
+        Value eval(EvalState & state, Env & env) override;                                                  \
     };
 
 MakeBinOp(ExprOpEq, "==")
@@ -623,7 +625,7 @@ struct ExprConcatStrings : Expr
     ExprConcatStrings(const PosIdx & pos, bool isInterpolation, std::vector<std::pair<PosIdx, std::unique_ptr<Expr>>> es)
         : Expr(pos), isInterpolation(isInterpolation), es(std::move(es)) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
@@ -631,14 +633,14 @@ struct ExprPos : Expr
 {
     ExprPos(const PosIdx & pos) : Expr(pos) { };
     JSON toJSON(const SymbolTable & symbols) const override;
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
 /* only used to mark thunks as black holes. */
 struct ExprBlackHole : Expr
 {
-    void eval(EvalState & state, Env & env, Value & v) override;
+    Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
