@@ -74,7 +74,7 @@ void Value::mkString(std::string_view s, const NixStringContext & context)
     copyContextToValue(*untag<String *>(), context);
 }
 
-void Value::mkStringMove(Str * s, const NixStringContext & context)
+Value::Value(string_t, Str * s, const NixStringContext & context)
 {
     auto block = gcAllocType<String>();
     *block = {.content = s, .context = nullptr};

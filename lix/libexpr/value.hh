@@ -447,6 +447,12 @@ public:
         raw = tag(tString, block);
     }
 
+    /// Constructs a nix language value of type "string", with the value of the
+    /// C-string pointed to by @ref s, and context from @ref context.
+    ///
+    /// The C-string is not copied but the data from context is
+    Value(string_t, Str * s, const NixStringContext & context);
+
     Value(string_t, const String * str) : raw(tag(tString, str)) {}
 
     /// Constructx a nix language value of type "string", with a copy of the
@@ -783,8 +789,6 @@ public:
     void mkString(std::string_view s, const char ** context = 0);
 
     void mkString(std::string_view s, const NixStringContext & context);
-
-    void mkStringMove(Str * s, const NixStringContext & context);
 
     inline void mkNull()
     {
