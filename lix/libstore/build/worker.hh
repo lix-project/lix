@@ -120,6 +120,7 @@ public:
 private:
 
     bool running = false;
+    bool buildSupportEnsured = false;
 
     template<typename G>
     struct CachedGoal
@@ -235,6 +236,11 @@ public:
     NotifyingCounter<uint64_t> doneNarSize{[this] { updateStatisticsLater(); }};
 
     const AvailableNamespaces namespaces;
+
+    /**
+     * Check that the current store can *build*, not only substitute.
+     */
+    void requireBuildSupport();
 
 private:
     Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces);

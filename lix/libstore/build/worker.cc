@@ -40,6 +40,18 @@ Worker::Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces)
     , namespaces(namespaces)
 {
     /* Debugging: prevent recursive workers. */
+}
+
+void Worker::requireBuildSupport()
+{
+    if (buildSupportEnsured) {
+        return;
+    }
+
+    if (!useBuildUsers()) {
+        buildSupportEnsured = true;
+        return;
+    }
 
 #ifdef __linux__
 
@@ -130,8 +142,9 @@ Worker::Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces)
     }
 #undef CGROUPS_DISABLE_MSG
 #endif
-}
 
+    buildSupportEnsured = true;
+}
 
 Worker::~Worker()
 {

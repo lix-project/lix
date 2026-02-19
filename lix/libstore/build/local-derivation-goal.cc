@@ -225,6 +225,10 @@ retry:
 
     assert(derivationType);
 
+    // check that all prerequisites for building locally are met (e.g. builds on linux
+    // when cgroups are configured requires the system to be set up in a certain way).
+    worker.requireBuildSupport();
+
     /* Are we doing a chroot build? */
     {
         auto noChroot = parsedDrv->getBoolAttr("__noChroot");
