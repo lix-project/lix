@@ -686,13 +686,13 @@ static void prim_ceil(EvalState & state, Value * * args, Value & v)
 {
     auto value = state.forceFloat(*args[0], noPos,
             "while evaluating the first argument passed to builtins.ceil");
-    v.mkInt(ceil(value));
+    v = {NewValueAs::integer, NixInt::Inner(ceil(value))};
 }
 
 static void prim_floor(EvalState & state, Value * * args, Value & v)
 {
     auto value = state.forceFloat(*args[0], noPos, "while evaluating the first argument passed to builtins.floor");
-    v.mkInt(floor(value));
+    v = {NewValueAs::integer, NixInt::Inner(floor(value))};
 }
 
 /* Try evaluating the argument. Success => {success=true; value=something;},
@@ -1889,15 +1889,16 @@ static void prim_unsafeGetAttrPos(EvalState & state, Value * * args, Value & v)
 // as with black holes this cost is too high to justify another thunk type to check
 // for in the very hot path that is forceValue.
 static struct LazyPosAcessors {
-    PrimOp primop_lineOfPos{{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
-                                 v.mkInt(state.ctx.positions[PosIdx(args[0]->integer().value)].line
-                                 );
-                             }}};
-    PrimOp primop_columnOfPos{{.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
-                                   v.mkInt(
-                                       state.ctx.positions[PosIdx(args[0]->integer().value)].column
-                                   );
-                               }}};
+    PrimOp primop_lineOfPos{
+        {.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
+             v = {NewValueAs::integer, state.ctx.positions[PosIdx(args[0]->integer().value)].line};
+         }}
+    };
+    PrimOp primop_columnOfPos{
+        {.arity = 1, .fun = [](EvalState & state, Value ** args, Value & v) {
+             v = {NewValueAs::integer, state.ctx.positions[PosIdx(args[0]->integer().value)].column};
+         }}
+    };
 
     Value lineOfPos, columnOfPos;
 
@@ -2340,7 +2341,7 @@ static void prim_concatLists(EvalState & state, Value * * args, Value & v)
 static void prim_length(EvalState & state, Value * * args, Value & v)
 {
     state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.length");
-    v.mkInt(args[0]->listSize());
+    v = {NewValueAs::integer, NixInt::Inner(args[0]->listSize())};
 }
 
 /* Reduce a list by applying a binary operator, from left to
@@ -2592,7 +2593,7 @@ static void prim_add(EvalState & state, Value * * args, Value & v)
 
         auto result_ = i1 + i2;
         if (auto result = result_.valueChecked(); result.has_value()) {
-            v.mkInt(*result);
+            v = {NewValueAs::integer, *result};
         } else {
             state.ctx.errors.make<EvalError>("integer overflow in adding %1% + %2%", i1, i2).debugThrow();
         }
@@ -2616,7 +2617,7 @@ static void prim_sub(EvalState & state, Value * * args, Value & v)
         auto result_ = i1 - i2;
 
         if (auto result = result_.valueChecked(); result.has_value()) {
-            v.mkInt(*result);
+            v = {NewValueAs::integer, *result};
         } else {
             state.ctx.errors.make<EvalError>("integer overflow in subtracting %1% - %2%", i1, i2).debugThrow();
         }
@@ -2642,7 +2643,7 @@ static void prim_mul(EvalState & state, Value * * args, Value & v)
         auto result_ = i1 * i2;
 
         if (auto result = result_.valueChecked(); result.has_value()) {
-            v.mkInt(*result);
+            v = {NewValueAs::integer, *result};
         } else {
             state.ctx.errors.make<EvalError>("integer overflow in multiplying %1% * %2%", i1, i2).debugThrow();
         }
@@ -2669,7 +2670,7 @@ static void prim_div(EvalState & state, Value * * args, Value & v)
         /* Avoid division overflow as it might raise SIGFPE. */
         auto result_ = i1 / i2;
         if (auto result = result_.valueChecked(); result.has_value()) {
-            v.mkInt(*result);
+            v = {NewValueAs::integer, *result};
         } else {
             state.ctx.errors.make<EvalError>("integer overflow in dividing %1% / %2%", i1, i2).debugThrow();
         }
@@ -2680,7 +2681,7 @@ static void prim_bitAnd(EvalState & state, Value * * args, Value & v)
 {
     auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitAnd");
     auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitAnd");
-    v.mkInt(i1.value & i2.value);
+    v = {NewValueAs::integer, i1.value & i2.value};
 }
 
 static void prim_bitOr(EvalState & state, Value * * args, Value & v)
@@ -2688,7 +2689,7 @@ static void prim_bitOr(EvalState & state, Value * * args, Value & v)
     auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitOr");
     auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitOr");
 
-    v.mkInt(i1.value | i2.value);
+    v = {NewValueAs::integer, i1.value | i2.value};
 }
 
 static void prim_bitXor(EvalState & state, Value * * args, Value & v)
@@ -2696,7 +2697,7 @@ static void prim_bitXor(EvalState & state, Value * * args, Value & v)
     auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument passed to builtins.bitXor");
     auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.bitXor");
 
-    v.mkInt(i1.value ^ i2.value);
+    v = {NewValueAs::integer, i1.value ^ i2.value};
 }
 
 static void prim_lessThan(EvalState & state, Value * * args, Value & v)
@@ -2778,7 +2779,7 @@ static void prim_stringLength(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.stringLength");
-    v.mkInt(NixInt::Inner(s->size()));
+    v = {NewValueAs::integer, NixInt::Inner(s->size())};
 }
 
 /* Return the cryptographic hash of a string in base-16. */
@@ -3029,7 +3030,7 @@ static void prim_compareVersions(EvalState & state, Value * * args, Value & v)
     auto version1 = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.compareVersions");
     auto version2 = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.compareVersions");
     auto result = compareVersions(version1, version2);
-    v.mkInt(result < 0 ? -1 : result > 0 ? 1 : 0);
+    v = {NewValueAs::integer, result < 0 ? -1 : result > 0 ? 1 : 0};
 }
 
 static void prim_splitVersion(EvalState & state, Value * * args, Value & v)

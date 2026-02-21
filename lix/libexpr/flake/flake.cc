@@ -1010,11 +1010,14 @@ void prim_parseFlakeRef(
     for (const auto & [key, value] : attrs) {
         auto s = state.ctx.symbols.create(key);
         auto & vv = binds.alloc(s);
-        std::visit(overloaded {
-            [&vv](const std::string    & value) { vv.mkString(value); },
-            [&vv](const uint64_t       & value) { vv.mkInt(value);    },
-            [&vv](const Explicit<bool> & value) { vv.mkBool(value.t); }
-        }, value);
+        std::visit(
+            overloaded{
+                [&vv](const std::string & value) { vv.mkString(value); },
+                [&vv](const uint64_t & value) { vv = {NewValueAs::integer, NixInt::Inner(value)}; },
+                [&vv](const Explicit<bool> & value) { vv.mkBool(value.t); }
+            },
+            value
+        );
     }
     v = {NewValueAs::attrs, binds};
 }

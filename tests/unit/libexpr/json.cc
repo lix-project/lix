@@ -33,14 +33,12 @@ namespace nix {
     }
 
     TEST_F(JSONValueTest, IntPositive) {
-        Value v;
-        v.mkInt(100);
+        Value v = {NewValueAs::integer, 100};
         ASSERT_EQ(getJSONValue(v), "100");
     }
 
     TEST_F(JSONValueTest, IntNegative) {
-        Value v;
-        v.mkInt(-100);
+        Value v = {NewValueAs::integer, -100};
         ASSERT_EQ(getJSONValue(v), "-100");
     }
 

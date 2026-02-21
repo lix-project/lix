@@ -407,6 +407,10 @@ public:
 
     /// Constructs a nix language value of type "int", with the integral value
     /// of @ref i.
+    Value(integer_t, NixInt::Inner i) : Value(NewValueAs::integer, NixInt{i}) {}
+
+    /// Constructs a nix language value of type "int", with the integral value
+    /// of @ref i.
     Value(integer_t, NixInt i)
     {
         if (isTaggableInteger(i)) {
@@ -770,16 +774,6 @@ public:
      * 0, so uninitialized) internal type, return `nThunk`.
      */
     inline ValueType type(bool invalidIsThunk = false) const;
-
-    inline void mkInt(NixInt::Inner n)
-    {
-        mkInt(NixInt{n});
-    }
-
-    inline void mkInt(NixInt n)
-    {
-        *this = {NewValueAs::integer, n};
-    }
 
     inline void mkBool(bool b)
     {

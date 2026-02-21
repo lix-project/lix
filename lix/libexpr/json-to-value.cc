@@ -108,7 +108,7 @@ public:
 
     bool number_integer(number_integer_t val) override
     {
-        rs->value().mkInt(val);
+        rs->value() = {NewValueAs::integer, val};
         rs->add();
         return true;
     }
@@ -121,7 +121,7 @@ public:
             return number_float(static_cast<number_float_t>(val_), "");
         }
         NixInt::Inner val = val_;
-        rs->value().mkInt(val);
+        rs->value() = {NewValueAs::integer, val};
         rs->add();
         return true;
     }

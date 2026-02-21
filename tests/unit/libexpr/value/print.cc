@@ -24,8 +24,7 @@ struct ValuePrintingTests : LibExprTest
 
 TEST_F(ValuePrintingTests, tInt)
 {
-    Value vInt;
-    vInt.mkInt(10);
+    Value vInt = {NewValueAs::integer, 10};
     test(vInt, "10");
 }
 
@@ -58,11 +57,9 @@ TEST_F(ValuePrintingTests, tNull)
 
 TEST_F(ValuePrintingTests, tAttrs)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("one"), vOne);
@@ -75,11 +72,9 @@ TEST_F(ValuePrintingTests, tAttrs)
 
 TEST_F(ValuePrintingTests, tList)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     auto vList = evaluator.mem.newList(5);
     vList->elems[0] = vOne;
@@ -193,14 +188,11 @@ TEST_F(ValuePrintingTests, vBlackhole)
 
 TEST_F(ValuePrintingTests, depthAttrs)
 {
-    Value vZero;
-    vZero.mkInt(0);
+    Value vZero = {NewValueAs::integer, 0};
 
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     BindingsBuilder builderEmpty = evaluator.buildBindings(0);
     Value vAttrsEmpty = {NewValueAs::attrs, builderEmpty.finish()};
@@ -232,11 +224,9 @@ TEST_F(ValuePrintingTests, depthAttrs)
 
 TEST_F(ValuePrintingTests, depthList)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("one"), vOne);
@@ -319,8 +309,7 @@ TEST_F(ValuePrintingTests, attrsTypeFirst)
 
 TEST_F(ValuePrintingTests, ansiColorsInt)
 {
-    Value v;
-    v.mkInt(10);
+    Value v = {NewValueAs::integer, 10};
 
     test(v,
          ANSI_CYAN "10" ANSI_NORMAL,
@@ -402,11 +391,9 @@ TEST_F(ValuePrintingTests, ansiColorsNull)
 
 TEST_F(ValuePrintingTests, ansiColorsAttrs)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("one"), vOne);
@@ -513,11 +500,9 @@ TEST_F(ValuePrintingTests, ansiColorsAssert)
 
 TEST_F(ValuePrintingTests, ansiColorsList)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     auto vList = evaluator.mem.newList(5);
     vList->elems[0] = vOne;
@@ -622,8 +607,7 @@ TEST_F(ValuePrintingTests, ansiColorsBlackhole)
 
 TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
 {
-    Value vZero;
-    vZero.mkInt(0);
+    Value vZero = {NewValueAs::integer, 0};
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
@@ -645,8 +629,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
 
 TEST_F(ValuePrintingTests, ansiColorsListRepeated)
 {
-    Value vZero;
-    vZero.mkInt(0);
+    Value vZero = {NewValueAs::integer, 0};
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
@@ -667,8 +650,7 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
 
 TEST_F(ValuePrintingTests, listRepeated)
 {
-    Value vZero;
-    vZero.mkInt(0);
+    Value vZero = {NewValueAs::integer, 0};
 
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
@@ -691,11 +673,9 @@ TEST_F(ValuePrintingTests, listRepeated)
 
 TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("one"), vOne);
@@ -710,8 +690,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
              .maxAttrs = 1
          });
 
-    Value vThree;
-    vThree.mkInt(3);
+    Value vThree = {NewValueAs::integer, 3};
 
     builder.insert(evaluator.symbols.create("three"), vThree);
     vAttrs = {NewValueAs::attrs, builder.finish()};
@@ -726,11 +705,9 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
 
 TEST_F(ValuePrintingTests, ansiColorsListElided)
 {
-    Value vOne;
-    vOne.mkInt(1);
+    Value vOne = {NewValueAs::integer, 1};
 
-    Value vTwo;
-    vTwo.mkInt(2);
+    Value vTwo = {NewValueAs::integer, 2};
 
     auto list = evaluator.mem.newList(4);
     Value vList{NewValueAs::list, list};
@@ -745,8 +722,7 @@ TEST_F(ValuePrintingTests, ansiColorsListElided)
              .maxListItems = 1
          });
 
-    Value vThree;
-    vThree.mkInt(3);
+    Value vThree = {NewValueAs::integer, 3};
 
     list->elems[2] = vThree;
     list->size = 3;

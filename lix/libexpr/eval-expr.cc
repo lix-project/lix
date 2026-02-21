@@ -528,7 +528,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
     }
 
     if (firstType == nInt) {
-        v.mkInt(n);
+        v = {NewValueAs::integer, n};
     } else if (firstType == nFloat) {
         v = {NewValueAs::floating, nf};
     } else if (firstType == nPath) {

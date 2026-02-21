@@ -41,7 +41,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             v.mkBool(toml::get<bool>(t));
             break;
         case toml::value_t::integer:
-            v.mkInt(toml::get<int64_t>(t));
+            v = {NewValueAs::integer, toml::get<int64_t>(t)};
             break;
         case toml::value_t::floating:
             v = {NewValueAs::floating, toml::get<NixFloat>(t)};

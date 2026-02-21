@@ -51,10 +51,9 @@ void emitTreeAttrs(
         }
 
         if (auto revCount = input.getRevCount())
-            attrs.alloc("revCount").mkInt(*revCount);
+            attrs.alloc("revCount") = {NewValueAs::integer, NixInt::Inner(*revCount)};
         else if (emptyRevFallback)
-            attrs.alloc("revCount").mkInt(0);
-
+            attrs.alloc("revCount") = {NewValueAs::integer, 0};
     }
 
     if (auto dirtyRev = fetchers::maybeGetStrAttr(input.attrs, "dirtyRev")) {
@@ -63,7 +62,7 @@ void emitTreeAttrs(
     }
 
     if (auto lastModified = input.getLastModified()) {
-        attrs.alloc("lastModified").mkInt(*lastModified);
+        attrs.alloc("lastModified") = {NewValueAs::integer, *lastModified};
         attrs.alloc("lastModifiedDate").mkString(
             fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S")));
     }

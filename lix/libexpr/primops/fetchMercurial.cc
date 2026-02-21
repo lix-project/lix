@@ -97,7 +97,7 @@ void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
     attrs2.alloc("rev").mkString(rev2.gitRev());
     attrs2.alloc("shortRev").mkString(rev2.gitRev().substr(0, 12));
     if (auto revCount = input2.getRevCount())
-        attrs2.alloc("revCount").mkInt(*revCount);
+        attrs2.alloc("revCount") = {NewValueAs::integer, NixInt::Inner(*revCount)};
     v = {NewValueAs::attrs, attrs2};
 
     state.ctx.paths.allowPath(tree.storePath);
