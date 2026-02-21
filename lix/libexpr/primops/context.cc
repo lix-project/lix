@@ -18,7 +18,7 @@ void prim_hasContext(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
     state.forceString(*args[0], context, noPos, "while evaluating the argument passed to builtins.hasContext");
-    v.mkBool(!context.empty());
+    v = {NewValueAs::boolean, !context.empty()};
 }
 
 
@@ -136,9 +136,9 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
     for (const auto & info : contextInfos) {
         auto infoAttrs = state.ctx.buildBindings(3);
         if (info.second.path)
-            infoAttrs.alloc(state.ctx.symbols.sym_path).mkBool(true);
+            infoAttrs.alloc(state.ctx.symbols.sym_path) = {NewValueAs::boolean, true};
         if (info.second.allOutputs)
-            infoAttrs.alloc(sAllOutputs).mkBool(true);
+            infoAttrs.alloc(sAllOutputs) = {NewValueAs::boolean, true};
         if (!info.second.outputs.empty()) {
             auto & outputsVal = infoAttrs.alloc(state.ctx.symbols.sym_outputs);
             auto content = state.ctx.mem.newList(info.second.outputs.size());

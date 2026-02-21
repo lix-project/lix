@@ -21,14 +21,12 @@ namespace nix {
     }
 
     TEST_F(JSONValueTest, BoolFalse) {
-        Value v;
-        v.mkBool(false);
+        Value v = {NewValueAs::boolean, false};
         ASSERT_EQ(getJSONValue(v),"false");
     }
 
     TEST_F(JSONValueTest, BoolTrue) {
-        Value v;
-        v.mkBool(true);
+        Value v = {NewValueAs::boolean, true};
         ASSERT_EQ(getJSONValue(v), "true");
     }
 

@@ -274,7 +274,7 @@ void ExprOpNot::eval(EvalState & state, Env & env, Value & v)
 {
     Value vInner;
     e->eval(state, env, vInner);
-    v.mkBool(!state.checkBool(vInner, env, *e));
+    v = {NewValueAs::boolean, !state.checkBool(vInner, env, *e)};
 }
 
 void ExprOpEq::eval(EvalState & state, Env & env, Value & v)
@@ -283,7 +283,7 @@ void ExprOpEq::eval(EvalState & state, Env & env, Value & v)
     e1->eval(state, env, v1);
     Value v2;
     e2->eval(state, env, v2);
-    v.mkBool(state.eqValues(v1, v2, pos, "while testing two values for equality"));
+    v = {NewValueAs::boolean, state.eqValues(v1, v2, pos, "while testing two values for equality")};
 }
 
 void ExprOpNEq::eval(EvalState & state, Env & env, Value & v)
@@ -292,7 +292,7 @@ void ExprOpNEq::eval(EvalState & state, Env & env, Value & v)
     e1->eval(state, env, v1);
     Value v2;
     e2->eval(state, env, v2);
-    v.mkBool(!state.eqValues(v1, v2, pos, "while testing two values for inequality"));
+    v = {NewValueAs::boolean, !state.eqValues(v1, v2, pos, "while testing two values for inequality")};
 }
 
 void ExprOpAnd::eval(EvalState & state, Env & env, Value & v)
@@ -301,12 +301,12 @@ void ExprOpAnd::eval(EvalState & state, Env & env, Value & v)
     e1->eval(state, env, v1);
     /* Explicitly short-circuit */
     if (!state.checkBool(v1, env, *e1)) {
-        v.mkBool(false);
+        v = {NewValueAs::boolean, false};
         return;
     }
     Value v2;
     e2->eval(state, env, v2);
-    v.mkBool(state.checkBool(v2, env, *e2));
+    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
 void ExprOpOr::eval(EvalState & state, Env & env, Value & v)
@@ -315,12 +315,12 @@ void ExprOpOr::eval(EvalState & state, Env & env, Value & v)
     e1->eval(state, env, v1);
     /* Explicitly short-circuit */
     if (state.checkBool(v1, env, *e1)) {
-        v.mkBool(true);
+        v = {NewValueAs::boolean, true};
         return;
     }
     Value v2;
     e2->eval(state, env, v2);
-    v.mkBool(state.checkBool(v2, env, *e2));
+    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
 void ExprOpImpl::eval(EvalState & state, Env & env, Value & v)
@@ -329,12 +329,12 @@ void ExprOpImpl::eval(EvalState & state, Env & env, Value & v)
     e1->eval(state, env, v1);
     /* Explicitly short-circuit (ex falso quodlibet) */
     if (!state.checkBool(v1, env, *e1)) {
-        v.mkBool(true);
+        v = {NewValueAs::boolean, true};
         return;
     }
     Value v2;
     e2->eval(state, env, v2);
-    v.mkBool(state.checkBool(v2, env, *e2));
+    v = {NewValueAs::boolean, state.checkBool(v2, env, *e2)};
 }
 
 void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
@@ -713,14 +713,14 @@ void ExprOpHasAttr::eval(EvalState & state, Env & env, Value & v)
         const Attr * j;
         auto name = getName(i, state, env);
         if (vAttrs->type() != nAttrs || (j = vAttrs->attrs()->get(name)) == nullptr) {
-            v.mkBool(false);
+            v = {NewValueAs::boolean, false};
             return;
         } else {
             vAttrs = &j->value;
         }
     }
 
-    v.mkBool(true);
+    v = {NewValueAs::boolean, true};
 }
 
 void ExprLambda::eval(EvalState & state, Env & env, Value & v)

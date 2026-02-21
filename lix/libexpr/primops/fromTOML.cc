@@ -38,7 +38,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             }
         } break;
         case toml::value_t::boolean:
-            v.mkBool(toml::get<bool>(t));
+            v = {NewValueAs::boolean, toml::get<bool>(t)};
             break;
         case toml::value_t::integer:
             v = {NewValueAs::integer, toml::get<int64_t>(t)};

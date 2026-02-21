@@ -1014,7 +1014,7 @@ void prim_parseFlakeRef(
             overloaded{
                 [&vv](const std::string & value) { vv.mkString(value); },
                 [&vv](const uint64_t & value) { vv = {NewValueAs::integer, NixInt::Inner(value)}; },
-                [&vv](const Explicit<bool> & value) { vv.mkBool(value.t); }
+                [&vv](const Explicit<bool> & value) { vv = {NewValueAs::boolean, value.t}; }
             },
             value
         );

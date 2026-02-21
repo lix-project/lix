@@ -31,7 +31,7 @@ TEST_F(ValuePrintingTests, tInt)
 TEST_F(ValuePrintingTests, tBool)
 {
     Value vBool;
-    vBool.mkBool(true);
+    vBool = {NewValueAs::boolean, true};
     test(vBool, "true");
 }
 
@@ -331,8 +331,7 @@ TEST_F(ValuePrintingTests, ansiColorsFloat)
 
 TEST_F(ValuePrintingTests, ansiColorsBool)
 {
-    Value v;
-    v.mkBool(true);
+    Value v = {NewValueAs::boolean, true};
 
     test(v,
          ANSI_CYAN "true" ANSI_NORMAL,

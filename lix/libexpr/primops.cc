@@ -381,49 +381,49 @@ static void prim_typeOf(EvalState & state, Value * * args, Value & v)
 static void prim_isNull(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nNull);
+    v = {NewValueAs::boolean, args[0]->type() == nNull};
 }
 
 /* Determine whether the argument is a function. */
 static void prim_isFunction(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nFunction);
+    v = {NewValueAs::boolean, args[0]->type() == nFunction};
 }
 
 /* Determine whether the argument is an integer. */
 static void prim_isInt(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nInt);
+    v = {NewValueAs::boolean, args[0]->type() == nInt};
 }
 
 /* Determine whether the argument is a float. */
 static void prim_isFloat(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nFloat);
+    v = {NewValueAs::boolean, args[0]->type() == nFloat};
 }
 
 /* Determine whether the argument is a string. */
 static void prim_isString(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nString);
+    v = {NewValueAs::boolean, args[0]->type() == nString};
 }
 
 /* Determine whether the argument is a Boolean. */
 static void prim_isBool(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nBool);
+    v = {NewValueAs::boolean, args[0]->type() == nBool};
 }
 
 /* Determine whether the argument is a path. */
 static void prim_isPath(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nPath);
+    v = {NewValueAs::boolean, args[0]->type() == nPath};
 }
 
 template<typename Callable>
@@ -728,8 +728,8 @@ static void prim_tryEval(EvalState & state, Value * * args, Value & v)
     if (success)
         attrs.insert(state.ctx.symbols.sym_value, *args[0]);
     else
-        attrs.alloc(state.ctx.symbols.sym_value).mkBool(false);
-    attrs.alloc("success").mkBool(success);
+        attrs.alloc(state.ctx.symbols.sym_value) = {NewValueAs::boolean, false};
+    attrs.alloc("success") = {NewValueAs::boolean, success};
 
     v = {NewValueAs::attrs, attrs};
 }
@@ -1353,13 +1353,13 @@ static void prim_pathExists(EvalState & state, Value * * args, Value & v)
         // respectively. (in neither case do intermediate symlinks affect the result.)
         auto st = mustBeDir ? checked.maybeStat() : checked.maybeLstat();
         auto exists = st && (!mustBeDir || st->type == InputAccessor::tDirectory);
-        v.mkBool(exists);
+        v = {NewValueAs::boolean, exists};
     } catch (SysError & e) {
         /* Don't give away info from errors while canonicalising
            ‘path’ in restricted mode. */
-        v.mkBool(false);
+        v = {NewValueAs::boolean, false};
     } catch (RestrictedPathError & e) {
-        v.mkBool(false);
+        v = {NewValueAs::boolean, false};
     }
 }
 
@@ -1926,14 +1926,14 @@ static void prim_hasAttr(EvalState & state, Value * * args, Value & v)
 {
     auto attr = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.hasAttr");
     state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.hasAttr");
-    v.mkBool(args[1]->attrs()->get(state.ctx.symbols.create(attr)));
+    v = {NewValueAs::boolean, bool(args[1]->attrs()->get(state.ctx.symbols.create(attr)))};
 }
 
 /* Determine whether the argument is a set. */
 static void prim_isAttrs(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nAttrs);
+    v = {NewValueAs::boolean, args[0]->type() == nAttrs};
 }
 
 static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
@@ -2120,7 +2120,7 @@ static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
     auto attrs = state.ctx.buildBindings(formals->formals.size());
     for (auto & i : formals->formals)
         // !!! should optimise booleans (allocate only once)
-        attrs.alloc(i.name, i.pos).mkBool(i.def != nullptr);
+        attrs.alloc(i.name, i.pos) = {NewValueAs::boolean, i.def != nullptr};
     v = {NewValueAs::attrs, attrs};
 }
 
@@ -2206,7 +2206,7 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
 static void prim_isList(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
-    v.mkBool(args[0]->type() == nList);
+    v = {NewValueAs::boolean, args[0]->type() == nList};
 }
 
 static void elemAt(EvalState & state, Value & list, NixInt::Inner n, Value & v)
@@ -2322,7 +2322,7 @@ static void prim_elem(EvalState & state, Value * * args, Value & v)
             break;
         }
     }
-    v.mkBool(res);
+    v = {NewValueAs::boolean, res};
 }
 
 /* Concatenate a list of lists. */
@@ -2380,12 +2380,12 @@ static void anyOrAll(bool any, EvalState & state, Value * * args, Value & v)
         state.callFunction(*args[0], elem, vTmp, noPos);
         bool res = state.forceBool(vTmp, noPos, errorCtx);
         if (res == any) {
-            v.mkBool(any);
+            v = {NewValueAs::boolean, any};
             return;
         }
     }
 
-    v.mkBool(!any);
+    v = {NewValueAs::boolean, !any};
 }
 
 
@@ -2705,7 +2705,7 @@ static void prim_lessThan(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
     CompareValues comp(state, "");
-    v.mkBool(comp(*args[0], *args[1]));
+    v = {NewValueAs::boolean, comp(*args[0], *args[1])};
 }
 
 

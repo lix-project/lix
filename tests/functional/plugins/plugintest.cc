@@ -31,7 +31,7 @@ static void prim_anotherNull (EvalState & state, Value ** args, Value & v)
     if (mySettings.settingSet)
         v.mkNull();
     else
-        v.mkBool(false);
+        v = {NewValueAs::boolean, false};
 }
 
 extern "C" void nix_plugin_entry()

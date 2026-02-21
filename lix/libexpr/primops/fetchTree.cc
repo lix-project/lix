@@ -35,8 +35,9 @@ void emitTreeAttrs(
     attrs.alloc("narHash").mkString(narHash->to_string());
 
     if (input.getType() == "git")
-        attrs.alloc("submodules").mkBool(
-            fetchers::maybeGetBoolAttr(input.attrs, "submodules").value_or(false));
+        attrs.alloc("submodules") = {
+            NewValueAs::boolean, fetchers::maybeGetBoolAttr(input.attrs, "submodules").value_or(false)
+        };
 
     if (!forceDirty) {
 

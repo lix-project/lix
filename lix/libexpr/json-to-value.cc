@@ -101,7 +101,7 @@ public:
 
     bool boolean(bool val) override
     {
-        rs->value().mkBool(val);
+        rs->value() = {NewValueAs::boolean, val};
         rs->add();
         return true;
     }

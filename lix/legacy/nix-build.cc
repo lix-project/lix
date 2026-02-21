@@ -213,7 +213,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
     auto autoArgsWithInNixShell = autoArgs;
     if (runEnv) {
         auto newArgs = evaluator->buildBindings(autoArgsWithInNixShell->size() + 1);
-        newArgs.alloc("inNixShell").mkBool(true);
+        newArgs.alloc("inNixShell") = {NewValueAs::boolean, true};
         for (auto & i : *autoArgs) newArgs.insert(i);
         autoArgsWithInNixShell = newArgs.finish();
     }

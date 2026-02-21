@@ -775,11 +775,6 @@ public:
      */
     inline ValueType type(bool invalidIsThunk = false) const;
 
-    inline void mkBool(bool b)
-    {
-        raw = tag(tBool, b);
-    }
-
     void mkString(std::string_view s, const char ** context = 0);
 
     void mkString(std::string_view s, const NixStringContext & context);
