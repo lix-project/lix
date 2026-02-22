@@ -173,6 +173,34 @@ def test_eval_system_takes_effect(nix: Nix, flake1: Path):
     nix.nix(["build", "--eval-system", "kitty-kitty", flake1]).run().ok()
 
 
+class TestGetFlake:
+    def test_unlocked_pure_fails(self, nix: Nix, flake1: Path):
+        expr = f'(builtins.getFlake "{flake1}").packages.{system}.default'
+        result = nix.nix(["build", "--expr", expr]).run().expect(1)
+        assert "error: cannot call 'getFlake' on unlocked flake reference" in result.stderr_s
+
+    def test_unlocked_impure_works(self, nix: Nix, flake1: Path):
+        expr = f'(builtins.getFlake "{flake1}").packages.{system}.default'
+        nix.nix(["build", "--impure", "--expr", expr]).run().ok()
+        assert (Path(nix.env.dirs.home / "result/hello")).exists()
+
+    def test_locked_url_pure_works(self, nix: Nix, flake1: Path, git: Git):
+        flake1_original_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        expr = f'(builtins.getFlake "git+file://{flake1}?rev={flake1_original_commit}").packages.{system}.default'
+        nix.nix(["build", "--expr", expr]).run().ok()
+        assert (Path(nix.env.dirs.home / "result/hello")).exists()
+
+    def test_unlocked_dep_pure_fails(self, nix: Nix, flake2: Path):
+        # NOTE: this is the same test as test_unlocked_dep_pure_fails because flake2 is not locked,
+        # and flake2 *cannot* be locked because that would also lock flake1 in the flake2 lock file
+        nix.nix(["eval", "--expr", f'(builtins.getFlake "{flake2}")']).run().expect(1)
+
+    @pytest.mark.usefixtures("registry")
+    def test_unlocked_dep_impure_works(self, nix: Nix, flake2: Path):
+        # NOTE: see test above, same thing happens here
+        nix.nix(["eval", "--impure", "--expr", f'(builtins.getFlake "{flake2}")']).run().ok()
+
+
 @pytest.mark.usefixtures("registry")
 class TestRegistry:
     def test_registry_list(self, nix: Nix):

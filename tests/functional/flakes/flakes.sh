@@ -85,20 +85,6 @@ hash2=$(nix flake metadata flake1 --json --refresh | jq -r .revision)
 nix build -o $flake1Dir/result git+file://$flake1Dir
 nix path-info $flake1Dir/result
 
-# 'getFlake' on an unlocked flakeref should fail in pure mode, but
-# succeed in impure mode.
-(! nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"$flake1Dir\").packages.$system.default")
-nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"$flake1Dir\").packages.$system.default" --impure
-
-# 'getFlake' on a locked flakeref should succeed even in pure mode.
-nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"git+file://$flake1Dir?rev=$hash2\").packages.$system.default"
-
-# Building a flake with an unlocked dependency should fail in pure mode.
-(! nix eval --expr "builtins.getFlake \"$flake2Dir\"")
-
-# But should succeed in impure mode.
-nix eval --expr "builtins.getFlake \"$flake2Dir\"" --impure
-
 # set up lockfiles for later tests
 nix build -o $TEST_ROOT/result $flake2Dir#bar --commit-lock-file
 nix build -o $TEST_ROOT/result $flake3Dir#xyzzy
