@@ -72,14 +72,10 @@ nix registry add --registry $registry flake3 git+file://$flake3Dir
 nix registry add --registry $registry flake4 flake3
 nix registry add --registry $registry nixpkgs flake1
 
-json=$(nix flake metadata flake1 --json | jq .)
-hash1=$(echo "$json" | jq -r .revision)
-
 echo foo > $flake1Dir/foo
 git -C $flake1Dir add $flake1Dir/foo
 echo -n '# foo' >> $flake1Dir/flake.nix
 git -C $flake1Dir commit -a -m 'Foo'
-hash2=$(nix flake metadata flake1 --json --refresh | jq -r .revision)
 
 # Check that store symlinks inside a flake are not interpreted as flakes.
 nix build -o $flake1Dir/result git+file://$flake1Dir
@@ -336,39 +332,3 @@ EOF
 nix flake update --flake "$flake3Dir"
 [[ $(jq -c .nodes.flake2.inputs.flake1 "$flake3Dir/flake.lock") =~ '["foo"]' ]]
 [[ $(jq .nodes.foo.locked.url "$flake3Dir/flake.lock") =~ flake7 ]]
-
-# prepare path flakes.
-mkdir -p $flake5Dir
-writeDependentFlake $flake5Dir
-nix flake lock path://$flake5Dir
-
-# Test tarball flakes.
-tar cfz $TEST_ROOT/flake.tar.gz -C $TEST_ROOT flake5
-
-# Test --override-input.
-git -C $flake3Dir reset --hard
-nix flake lock $flake3Dir --override-input flake2/flake1 file://$TEST_ROOT/flake.tar.gz -vvvvv
-[[ $(jq .nodes.flake1_2.locked.url $flake3Dir/flake.lock) =~ flake.tar.gz ]]
-
-nix flake lock $flake3Dir --override-input flake2/flake1 flake1
-[[ $(jq -r .nodes.flake1_2.locked.rev $flake3Dir/flake.lock) =~ $hash2 ]]
-
-nix flake lock $flake3Dir --override-input flake2/flake1 flake1/master/$hash1
-[[ $(jq -r .nodes.flake1_2.locked.rev $flake3Dir/flake.lock) =~ $hash1 ]]
-
-nix flake lock $flake3Dir
-[[ $(jq -r .nodes.flake1_2.locked.rev $flake3Dir/flake.lock) = $hash1 ]]
-
-# Test updating an individual input of a flake lockfile.
-nix flake update flake2/flake1 --flake "$flake3Dir"
-[[ $(jq -r .nodes.flake1_2.locked.rev "$flake3Dir/flake.lock") =~ $hash2 ]]
-
-# Test updating multiple inputs.
-nix flake lock "$flake3Dir" --override-input flake1 flake1/master/$hash1
-nix flake lock "$flake3Dir" --override-input flake2/flake1 flake1/master/$hash1
-[[ $(jq -r .nodes.flake1.locked.rev "$flake3Dir/flake.lock") =~ $hash1 ]]
-[[ $(jq -r .nodes.flake1_2.locked.rev "$flake3Dir/flake.lock") =~ $hash1 ]]
-
-nix flake update flake1 flake2/flake1 --flake "$flake3Dir"
-[[ $(jq -r .nodes.flake1.locked.rev "$flake3Dir/flake.lock") =~ $hash2 ]]
-[[ $(jq -r .nodes.flake1_2.locked.rev "$flake3Dir/flake.lock") =~ $hash2 ]]

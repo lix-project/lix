@@ -2,6 +2,7 @@ from pathlib import Path
 import pytest
 import re
 import tarfile
+import json
 
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
@@ -54,6 +55,7 @@ flake3_files = {
     }
 }
 flake5_files = {"flake5": dependent_flake()}
+nonflake_files = {"nonFlake": get_global_asset_pack(".git") | {"README.md": File("FNORD")}}
 
 
 def _make_flake_repo(
@@ -90,6 +92,37 @@ def flake3(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
+def flake3_medium(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # noqa: ARG001
+    (flake3 / "flake.nix").write_text(f"""{{
+      inputs = {{
+        nonFlake = {{
+          url = "{env.dirs.test_root}/nonFlake";
+          flake = false;
+        }};
+      }};
+
+      description = "Fnord";
+
+      outputs = {{ self, flake1, flake2, nonFlake }}: rec {{
+        packages.{system}.sth = flake1.packages.{system}.foo;
+        packages.{system}.fnord =
+          with import ./config.nix;
+          mkDerivation {{
+            inherit system;
+            name = "fnord";
+            buildCommand = ''
+              cat ${{nonFlake}}/README.md > $out
+            '';
+          }};
+      }};
+    }}""")
+    nix.nix(["flake", "lock", flake3]).run().ok()
+    git(flake3, "add", "flake.nix", "flake.lock")
+    git(flake3, "commit", "-m", "medium config")
+    return flake3
+
+
+@pytest.fixture
 def flake5(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     _init_files(flake5_files, env.dirs.test_root, request.path.parent, env)
     return env.dirs.test_root / "flake5"
@@ -102,6 +135,12 @@ def flake5_locked_tarball(env: ManagedEnv, flake5: Path, nix: Nix) -> Path:
     with tarfile.open(path, "w:gz") as tar:
         tar.add(flake5, "flake5")
     return path
+
+
+@pytest.fixture
+def nonflake(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
+    _init_files(nonflake_files, env.dirs.test_root, request.path.parent, env)
+    return env.dirs.test_root / "nonFlake"
 
 
 @pytest.fixture
@@ -431,6 +470,54 @@ class TestLock:
         logs = nix.nix(["flake", "lock", f"path://{flake5}"]).run().ok().stderr_s
         assert "Added input 'flake1'" in logs
         assert f"fetching path input 'path:{flake5}" in logs
+
+    def test_override_inputs(
+        self, nix: Nix, flake1: Path, flake3: Path, flake5_locked_tarball: Path, git: Git
+    ):
+        # this is one big test due to necessary state changes, 🐻 with me
+        flake1_original_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+
+        url = f"file://{flake5_locked_tarball}"
+        nix.nix(["flake", "lock", flake3, "--override-input", "flake2/flake1", url]).run().ok()
+        lock = json.loads((flake3 / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["url"] == url
+
+        nix.nix(["flake", "lock", flake3, "--override-input", "flake2/flake1", "flake1"]).run().ok()
+        lock = json.loads((flake3 / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["rev"] == flake1_original_commit
+
+        git(flake1, "checkout", "-b", "other")
+        _modify_flake1(flake1, git)
+        other_hash = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        git(flake1, "checkout", "main")
+
+        ref = f"flake1/other/{other_hash}"
+        nix.nix(["flake", "lock", flake3, "--override-input", "flake2/flake1", ref]).run().ok()
+        lock = json.loads((flake3 / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["rev"] == other_hash
+
+        nix.nix(["flake", "lock", flake3]).run().ok()
+        lock = json.loads((flake3 / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["rev"] == other_hash
+
+    def test_update_individual_input(self, nix: Nix, flake1: Path, flake3_medium: Path, git: Git):
+        flake1_original_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        _modify_flake1(flake1, git)
+        flake1_modified_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+
+        nix.nix(["flake", "update", "flake2/flake1", "--flake", flake3_medium]).run().ok()
+        lock = json.loads((flake3_medium / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["rev"] == flake1_original_commit
+        assert lock["nodes"]["flake1_2"]["locked"]["rev"] == flake1_modified_commit
+
+    def test_update_multiple_inputs(self, nix: Nix, flake1: Path, flake3_medium: Path, git: Git):
+        _modify_flake1(flake1, git)
+        flake1_modified_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+
+        nix.nix(["flake", "update", "flake1", "flake2/flake1", "--flake", flake3_medium]).run().ok()
+        lock = json.loads((flake3_medium / "flake.lock").read_text())
+        assert lock["nodes"]["flake1"]["locked"]["rev"] == flake1_modified_commit
+        assert lock["nodes"]["flake1_2"]["locked"]["rev"] == flake1_modified_commit
 
 
 @pytest.mark.usefixtures("registry")
