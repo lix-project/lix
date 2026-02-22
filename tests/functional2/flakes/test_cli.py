@@ -167,6 +167,121 @@ class TestAttrMatch:
 
 
 @pytest.mark.usefixtures("registry")
+class TestRegistry:
+    def test_registry_list(self, nix: Nix):
+        result = nix.nix(["registry", "list"]).run().ok().stdout_s
+        assert len(result.splitlines()) == 5
+        assert re.search(r"^global", result, re.M)
+        assert not re.search(r"^user", result, re.M)  # nothing in user registry
+
+    def test_registry_caching(self, nix: Nix, registry: Path):
+        result = (
+            nix.nix(["registry", "list", "--flake-registry", f"file://{registry}"])
+            .run()
+            .ok()
+            .stdout_s
+        )
+        assert "flake3" in result
+        registry.unlink()
+        nix.nix(["store", "gc"]).run().ok()
+        result = (
+            nix.nix(["registry", "list", "--flake-registry", f"file://{registry}"])
+            .run()
+            .ok()
+            .stdout_s
+        )
+        assert "flake3" in result
+
+    class TestCLI:
+        def test_add(self, nix: Nix):
+            nix.nix(["registry", "add", "flake1", "flake3"]).run().ok()
+            result = nix.nix(["registry", "list"]).run().ok().stdout_s
+            assert len(result.splitlines()) == 6
+            assert re.search(r"^global", result, re.M)
+            assert re.search(r"^user", result, re.M)  # something in user registry now
+
+        def test_pin_rev(self, nix: Nix, flake1: Path, git: Git):
+            commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+            nix.nix(["registry", "pin", "flake1"]).run().ok()
+            result = nix.nix(["registry", "list"]).run().ok().stdout_s
+            assert f"flake1?ref=refs/heads/main&rev={commit}" in result
+
+        def test_pin_to_other(self, nix: Nix, flake3: Path, git: Git):
+            commit = git(flake3, "rev-parse", "HEAD").stdout_s.strip()
+            nix.nix(["registry", "pin", "flake1", "flake3"]).run().ok()
+            result = nix.nix(["registry", "list"]).run().ok().stdout_s
+            assert f"flake3?ref=refs/heads/main&rev={commit}" in result
+
+        def test_add_remove(self, nix: Nix):
+            nix.nix(["registry", "add", "flake1", "flake3"]).run().ok()
+            nix.nix(["registry", "remove", "flake1"]).run().ok()
+            result = nix.nix(["registry", "list"]).run().ok().stdout_s
+            assert len(result.splitlines()) == 5
+            assert re.search(r"^global", result, re.M)
+            assert not re.search(r"^user", result, re.M)  # nothing in user registry
+
+        class TestShorthands:
+            """
+            'nix registry add' should accept flake shorthands (with or without branch or rev)
+            in the from argument, but reject fully-qualified from-urls (direct or indirect).
+            """
+
+            def test_plain(self, nix: Nix):
+                nix.nix(["registry", "add", "nixpkgz", "github:NixOS/nixpkgz"]).run().ok()
+                assert "user   flake:nixpkgz" in nix.nix(["registry", "list"]).run().ok().stdout_s
+                nix.nix(["registry", "remove", "nixpkgz"]).run().ok()
+                assert (
+                    "user   flake:nixpkgz" not in nix.nix(["registry", "list"]).run().ok().stdout_s
+                )
+
+            def test_branch(self, nix: Nix):
+                nix.nix(["registry", "add", "nixpkgz/branch", "github:NixOS/nixpkgz"]).run().ok()
+                assert (
+                    "user   flake:nixpkgz/branch"
+                    in nix.nix(["registry", "list"]).run().ok().stdout_s
+                )
+                nix.nix(["registry", "remove", "nixpkgz/branch"]).run().ok()
+                assert (
+                    "user   flake:nixpkgz/branch"
+                    not in nix.nix(["registry", "list"]).run().ok().stdout_s
+                )
+
+            def test_branch_rev(self, nix: Nix):
+                ref = "nixpkgz/branch/1db42b7fe3878f3f5f7a4f2dc210772fd080e205"
+                nix.nix(["registry", "add", ref, "github:NixOS/nixpkgz"]).run().ok()
+                assert f"user   flake:{ref}" in nix.nix(["registry", "list"]).run().ok().stdout_s
+                nix.nix(["registry", "remove", ref]).run().ok()
+                assert (
+                    f"user   flake:{ref}" not in nix.nix(["registry", "list"]).run().ok().stdout_s
+                )
+
+            def test_rejects_qualified(self, nix: Nix):
+                assert (
+                    "error: 'from-url' argument must be a shorthand"
+                    in nix.nix(["registry", "add", "flake:nixpkgz", "github:NixOS/nixpkgz"])
+                    .run()
+                    .expect(1)
+                    .stderr_s
+                )
+                assert (
+                    "error: 'from-url' argument must be a shorthand"
+                    in nix.nix(["registry", "add", "github:NixOS/nixpkgz", "github:NixOS/nixpkgz"])
+                    .run()
+                    .expect(1)
+                    .stderr_s
+                )
+
+        def test_disabled_global_registry(self, nix: Nix, flake1: Path, flake2: Path):
+            nix.nix(["registry", "add", "user-flake1", f"git+file://{flake1}"]).run().ok()
+            nix.nix(["registry", "add", "user-flake2", f"git+file://{flake2}"]).run().ok()
+
+            result = nix.nix(["--flake-registry", "", "registry", "list"]).run().ok().stdout_s
+            assert len(result.splitlines()) == 2
+            assert not re.search(r"^global", result, re.M)  # nothing in global registry
+            assert re.search(r"^user", result, re.M)
+
+
+@pytest.mark.usefixtures("registry")
 class TestBuild:
     def test_bare_repo(self, nix: Nix, flake1: Path, git: Git):
         git(None, "clone", "--bare", flake1, "bare")

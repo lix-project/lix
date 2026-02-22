@@ -72,11 +72,6 @@ nix registry add --registry $registry flake3 git+file://$flake3Dir
 nix registry add --registry $registry flake4 flake3
 nix registry add --registry $registry nixpkgs flake1
 
-# Test 'nix registry list'.
-[[ $(nix registry list | wc -l) == 5 ]]
-nix registry list | grep        '^global'
-nix registry list | grepInverse '^user' # nothing in user registry
-
 json=$(nix flake metadata flake1 --json | jq .)
 hash1=$(echo "$json" | jq -r .revision)
 
@@ -185,13 +180,6 @@ nix build -o $TEST_ROOT/result $flake3Dir#"sth%20sth"
 git -C $flake3Dir add flake.lock
 
 git -C $flake3Dir commit -m 'Add lockfile'
-
-# Test whether registry caching works.
-nix registry list --flake-registry file://$registry | grepQuiet flake3
-mv $registry $registry.tmp
-nix store gc
-nix registry list --flake-registry file://$registry --refresh | grepQuiet flake3
-mv $registry.tmp $registry
 
 # Test whether flakes are registered as GC roots for offline use.
 # FIXME: use tarballs rather than git.
@@ -331,37 +319,6 @@ nix flake lock $flake3Dir
 git -C $flake3Dir add flake.nix flake.lock
 git -C $flake3Dir commit -m 'Remove packages.xyzzy'
 git -C $flake3Dir checkout master
-
-# Testing the nix CLI
-nix registry add flake1 flake3
-[[ $(nix registry list | wc -l) == 6 ]]
-nix registry pin flake1
-[[ $(nix registry list | wc -l) == 6 ]]
-nix registry pin flake1 flake3
-[[ $(nix registry list | wc -l) == 6 ]]
-nix registry remove flake1
-[[ $(nix registry list | wc -l) == 5 ]]
-
-# 'nix registry add' should accept flake shorthands (with or without branch or rev)
-# in the from argument, but reject fully-qualified from-urls (direct or indirect).
-nix registry add nixpkgz github:NixOS/nixpkgz
-nix registry remove nixpkgz
-nix registry add nixpkgz/branch github:NixOS/nixpkgz
-nix registry remove nixpkgz/branch
-nix registry add nixpkgz/branch/1db42b7fe3878f3f5f7a4f2dc210772fd080e205 github:NixOS/nixpkgz
-nix registry remove nixpkgz/branch/1db42b7fe3878f3f5f7a4f2dc210772fd080e205
-! nix registry add flake:nixpkgz github:NixOS/nixpkgz
-! nix registry add github:NixOS/nixpkgz github:NixOS/nixpkgz
-
-# Test 'nix registry list' with a disabled global registry.
-nix registry add user-flake1 git+file://$flake1Dir
-nix registry add user-flake2 git+file://$flake2Dir
-[[ $(nix --flake-registry "" registry list | wc -l) == 2 ]]
-nix --flake-registry "" registry list | grepQuietInverse '^global' # nothing in global registry
-nix --flake-registry "" registry list | grepQuiet '^user'
-nix registry remove user-flake1
-nix registry remove user-flake2
-[[ $(nix registry list | wc -l) == 5 ]]
 
 # Test 'nix flake clone'.
 rm -rf $TEST_ROOT/flake1-v2
