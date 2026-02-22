@@ -2581,8 +2581,11 @@ static void prim_add(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first argument of the addition")
-                + state.forceFloat(*args[1], noPos, "while evaluating the second argument of the addition"));
+        v = {
+            NewValueAs::floating,
+            state.forceFloat(*args[0], noPos, "while evaluating the first argument of the addition")
+                + state.forceFloat(*args[1], noPos, "while evaluating the second argument of the addition")
+        };
     else {
         auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the addition");
         auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the addition");
@@ -2601,8 +2604,11 @@ static void prim_sub(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first argument of the subtraction")
-                - state.forceFloat(*args[1], noPos, "while evaluating the second argument of the subtraction"));
+        v = {
+            NewValueAs::floating,
+            state.forceFloat(*args[0], noPos, "while evaluating the first argument of the subtraction")
+                - state.forceFloat(*args[1], noPos, "while evaluating the second argument of the subtraction")
+        };
     else {
         auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the subtraction");
         auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the subtraction");
@@ -2622,8 +2628,13 @@ static void prim_mul(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     state.forceValue(*args[1], noPos);
     if (args[0]->type() == nFloat || args[1]->type() == nFloat)
-        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first of the multiplication")
-                * state.forceFloat(*args[1], noPos, "while evaluating the second argument of the multiplication"));
+        v = {
+            NewValueAs::floating,
+            state.forceFloat(*args[0], noPos, "while evaluating the first of the multiplication")
+                * state.forceFloat(
+                    *args[1], noPos, "while evaluating the second argument of the multiplication"
+                )
+        };
     else {
         auto i1 = state.forceInt(*args[0], noPos, "while evaluating the first argument of the multiplication");
         auto i2 = state.forceInt(*args[1], noPos, "while evaluating the second argument of the multiplication");
@@ -2648,7 +2659,10 @@ static void prim_div(EvalState & state, Value * * args, Value & v)
         state.ctx.errors.make<EvalError>("division by zero").debugThrow();
 
     if (args[0]->type() == nFloat || args[1]->type() == nFloat) {
-        v.mkFloat(state.forceFloat(*args[0], noPos, "while evaluating the first operand of the division") / f2);
+        v = {
+            NewValueAs::floating,
+            state.forceFloat(*args[0], noPos, "while evaluating the first operand of the division") / f2
+        };
     } else {
         NixInt i1 = state.forceInt(*args[0], noPos, "while evaluating the first operand of the division");
         NixInt i2 = state.forceInt(*args[1], noPos, "while evaluating the second operand of the division");

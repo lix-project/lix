@@ -180,8 +180,7 @@ TEST_F(ValuePrintingTests, vExternal)
 
 TEST_F(ValuePrintingTests, vFloat)
 {
-    Value vFloat;
-    vFloat.mkFloat(2.0);
+    Value vFloat = {NewValueAs::floating, 2.0};
 
     test(vFloat, "2");
 }
@@ -332,8 +331,7 @@ TEST_F(ValuePrintingTests, ansiColorsInt)
 
 TEST_F(ValuePrintingTests, ansiColorsFloat)
 {
-    Value v;
-    v.mkFloat(1.6);
+    Value v = {NewValueAs::floating, 1.6};
 
     test(v,
          ANSI_CYAN "1.6" ANSI_NORMAL,

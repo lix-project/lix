@@ -802,11 +802,6 @@ public:
         *this = {NewValueAs::external, *e};
     }
 
-    inline void mkFloat(NixFloat n)
-    {
-        *this = {NewValueAs::floating, n};
-    }
-
     bool isList() const
     {
         return internalType() == tList;

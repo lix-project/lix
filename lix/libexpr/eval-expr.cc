@@ -530,7 +530,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
     if (firstType == nInt) {
         v.mkInt(n);
     } else if (firstType == nFloat) {
-        v.mkFloat(nf);
+        v = {NewValueAs::floating, nf};
     } else if (firstType == nPath) {
         if (!context.empty()) {
             state.ctx.errors

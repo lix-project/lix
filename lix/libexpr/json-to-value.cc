@@ -128,7 +128,7 @@ public:
 
     bool number_float(number_float_t val, const string_t & s) override
     {
-        rs->value().mkFloat(val);
+        rs->value() = {NewValueAs::floating, val};
         rs->add();
         return true;
     }
