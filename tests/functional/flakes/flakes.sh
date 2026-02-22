@@ -11,7 +11,6 @@ flake3Dir=$TEST_ROOT/flake3
 flake5Dir=$TEST_ROOT/flake5
 flake7Dir=$TEST_ROOT/flake7
 nonFlakeDir=$TEST_ROOT/nonFlake
-flakeGitBare=$TEST_ROOT/flakeGitBare
 
 for repo in $flake1Dir $flake2Dir $flake3Dir $flake7Dir $nonFlakeDir; do
     # Give one repo a non-main initial branch.
@@ -452,29 +451,13 @@ nix flake update --flake "$flake3Dir"
 [[ $(jq -c .nodes.flake2.inputs.flake1 "$flake3Dir/flake.lock") =~ '["foo"]' ]]
 [[ $(jq .nodes.foo.locked.url "$flake3Dir/flake.lock") =~ flake7 ]]
 
-# Test git+file with bare repo.
-rm -rf $flakeGitBare
-git clone --bare $flake1Dir $flakeGitBare
-nix build -o $TEST_ROOT/result git+file://$flakeGitBare
-
-# Test path flakes.
+# prepare path flakes.
 mkdir -p $flake5Dir
 writeDependentFlake $flake5Dir
 nix flake lock path://$flake5Dir
 
 # Test tarball flakes.
 tar cfz $TEST_ROOT/flake.tar.gz -C $TEST_ROOT flake5
-
-nix build -o $TEST_ROOT/result file://$TEST_ROOT/flake.tar.gz
-
-# Building with a tarball URL containing a SRI hash should also work.
-url=$(nix flake metadata --json file://$TEST_ROOT/flake.tar.gz | jq -r .url)
-[[ $url =~ sha256- ]]
-
-nix build -o $TEST_ROOT/result $url
-
-# Building with an incorrect SRI hash should fail.
-expectStderr 102 nix build -o $TEST_ROOT/result "file://$TEST_ROOT/flake.tar.gz?narHash=sha256-qQ2Zz4DNHViCUrp6gTS7EE4+RMqFQtUfWF2UNUtJKS0=" | grep 'NAR hash mismatch'
 
 # Test --override-input.
 git -C $flake3Dir reset --hard

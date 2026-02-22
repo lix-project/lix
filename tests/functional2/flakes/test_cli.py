@@ -1,6 +1,7 @@
 from pathlib import Path
 import pytest
 import re
+import tarfile
 
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
@@ -8,7 +9,7 @@ from testlib.fixtures.git import Git
 from testlib.utils import get_global_asset_pack
 from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _init_files  # noqa: PLC2701
 from testlib.environ import environ
-from .common import simple_flake
+from .common import simple_flake, dependent_flake
 
 system = environ.get("system")
 
@@ -52,6 +53,7 @@ flake3_files = {
         "default.nix": File("{ x = 123; }"),
     }
 }
+flake5_files = {"flake5": dependent_flake()}
 
 
 def _make_flake_repo(
@@ -88,6 +90,21 @@ def flake3(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
+def flake5(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
+    _init_files(flake5_files, env.dirs.test_root, request.path.parent, env)
+    return env.dirs.test_root / "flake5"
+
+
+@pytest.fixture
+def flake5_locked_tarball(env: ManagedEnv, flake5: Path, nix: Nix) -> Path:
+    nix.nix(["flake", "lock", flake5]).run().ok()
+    path = env.dirs.test_root / "flake5.tar.gz"
+    with tarfile.open(path, "w:gz") as tar:
+        tar.add(flake5, "flake5")
+    return path
+
+
+@pytest.fixture
 def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
     registry = nix.env.dirs.test_root / "registry.json"
     nix.settings.flake_registry = str(registry)
@@ -106,6 +123,47 @@ def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
     nix.nix(["registry", "add", "--registry", registry, "nixpkgs", "flake1"]).run().ok()
 
     return registry
+
+
+@pytest.mark.usefixtures("registry")
+class TestBuild:
+    def test_bare_repo(self, nix: Nix, flake1: Path, git: Git):
+        git(None, "clone", "--bare", flake1, "bare")
+        logs = nix.nix(["build", f"git+file://{nix.env.dirs.home}/bare"]).run().ok().stderr_s
+        assert re.search(r"building '.*-simple.drv'", logs)
+
+    def test_tarball(self, nix: Nix, flake5_locked_tarball: Path):
+        logs = nix.nix(["build", f"file://{flake5_locked_tarball}"]).run().ok().stderr_s
+        assert "fetching tarball input" in logs
+        assert re.search(r"building '.*-simple.drv'", logs)
+
+    def test_tarball_with_sri(self, nix: Nix, flake5_locked_tarball: Path):
+        # lockfile contains absolute references to test data, hash can't be deterministic
+        url = (
+            nix.nix(["flake", "metadata", "--json", f"file://{flake5_locked_tarball}"])
+            .run()
+            .json()["url"]
+        )
+        assert "sha256-" in url
+
+        nix.clear_store()
+
+        logs = nix.nix(["build", url]).run().ok().stderr_s
+        assert "fetching tarball input" in logs
+        assert re.search(r"building '.*-simple.drv'", logs)
+
+    def test_tarball_bad_sri(self, nix: Nix, flake5_locked_tarball: Path):
+        url = f"file://{flake5_locked_tarball}?narHash=sha256-qQ2Zz4DNHViCUrp6gTS7EE4+RMqFQtUfWF2UNUtJKS0="
+        logs = nix.nix(["build", url]).run().expect(102).stderr_s
+        assert "NAR hash mismatch" in logs
+
+
+@pytest.mark.usefixtures("registry")
+class TestLock:
+    def test_path_url(self, nix: Nix, flake5: Path):
+        logs = nix.nix(["flake", "lock", f"path://{flake5}"]).run().ok().stderr_s
+        assert "Added input 'flake1'" in logs
+        assert f"fetching path input 'path:{flake5}" in logs
 
 
 @pytest.mark.usefixtures("registry")
