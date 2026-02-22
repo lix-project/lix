@@ -93,6 +93,12 @@ def flake3(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
+def flake3_locked(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # noqa: ARG001
+    nix.nix(["flake", "lock", flake3, "--commit-lock-file"]).run().ok()
+    return flake3
+
+
+@pytest.fixture
 def flake3_medium(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # noqa: ARG001
     (flake3 / "flake.nix").write_text(f"""{{
       inputs = {{
@@ -463,6 +469,27 @@ class TestBuild:
         url = f"file://{flake5_locked_tarball}?narHash=sha256-qQ2Zz4DNHViCUrp6gTS7EE4+RMqFQtUfWF2UNUtJKS0="
         logs = nix.nix(["build", url]).run().expect(102).stderr_s
         assert "NAR hash mismatch" in logs
+
+    class TestIncompleteLockfile:
+        @pytest.fixture(autouse=True)
+        def update_flake(self, nix: Nix, flake3: Path, git: Git, registry: Path):  # noqa: ARG002
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            git(flake3, "add", "flake.lock")
+            (flake3 / "flake.nix").write_text(f"""{{
+                outputs = {{ self, flake1, flake2 }}: rec {{
+                  packages.{system}.xyzzy = flake2.packages.{system}.bar;
+                  packages.{system}."sth sth" = flake1.packages.{system}.foo;
+                }};
+            }}""")
+            git(flake3, "add", "flake.nix")
+            git(flake3, "commit", "-m", "Update flake.nix")
+
+        @pytest.mark.parametrize("attr", ["sth sth", "sth%20sth"])
+        def test_build(self, nix: Nix, flake3: Path, git: Git, attr: str):
+            nix.nix(["build", f"{flake3}#{attr}"]).run().ok()
+
+            # check that the lockfile was changed
+            assert git(flake3, "diff", "HEAD").stdout_s
 
 
 @pytest.mark.usefixtures("registry")

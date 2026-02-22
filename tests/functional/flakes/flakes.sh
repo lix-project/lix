@@ -85,33 +85,6 @@ nix path-info $flake1Dir/result
 nix build -o $TEST_ROOT/result $flake2Dir#bar --commit-lock-file
 nix build -o $TEST_ROOT/result $flake3Dir#xyzzy
 git -C $flake3Dir add flake.lock
-
-# Add dependency to flake3.
-rm $flake3Dir/flake.nix
-
-cat > $flake3Dir/flake.nix <<EOF
-{
-  description = "Fnord";
-
-  outputs = { self, flake1, flake2 }: rec {
-    packages.$system.xyzzy = flake2.packages.$system.bar;
-    packages.$system."sth sth" = flake1.packages.$system.foo;
-  };
-}
-EOF
-
-git -C $flake3Dir add flake.nix
-git -C $flake3Dir commit -m 'Update flake.nix'
-
-# Check whether `nix build` works with an incomplete lockfile
-nix build -o $TEST_ROOT/result $flake3Dir#"sth sth"
-nix build -o $TEST_ROOT/result $flake3Dir#"sth%20sth"
-
-# Check whether it saved the lockfile
-[[ -n $(git -C $flake3Dir diff master) ]]
-
-git -C $flake3Dir add flake.lock
-
 git -C $flake3Dir commit -m 'Add lockfile'
 
 # Add nonFlakeInputs to flake3.
@@ -173,6 +146,8 @@ nix build -o $TEST_ROOT/result $flake3Dir#sth --commit-lock-file
 
 Flake lock file updates:
 
+• Added input 'flake1':
+    'git+file://"*"/flakes/flakes/flake1?ref=refs/heads/master&rev="*"' "*"
 • Added input 'nonFlake':
     'git+file://"*"/flakes/flakes/nonFlake?ref=refs/heads/master&rev="*"' "*"
 • Added input 'nonFlakeFile':
