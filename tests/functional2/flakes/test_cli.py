@@ -5,7 +5,7 @@ from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
 from testlib.fixtures.git import Git
 from testlib.utils import get_global_asset_pack
-from testlib.fixtures.file_helper import File, FileDeclaration, _init_files  # noqa: PLC2701
+from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _init_files  # noqa: PLC2701
 from testlib.environ import environ
 from .common import simple_flake
 
@@ -97,6 +97,23 @@ def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
     nix.nix(["registry", "add", "--registry", registry, "nixpkgs", "flake1"]).run().ok()
 
     return registry
+
+
+class TestAddPath:
+    @with_files({"badFlake": {"flake.nix": File("INVALID")}})
+    def test_does_not_eval(self, nix: Nix, files: Path):
+        nix.nix(["store", "add-path", str(files / "badFlake")]).run().ok()
+
+    def test_add_flake(self, nix: Nix, flake1: Path):
+        path = nix.nix(["store", "add-path", flake1]).run().ok().stdout_s.strip()
+
+        info = nix.nix(["path-info", path]).run().ok().stdout_s
+        assert "flake1" in info
+
+        # required to the path: test, otherwise outputs are not valid
+        nix.nix(["build", flake1]).run().ok()
+        info = nix.nix(["path-info", f"path:{path}"]).run().ok().stdout_s
+        assert "simple" in info
 
 
 @pytest.mark.usefixtures("registry")

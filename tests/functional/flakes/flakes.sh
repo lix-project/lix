@@ -11,7 +11,6 @@ flake3Dir=$TEST_ROOT/flake3
 flake5Dir=$TEST_ROOT/flake5
 flake7Dir=$TEST_ROOT/flake7
 nonFlakeDir=$TEST_ROOT/nonFlake
-badFlakeDir=$TEST_ROOT/badFlake
 flakeGitBare=$TEST_ROOT/flakeGitBare
 
 for repo in $flake1Dir $flake2Dir $flake3Dir $flake7Dir $nonFlakeDir; do
@@ -526,12 +525,3 @@ nix flake update flake1 flake2/flake1 --flake "$flake3Dir"
 
 # Test 'nix flake metadata --json'.
 nix flake metadata $flake3Dir --json | jq .
-
-# Test flake in store does not evaluate.
-rm -rf $badFlakeDir
-mkdir $badFlakeDir
-echo INVALID > $badFlakeDir/flake.nix
-nix store delete $(nix store add-path $badFlakeDir)
-
-[[ $(nix path-info      $(nix store add-path $flake1Dir)) =~ flake1 ]]
-[[ $(nix path-info path:$(nix store add-path $flake1Dir)) =~ simple ]]
