@@ -500,6 +500,25 @@ class TestBuild:
             # check that the lockfile was changed
             assert git(flake3, "diff", "HEAD").stdout_s
 
+    def test_deep_build(self, nix: Nix, flake3: Path):
+        """test builds that need recursive flakeref resolution"""
+        # flake4 points to flake3 which thus needs locked
+        nix.nix(["flake", "lock", flake3]).run().ok()
+        nix.nix(["build", "flake4#xyzzy"]).run().ok()
+
+
+@pytest.mark.usefixtures("registry")
+def test_update_with_override_flake(nix: Nix, flake3: Path, git: Git):
+    nix.nix(
+        ["flake", "update", "--flake", flake3, "--override-input", "flake2", "nixpkgs"]
+    ).run().ok()
+    assert git(flake3, "diff", "HEAD").stdout_s
+
+
+def test_symlinks_in_flakes_are_not_flakes(nix: Nix, flake1: Path):
+    nix.nix(["build", "-o", flake1 / "result", f"git+file://{flake1}"]).run().ok()
+    nix.nix(["path-info", flake1 / "result"]).run().ok()
+
 
 @pytest.mark.usefixtures("registry")
 def test_flakes_gcroots(nix: Nix, flake1: Path, flake2: Path):

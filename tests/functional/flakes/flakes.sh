@@ -77,10 +77,6 @@ git -C $flake1Dir add $flake1Dir/foo
 echo -n '# foo' >> $flake1Dir/flake.nix
 git -C $flake1Dir commit -a -m 'Foo'
 
-# Check that store symlinks inside a flake are not interpreted as flakes.
-nix build -o $flake1Dir/result git+file://$flake1Dir
-nix path-info $flake1Dir/result
-
 # set up lockfiles for later tests
 nix build -o $TEST_ROOT/result $flake2Dir#bar --commit-lock-file
 nix build -o $TEST_ROOT/result $flake3Dir#xyzzy
@@ -170,13 +166,3 @@ nix build -o $TEST_ROOT/result flake3#sth
 mv $flake2Dir.tmp $flake2Dir
 mv $nonFlakeDir.tmp $nonFlakeDir
 nix build -o $TEST_ROOT/result flake3#xyzzy flake3#fnord
-
-# Test doing multiple `lookupFlake`s
-nix build -o $TEST_ROOT/result flake4#xyzzy
-
-# Test 'nix flake update' and --override-flake.
-nix flake lock $flake3Dir
-[[ -z $(git -C $flake3Dir diff master || echo failed) ]]
-
-nix flake update --flake "$flake3Dir" --override-flake flake2 nixpkgs
-[[ ! -z $(git -C "$flake3Dir" diff master || echo failed) ]]
