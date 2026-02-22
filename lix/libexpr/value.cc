@@ -82,11 +82,6 @@ void Value::mkStringMove(Str * s, const NixStringContext & context)
     copyContextToValue(*block, context);
 }
 
-void Value::mkPath(const SourcePath & path)
-{
-    *this = Value(NewValueAs::path, path);
-}
-
 #ifndef __APPLE__
 [[gnu::section(".debug_gdb_scripts"), gnu::used, gnu::aligned(1)]]
 static const char printer_script[] =

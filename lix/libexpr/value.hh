@@ -489,6 +489,18 @@ public:
         assert(str->isPath());
     }
 
+    /// Constructs a nix language value of type "path", with the value of the
+    /// C-string @ref path.
+    ///
+    /// The data from @ref path *is* copied, and this constructor performs a
+    /// dynamic (GC) allocation to do so.
+    Value(path_t, const char * path)
+    {
+        auto block = gcAllocType<String>();
+        *block = {.content = Str::gcCopy(path), .context = String::path};
+        raw = tag(tString, block);
+    }
+
     /// Constructs a nix language value of type "path", with the path
     /// @ref path.
     ///
@@ -773,15 +785,6 @@ public:
     void mkString(std::string_view s, const NixStringContext & context);
 
     void mkStringMove(Str * s, const NixStringContext & context);
-
-    void mkPath(const SourcePath & path);
-
-    inline void mkPath(const char * path)
-    {
-        auto block = gcAllocType<String>();
-        *block = {.content = Str::gcCopy(path), .context = String::path};
-        raw = tag(tString, block);
-    }
 
     inline void mkNull()
     {

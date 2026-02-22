@@ -45,8 +45,7 @@ TEST_F(ValuePrintingTests, tString)
 
 TEST_F(ValuePrintingTests, tPath)
 {
-    Value vPath;
-    vPath.mkPath("/foo");
+    Value vPath = {NewValueAs::path, "/foo"};
     test(vPath, "/foo");
 }
 
@@ -382,8 +381,7 @@ TEST_F(ValuePrintingTests, ansiColorsStringElided)
 
 TEST_F(ValuePrintingTests, ansiColorsPath)
 {
-    Value v;
-    v.mkPath(CanonPath("puppy"));
+    Value v = {NewValueAs::path, CanonPath("puppy")};
 
     test(v,
          ANSI_GREEN "/puppy" ANSI_NORMAL,

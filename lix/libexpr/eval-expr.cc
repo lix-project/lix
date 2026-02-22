@@ -539,7 +539,7 @@ void ExprConcatStrings::eval(EvalState & state, Env & env, Value & v)
                 .withFrame(env, *this)
                 .debugThrow();
         }
-        v.mkPath(CanonPath(canonPath(str())));
+        v = {NewValueAs::path, CanonPath(canonPath(str()))};
     } else {
         v.mkStringMove(gcStr(), context);
     }

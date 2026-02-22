@@ -61,8 +61,7 @@ namespace nix {
     // C++ exception with description "error: operation 'addToStoreFromDump' is
     // not supported by store 'dummy'" thrown in the test body.
     TEST_F(JSONValueTest, DISABLED_Path) {
-        Value v;
-        v.mkPath("test");
+        Value v = {NewValueAs::path, "test"};
         ASSERT_EQ(getJSONValue(v), "\"/nix/store/g1w7hy3qg1w7hy3qg1w7hy3qg1w7hy3q-x\"");
     }
 } /* namespace nix */

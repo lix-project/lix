@@ -1381,7 +1381,7 @@ static void prim_dirOf(EvalState & state, Value * * args, Value & v)
     state.forceValue(*args[0], noPos);
     if (args[0]->type() == nPath) {
         auto path = args[0]->path();
-        v.mkPath(path.canonical().isRoot() ? path : path.parent());
+        v = {NewValueAs::path, path.canonical().isRoot() ? path : path.parent()};
     } else {
         NixStringContext context;
         auto path = state.coerceToString(noPos, *args[0], context,
@@ -1479,9 +1479,12 @@ static void prim_findFile(EvalState & state, Value * * args, Value & v)
 
     auto path = state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.findFile");
 
-    v.mkPath(state.ctx.paths.checkSourcePath(
-        state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, noPos)).unwrap()
-    ));
+    v = {
+        NewValueAs::path,
+        state.ctx.paths.checkSourcePath(
+            state.aio.blockOn(state.ctx.paths.findFile(searchPath, path, noPos)).unwrap()
+        )
+    };
 }
 
 /* Return the cryptographic hash of a file in base-16. */
@@ -1536,8 +1539,7 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
             // Some filesystems or operating systems may not be able to return
             // detailed node info quickly in this case we produce a thunk to
             // query the file type lazily.
-            Value epath;
-            epath.mkPath(path + name);
+            Value epath = {NewValueAs::path, path + name};
             if (!readFileType)
                 readFileType = &state.ctx.builtins.get("readFileType");
             attr = {NewValueAs::app, state.ctx.mem, *readFileType, epath};
