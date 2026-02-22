@@ -3,6 +3,7 @@ import pytest
 import re
 import tarfile
 import json
+import shutil
 
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
@@ -462,6 +463,29 @@ class TestBuild:
         url = f"file://{flake5_locked_tarball}?narHash=sha256-qQ2Zz4DNHViCUrp6gTS7EE4+RMqFQtUfWF2UNUtJKS0="
         logs = nix.nix(["build", url]).run().expect(102).stderr_s
         assert "NAR hash mismatch" in logs
+
+
+@pytest.mark.usefixtures("registry")
+def test_flakes_gcroots(nix: Nix, flake1: Path, flake2: Path):
+    """
+    Test whether flakes are registered as GC roots for offline use.
+    FIXME(ancient): use tarballs rather than git.
+    """
+
+    nix.env["_NIX_FORCE_HTTP"] = "1"
+    shutil.rmtree(nix.env.dirs.home / ".cache")
+    nix.clear_store()  # absolutely make sure the store is empty first
+
+    nix.nix(["flake", "lock", flake2, "--commit-lock-file"]).run().ok()
+    nix.nix(["build", f"git+file://{flake2}#bar"]).run().ok()
+
+    shutil.rmtree(flake1)
+    shutil.rmtree(flake2)
+
+    nix.nix(["store", "gc"]).run().ok()
+
+    nix.nix(["build", f"git+file://{flake2}#bar"]).run().ok()
+    nix.nix(["build", f"git+file://{flake2}#bar", "--refresh"]).run().ok()
 
 
 @pytest.mark.usefixtures("registry")

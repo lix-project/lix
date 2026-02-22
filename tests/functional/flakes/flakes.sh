@@ -114,19 +114,6 @@ git -C $flake3Dir add flake.lock
 
 git -C $flake3Dir commit -m 'Add lockfile'
 
-# Test whether flakes are registered as GC roots for offline use.
-# FIXME: use tarballs rather than git.
-rm -rf $TEST_HOME/.cache
-nix store gc # get rid of copies in the store to ensure they get fetched to our git cache
-_NIX_FORCE_HTTP=1 nix build -o $TEST_ROOT/result git+file://$flake2Dir#bar
-mv $flake1Dir $flake1Dir.tmp
-mv $flake2Dir $flake2Dir.tmp
-nix store gc
-_NIX_FORCE_HTTP=1 nix build -o $TEST_ROOT/result git+file://$flake2Dir#bar
-_NIX_FORCE_HTTP=1 nix build -o $TEST_ROOT/result git+file://$flake2Dir#bar --refresh
-mv $flake1Dir.tmp $flake1Dir
-mv $flake2Dir.tmp $flake2Dir
-
 # Add nonFlakeInputs to flake3.
 rm $flake3Dir/flake.nix
 
