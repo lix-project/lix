@@ -80,7 +80,7 @@ Env * ExprAttrs::buildInheritFromEnv(EvalState & state, Env & up)
 void ExprSet::eval(EvalState & state, Env & env, Value & v)
 {
     Bindings::Size capacity = attrs.size() + dynamicAttrs.size();
-    v.mkAttrs(state.ctx.buildBindings(capacity).finish());
+    v = {NewValueAs::attrs, state.ctx.buildBindings(capacity).finish()};
     auto dynamicEnv = &env;
 
     if (recursive) {
@@ -141,7 +141,7 @@ void ExprSet::eval(EvalState & state, Env & env, Value & v)
                 }
             }
             newBnds->sort();
-            v.mkAttrs(newBnds);
+            v = {NewValueAs::attrs, newBnds};
         }
     }
 
@@ -383,7 +383,7 @@ void ExprOpUpdate::eval(EvalState & state, Env & env, Value & v)
         attrs.insert(*j++);
     }
 
-    v.mkAttrs(attrs.alreadySorted());
+    v = {NewValueAs::attrs, attrs.alreadySorted()};
 
     state.ctx.stats.nrOpUpdateValuesCopied += v.attrs()->size();
 }

@@ -1016,7 +1016,7 @@ void prim_parseFlakeRef(
             [&vv](const Explicit<bool> & value) { vv.mkBool(value.t); }
         }, value);
     }
-    v.mkAttrs(binds);
+    v = {NewValueAs::attrs, binds};
 }
 
 void prim_flakeRefToString(

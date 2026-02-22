@@ -68,7 +68,7 @@ void emitTreeAttrs(
             fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S")));
     }
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 std::string fixURI(std::string uri, EvalState & state, const std::string & defaultScheme = "file")

@@ -731,7 +731,7 @@ static void prim_tryEval(EvalState & state, Value * * args, Value & v)
         attrs.alloc(state.ctx.symbols.sym_value).mkBool(false);
     attrs.alloc("success").mkBool(success);
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 /* Return an environment variable.  Use with care. */
@@ -1266,7 +1266,7 @@ drvName, Bindings * attrs, Value & v)
     for (auto & i : drv.outputs)
         mkOutputString(state, result, drvPath, i);
 
-    v.mkAttrs(result);
+    v = {NewValueAs::attrs, result};
 }
 
 /* Return a placeholder string for the specified output that will be
@@ -1548,7 +1548,7 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 /*************************************************************
@@ -1962,7 +1962,7 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
         args[0]->attrs()->begin(), args[0]->attrs()->end(),
         names.begin(), names.end(),
         std::back_inserter(attrs));
-    v.mkAttrs(attrs.alreadySorted());
+    v = {NewValueAs::attrs, attrs.alreadySorted()};
 }
 
 /* Builds a set from a list specifying (name, value) pairs.  To be
@@ -2000,7 +2000,7 @@ static void prim_listToAttrs(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 static void prim_intersectAttrs(EvalState & state, Value * * args, Value & v)
@@ -2068,7 +2068,7 @@ static void prim_intersectAttrs(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkAttrs(attrs.alreadySorted());
+    v = {NewValueAs::attrs, attrs.alreadySorted()};
 }
 
 static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
@@ -2102,7 +2102,7 @@ static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
 {
     state.forceValue(*args[0], noPos);
     if (args[0]->isPrimOpApp() || args[0]->isPrimOp()) {
-        v.mkAttrs(&Bindings::EMPTY);
+        v = {NewValueAs::attrs, &Bindings::EMPTY};
         return;
     }
     if (!args[0]->isLambda())
@@ -2110,7 +2110,7 @@ static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
 
     AttrsPattern * formals = dynamic_cast<AttrsPattern *>(args[0]->lambda().fun->pattern.get());
     if (!formals) {
-        v.mkAttrs(&Bindings::EMPTY);
+        v = {NewValueAs::attrs, &Bindings::EMPTY};
         return;
     }
 
@@ -2118,7 +2118,7 @@ static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
     for (auto & i : formals->formals)
         // !!! should optimise booleans (allocate only once)
         attrs.alloc(i.name, i.pos).mkBool(i.def != nullptr);
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 /*  */
@@ -2134,7 +2134,7 @@ static void prim_mapAttrs(EvalState & state, Value * * args, Value & v)
         attrs.alloc(i.name) = {NewValueAs::app, state.ctx.mem, *args[0], appArgs};
     }
 
-    v.mkAttrs(attrs.alreadySorted());
+    v = {NewValueAs::attrs, attrs.alreadySorted()};
 }
 
 static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
@@ -2190,7 +2190,7 @@ static void prim_zipAttrsWith(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkAttrs(attrs.alreadySorted());
+    v = {NewValueAs::attrs, attrs.alreadySorted()};
 }
 
 
@@ -2503,7 +2503,7 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
         wlist->elems[i] = elems[idx];
     }
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 static void prim_groupBy(EvalState & state, Value * * args, Value & v)
@@ -2536,7 +2536,7 @@ static void prim_groupBy(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkAttrs(attrs2.alreadySorted());
+    v = {NewValueAs::attrs, attrs2.alreadySorted()};
 }
 
 static void prim_concatMap(EvalState & state, Value * * args, Value & v)
@@ -3005,7 +3005,7 @@ static void prim_parseDrvName(EvalState & state, Value * * args, Value & v)
     auto attrs = state.ctx.buildBindings(2);
     attrs.alloc(state.ctx.symbols.sym_name).mkString(parsed.name);
     attrs.alloc("version").mkString(parsed.version);
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 static void prim_compareVersions(EvalState & state, Value * * args, Value & v)
@@ -3055,7 +3055,7 @@ Value EvalBuiltins::prepareNixPath(const SearchPath & searchPath)
         auto attrs = mem.buildBindings(symbols, 2);
         attrs.alloc("path").mkString(i.path.s);
         attrs.alloc("prefix").mkString(i.prefix.s);
-        v->elems[n++].mkAttrs(attrs);
+        v->elems[n++] = {NewValueAs::attrs, attrs};
     }
     return {NewValueAs::list, v};
 }

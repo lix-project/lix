@@ -860,7 +860,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
         auto attrs = ctx.buildBindings(3);
         attrs.alloc(ctx.symbols.sym_file).mkString(path->to_string());
         makePositionThunks(*this, p, attrs.alloc(ctx.symbols.sym_line), attrs.alloc(ctx.symbols.sym_column));
-        v.mkAttrs(attrs);
+        v = {NewValueAs::attrs, attrs};
     } else
         v.mkNull();
 }

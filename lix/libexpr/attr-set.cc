@@ -41,13 +41,4 @@ void Bindings::sort()
 {
     if (size_) std::sort(begin(), end());
 }
-
-
-Value & Value::mkAttrs(BindingsBuilder & bindings)
-{
-    mkAttrs(bindings.finish());
-    return *this;
-}
-
-
 }

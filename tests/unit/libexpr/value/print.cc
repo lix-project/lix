@@ -69,8 +69,7 @@ TEST_F(ValuePrintingTests, tAttrs)
     builder.insert(evaluator.symbols.create("one"), vOne);
     builder.insert(evaluator.symbols.create("two"), vTwo);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs, "{ one = 1; two = 2; }");
 }
@@ -206,13 +205,11 @@ TEST_F(ValuePrintingTests, depthAttrs)
     vTwo.mkInt(2);
 
     BindingsBuilder builderEmpty = evaluator.buildBindings(0);
-    Value vAttrsEmpty;
-    vAttrsEmpty.mkAttrs(builderEmpty.finish());
+    Value vAttrsEmpty = {NewValueAs::attrs, builderEmpty.finish()};
 
     BindingsBuilder builderNested = evaluator.buildBindings(1);
     builderNested.insert(evaluator.symbols.create("zero"), vZero);
-    Value vAttrsNested;
-    vAttrsNested.mkAttrs(builderNested.finish());
+    Value vAttrsNested = {NewValueAs::attrs, builderNested.finish()};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("one"), vOne);
@@ -220,16 +217,14 @@ TEST_F(ValuePrintingTests, depthAttrs)
     builder.insert(evaluator.symbols.create("empty"), vAttrsEmpty);
     builder.insert(evaluator.symbols.create("nested"), vAttrsNested);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     BindingsBuilder builder2 = evaluator.buildBindings(10);
     builder2.insert(evaluator.symbols.create("one"), vOne);
     builder2.insert(evaluator.symbols.create("two"), vTwo);
     builder2.insert(evaluator.symbols.create("nested"), vAttrs);
 
-    Value vNested;
-    vNested.mkAttrs(builder2.finish());
+    Value vNested = {NewValueAs::attrs, builder2.finish()};
 
     test(vNested, "{ nested = { ... }; one = 1; two = 2; }", PrintOptions { .maxDepth = 1 });
     test(vNested, "{ nested = { empty = { }; nested = { ... }; one = 1; two = 2; }; one = 1; two = 2; }", PrintOptions { .maxDepth = 2 });
@@ -249,16 +244,14 @@ TEST_F(ValuePrintingTests, depthList)
     builder.insert(evaluator.symbols.create("one"), vOne);
     builder.insert(evaluator.symbols.create("two"), vTwo);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     BindingsBuilder builder2 = evaluator.buildBindings(10);
     builder2.insert(evaluator.symbols.create("one"), vOne);
     builder2.insert(evaluator.symbols.create("two"), vTwo);
     builder2.insert(evaluator.symbols.create("nested"), vAttrs);
 
-    Value vNested;
-    vNested.mkAttrs(builder2.finish());
+    Value vNested = {NewValueAs::attrs, builder2.finish()};
 
     auto list = evaluator.mem.newList(5);
     list->elems[0] = vOne;
@@ -313,8 +306,7 @@ TEST_F(ValuePrintingTests, attrsTypeFirst)
     builder.insert(evaluator.symbols.create("type"), vType);
     builder.insert(evaluator.symbols.create("apple"), vApple);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          "{ type = \"puppy\"; apple = \"apple\"; }",
@@ -424,8 +416,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrs)
     builder.insert(evaluator.symbols.create("one"), vOne);
     builder.insert(evaluator.symbols.create("two"), vTwo);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          "{ one = " ANSI_CYAN "1" ANSI_NORMAL "; two = " ANSI_CYAN "2" ANSI_NORMAL "; }",
@@ -442,8 +433,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.sym_type, vDerivation);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          ANSI_GREEN "«derivation»" ANSI_NORMAL,
@@ -642,15 +632,13 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsRepeated)
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
-    Value vInner;
-    vInner.mkAttrs(innerBuilder.finish());
+    Value vInner = {NewValueAs::attrs, innerBuilder.finish()};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("a"), vInner);
     builder.insert(evaluator.symbols.create("b"), vInner);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          "{ a = { x = " ANSI_CYAN "0" ANSI_NORMAL "; }; b = " ANSI_MAGENTA "«repeated»" ANSI_NORMAL "; }",
@@ -667,8 +655,7 @@ TEST_F(ValuePrintingTests, ansiColorsListRepeated)
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
-    Value vInner;
-    vInner.mkAttrs(innerBuilder.finish());
+    Value vInner = {NewValueAs::attrs, innerBuilder.finish()};
 
     auto vList = evaluator.mem.newList(3);
     vList->elems[0] = vInner;
@@ -690,8 +677,7 @@ TEST_F(ValuePrintingTests, listRepeated)
     BindingsBuilder innerBuilder = evaluator.buildBindings(1);
     innerBuilder.insert(evaluator.symbols.create("x"), vZero);
 
-    Value vInner;
-    vInner.mkAttrs(innerBuilder.finish());
+    Value vInner = {NewValueAs::attrs, innerBuilder.finish()};
 
     auto list = evaluator.mem.newList(3);
     list->elems[0] = vInner;
@@ -719,8 +705,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     builder.insert(evaluator.symbols.create("one"), vOne);
     builder.insert(evaluator.symbols.create("two"), vTwo);
 
-    Value vAttrs;
-    vAttrs.mkAttrs(builder.finish());
+    Value vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          "{ one = " ANSI_CYAN "1" ANSI_NORMAL "; " ANSI_FAINT "«1 attribute elided»" ANSI_NORMAL " }",
@@ -733,7 +718,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrsElided)
     vThree.mkInt(3);
 
     builder.insert(evaluator.symbols.create("three"), vThree);
-    vAttrs.mkAttrs(builder.finish());
+    vAttrs = {NewValueAs::attrs, builder.finish()};
 
     test(vAttrs,
          "{ one = " ANSI_CYAN "1" ANSI_NORMAL "; " ANSI_FAINT "«2 attributes elided»" ANSI_NORMAL " }",

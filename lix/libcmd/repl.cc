@@ -1504,9 +1504,7 @@ Value NixRepl::replInitInfo()
     currentSystem.mkString(evalSettings.getCurrentSystem());
     builder.insert(evaluator.symbols.create("currentSystem"), currentSystem);
 
-    Value info;
-    info.mkAttrs(builder.finish());
-    return info;
+    return {NewValueAs::attrs, builder.finish()};
 }
 
 
@@ -1574,9 +1572,7 @@ Value NixRepl::bindingsToAttrs()
         builder.insert(symbol, env->values[displacement]);
     }
 
-    Value attrs;
-    attrs.mkAttrs(builder.finish());
-    return attrs;
+    return {NewValueAs::attrs, builder.finish()};
 }
 
 

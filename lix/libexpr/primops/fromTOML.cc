@@ -25,7 +25,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
                 self(attrs.alloc(elem.first), elem.second);
             }
 
-            v.mkAttrs(attrs);
+            v = {NewValueAs::attrs, attrs};
         } break;
         case toml::value_t::array: {
             auto array = toml::get<std::vector<toml::value>>(t);

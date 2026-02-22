@@ -186,7 +186,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & 
         attrs.alloc("_combineChannels") = Value::EMPTY_LIST;
         StringSet seen;
         getAllExprs(state.ctx, path, seen, attrs);
-        v.mkAttrs(attrs);
+        v = {NewValueAs::attrs, attrs};
     }
 
     else throw Error("path '%s' is not a directory or a Nix expression", path);

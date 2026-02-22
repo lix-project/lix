@@ -524,6 +524,7 @@ public:
     /// The bindings are not not copied; this constructor assumes @ref bindings
     /// has already been suitably allocated by something like nix::buildBindings.
     Value(attrs_t, Bindings * bindings) : raw(tag(tAttrs, bindings)) {}
+    Value(attrs_t, BindingsBuilder & bindings);
 
     /// Constructs a nix language lazy delayed computation, or "thunk".
     ///
@@ -786,13 +787,6 @@ public:
     {
         *this = {NewValueAs::null};
     }
-
-    inline void mkAttrs(Bindings * a)
-    {
-        raw = tag(tAttrs, a);
-    }
-
-    Value & mkAttrs(BindingsBuilder & bindings);
 
     void mkPrimOp(PrimOp * p);
 

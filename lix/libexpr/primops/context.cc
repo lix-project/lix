@@ -146,10 +146,10 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
             for (const auto & [i, output] : enumerate(info.second.outputs))
                 content->elems[i].mkString(output);
         }
-        attrs.alloc(state.ctx.store->printStorePath(info.first)).mkAttrs(infoAttrs);
+        attrs.alloc(state.ctx.store->printStorePath(info.first)) = {NewValueAs::attrs, infoAttrs};
     }
 
-    v.mkAttrs(attrs);
+    v = {NewValueAs::attrs, attrs};
 }
 
 

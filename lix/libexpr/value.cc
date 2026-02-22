@@ -38,6 +38,8 @@ static void copyContextToValue(Value::String & s, const NixStringContext & conte
     }
 }
 
+Value::Value(attrs_t, BindingsBuilder & bindings) : Value(NewValueAs::attrs, bindings.finish()) {}
+
 Value::Value(primop_t, PrimOp & primop) : raw(tag(tAuxiliary, &primop)) {}
 
 void Value::print(EvalState & state, std::ostream & str, PrintOptions options)

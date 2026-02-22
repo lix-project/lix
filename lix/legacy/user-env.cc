@@ -65,7 +65,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             auto outputAttrs = state.ctx.buildBindings(2);
             outputAttrs.alloc(state.ctx.symbols.sym_outPath)
                 .mkString(state.ctx.store->printStorePath(*j.second));
-            attrs.alloc(j.first).mkAttrs(outputAttrs);
+            attrs.alloc(j.first) = {NewValueAs::attrs, outputAttrs};
 
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
@@ -83,9 +83,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             meta.insert(state.ctx.symbols.create(j), *v);
         }
 
-        attrs.alloc(state.ctx.symbols.sym_meta).mkAttrs(meta);
+        attrs.alloc(state.ctx.symbols.sym_meta) = {NewValueAs::attrs, meta};
 
-        manifest->elems[n++].mkAttrs(attrs);
+        manifest->elems[n++] = {NewValueAs::attrs, attrs};
 
         if (drvPath) references.insert(*drvPath);
     }
@@ -109,8 +109,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     auto attrs = state.ctx.buildBindings(3);
     state.ctx.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
     attrs.insert(state.ctx.symbols.create("derivations"), vManifest);
-    Value args;
-    args.mkAttrs(attrs);
+    Value args = {NewValueAs::attrs, attrs};
 
     Value topLevel{NewValueAs::app, state.ctx.mem, envBuilder, args};
 
