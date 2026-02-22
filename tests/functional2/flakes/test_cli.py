@@ -577,6 +577,41 @@ class TestLock:
         assert lock["nodes"]["flake1"]["locked"]["rev"] == flake1_modified_commit
         assert lock["nodes"]["flake1_2"]["locked"]["rev"] == flake1_modified_commit
 
+    class TestFollows:
+        def test_simple_explicit(self, nix: Nix, flake3: Path):
+            (flake3 / "flake.nix").write_text("""{
+                inputs.foo = {
+                  type = "indirect";
+                  id = "flake1";
+                };
+                inputs.bar.follows = "foo";
+
+                outputs = { self, foo, bar }: {};
+            }""")
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            lock = json.loads((flake3 / "flake.lock").read_text())
+            assert lock["nodes"]["root"]["inputs"]["bar"] == ["foo"]
+
+        def test_nested_implicit(self, nix: Nix, flake3: Path):
+            (flake3 / "flake.nix").write_text("""{
+                inputs.bar.follows = "flake2/flake1";
+
+                outputs = { self, flake2, bar }: {};
+            }""")
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            lock = json.loads((flake3 / "flake.lock").read_text())
+            assert lock["nodes"]["root"]["inputs"]["bar"] == ["flake2", "flake1"]
+
+        def test_simple_implicit(self, nix: Nix, flake3: Path):
+            (flake3 / "flake.nix").write_text("""{
+                inputs.bar.follows = "flake2";
+
+                outputs = { self, flake2, bar }: {};
+            }""")
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            lock = json.loads((flake3 / "flake.lock").read_text())
+            assert lock["nodes"]["root"]["inputs"]["bar"] == ["flake2"]
+
 
 @pytest.mark.usefixtures("registry")
 class TestMetadata:

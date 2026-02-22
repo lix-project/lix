@@ -215,47 +215,6 @@ git -C $flake3Dir add flake.nix flake.lock
 git -C $flake3Dir commit -m 'Remove packages.xyzzy'
 git -C $flake3Dir checkout master
 
-# Test 'follows' inputs.
-cat > $flake3Dir/flake.nix <<EOF
-{
-  inputs.foo = {
-    type = "indirect";
-    id = "flake1";
-  };
-  inputs.bar.follows = "foo";
-
-  outputs = { self, foo, bar }: {
-  };
-}
-EOF
-
-nix flake lock $flake3Dir
-[[ $(jq -c .nodes.root.inputs.bar $flake3Dir/flake.lock) = '["foo"]' ]]
-
-cat > $flake3Dir/flake.nix <<EOF
-{
-  inputs.bar.follows = "flake2/flake1";
-
-  outputs = { self, flake2, bar }: {
-  };
-}
-EOF
-
-nix flake lock $flake3Dir
-[[ $(jq -c .nodes.root.inputs.bar $flake3Dir/flake.lock) = '["flake2","flake1"]' ]]
-
-cat > $flake3Dir/flake.nix <<EOF
-{
-  inputs.bar.follows = "flake2";
-
-  outputs = { self, flake2, bar }: {
-  };
-}
-EOF
-
-nix flake lock $flake3Dir
-[[ $(jq -c .nodes.root.inputs.bar $flake3Dir/flake.lock) = '["flake2"]' ]]
-
 # Test overriding inputs of inputs.
 writeTrivialFlake $flake7Dir
 git -C $flake7Dir add flake.nix
