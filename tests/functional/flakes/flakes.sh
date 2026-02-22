@@ -215,11 +215,6 @@ git -C $flake3Dir add flake.nix flake.lock
 git -C $flake3Dir commit -m 'Remove packages.xyzzy'
 git -C $flake3Dir checkout master
 
-# Test 'nix flake clone'.
-rm -rf $TEST_ROOT/flake1-v2
-nix flake clone flake1 --dest $TEST_ROOT/flake1-v2
-[ -e $TEST_ROOT/flake1-v2/flake.nix ]
-
 # Test 'follows' inputs.
 cat > $flake3Dir/flake.nix <<EOF
 {

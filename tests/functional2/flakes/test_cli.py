@@ -516,6 +516,13 @@ def test_flakes_gcroots(nix: Nix, flake1: Path, flake2: Path):
 
 
 @pytest.mark.usefixtures("registry")
+def test_flake_clone(nix: Nix):
+    dest = nix.env.dirs.home / "flake1-v2"
+    nix.nix(["flake", "clone", "flake1", "--dest", dest]).run().ok()
+    assert (dest / "flake.nix").exists()
+
+
+@pytest.mark.usefixtures("registry")
 class TestLock:
     def test_path_url(self, nix: Nix, flake5: Path):
         logs = nix.nix(["flake", "lock", f"path://{flake5}"]).run().ok().stderr_s
