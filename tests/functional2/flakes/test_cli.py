@@ -36,6 +36,21 @@ flake2_files = {
         }}""")
     }
 }
+flake3_files = {
+    "flake3": get_global_asset_pack(".git")
+    | {
+        "flake.nix": File(f"""{{
+          description = "Fnord";
+
+          outputs = {{ self, flake2 }}: rec {{
+            packages.{system}.xyzzy = flake2.packages.{system}.bar;
+
+            checks.xyzzy = packages.{system}.xyzzy;
+          }};
+        }}"""),
+        "default.nix": File("{ x = 123; }"),
+    }
+}
 
 
 def _make_flake_repo(
@@ -59,7 +74,12 @@ def flake2(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
-def registry(nix: Nix, flake1: Path, flake2: Path) -> Path:  # noqa: ARG001
+def flake3(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
+    return _make_flake_repo("flake3", flake3_files, git, env, request)
+
+
+@pytest.fixture
+def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
     registry = nix.env.dirs.test_root / "registry.json"
     nix.settings.flake_registry = str(registry)
 
@@ -67,8 +87,47 @@ def registry(nix: Nix, flake1: Path, flake2: Path) -> Path:  # noqa: ARG001
     nix.nix(
         ["registry", "add", "--registry", registry, "flake1", f"git+file://{flake1}"]
     ).run().ok()
+    nix.nix(
+        ["registry", "add", "--registry", registry, "flake2", f"git+file://{flake2}"]
+    ).run().ok()
+    nix.nix(
+        ["registry", "add", "--registry", registry, "flake3", f"git+file://{flake3}"]
+    ).run().ok()
+    nix.nix(["registry", "add", "--registry", registry, "flake4", "flake3"]).run().ok()
+    nix.nix(["registry", "add", "--registry", registry, "nixpkgs", "flake1"]).run().ok()
 
     return registry
+
+
+@pytest.mark.usefixtures("registry")
+class TestLegacyCLI:
+    def test_instantiate_indirect(self, nix: Nix):
+        assert (
+            nix.nix_instantiate(["--eval", "flake:flake3", "-A", "x"]).run().ok().stdout_s
+            == "123\n"
+        )
+
+    def test_instantiate_url(self, nix: Nix, flake3: Path):
+        assert (
+            nix.nix_instantiate(["--eval", f"flake:git+file://{flake3}", "-A", "x"])
+            .run()
+            .ok()
+            .stdout_s
+            == "123\n"
+        )
+
+    def test_instantiate_nix_path_option(self, nix: Nix):
+        assert (
+            nix.nix_instantiate(["-I", "flake3=flake:flake3", "--eval", "<flake3>", "-A", "x"])
+            .run()
+            .ok()
+            .stdout_s
+            == "123\n"
+        )
+
+    def test_instantiate_nix_path_env(self, nix: Nix):
+        nix.env["NIX_PATH"] = "flake3=flake:flake3"
+        assert nix.nix_instantiate(["--eval", "<flake3>", "-A", "x"]).run().ok().stdout_s == "123\n"
 
 
 class TestAlternateLockFiles:
