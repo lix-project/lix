@@ -56,6 +56,10 @@ flake3_files = {
     }
 }
 flake5_files = {"flake5": dependent_flake()}
+flake7_files = {
+    "flake7": get_global_asset_pack(".git")
+    | {"flake.nix": File("{ outputs = { self }: { expr = 123; }; }")}
+}
 nonflake_files = {"nonFlake": get_global_asset_pack(".git") | {"README.md": File("FNORD")}}
 
 
@@ -142,6 +146,11 @@ def flake5_locked_tarball(env: ManagedEnv, flake5: Path, nix: Nix) -> Path:
     with tarfile.open(path, "w:gz") as tar:
         tar.add(flake5, "flake5")
     return path
+
+
+@pytest.fixture
+def flake7(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
+    return _make_flake_repo("flake7", flake7_files, git, env, request)
 
 
 @pytest.fixture
@@ -611,6 +620,32 @@ class TestLock:
             nix.nix(["flake", "lock", flake3]).run().ok()
             lock = json.loads((flake3 / "flake.lock").read_text())
             assert lock["nodes"]["root"]["inputs"]["bar"] == ["flake2"]
+
+    class TestInputOverrides:
+        def test_simple_explicit(self, nix: Nix, flake3: Path, flake7: Path):
+            (flake3 / "flake.nix").write_text(f"""{{
+                inputs.flake2.inputs.flake1 = {{
+                  type = "git";
+                  url = "file://{flake7}";
+                }};
+
+                outputs = {{ self, flake2 }}: {{}};
+            }}""")
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            lock = json.loads((flake3 / "flake.lock").read_text())
+            assert lock["nodes"]["flake1"]["locked"]["url"] == f"file://{flake7}"
+
+        def test_simple_follows(self, nix: Nix, flake3: Path, flake7: Path):
+            (flake3 / "flake.nix").write_text(f"""{{
+                inputs.flake2.inputs.flake1.follows = "foo";
+                inputs.foo.url = "git+file://{flake7}";
+
+                outputs = {{ self, flake2 }}: {{}};
+            }}""")
+            nix.nix(["flake", "lock", flake3]).run().ok()
+            lock = json.loads((flake3 / "flake.lock").read_text())
+            assert lock["nodes"]["flake2"]["inputs"]["flake1"] == ["foo"]
+            assert lock["nodes"]["foo"]["locked"]["url"] == f"file://{flake7}"
 
 
 @pytest.mark.usefixtures("registry")
