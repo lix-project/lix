@@ -82,33 +82,14 @@ nix registry list | grepInverse '^user' # nothing in user registry
 expectStderr 1 nix eval flake1#ERROR | grepQuiet "error:.*does not provide attribute.*or 'ERROR'$"
 expectStderr 1 nix eval flake1#.ERROR | grepQuiet "error:.*does not provide attribute 'ERROR'$"
 
-# Test 'nix flake metadata'.
-nix flake metadata flake1
-nix flake metadata flake1 | grepQuiet 'Locked URL:.*flake1.*'
-
-# Test 'nix flake metadata' on a local flake.
-(cd $flake1Dir && nix flake metadata) | grepQuiet 'URL:.*flake1.*'
-(cd $flake1Dir && nix flake metadata .) | grepQuiet 'URL:.*flake1.*'
-nix flake metadata $flake1Dir | grepQuiet 'URL:.*flake1.*'
-
-# Test 'nix flake metadata --json'.
 json=$(nix flake metadata flake1 --json | jq .)
-[[ $(echo "$json" | jq -r .description) = 'Bla bla' ]]
-[[ -d $(echo "$json" | jq -r .path) ]]
-[[ $(echo "$json" | jq -r .lastModified) = $(git -C $flake1Dir log -n1 --format=%ct) ]]
 hash1=$(echo "$json" | jq -r .revision)
 
 echo foo > $flake1Dir/foo
 git -C $flake1Dir add $flake1Dir/foo
-[[ $(nix flake metadata flake1 --json --refresh | jq -r .dirtyRevision) == "$hash1-dirty" ]]
-
 echo -n '# foo' >> $flake1Dir/flake.nix
-flake1OriginalCommit=$(git -C $flake1Dir rev-parse HEAD)
 git -C $flake1Dir commit -a -m 'Foo'
-flake1NewCommit=$(git -C $flake1Dir rev-parse HEAD)
 hash2=$(nix flake metadata flake1 --json --refresh | jq -r .revision)
-[[ $(nix flake metadata flake1 --json --refresh | jq -r .dirtyRevision) == "null" ]]
-[[ $hash1 != $hash2 ]]
 
 # Test 'nix build' on a flake.
 nix build -o $TEST_ROOT/result flake1#foo
@@ -522,6 +503,3 @@ nix flake lock "$flake3Dir" --override-input flake2/flake1 flake1/master/$hash1
 nix flake update flake1 flake2/flake1 --flake "$flake3Dir"
 [[ $(jq -r .nodes.flake1.locked.rev "$flake3Dir/flake.lock") =~ $hash2 ]]
 [[ $(jq -r .nodes.flake1_2.locked.rev "$flake3Dir/flake.lock") =~ $hash2 ]]
-
-# Test 'nix flake metadata --json'.
-nix flake metadata $flake3Dir --json | jq .

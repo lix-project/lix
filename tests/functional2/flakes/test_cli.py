@@ -1,5 +1,6 @@
 from pathlib import Path
 import pytest
+import re
 
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
@@ -68,6 +69,14 @@ def flake1(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     return _make_flake_repo("flake1", flake1_files, git, env, request)
 
 
+def _modify_flake1(flake1: Path, git: Git | None):
+    (flake1 / "foo").write_text("foo")
+    (flake1 / "flake.nix").write_text((flake1 / "flake.nix").read_text() + "# foo")
+    if git is not None:
+        git(flake1, "add", "foo")
+        git(flake1, "commit", "-a", "-m", "Foo")
+
+
 @pytest.fixture
 def flake2(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     return _make_flake_repo("flake2", flake2_files, git, env, request)
@@ -97,6 +106,44 @@ def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
     nix.nix(["registry", "add", "--registry", registry, "nixpkgs", "flake1"]).run().ok()
 
     return registry
+
+
+@pytest.mark.usefixtures("registry")
+class TestMetadata:
+    def test_registry(self, nix: Nix):
+        metadata = nix.nix(["flake", "metadata", "flake1"]).run().ok().stdout_s
+        assert re.search(r"Locked URL:.*flake1.*", metadata)
+
+    @pytest.mark.parametrize("source", [[], ["."]])
+    def test_cwd(self, nix: Nix, flake1: Path, source: list[str]):
+        metadata = nix.nix(["flake", "metadata", *source], cwd=flake1).run().ok().stdout_s
+        assert re.search(r"Locked URL:.*flake1.*", metadata)
+
+    def test_absolute(self, nix: Nix, flake1: Path):
+        metadata = nix.nix(["flake", "metadata", flake1]).run().ok().stdout_s
+        assert re.search(r"Locked URL:.*flake1.*", metadata)
+
+    @pytest.mark.parametrize("source", ["flake1", None])
+    def test_json(self, nix: Nix, flake1: Path, source: str | None, git: Git):
+        flake1_original_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        metadata = nix.nix(["flake", "metadata", source or flake1, "--json"]).run().json()
+        assert metadata["description"] == "Bla bla"
+        assert Path(metadata["path"]).is_dir()
+        assert metadata["lastModified"] == 23
+        assert metadata["revision"] == flake1_original_commit
+
+    def test_json_registry_dirty(self, nix: Nix, flake1: Path, git: Git):
+        flake1_original_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        (flake1 / "foo").write_text("foo")
+        git(flake1, "add", "foo")
+        metadata = nix.nix(["flake", "metadata", "flake1", "--json"]).run().json()
+        assert metadata["dirtyRevision"] == f"{flake1_original_commit}-dirty"
+
+        _modify_flake1(flake1, git)
+        flake1_modified_commit = git(flake1, "rev-parse", "HEAD").stdout_s.strip()
+        metadata = nix.nix(["flake", "metadata", "flake1", "--json", "--refresh"]).run().json()
+        assert metadata["revision"] == flake1_modified_commit
+        assert "dirtyRevision" not in metadata
 
 
 class TestAddPath:
