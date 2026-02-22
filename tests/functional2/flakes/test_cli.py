@@ -166,6 +166,13 @@ class TestAttrMatch:
             assert "-simple.drv" in path
 
 
+def test_eval_system_takes_effect(nix: Nix, flake1: Path):
+    (flake1 / "flake.nix").write_text(
+        (flake1 / "flake.nix").read_text().replace(system, "kitty-kitty")
+    )
+    nix.nix(["build", "--eval-system", "kitty-kitty", flake1]).run().ok()
+
+
 @pytest.mark.usefixtures("registry")
 class TestRegistry:
     def test_registry_list(self, nix: Nix):
