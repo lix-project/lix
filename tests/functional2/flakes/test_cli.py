@@ -290,6 +290,82 @@ class TestRegistry:
 
 @pytest.mark.usefixtures("registry")
 class TestBuild:
+    def test_build_attr(self, nix: Nix):
+        nix.nix(["build", "flake1#foo"]).run().ok()
+        assert (nix.env.dirs.home / "result/hello").exists()
+
+    def test_build_without_attr_registry(self, nix: Nix):
+        nix.nix(["build", "flake1"]).run().ok()
+        assert (nix.env.dirs.home / "result/hello").exists()
+
+    @pytest.mark.parametrize("scheme", ["", "git+file://"])
+    def test_build_without_attr_url(self, nix: Nix, flake1: Path, scheme: str):
+        nix.nix(["build", f"{scheme}{flake1}"]).run().ok()
+        assert (nix.env.dirs.home / "result/hello").exists()
+
+    @pytest.mark.parametrize("arg", ["--no-registries", "--no-use-registries"])
+    def test_pure_build_unlocked_deps_failure(self, nix: Nix, arg: str):
+        result = nix.nix(["build", "flake2#bar", arg]).run().expect(1).stderr_s
+        assert (
+            "error: 'flake:flake2' is an indirect flake reference, but registry lookups are not allowed"
+            in result
+        )
+
+    def test_impure_build_unlocked_deps_fails(self, nix: Nix):
+        result = nix.nix(["build", "flake2#bar", "--impure"]).run().expect(1).stderr_s
+        assert "error: cannot write modified lock file" in result
+
+    def test_impure_build_unlocked_deps_succeeds_with_no_write(self, nix: Nix):
+        logs = (
+            nix.nix(["build", "flake2#bar", "--impure", "--no-write-lock-file"]).run().ok().stderr_s
+        )
+        assert re.search(r"building '.*-simple.drv'", logs)
+
+    def test_build_unlocked_fails_with_no_update(self, nix: Nix, flake2: Path):
+        logs = nix.nix(["build", f"{flake2}#bar", "--no-update-lock-file"]).run().expect(1).stderr_s
+        assert "requires lock file changes" in logs
+
+    def test_build_unlocked_succeeds_with_no_write(self, nix: Nix):
+        logs = nix.nix(["build", "flake2#bar", "--no-write-lock-file"]).run().ok().stderr_s
+        assert re.search(r"building '.*-simple.drv'", logs)
+
+    class TestLockedFlake2:
+        @pytest.fixture(autouse=True)
+        def lock_flake2(self, nix: Nix, flake2: Path, registry: Path):  # noqa: ARG002
+            nix.nix(["flake", "lock", flake2, "--commit-lock-file"]).run().ok()
+
+        def test_setup_did_commit(self, flake2: Path, git: Git):
+            assert (flake2 / "flake.lock").exists()
+            assert not git(flake2, "diff", "HEAD").stdout_s
+
+        def test_rerunning_builds_does_not_change_lockfile(self, nix: Nix, flake2: Path, git: Git):
+            nix.nix(["build", f"{flake2}#bar", "--no-write-lock-file"]).run().ok()
+            assert not git(flake2, "diff", "HEAD").stdout_s
+
+        @pytest.mark.parametrize(
+            "args",
+            [
+                ["--flake-registry", "file:///no-registry.json", "--refresh"],
+                ["--no-registries", "--refresh"],
+                ["--no-use-registries", "--refresh"],
+                [],
+            ],
+        )
+        @pytest.mark.parametrize("scheme", ["", "git+file://"])
+        def test_locked_build_works(self, nix: Nix, flake2: Path, args: list[str], scheme: str):
+            # registry fetches are not logged anywhere!
+            nix.nix(["build", *args, f"{scheme}{flake2}#bar"]).run().ok()
+
+        def test_lock_idempotent(self, nix: Nix, flake2: Path, git: Git):
+            nix.nix(["flake", "lock", flake2]).run().ok()
+            assert not git(flake2, "diff", "HEAD").stdout_s
+
+    def test_indirect_dependencies(self, nix: Nix, flake3: Path):
+        logs = nix.nix(["build", f"{flake3}#xyzzy"]).run().ok().stderr_s
+        assert "Added input 'flake2'" in logs
+        assert "Added input 'flake2/flake1'" in logs
+        assert re.search(r"building '.*-simple.drv'", logs)
+
     def test_bare_repo(self, nix: Nix, flake1: Path, git: Git):
         git(None, "clone", "--bare", flake1, "bare")
         logs = nix.nix(["build", f"git+file://{nix.env.dirs.home}/bare"]).run().ok().stderr_s

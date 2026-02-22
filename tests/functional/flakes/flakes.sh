@@ -81,17 +81,6 @@ echo -n '# foo' >> $flake1Dir/flake.nix
 git -C $flake1Dir commit -a -m 'Foo'
 hash2=$(nix flake metadata flake1 --json --refresh | jq -r .revision)
 
-# Test 'nix build' on a flake.
-nix build -o $TEST_ROOT/result flake1#foo
-[[ -e $TEST_ROOT/result/hello ]]
-
-# Test packages.default.
-nix build -o $TEST_ROOT/result flake1
-[[ -e $TEST_ROOT/result/hello ]]
-
-nix build -o $TEST_ROOT/result $flake1Dir
-nix build -o $TEST_ROOT/result git+file://$flake1Dir
-
 # Check that store symlinks inside a flake are not interpreted as flakes.
 nix build -o $flake1Dir/result git+file://$flake1Dir
 nix path-info $flake1Dir/result
@@ -105,46 +94,13 @@ nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"$flake1Dir\").packag
 nix build -o $TEST_ROOT/result --expr "(builtins.getFlake \"git+file://$flake1Dir?rev=$hash2\").packages.$system.default"
 
 # Building a flake with an unlocked dependency should fail in pure mode.
-(! nix build -o $TEST_ROOT/result flake2#bar --no-registries)
-(! nix build -o $TEST_ROOT/result flake2#bar --no-use-registries)
 (! nix eval --expr "builtins.getFlake \"$flake2Dir\"")
 
 # But should succeed in impure mode.
-(! nix build -o $TEST_ROOT/result flake2#bar --impure)
-nix build -o $TEST_ROOT/result flake2#bar --impure --no-write-lock-file
 nix eval --expr "builtins.getFlake \"$flake2Dir\"" --impure
 
-# Building a local flake with an unlocked dependency should fail with --no-update-lock-file.
-expect 1 nix build -o $TEST_ROOT/result $flake2Dir#bar --no-update-lock-file 2>&1 | grep 'requires lock file changes'
-
-# But it should succeed without that flag.
-nix build -o $TEST_ROOT/result $flake2Dir#bar --no-write-lock-file
-expect 1 nix build -o $TEST_ROOT/result $flake2Dir#bar --no-update-lock-file 2>&1 | grep 'requires lock file changes'
+# set up lockfiles for later tests
 nix build -o $TEST_ROOT/result $flake2Dir#bar --commit-lock-file
-[[ -e $flake2Dir/flake.lock ]]
-[[ -z $(git -C $flake2Dir diff main || echo failed) ]]
-
-# Rerunning the build should not change the lockfile.
-nix build -o $TEST_ROOT/result $flake2Dir#bar
-[[ -z $(git -C $flake2Dir diff main || echo failed) ]]
-
-# Building with a lockfile should not require a fetch of the registry.
-nix build -o $TEST_ROOT/result --flake-registry file:///no-registry.json $flake2Dir#bar --refresh
-nix build -o $TEST_ROOT/result --no-registries $flake2Dir#bar --refresh
-nix build -o $TEST_ROOT/result --no-use-registries $flake2Dir#bar --refresh
-
-# Updating the flake should not change the lockfile.
-nix flake lock $flake2Dir
-[[ -z $(git -C $flake2Dir diff main || echo failed) ]]
-
-# Now we should be able to build the flake in pure mode.
-nix build -o $TEST_ROOT/result flake2#bar
-
-# Or without a registry.
-nix build -o $TEST_ROOT/result --no-registries git+file://$flake2Dir#bar --refresh
-nix build -o $TEST_ROOT/result --no-use-registries git+file://$flake2Dir#bar --refresh
-
-# Test whether indirect dependencies work.
 nix build -o $TEST_ROOT/result $flake3Dir#xyzzy
 git -C $flake3Dir add flake.lock
 
