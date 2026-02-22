@@ -126,6 +126,47 @@ def registry(nix: Nix, flake1: Path, flake2: Path, flake3: Path) -> Path:
 
 
 @pytest.mark.usefixtures("registry")
+class TestAttrMatch:
+    def test_fuzzy_plain(self, nix: Nix):
+        logs = nix.nix(["eval", "flake1#ERROR"]).run().expect(1).stderr_s
+        assert re.search(r"error:.*does not provide attribute.*or 'ERROR'$", logs)
+
+    def test_exact_plain(self, nix: Nix):
+        logs = nix.nix(["eval", "flake1#.ERROR"]).run().expect(1).stderr_s
+        assert re.search(r"error:.*does not provide attribute 'ERROR'$", logs)
+
+    def test_fuzzy_branch(self, nix: Nix):
+        path = nix.nix(["eval", "flake1/main#foo"]).run().ok().stdout_s
+        assert "-simple.drv" in path
+
+    class TestRegistryBranch:
+        @pytest.fixture(autouse=True)
+        def create_other_branch(self, flake1: Path, git: Git):
+            git(flake1, "checkout", "-b", "other")
+            (flake1 / "flake.nix").write_text(
+                (flake1 / "flake.nix").read_text().replace("foo", "bar")
+            )
+            git(flake1, "commit", "-a", "-mrename foo -> bar")
+            git(flake1, "checkout", "main")
+
+        def test_fuzzy_main_branch(self, nix: Nix):
+            assert (
+                "flake 'flake:flake1/main' does not provide attribute"
+                in nix.nix(["eval", "flake1/main#bar"]).run().expect(1).stderr_s
+            )
+            path = nix.nix(["eval", "flake1/main#foo"]).run().ok().stdout_s
+            assert "-simple.drv" in path
+
+        def test_fuzzy_other_branch(self, nix: Nix):
+            assert (
+                "flake 'flake:flake1/other' does not provide attribute"
+                in nix.nix(["eval", "flake1/other#foo"]).run().expect(1).stderr_s
+            )
+            path = nix.nix(["eval", "flake1/other#bar"]).run().ok().stdout_s
+            assert "-simple.drv" in path
+
+
+@pytest.mark.usefixtures("registry")
 class TestBuild:
     def test_bare_repo(self, nix: Nix, flake1: Path, git: Git):
         git(None, "clone", "--bare", flake1, "bare")

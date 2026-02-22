@@ -77,10 +77,6 @@ nix registry add --registry $registry nixpkgs flake1
 nix registry list | grep        '^global'
 nix registry list | grepInverse '^user' # nothing in user registry
 
-# Test fuzzy and exact flake attribute syntax.
-expectStderr 1 nix eval flake1#ERROR | grepQuiet "error:.*does not provide attribute.*or 'ERROR'$"
-expectStderr 1 nix eval flake1#.ERROR | grepQuiet "error:.*does not provide attribute 'ERROR'$"
-
 json=$(nix flake metadata flake1 --json | jq .)
 hash1=$(echo "$json" | jq -r .revision)
 
@@ -335,10 +331,6 @@ nix flake lock $flake3Dir
 git -C $flake3Dir add flake.nix flake.lock
 git -C $flake3Dir commit -m 'Remove packages.xyzzy'
 git -C $flake3Dir checkout master
-
-# Test whether fuzzy-matching works for registry entries.
-(! nix build -o $TEST_ROOT/result flake4/removeXyzzy#xyzzy)
-nix build -o $TEST_ROOT/result flake4/removeXyzzy#sth
 
 # Testing the nix CLI
 nix registry add flake1 flake3
