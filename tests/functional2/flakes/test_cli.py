@@ -1,4 +1,6 @@
+from fnmatch import fnmatch
 from pathlib import Path
+from textwrap import dedent
 import pytest
 import re
 import tarfile
@@ -8,7 +10,7 @@ import shutil
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
 from testlib.fixtures.git import Git
-from testlib.utils import get_global_asset_pack
+from testlib.utils import get_global_asset_pack, get_global_asset
 from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _init_files  # noqa: PLC2701
 from testlib.environ import environ
 from .common import simple_flake, dependent_flake
@@ -154,9 +156,12 @@ def flake7(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
-def nonflake(env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
+def nonflake(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
     _init_files(nonflake_files, env.dirs.test_root, request.path.parent, env)
-    return env.dirs.test_root / "nonFlake"
+    repo = env.dirs.test_root / "nonFlake"
+    git(repo, "add", ".")
+    git(repo, "commit", "-m", "Initial")
+    return repo
 
 
 @pytest.fixture
@@ -505,6 +510,111 @@ class TestBuild:
         # flake4 points to flake3 which thus needs locked
         nix.nix(["flake", "lock", flake3]).run().ok()
         nix.nix(["build", "flake4#xyzzy"]).run().ok()
+
+
+@with_files({"config.nix": get_global_asset("config.nix")})
+@pytest.mark.usefixtures("registry")
+class TestWithNonFlake:
+    @pytest.fixture(autouse=True)
+    def add_nonflake(self, flake3: Path, nonflake: Path, git: Git, files: Path):
+        (flake3 / "flake.nix").write_text(f"""{{
+            inputs = {{
+                flake1 = {{}};
+                flake2 = {{}};
+                nonFlake = {{
+                  url = "git+file://{nonflake}";
+                  flake = false;
+                }};
+                nonFlakeFile = {{
+                  url = "path://{nonflake}/README.md";
+                  flake = false;
+                }};
+                nonFlakeFile2 = {{
+                  url = "{nonflake}/README.md";
+                  flake = false;
+                }};
+            }};
+            outputs = inputs: rec {{
+              packages.{system}.xyzzy = inputs.flake2.packages.{system}.bar;
+              packages.{system}.sth = inputs.flake1.packages.{system}.foo;
+              packages.{system}.fnord =
+                with import ./config.nix;
+                mkDerivation {{
+                  inherit system;
+                  name = "fnord";
+                  dummy = builtins.readFile (builtins.path {{ name = "source"; path = ./.; filter = path: type: baseNameOf path == "config.nix"; }} + "/config.nix");
+                  dummy2 = builtins.readFile (builtins.path {{ name = "source"; path = inputs.flake1; filter = path: type: baseNameOf path == "simple.nix"; }} + "/simple.nix");
+                  buildCommand = ''
+                    cat ${{inputs.nonFlake}}/README.md > $out
+                    [[ $(cat ${{inputs.nonFlake}}/README.md) = $(cat ${{inputs.nonFlakeFile}}) ]]
+                    [[ ${{inputs.nonFlakeFile}} = ${{inputs.nonFlakeFile2}} ]]
+                  '';
+                }};
+            }};
+        }}""")
+        (flake3 / "config.nix").write_text((files / "config.nix").read_text())
+        git(flake3, "add", "flake.nix", "config.nix")
+        git(flake3, "commit", "-m", "Add nonFlakeInputs")
+
+    def test_flake_lock_updates(self, nix: Nix, flake3: Path, git: Git):
+        nix.nix(["build", f"{flake3}#sth", "--commit-lock-file"]).run().ok()
+        msg = git(flake3, "show", "-s", "--format=format:%B").stdout_s
+        assert fnmatch(
+            msg,
+            dedent("""\
+            flake.lock: Add
+
+            Flake lock file updates:
+
+            • Added input 'flake1':
+                'git+file://*/flake1[?]ref=refs/heads/main&rev=*' *
+            • Added input 'nonFlake':
+                'git+file://*/nonFlake[?]ref=refs/heads/main&rev=*' *
+            • Added input 'nonFlakeFile':
+                'path:*/nonFlake/README.md[?]lastModified=*&narHash=sha256-W9JwWKcSn1bi98dD6XPmDM3cDkXXPK%2B9tLkPhjxAHyg%3D' *
+            • Added input 'nonFlakeFile2':
+                'path:*/nonFlake/README.md[?]lastModified=*&narHash=sha256-W9JwWKcSn1bi98dD6XPmDM3cDkXXPK%2B9tLkPhjxAHyg%3D' *"""),
+        )
+
+    def test_build_nonflake(self, nix: Nix, flake3: Path):
+        nix.nix(["build", f"{flake3}#fnord"]).run().ok()
+        assert (nix.env.dirs.home / "result").read_text() == "FNORD"
+
+    class TestFetchIsLazy:
+        """
+        Check whether flake input fetching is lazy: flake3#sth does not
+        depend on flake2, so this shouldn't fail.
+        """
+
+        @pytest.fixture(autouse=True)
+        def clear_state(
+            self,
+            nix: Nix,
+            registry: Path,  # noqa: ARG002
+            flake2: Path,  # noqa: ARG002
+            flake3_locked: Path,  # noqa: ARG002
+            nonflake: Path,  # noqa: ARG002
+        ):
+            shutil.rmtree(nix.env.dirs.home / ".cache")
+            nix.clear_store()
+
+        def test_deps_not_fetched_unless_needed(self, nix: Nix, flake2: Path, nonflake: Path):
+            shutil.rmtree(flake2)
+            shutil.rmtree(nonflake)
+
+            nix.nix(["build", "flake3#sth"]).run().ok()
+
+        def test_dep_fetches_fail_builds(self, nix: Nix, flake2: Path, nonflake: Path):
+            shutil.rmtree(flake2)
+            shutil.rmtree(nonflake)
+            result = nix.nix(["build", "flake3#xyzzy"]).run().expect(1).stderr_s
+            assert fnmatch(result, "*while fetching the input '*/flake2*'*")
+            result = nix.nix(["build", "flake3#fnord"]).run().expect(1).stderr_s
+            assert fnmatch(result, "*while fetching the input '*/nonFlake*'*")
+
+        def test_deps_fetched_when_present(self, nix: Nix):
+            nix.nix(["build", "flake3#sth"]).run().ok()
+            nix.nix(["build", "flake3#xyzzy", "flake3#fnord"]).run().ok()
 
 
 @pytest.mark.usefixtures("registry")
