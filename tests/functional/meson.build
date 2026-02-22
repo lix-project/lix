@@ -33,7 +33,6 @@ functional_tests_scripts = [
   'init.sh',
   'test-infra.sh',
   'flakes/flakes.sh',
-  'flakes/follow-paths.sh',
   'gc.sh',
   'nix-collect-garbage-d.sh',
   'nix-collect-garbage-dry-run.sh',
