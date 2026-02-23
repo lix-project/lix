@@ -833,7 +833,7 @@ struct GitInputScheme : InputScheme
                 auto rev = chomp(TRY_AWAIT(runProgram(
                     "git",
                     true,
-                    {"-C", repoDir, "rev-list", "--max-count=1", *input.getRef()}
+                    {"-C", repoDir, "--git-dir", gitDir, "rev-list", "--max-count=1", *input.getRef()}
                 )));
                 input.attrs.insert_or_assign("rev", rev);
             }
