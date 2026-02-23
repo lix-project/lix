@@ -41,6 +41,7 @@ import argparse
 import sys
 
 import pytest
+from _pytest.terminal import TerminalReporter
 from tap.formatter import format_as_diagnostics
 from tap.tracker import Tracker
 
@@ -64,9 +65,12 @@ class TAPPlugin:
         )
 
         if self._tracker.streaming and not _is_xdist_worker:
+            # replace the reporter if present to discard all xdist progress reports
             reporter = config.pluginmanager.getplugin("terminalreporter")
             if reporter:
                 config.pluginmanager.unregister(reporter)
+                reporter = TerminalReporter(config, open("/dev/null", "w"))
+                config.pluginmanager.register(reporter, "terminalreporter")
             # A common pytest pattern is to use test functions without classes.
             # The header looks really dumb for that pattern because it puts
             # out a lot of line noise since every function gets its own header.
