@@ -199,6 +199,8 @@ class ManagedEnv:
         self.path.prepend(self.shell_dir)
         self.init_defaults(global_path)
 
+        self._registered_commands = []
+
     def _get_dir(self, sub_path: str) -> Path:
         p = self._tmp_path / sub_path
         p.mkdir(parents=True, exist_ok=True)
@@ -278,4 +280,10 @@ class ManagedEnv:
 
 @pytest.fixture
 def env(tmp_path: Path) -> ManagedEnv:
-    return ManagedEnv(tmp_path)
+    env_ = ManagedEnv(tmp_path)
+    yield env_
+    for cmd in env_._registered_commands:
+        if not cmd._run:
+            e = ValueError("Command has not been run")
+            e.add_note(str(cmd))
+            raise e

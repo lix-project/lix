@@ -134,8 +134,10 @@ class Command:
     stdin: bytes | None = None
     cwd: Path = dataclasses.field(default=None)
     _logger: logging.Logger = dataclasses.field(default=logger, init=False)
+    _run: bool = dataclasses.field(default=False, init=False)
 
     def __post_init__(self):
+        self._env._registered_commands.append(self)
         if self.cwd is None:
             self.cwd = self._env.dirs.home
 
@@ -159,6 +161,7 @@ class Command:
         Starts the configured command
         :return: Handle to the running command for interaction or waiting
         """
+        self._run = True
         self._logger.debug("Running Command with args: %s", self.argv)
         proc = subprocess.Popen(
             self.argv,
@@ -170,6 +173,12 @@ class Command:
             env=self._env.to_env(),
         )
         return RunningCommand(self.argv, self.stdin, proc)
+
+    def discard(self):
+        """
+        Discards the command, suppressing the "Command not run" error, which would otherwise be raised
+        """
+        self._run = True
 
 
 @pytest.fixture

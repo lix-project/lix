@@ -110,6 +110,7 @@ _update_test_files = _get_f2_snapshot_files(
 @with_files(_update_test_files)
 def test_do_update_true_when_any_set(env: ManagedEnv, pytest_command: Command, set_env: bool):
     if not (set_env or "--accept-tests" in pytest_command.argv):
+        pytest_command.discard()
         pytest.skip("not this test case")
     if set_env:
         env.set_env("_NIX_TEST_ACCEPT", "1")
