@@ -109,7 +109,7 @@ class TAPPlugin:
         """Add a test result to the tracker."""
         is_trackable_result = (
             (report.when == "setup" and report.outcome == "skipped")
-            or (report.when == "setup" and report.outcome == "failed")
+            or (report.when in ["setup", "teardown"] and report.outcome == "failed")
             or report.when == "call"
         )
         if not is_trackable_result:
