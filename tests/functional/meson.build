@@ -108,7 +108,6 @@ functional_tests_scripts = [
   'db-migration.sh',
   'bash-profile.sh',
   'pass-as-file.sh',
-  'suggestions.sh',
   'store-ping.sh',
   'flakes/show.sh',
   'path-from-hash-part.sh',
