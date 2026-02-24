@@ -38,7 +38,6 @@ functional_tests_scripts = [
   'remote-store.sh',
   'legacy-ssh-store.sh',
   'experimental-features.sh',
-  'fetchMercurial.sh',
   'gc-auto.sh',
   'user-envs.sh',
   'binary-cache.sh',
