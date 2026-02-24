@@ -20,8 +20,7 @@ DrvInfos queryInstalled(EvalState & state, const Path & userEnv)
         throw Error("profile '%s' is incompatible with 'nix-env'; please use 'nix profile' instead", userEnv);
     auto manifestFile = userEnv + "/manifest.nix";
     if (pathExists(manifestFile)) {
-        Value v;
-        state.evalFile(CanonPath(manifestFile), v);
+        Value v = state.evalFile(CanonPath(manifestFile));
         Bindings & bindings(*state.ctx.mem.allocBindings(0));
         getDerivations(state, v, "", bindings, elems, false);
     }

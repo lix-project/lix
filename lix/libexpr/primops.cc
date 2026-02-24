@@ -225,7 +225,7 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
 
     else {
         if (!vScope)
-            state.evalFile(path, v);
+            v = state.evalFile(path);
         else {
             state.forceAttrs(*vScope, noPos, "while evaluating the first argument passed to builtins.scopedImport");
 

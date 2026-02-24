@@ -52,10 +52,9 @@ static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
                                                      nix::CanonPath::fromCwd());
         vTop = state.eval(e);
     } else {
-        state.evalFile(
+        vTop = state.evalFile(
             state.aio.blockOn(nix::lookupFileArg(state.ctx, args.releaseExpr))
-                .unwrap(),
-            vTop);
+                .unwrap());
     }
 
     nix::Value vRoot;

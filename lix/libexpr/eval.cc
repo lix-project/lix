@@ -931,19 +931,17 @@ struct CachedEvalFile
     explicit CachedEvalFile(Value result): result(result) {}
 };
 
-void EvalState::evalFile(const SourcePath & path_, Value & v)
+Value EvalState::evalFile(const SourcePath & path_)
 {
     auto path = ctx.paths.checkSourcePath(path_);
 
     if (auto i = ctx.caches.fileEval.find(path); i != ctx.caches.fileEval.end()) {
-        v = i->second->result;
-        return;
+        return i->second->result;
     }
 
     auto resolvedPath = ctx.paths.resolveExprPath(path);
     if (auto i = ctx.caches.fileEval.find(resolvedPath); i != ctx.caches.fileEval.end()) {
-        v = i->second->result;
-        return;
+        return i->second->result;
     }
 
     debug("evaluating file '%1%'", resolvedPath);
@@ -959,15 +957,19 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
 
-        v = eval(e);
+        Value v = eval(e);
+
+        auto cache = std::allocate_shared<CachedEvalFile>(TraceableAllocator<CachedEvalFile>(), v);
+        ctx.caches.fileEval[resolvedPath] = cache;
+        if (path != resolvedPath) {
+            ctx.caches.fileEval[path] = cache;
+        }
+
+        return v;
     } catch (Error & e) {
         e.addTrace(nullptr, "while evaluating the file '%1%':", resolvedPath.to_string());
         throw;
     }
-
-    auto cache = std::allocate_shared<CachedEvalFile>(TraceableAllocator<CachedEvalFile>(), v);
-    ctx.caches.fileEval[resolvedPath] = cache;
-    if (path != resolvedPath) ctx.caches.fileEval[path] = cache;
 }
 
 

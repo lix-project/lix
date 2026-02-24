@@ -455,7 +455,7 @@ Installables SourceExprCommand::parseInstallables(
             vFile = state.eval(e);
         }
         else if (file)
-            state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap(), vFile);
+            vFile = state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap());
         else {
             auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
             vFile = state.eval(e);

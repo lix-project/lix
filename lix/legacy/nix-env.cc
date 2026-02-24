@@ -172,7 +172,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & 
     auto st = path.stat();
 
     if (isNixExpr(state.ctx.paths, path, st))
-        state.evalFile(path, v);
+        v = state.evalFile(path);
 
     /* The path is a directory.  Put the Nix expressions in the
        directory in a set, with the file name of each expression as

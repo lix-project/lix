@@ -646,7 +646,7 @@ public:
     /**
      * Evaluate an expression read from the given file to normal form.
      */
-    void evalFile(const SourcePath & path, Value & v);
+    Value evalFile(const SourcePath & path);
 
     void resetFileCache();
 
