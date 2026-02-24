@@ -948,7 +948,7 @@ void callFlake(EvalState & state,
     Value vRootSrc;
     Value vRootSubdir;
 
-    vLocks.mkString(lockedFlake.lockFile.to_string());
+    vLocks = {NewValueAs::string, lockedFlake.lockFile.to_string()};
 
     emitTreeAttrs(
         state.ctx,
@@ -959,7 +959,7 @@ void callFlake(EvalState & state,
         lockedFlake.flake.forceDirty
     );
 
-    vRootSubdir.mkString(lockedFlake.flake.lockedRef.subdir);
+    vRootSubdir = {NewValueAs::string, lockedFlake.flake.lockedRef.subdir};
 
     if (!state.ctx.caches.vCallFlake) {
         state.ctx.caches.vCallFlake = allocRootValue({});
@@ -1006,7 +1006,7 @@ void prim_parseFlakeRef(
         auto & vv = binds.alloc(s);
         std::visit(
             overloaded{
-                [&vv](const std::string & value) { vv.mkString(value); },
+                [&vv](const std::string & value) { vv = {NewValueAs::string, value}; },
                 [&vv](const uint64_t & value) { vv = {NewValueAs::integer, NixInt::Inner(value)}; },
                 [&vv](const Explicit<bool> & value) { vv = {NewValueAs::boolean, value.t}; }
             },
@@ -1051,7 +1051,7 @@ void prim_flakeRefToString(
         }
     }
     auto flakeRef = FlakeRef::fromAttrs(attrs);
-    v.mkString(flakeRef.to_string());
+    v = {NewValueAs::string, flakeRef.to_string()};
 }
 
 }

@@ -1496,8 +1496,7 @@ Value NixRepl::replInitInfo()
 {
     auto builder = evaluator.buildBindings(2);
 
-    Value currentSystem;
-    currentSystem.mkString(evalSettings.getCurrentSystem());
+    Value currentSystem = {NewValueAs::string, evalSettings.getCurrentSystem()};
     builder.insert(evaluator.symbols.create("currentSystem"), currentSystem);
 
     return {NewValueAs::attrs, builder.finish()};

@@ -61,19 +61,6 @@ void Value::mkPrimOp(PrimOp * p)
     *this = {NewValueAs::primop, *p};
 }
 
-void Value::mkString(std::string_view s, const char ** context)
-{
-    auto block = gcAllocType<String>();
-    *block = {.content = Str::gcCopy(s), .context = context};
-    raw = tag(tString, block);
-}
-
-void Value::mkString(std::string_view s, const NixStringContext & context)
-{
-    mkString(s);
-    copyContextToValue(*untag<String *>(), context);
-}
-
 Value::Value(string_t, Str * s, const NixStringContext & context)
 {
     auto block = gcAllocType<String>();

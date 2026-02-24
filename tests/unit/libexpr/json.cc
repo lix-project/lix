@@ -41,15 +41,12 @@ namespace nix {
     }
 
     TEST_F(JSONValueTest, String) {
-        Value v;
-        v.mkString("test");
+        Value v = {NewValueAs::string, "test"};
         ASSERT_EQ(getJSONValue(v), "\"test\"");
     }
 
     TEST_F(JSONValueTest, StringQuotes) {
-        Value v;
-
-        v.mkString("test\"");
+        Value v = {NewValueAs::string, "test\""};
         ASSERT_EQ(getJSONValue(v), "\"test\\\"\"");
     }
 

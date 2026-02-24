@@ -11,7 +11,7 @@ void prim_unsafeDiscardStringContext(EvalState & state, Value ** args, Value & v
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardStringContext");
-    v.mkString(*s);
+    v = {NewValueAs::string, *s};
 }
 
 void prim_hasContext(EvalState & state, Value * * args, Value & v)
@@ -39,7 +39,7 @@ void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value
         }
     }
 
-    v.mkString(*s, context2);
+    v = {NewValueAs::string, *s, context2};
 }
 
 
@@ -82,7 +82,7 @@ void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v)
         }, context.begin()->raw) }),
     };
 
-    v.mkString(*s, context2);
+    v = {NewValueAs::string, *s, context2};
 }
 
 
@@ -144,7 +144,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
             auto content = state.ctx.mem.newList(info.second.outputs.size());
             outputsVal = {NewValueAs::list, content};
             for (const auto & [i, output] : enumerate(info.second.outputs))
-                content->elems[i].mkString(output);
+                content->elems[i] = {NewValueAs::string, output};
         }
         attrs.alloc(state.ctx.store->printStorePath(info.first)) = {NewValueAs::attrs, infoAttrs};
     }
@@ -232,6 +232,6 @@ void prim_appendContext(EvalState & state, Value ** args, Value & v)
         }
     }
 
-    v.mkString(orig, context);
+    v = {NewValueAs::string, orig, context};
 }
 }

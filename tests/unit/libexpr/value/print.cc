@@ -37,8 +37,7 @@ TEST_F(ValuePrintingTests, tBool)
 
 TEST_F(ValuePrintingTests, tString)
 {
-    Value vString;
-    vString.mkString("some-string");
+    Value vString = {NewValueAs::string, "some-string"};
     test(vString, "\"some-string\"");
 }
 
@@ -260,8 +259,7 @@ struct StringPrintingTests : LibExprTest
     template<class... A>
     void test(std::string_view literal, std::string_view expected, unsigned int maxLength, A... args)
     {
-        Value v;
-        v.mkString(literal);
+        Value v = {NewValueAs::string, literal};
 
         std::stringstream out;
         printValue(state, out, v, PrintOptions {
@@ -284,11 +282,9 @@ TEST_F(StringPrintingTests, maxLengthTruncation)
 // first, but only reorder the attrs when we have a maxAttrs budget.
 TEST_F(ValuePrintingTests, attrsTypeFirst)
 {
-    Value vType;
-    vType.mkString("puppy");
+    Value vType = {NewValueAs::string, "puppy"};
 
-    Value vApple;
-    vApple.mkString("apple");
+    Value vApple = {NewValueAs::string, "apple"};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.create("type"), vType);
@@ -342,8 +338,7 @@ TEST_F(ValuePrintingTests, ansiColorsBool)
 
 TEST_F(ValuePrintingTests, ansiColorsString)
 {
-    Value v;
-    v.mkString("puppy");
+    Value v = {NewValueAs::string, "puppy"};
 
     test(v,
          ANSI_MAGENTA "\"puppy\"" ANSI_NORMAL,
@@ -354,8 +349,7 @@ TEST_F(ValuePrintingTests, ansiColorsString)
 
 TEST_F(ValuePrintingTests, ansiColorsStringElided)
 {
-    Value v;
-    v.mkString("puppy");
+    Value v = {NewValueAs::string, "puppy"};
 
     test(v,
          ANSI_MAGENTA "\"pup\" " ANSI_FAINT "«2 bytes elided»" ANSI_NORMAL,
@@ -409,8 +403,7 @@ TEST_F(ValuePrintingTests, ansiColorsAttrs)
 
 TEST_F(ValuePrintingTests, ansiColorsDerivation)
 {
-    Value vDerivation;
-    vDerivation.mkString("derivation");
+    Value vDerivation = {NewValueAs::string, "derivation"};
 
     BindingsBuilder builder = evaluator.buildBindings(10);
     builder.insert(evaluator.symbols.sym_type, vDerivation);

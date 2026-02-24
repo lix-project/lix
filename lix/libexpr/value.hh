@@ -460,6 +460,17 @@ public:
     Value(string_t, const String * str) : raw(tag(tString, str)) {}
 
     /// Constructx a nix language value of type "string", with a copy of the
+    /// string data viewed by @ref copyFrom and context from contextPtr.
+    ///
+    /// The string data *is* copied from @ref copyFrom, and this constructor
+    /// performs a dynamic (GC) allocation to do so, but contextPtr is used
+    /// as-is without copying, and must have been allocated ahead of time.
+    Value(string_t, std::string_view copyFrom, char const ** contextPtr)
+        : Value(NewValueAs::string, Str::gcCopy(copyFrom), contextPtr)
+    {
+    }
+
+    /// Constructx a nix language value of type "string", with a copy of the
     /// string data viewed by @ref copyFrom.
     ///
     /// The string data *is* copied from @ref copyFrom, and this constructor
@@ -774,10 +785,6 @@ public:
      * 0, so uninitialized) internal type, return `nThunk`.
      */
     inline ValueType type(bool invalidIsThunk = false) const;
-
-    void mkString(std::string_view s, const char ** context = 0);
-
-    void mkString(std::string_view s, const NixStringContext & context);
 
     inline void mkNull()
     {

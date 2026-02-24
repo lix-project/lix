@@ -151,8 +151,7 @@ static void getAllExprs(Evaluator & state,
                 continue;
             }
             /* Load the expression on demand. */
-            Value vArg;
-            vArg.mkString(path2.canonical().abs());
+            Value vArg = {NewValueAs::string, path2.canonical().abs()};
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
             attrs.alloc(attrName
@@ -516,8 +515,7 @@ static bool keep(EvalState & state, DrvInfo & drv)
 static void setMetaFlag(EvalState & state, DrvInfo & drv,
     const std::string & name, const std::string & value)
 {
-    Value v;
-    v.mkString(value);
+    Value v = {NewValueAs::string, value};
     drv.setMeta(state, name, v);
 }
 

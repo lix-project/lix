@@ -90,12 +90,12 @@ void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
     auto attrs2 = state.ctx.buildBindings(8);
     state.ctx.paths.mkStorePathString(tree.storePath, attrs2.alloc(state.ctx.symbols.sym_outPath));
     if (input2.getRef())
-        attrs2.alloc("branch").mkString(*input2.getRef());
+        attrs2.alloc("branch") = {NewValueAs::string, *input2.getRef()};
     // Backward compatibility: set 'rev' to
     // 0000000000000000000000000000000000000000 for a dirty tree.
     auto rev2 = input2.getRev().value_or(Hash(HashType::SHA1));
-    attrs2.alloc("rev").mkString(rev2.gitRev());
-    attrs2.alloc("shortRev").mkString(rev2.gitRev().substr(0, 12));
+    attrs2.alloc("rev") = {NewValueAs::string, rev2.gitRev()};
+    attrs2.alloc("shortRev") = {NewValueAs::string, rev2.gitRev().substr(0, 12)};
     if (auto revCount = input2.getRevCount())
         attrs2.alloc("revCount") = {NewValueAs::integer, NixInt::Inner(*revCount)};
     v = {NewValueAs::attrs, attrs2};

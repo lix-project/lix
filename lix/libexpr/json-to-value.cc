@@ -135,7 +135,7 @@ public:
 
     bool string(string_t & val) override
     {
-        rs->value().mkString(val);
+        rs->value() = {NewValueAs::string, val};
         rs->add();
         return true;
     }

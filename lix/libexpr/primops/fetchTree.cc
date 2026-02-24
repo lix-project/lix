@@ -32,7 +32,7 @@ void emitTreeAttrs(
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.alloc("narHash").mkString(narHash->to_string());
+    attrs.alloc("narHash") = {NewValueAs::string, narHash->to_string()};
 
     if (input.getType() == "git")
         attrs.alloc("submodules") = {
@@ -42,13 +42,13 @@ void emitTreeAttrs(
     if (!forceDirty) {
 
         if (auto rev = input.getRev()) {
-            attrs.alloc("rev").mkString(rev->gitRev());
-            attrs.alloc("shortRev").mkString(rev->gitShortRev());
+            attrs.alloc("rev") = {NewValueAs::string, rev->gitRev()};
+            attrs.alloc("shortRev") = {NewValueAs::string, rev->gitShortRev()};
         } else if (emptyRevFallback) {
             // Backwards compat for `builtins.fetchGit`: dirty repos return an empty sha1 as rev
             auto emptyHash = Hash(HashType::SHA1);
-            attrs.alloc("rev").mkString(emptyHash.gitRev());
-            attrs.alloc("shortRev").mkString(emptyHash.gitShortRev());
+            attrs.alloc("rev") = {NewValueAs::string, emptyHash.gitRev()};
+            attrs.alloc("shortRev") = {NewValueAs::string, emptyHash.gitShortRev()};
         }
 
         if (auto revCount = input.getRevCount())
@@ -58,14 +58,17 @@ void emitTreeAttrs(
     }
 
     if (auto dirtyRev = fetchers::maybeGetStrAttr(input.attrs, "dirtyRev")) {
-        attrs.alloc("dirtyRev").mkString(*dirtyRev);
-        attrs.alloc("dirtyShortRev").mkString(*fetchers::maybeGetStrAttr(input.attrs, "dirtyShortRev"));
+        attrs.alloc("dirtyRev") = {NewValueAs::string, *dirtyRev};
+        attrs.alloc("dirtyShortRev") = {
+            NewValueAs::string, *fetchers::maybeGetStrAttr(input.attrs, "dirtyShortRev")
+        };
     }
 
     if (auto lastModified = input.getLastModified()) {
         attrs.alloc("lastModified") = {NewValueAs::integer, *lastModified};
-        attrs.alloc("lastModifiedDate").mkString(
-            fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S")));
+        attrs.alloc("lastModifiedDate") = {
+            NewValueAs::string, fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S"))
+        };
     }
 
     v = {NewValueAs::attrs, attrs};

@@ -857,7 +857,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
-        attrs.alloc(ctx.symbols.sym_file).mkString(path->to_string());
+        attrs.alloc(ctx.symbols.sym_file) = {NewValueAs::string, path->to_string()};
         makePositionThunks(*this, p, attrs.alloc(ctx.symbols.sym_line), attrs.alloc(ctx.symbols.sym_column));
         v = {NewValueAs::attrs, attrs};
     } else
@@ -867,11 +867,13 @@ void EvalState::mkPos(Value & v, PosIdx p)
 
 void EvalPaths::mkStorePathString(const StorePath & p, Value & v)
 {
-    v.mkString(
+    v = {
+        NewValueAs::string,
         store->printStorePath(p),
-        NixStringContext {
-            NixStringContextElem::Opaque { .path = p },
-        });
+        NixStringContext{
+            NixStringContextElem::Opaque{.path = p},
+        }
+    };
 }
 
 
@@ -887,7 +889,7 @@ void EvalState::mkOutputString(
     const SingleDerivedPath::Built & b,
     const StorePath & staticOutputPath)
 {
-    value.mkString(mkOutputStringRaw(staticOutputPath), NixStringContext { b });
+    value = {NewValueAs::string, mkOutputStringRaw(staticOutputPath), NixStringContext{b}};
 }
 
 
@@ -914,11 +916,13 @@ void EvalState::mkSingleDerivedPathString(
     const SingleDerivedPath & p,
     Value & v)
 {
-    v.mkString(
+    v = {
+        NewValueAs::string,
         mkSingleDerivedPathStringRaw(p),
-        NixStringContext {
+        NixStringContext{
             std::visit([](auto && v) -> NixStringContextElem { return v; }, p),
-        });
+        }
+    };
 }
 
 struct CachedEvalFile

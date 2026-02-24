@@ -46,25 +46,29 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         auto attrs = state.ctx.buildBindings(7 + outputs.size());
 
-        attrs.alloc(state.ctx.symbols.sym_type).mkString("derivation");
-        attrs.alloc(state.ctx.symbols.sym_name).mkString(i.queryName(state));
+        attrs.alloc(state.ctx.symbols.sym_type) = {NewValueAs::string, "derivation"};
+        attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, i.queryName(state)};
         auto system = i.querySystem(state);
         if (!system.empty())
-            attrs.alloc(state.ctx.symbols.sym_system).mkString(system);
-        attrs.alloc(state.ctx.symbols.sym_outPath)
-            .mkString(state.ctx.store->printStorePath(i.queryOutPath(state)));
+            attrs.alloc(state.ctx.symbols.sym_system) = {NewValueAs::string, system};
+        attrs.alloc(state.ctx.symbols.sym_outPath) = {
+            NewValueAs::string, state.ctx.store->printStorePath(i.queryOutPath(state))
+        };
         if (drvPath)
-            attrs.alloc(state.ctx.symbols.sym_drvPath).mkString(state.ctx.store->printStorePath(*drvPath));
+            attrs.alloc(state.ctx.symbols.sym_drvPath) = {
+                NewValueAs::string, state.ctx.store->printStorePath(*drvPath)
+            };
 
         // Copy each output meant for installation.
         auto & vOutputs = attrs.alloc(state.ctx.symbols.sym_outputs);
         auto outputsList = state.ctx.mem.newList(outputs.size());
         vOutputs = {NewValueAs::list, outputsList};
         for (const auto & [m, j] : enumerate(outputs)) {
-            outputsList->elems[m].mkString(j.first);
+            outputsList->elems[m] = {NewValueAs::string, j.first};
             auto outputAttrs = state.ctx.buildBindings(2);
-            outputAttrs.alloc(state.ctx.symbols.sym_outPath)
-                .mkString(state.ctx.store->printStorePath(*j.second));
+            outputAttrs.alloc(state.ctx.symbols.sym_outPath) = {
+                NewValueAs::string, state.ctx.store->printStorePath(*j.second)
+            };
             attrs.alloc(j.first) = {NewValueAs::attrs, outputAttrs};
 
             /* This is only necessary when installing store paths, e.g.,

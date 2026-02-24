@@ -365,8 +365,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
         , CanonPath::root
     ));
 
-    Value vDump;
-    vDump.mkString(toplevel.dumpCli());
+    Value vDump = {NewValueAs::string, toplevel.dumpCli()};
 
     Value vRes = state->callFunction(vGenerateManpage, evaluator.builtins.get("false"), noPos);
     vRes = state->callFunction(vRes, vDump, noPos);

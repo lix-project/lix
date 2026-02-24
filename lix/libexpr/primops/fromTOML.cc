@@ -47,7 +47,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             v = {NewValueAs::floating, toml::get<NixFloat>(t)};
             break;
         case toml::value_t::string:
-            v.mkString(toml::get<std::string>(t));
+            v = {NewValueAs::string, toml::get<std::string>(t)};
             break;
         case toml::value_t::local_datetime:
         case toml::value_t::offset_datetime:

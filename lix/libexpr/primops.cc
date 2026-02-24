@@ -180,21 +180,21 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
     if (auto storePath = isValidDerivationInStore()) {
         Derivation drv = state.aio.blockOn(state.ctx.store->readDerivation(*storePath));
         auto attrs = state.ctx.buildBindings(3 + drv.outputs.size());
-        attrs.alloc(state.ctx.symbols.sym_drvPath)
-            .mkString(
-                path2,
-                {
-                    NixStringContextElem::DrvDeep{.drvPath = *storePath},
-                }
-            );
-        attrs.alloc(state.ctx.symbols.sym_name).mkString(drv.env["name"]);
+        attrs.alloc(state.ctx.symbols.sym_drvPath) = {
+            NewValueAs::string,
+            path2,
+            {
+                NixStringContextElem::DrvDeep{.drvPath = *storePath},
+            }
+        };
+        attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, drv.env["name"]};
         auto & outputsVal = attrs.alloc(state.ctx.symbols.sym_outputs);
         auto outputsList = state.ctx.mem.newList(drv.outputs.size());
         outputsVal = {NewValueAs::list, outputsList};
 
         for (const auto & [i, o] : enumerate(drv.outputs)) {
             mkOutputString(state, attrs, *storePath, o);
-            outputsList->elems[i].mkString(o.first);
+            outputsList->elems[i] = {NewValueAs::string, o.first};
         }
 
         Value w{NewValueAs::attrs, attrs.finish()};
@@ -372,7 +372,7 @@ static void prim_typeOf(EvalState & state, Value * * args, Value & v)
         case nFloat: t = "float"; break;
         case nThunk: abort();
     }
-    v.mkString(t);
+    v = {NewValueAs::string, t};
 }
 
 /* Determine whether the argument is the null value. */
@@ -735,7 +735,10 @@ static void prim_tryEval(EvalState & state, Value * * args, Value & v)
 static void prim_getEnv(EvalState & state, Value * * args, Value & v)
 {
     std::string name(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.getEnv"));
-    v.mkString(evalSettings.restrictEval || evalSettings.pureEval ? "" : getEnv(name).value_or(""));
+    v = {
+        NewValueAs::string,
+        evalSettings.restrictEval || evalSettings.pureEval ? "" : getEnv(name).value_or("")
+    };
 }
 
 /* Evaluate the first argument, then return the second argument. */
@@ -1253,13 +1256,13 @@ drvName, Bindings * attrs, Value & v)
     }
 
     auto result = state.ctx.buildBindings(1 + drv.outputs.size());
-    result.alloc(state.ctx.symbols.sym_drvPath)
-        .mkString(
-            drvPathS,
-            {
-                NixStringContextElem::DrvDeep{.drvPath = drvPath},
-            }
-        );
+    result.alloc(state.ctx.symbols.sym_drvPath) = {
+        NewValueAs::string,
+        drvPathS,
+        {
+            NixStringContextElem::DrvDeep{.drvPath = drvPath},
+        }
+    };
     for (auto & i : drv.outputs)
         mkOutputString(state, result, drvPath, i);
 
@@ -1275,7 +1278,12 @@ drvName, Bindings * attrs, Value & v)
    ‘out’. */
 static void prim_placeholder(EvalState & state, Value * * args, Value & v)
 {
-    v.mkString(hashPlaceholder(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.placeholder")));
+    v = {
+        NewValueAs::string,
+        hashPlaceholder(state.forceStringNoCtx(
+            *args[0], noPos, "while evaluating the first argument passed to builtins.placeholder"
+        ))
+    };
 }
 
 
@@ -1289,7 +1297,7 @@ static void prim_toPath(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
     auto path = state.coerceToPath(noPos, *args[0], context, "while evaluating the first argument passed to builtins.toPath");
-    v.mkString(path.to_string(), context);
+    v = {NewValueAs::string, path.to_string(), context};
 }
 
 /* Allow a valid store path to be used in an expression.  This is
@@ -1322,7 +1330,7 @@ static void prim_storePath(EvalState & state, Value * * args, Value & v)
     if (!settings.readOnlyMode)
         state.aio.blockOn(state.ctx.store->ensurePath(path2));
     context.insert(NixStringContextElem::Opaque { .path = path2 });
-    v.mkString(path.abs(), context);
+    v = {NewValueAs::string, path.abs(), context};
 }
 
 static void prim_pathExists(EvalState & state, Value * * args, Value & v)
@@ -1365,9 +1373,18 @@ static void prim_pathExists(EvalState & state, Value * * args, Value & v)
 static void prim_baseNameOf(EvalState & state, Value * * args, Value & v)
 {
     NixStringContext context;
-    v.mkString(baseNameOf(*state.coerceToString(noPos, *args[0], context,
+    v = {
+        NewValueAs::string,
+        baseNameOf(*state.coerceToString(
+            noPos,
+            *args[0],
+            context,
             "while evaluating the first argument passed to builtins.baseNameOf",
-            StringCoercionMode::Strict, false)), context);
+            StringCoercionMode::Strict,
+            false
+        )),
+        context
+    };
 }
 
 /* Return the directory of the given path, i.e., everything before the
@@ -1385,7 +1402,7 @@ static void prim_dirOf(EvalState & state, Value * * args, Value & v)
             "while evaluating the first argument passed to 'builtins.dirOf'",
             StringCoercionMode::Strict, false);
         auto dir = dirOf(*path);
-        v.mkString(dir, context);
+        v = {NewValueAs::string, dir, context};
     }
 }
 
@@ -1415,7 +1432,7 @@ static void prim_readFile(EvalState & state, Value * * args, Value & v)
             .path = std::move((StorePath &&)p),
         });
     }
-    v.mkString(s, context);
+    v = {NewValueAs::string, s, context};
 }
 
 /* Find a file in the Nix search path. Used to implement <x> paths,
@@ -1494,7 +1511,7 @@ static void prim_hashFile(EvalState & state, Value * * args, Value & v)
 
     auto path = realisePath(state, *args[1]);
 
-    v.mkString(hashString(*ht, path.readFile()).to_string(HashFormat::Base16, false));
+    v = {NewValueAs::string, hashString(*ht, path.readFile()).to_string(HashFormat::Base16, false)};
 }
 
 static std::string_view fileTypeToString(InputAccessor::Type type)
@@ -1510,7 +1527,7 @@ static void prim_readFileType(EvalState & state, Value * * args, Value & v)
 {
     auto path = realisePath(state, *args[0]);
     /* Retrieve the directory entry type and stringize it. */
-    v.mkString(fileTypeToString(path.lstat().type));
+    v = {NewValueAs::string, fileTypeToString(path.lstat().type)};
 }
 
 /* Read a directory (without . or ..) */
@@ -1543,7 +1560,7 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
         } else {
             // This branch of the conditional is much more likely.
             // Here we just stringize the directory entry type.
-            attr.mkString(fileTypeToString(*type));
+            attr = {NewValueAs::string, fileTypeToString(*type)};
         }
     }
 
@@ -1563,7 +1580,7 @@ static void prim_toXML(EvalState & state, Value * * args, Value & v)
     std::ostringstream out;
     NixStringContext context;
     printValueAsXML(state, true, false, *args[0], out, context, noPos);
-    v.mkString(out.str(), context);
+    v = {NewValueAs::string, out.str(), context};
 }
 
 /* Convert the argument (which can be any Nix expression) to a JSON
@@ -1574,7 +1591,7 @@ static void prim_toJSON(EvalState & state, Value * * args, Value & v)
     std::ostringstream out;
     NixStringContext context;
     printValueAsJSON(state, true, *args[0], noPos, out, context);
-    v.mkString(out.str(), context);
+    v = {NewValueAs::string, out.str(), context};
 }
 
 /* Parse a JSON string to a value. */
@@ -1666,16 +1683,16 @@ static void addPath(
                the second is a string indicating the type of the file. */
             Value arg1;
             if (isInDir(p, realPath))
-                arg1.mkString(path + "/" + std::string(p, realPath.size() + 1));
+                arg1 = {NewValueAs::string, path + "/" + std::string(p, realPath.size() + 1)};
             else
-                arg1.mkString(p);
+                arg1 = {NewValueAs::string, p};
 
-            Value arg2;
-            arg2.mkString(
-                S_ISREG(st.st_mode) ? "regular" :
-                S_ISDIR(st.st_mode) ? "directory" :
-                S_ISLNK(st.st_mode) ? "symlink" :
-                "unknown" /* not supported, will fail! */);
+            Value arg2 =
+                {NewValueAs::string,
+                 S_ISREG(st.st_mode)       ? "regular"
+                     : S_ISDIR(st.st_mode) ? "directory"
+                     : S_ISLNK(st.st_mode) ? "symlink"
+                                           : "unknown" /* not supported, will fail! */};
 
             Value args[]{arg1, arg2};
             Value res = state.callFunction(*filterFun, args, noPos);
@@ -2714,7 +2731,7 @@ static void prim_toString(EvalState & state, Value * * args, Value & v)
     auto s = state.coerceToString(noPos, *args[0], context,
             "while evaluating the first argument passed to builtins.toString",
             StringCoercionMode::ToString, false);
-    v.mkString(*s, context);
+    v = {NewValueAs::string, *s, context};
 }
 
 /* `substring start len str' returns the substring of `str' starting
@@ -2743,7 +2760,7 @@ static void prim_substring(EvalState & state, Value * * args, Value & v)
     if (len_arg == 0) {
         state.forceValue(*args[2], noPos);
         if (args[2]->type() == nString) {
-            v.mkString("", args[2]->string().context);
+            v = Value{NewValueAs::string, "", args[2]->string().context};
             return;
         }
     }
@@ -2763,7 +2780,7 @@ static void prim_substring(EvalState & state, Value * * args, Value & v)
     auto len = len_arg >= 0 ? std::min(static_cast<NixUInt>(s->size()), NixUInt(len_arg))
                             : std::numeric_limits<std::string::size_type>::max();
 
-    v.mkString(NixUInt(start) >= s->size() ? "" : s->substr(start, len), context);
+    v = {NewValueAs::string, NixUInt(start) >= s->size() ? "" : s->substr(start, len), context};
 }
 
 static void prim_stringLength(EvalState & state, Value * * args, Value & v)
@@ -2784,7 +2801,7 @@ static void prim_hashString(EvalState & state, Value * * args, Value & v)
     NixStringContext context; // discarded
     auto s = state.forceString(*args[1], context, noPos, "while evaluating the second argument passed to builtins.hashString");
 
-    v.mkString(hashString(*ht, s).to_string(HashFormat::Base16, false));
+    v = {NewValueAs::string, hashString(*ht, s).to_string(HashFormat::Base16, false)};
 }
 
 struct RegexCache
@@ -2836,7 +2853,7 @@ void prim_match(EvalState & state, Value * * args, Value & v)
             if (!match[i+1].matched)
                 result->elems[i].mkNull();
             else
-                result->elems[i].mkString(match[i + 1].str());
+                result->elems[i] = {NewValueAs::string, match[i + 1].str()};
         }
 
     } catch (regex::Error & e) {
@@ -2876,7 +2893,7 @@ void prim_split(EvalState & state, Value * * args, Value & v)
             auto match = *i;
 
             // Add a string for non-matched characters.
-            result->elems[idx++].mkString(match.prefix().str());
+            result->elems[idx++] = {NewValueAs::string, match.prefix().str()};
 
             // Add a list for matched substrings.
             const size_t slen = match.size() - 1;
@@ -2889,12 +2906,12 @@ void prim_split(EvalState & state, Value * * args, Value & v)
                 if (!match[si + 1].matched)
                     content->elems[si].mkNull();
                 else
-                    content->elems[si].mkString(match[si + 1].str());
+                    content->elems[si] = {NewValueAs::string, match[si + 1].str()};
             }
 
             // Add a string for non-matched suffix characters.
             if (idx == 2 * len) {
-                result->elems[idx++].mkString(match.suffix().str());
+                result->elems[idx++] = {NewValueAs::string, match.suffix().str()};
             }
         }
 
@@ -2927,7 +2944,7 @@ static void prim_concatStringsSep(EvalState & state, Value * * args, Value & v)
         );
     }
 
-    v.mkString(res, context);
+    v = {NewValueAs::string, res, context};
 }
 
 static void prim_replaceStrings(EvalState & state, Value * * args, Value & v)
@@ -2997,7 +3014,7 @@ static void prim_replaceStrings(EvalState & state, Value * * args, Value & v)
         }
     }
 
-    v.mkString(res, context);
+    v = {NewValueAs::string, res, context};
 }
 
 
@@ -3011,8 +3028,8 @@ static void prim_parseDrvName(EvalState & state, Value * * args, Value & v)
     auto name = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.parseDrvName");
     DrvName parsed(name);
     auto attrs = state.ctx.buildBindings(2);
-    attrs.alloc(state.ctx.symbols.sym_name).mkString(parsed.name);
-    attrs.alloc("version").mkString(parsed.version);
+    attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, parsed.name};
+    attrs.alloc("version") = {NewValueAs::string, parsed.version};
     v = {NewValueAs::attrs, attrs};
 }
 
@@ -3038,7 +3055,7 @@ static void prim_splitVersion(EvalState & state, Value * * args, Value & v)
     auto result = state.ctx.mem.newList(components.size());
     v = {NewValueAs::list, result};
     for (const auto & [n, component] : enumerate(components))
-        result->elems[n].mkString(std::move(component));
+        result->elems[n] = {NewValueAs::string, component};
 }
 
 
@@ -3061,8 +3078,8 @@ Value EvalBuiltins::prepareNixPath(const SearchPath & searchPath)
     int n = 0;
     for (auto & i : searchPath.elements) {
         auto attrs = mem.buildBindings(symbols, 2);
-        attrs.alloc("path").mkString(i.path.s);
-        attrs.alloc("prefix").mkString(i.prefix.s);
+        attrs.alloc("path") = {NewValueAs::string, i.path.s};
+        attrs.alloc("prefix") = {NewValueAs::string, i.prefix.s};
         v->elems[n++] = {NewValueAs::attrs, attrs};
     }
     return {NewValueAs::list, v};

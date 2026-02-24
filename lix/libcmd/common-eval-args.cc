@@ -189,7 +189,7 @@ Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
                 state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()), v
             );
         else
-            v.mkString(((std::string_view) i.second).substr(1));
+            v = {NewValueAs::string, ((std::string_view) i.second).substr(1)};
         res.insert(state.symbols.create(i.first), v);
     }
     return res.finish();
