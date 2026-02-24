@@ -2,6 +2,7 @@
 
 #include <ostream>
 
+#include "libexpr/gc-alloc.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/print.hh"
 
@@ -27,15 +28,18 @@ static_assert(alignof(Value::PrimOp) >= Value::Acb::TAG_ALIGN);
 static_assert(alignof(Value::Int) >= Value::Acb::TAG_ALIGN);
 static_assert(alignof(Value::Lambda) >= Value::Acb::TAG_ALIGN);
 
-static void copyContextToValue(Value::String & s, const NixStringContext & context)
+static char const ** copyContext(const NixStringContext & context)
 {
-    if (!context.empty()) {
-        size_t n = 0;
-        s.context = gcAllocType<char const *>(context.size() + 1);
-        for (auto & i : context)
-            s.context[n++] = gcCopyStringIfNeeded(i.to_string());
-        s.context[n] = 0;
+    if (context.empty()) {
+        return nullptr;
     }
+    auto contextPtr = gcAllocType<char const *>(context.size() + 1);
+    size_t n = 0;
+    for (auto & i : context) {
+        contextPtr[n++] = gcCopyStringIfNeeded(i.to_string());
+    }
+    contextPtr[n] = nullptr;
+    return contextPtr;
 }
 
 Value::Value(attrs_t, BindingsBuilder & bindings) : Value(NewValueAs::attrs, bindings.finish()) {}
@@ -62,11 +66,13 @@ void Value::mkPrimOp(PrimOp * p)
 }
 
 Value::Value(string_t, Str * s, const NixStringContext & context)
+    : Value(NewValueAs::string, s, copyContext(context))
 {
-    auto block = gcAllocType<String>();
-    *block = {.content = s, .context = nullptr};
-    raw = tag(tString, block);
-    copyContextToValue(*block, context);
+}
+
+Value::Value(string_t, std::string_view s, const NixStringContext & context)
+    : Value(NewValueAs::string, s, copyContext(context))
+{
 }
 
 #ifndef __APPLE__

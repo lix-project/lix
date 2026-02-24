@@ -475,29 +475,7 @@ public:
     ///
     /// The string data *is* copied from @ref copyFrom, and this constructor
     /// performs a dynamic (GC) allocation to do so.
-    Value(string_t, std::string_view copyFrom, NixStringContext const & context = {})
-    {
-        auto block = gcAllocType<String>();
-        *block = {.content = Str::gcCopy(copyFrom), .context = nullptr};
-        raw = tag(tString, block);
-
-        if (context.empty()) {
-            // It stays nullptr.
-            return;
-        }
-
-        // Copy the context.
-        block->context = gcAllocType<char const *>(context.size() + 1);
-
-        size_t n = 0;
-        for (NixStringContextElem const & contextElem : context) {
-            block->context[n] = gcCopyStringIfNeeded(contextElem.to_string());
-            n += 1;
-        }
-
-        // Terminator sentinel.
-        block->context[n] = nullptr;
-    }
+    Value(string_t, std::string_view copyFrom, NixStringContext const & context = {});
 
     /// Constructs a nix language value of type "path", with the value of the
     /// C-string pointed to by @ref strPtr.
