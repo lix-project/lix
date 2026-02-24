@@ -219,8 +219,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
                 state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap()
             ));
 
-            Value root;
-            state.eval(e, root);
+            Value root = state.eval(e);
 
             auto autoArgs = getAutoArgs(*evaluator);
 
@@ -453,13 +452,13 @@ Installables SourceExprCommand::parseInstallables(
 
         if (file == "-") {
             auto & e = evaluator->parseStdin();
-            state.eval(e, vFile);
+            vFile = state.eval(e);
         }
         else if (file)
             state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap(), vFile);
         else {
             auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
-            state.eval(e, vFile);
+            vFile = state.eval(e);
         }
 
         for (auto & s : ss) {

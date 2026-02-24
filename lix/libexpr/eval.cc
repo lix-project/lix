@@ -955,7 +955,7 @@ void EvalState::evalFile(const SourcePath & path_, Value & v)
                 "while evaluating the file '%1%':", resolvedPath.to_string())
             : nullptr;
 
-        eval(e, v);
+        v = eval(e);
     } catch (Error & e) {
         e.addTrace(nullptr, "while evaluating the file '%1%':", resolvedPath.to_string());
         throw;
@@ -972,10 +972,9 @@ void EvalState::resetFileCache()
     ctx.caches.fileEval.clear();
 }
 
-
-void EvalState::eval(Expr & e, Value & v)
+Value EvalState::eval(Expr & e)
 {
-    v = e.eval(*this, ctx.builtins.env);
+    return e.eval(*this, ctx.builtins.env);
 }
 
 std::string showAttrPath(EvalState & state, Env & env, const AttrPath & attrPath)

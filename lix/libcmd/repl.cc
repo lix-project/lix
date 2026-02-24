@@ -1434,7 +1434,7 @@ Value NixRepl::getReplOverlaysEvalFunction()
         evaluator.builtins.staticEnv
     );
 
-    state.eval(expr, **replOverlaysEvalFunction);
+    **replOverlaysEvalFunction = state.eval(expr);
 
     return **replOverlaysEvalFunction;
 }

@@ -435,9 +435,8 @@ TEST_F(ValuePrintingTests, ansiColorsDerivation)
 
 TEST_F(ValuePrintingTests, ansiColorsError)
 {
-    Value vError;
     auto & e = evaluator.parseExprFromString("{ a = throw \"uh oh!\"; }", {CanonPath::root});
-    state.eval(e, vError);
+    Value vError = state.eval(e);
 
     test(
         vError.attrs()->begin()->value,
@@ -451,11 +450,10 @@ TEST_F(ValuePrintingTests, ansiColorsError)
 
 TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 {
-    Value vAttrs;
     auto & e = evaluator.parseExprFromString(
         "{ type = \"derivation\"; drvPath = throw \"uh oh!\"; }", {CanonPath::root}
     );
-    state.eval(e, vAttrs);
+    Value vAttrs = state.eval(e);
 
     test(vAttrs,
          "{ drvPath = "
@@ -486,8 +484,7 @@ TEST_F(ValuePrintingTests, ansiColorsDerivationError)
 TEST_F(ValuePrintingTests, ansiColorsAssert)
 {
     auto & e = evaluator.parseExprFromString("{ a = assert false; 1; }", {CanonPath::root});
-    Value v;
-    state.eval(e, v);
+    Value v = state.eval(e);
 
     ASSERT_EQ(v.type(), nAttrs);
     test(

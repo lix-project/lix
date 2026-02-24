@@ -28,12 +28,10 @@ std::string resolveMirrorUrl(EvalState & state, const std::string & url)
     if (p == std::string::npos) throw Error("invalid mirror URL '%s'", url);
     std::string mirrorName(s, 0, p);
 
-    Value vMirrors;
     // FIXME: use nixpkgs flake
-    state.eval(state.ctx.parseExprFromString(
-            "import <nixpkgs/pkgs/build-support/fetchurl/mirrors.nix>",
-            CanonPath::root),
-        vMirrors);
+    Value vMirrors = state.eval(state.ctx.parseExprFromString(
+        "import <nixpkgs/pkgs/build-support/fetchurl/mirrors.nix>", CanonPath::root
+    ));
     state.forceAttrs(vMirrors, noPos, "while evaluating the set of all mirrors");
 
     auto mirrorList = vMirrors.attrs()->get(state.ctx.symbols.create(mirrorName));

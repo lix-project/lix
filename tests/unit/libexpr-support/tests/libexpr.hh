@@ -31,10 +31,12 @@ namespace nix {
                 , state(*statePtr)
             {
             }
-            Value eval(std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings) {
-                Value v;
+            Value eval(
+                std::string input, bool forceValue = true, const FeatureSettings & fSettings = featureSettings
+            )
+            {
                 Expr & e = evaluator.parseExprFromString(input, CanonPath::root, fSettings);
-                state.eval(e, v);
+                Value v = state.eval(e);
                 if (forceValue)
                     state.forceValue(v, noPos);
                 return v;

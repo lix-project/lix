@@ -99,10 +99,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         str.str(), references));
 
     /* Get the environment builder expression. */
-    Value envBuilder;
-    state.eval(state.ctx.parseExprFromString(
-        #include "buildenv.nix.gen.hh"
-            , CanonPath::root), envBuilder);
+    Value envBuilder = state.eval(state.ctx.parseExprFromString(
+#include "buildenv.nix.gen.hh"
+        , CanonPath::root
+    ));
 
     /* Construct a Nix expression that calls the user environment
        builder with the manifest as argument. */

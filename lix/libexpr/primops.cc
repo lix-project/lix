@@ -201,13 +201,10 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
 
         if (!state.ctx.caches.vImportedDrvToDerivation) {
             state.ctx.caches.vImportedDrvToDerivation = allocRootValue({});
-            state.eval(
-                state.ctx.parseExprFromString(
+            *state.ctx.caches.vImportedDrvToDerivation = state.eval(state.ctx.parseExprFromString(
 #include "imported-drv-to-derivation.nix.gen.hh"
-                    , CanonPath::root
-                ),
-                *state.ctx.caches.vImportedDrvToDerivation
-            );
+                , CanonPath::root
+            ));
         }
 
         state.forceFunction(
@@ -220,9 +217,10 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
     }
 
     else if (path2 == corepkgsPrefix + "fetchurl.nix") {
-        state.eval(state.ctx.parseExprFromString(
-            #include "fetchurl.nix.gen.hh"
-            , CanonPath::root), v);
+        v = state.eval(state.ctx.parseExprFromString(
+#include "fetchurl.nix.gen.hh"
+            , CanonPath::root
+        ));
     }
 
     else {
@@ -347,7 +345,7 @@ void prim_exec(EvalState & state, Value * * args, Value & v)
         throw;
     }
     try {
-        state.eval(*parsed, v);
+        v = state.eval(*parsed);
     } catch (Error & e) {
         e.addTrace(nullptr, "while evaluating the output from '%1%'", program);
         throw;
@@ -3113,7 +3111,7 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
                 auto & expr = *state.ctx.parse(
                     code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.ctx.builtins.staticEnv
                 );
-                state.eval(expr, v);
+                v = state.eval(expr);
             },
     }};
     static Value initializeDerivation{NewValueAs::primop, prim_initializeDerivation};

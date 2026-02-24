@@ -50,7 +50,7 @@ static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
     if (args.fromArgs) {
         nix::Expr &e = state.ctx.parseExprFromString(args.releaseExpr,
                                                      nix::CanonPath::fromCwd());
-        state.eval(e, vTop);
+        vTop = state.eval(e);
     } else {
         state.evalFile(
             state.aio.blockOn(nix::lookupFileArg(state.ctx, args.releaseExpr))

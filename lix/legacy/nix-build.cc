@@ -272,8 +272,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
     if (attrPaths.empty()) attrPaths = {""};
 
     for (auto e : exprs) {
-        Value vRoot;
-        state->eval(e, vRoot);
+        Value vRoot = state->eval(e);
 
         std::function<bool(const Value & v)> takesNixShellAttr;
         takesNixShellAttr = [&](const Value & v) {
@@ -356,8 +355,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                     "(import <nixpkgs> {}).bashInteractive",
                     CanonPath::fromCwd());
 
-                Value v;
-                state->eval(expr, v);
+                Value v = state->eval(expr);
 
                 auto drv = getDerivation(*state, v, false);
                 if (!drv)

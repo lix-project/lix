@@ -652,10 +652,8 @@ public:
 
     /**
      * Evaluate an expression to normal form
-     *
-     * @param [out] v The resulting is stored here.
      */
-    void eval(Expr & e, Value & v);
+    Value eval(Expr & e);
 
     /**
      * If `v` is a thunk, enter it and overwrite `v` with the result

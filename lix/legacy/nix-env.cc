@@ -425,9 +425,8 @@ static void queryInstSources(EvalState & state,
 
             for (auto & i : args) {
                 Expr & eFun = state.ctx.parseExprFromString(i, CanonPath::fromCwd());
-                Value vFun, vTmp;
-                state.eval(eFun, vFun);
-                vTmp = {NewValueAs::app, state.ctx.mem, vFun, vArg};
+                Value vFun = state.eval(eFun);
+                Value vTmp = {NewValueAs::app, state.ctx.mem, vFun, vArg};
                 getDerivations(state, vTmp, "", *instSource.autoArgs, elems, true);
             }
 

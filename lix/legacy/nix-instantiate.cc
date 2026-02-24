@@ -34,8 +34,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
         return;
     }
 
-    Value vRoot;
-    state.eval(e, vRoot);
+    Value vRoot = state.eval(e);
 
     for (auto & i : attrPaths) {
         Value v(findAlongAttrPath(state, i, autoArgs, vRoot).first);

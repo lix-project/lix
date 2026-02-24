@@ -360,14 +360,10 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
     Evaluator evaluator(aio, {}, aio.blockOn(openStore("dummy://")));
     auto state = evaluator.begin(aio);
 
-    Value vGenerateManpage;
-    state->eval(
-        evaluator.parseExprFromString(
+    Value vGenerateManpage = state->eval(evaluator.parseExprFromString(
 #include "generate-manpage.nix.gen.hh"
-            , CanonPath::root
-        ),
-        vGenerateManpage
-    );
+        , CanonPath::root
+    ));
 
     Value vDump;
     vDump.mkString(toplevel.dumpCli());

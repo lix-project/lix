@@ -331,8 +331,7 @@ static Flake getFlake(
         state.ctx.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
     }
 
-    Value vInfo;
-    state.eval(flakeExpr, vInfo);
+    Value vInfo = state.eval(flakeExpr);
 
     if (auto description = vInfo.attrs()->get(state.ctx.symbols.sym_description)) {
         expectType(state, nString, description->value, description->pos);
@@ -964,13 +963,10 @@ void callFlake(EvalState & state,
 
     if (!state.ctx.caches.vCallFlake) {
         state.ctx.caches.vCallFlake = allocRootValue({});
-        state.eval(
-            state.ctx.parseExprFromString(
+        *state.ctx.caches.vCallFlake = state.eval(state.ctx.parseExprFromString(
 #include "call-flake.nix.gen.hh"
-                , CanonPath::root
-            ),
-            *state.ctx.caches.vCallFlake
-        );
+            , CanonPath::root
+        ));
     }
 
     Value vTmp1 = state.callFunction(*state.ctx.caches.vCallFlake, vLocks, noPos);
