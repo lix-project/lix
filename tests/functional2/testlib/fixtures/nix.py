@@ -69,10 +69,10 @@ class NixSettings:
     def __setitem__(self, attr: str, value: str):
         self._settings[attr] = value
 
-    def add_xp_feature(self, *names: list[str]):
+    def add_xp_feature(self, *names: str):
         self["extra-experimental-features"] += names
 
-    def add_dp_feature(self, *names: list[str]):
+    def add_dp_feature(self, *names: str):
         self["extra-deprecated-features"] += names
 
     def update(self, args: dict[str, _NixSettingValue] | None = None, **kwargs):
