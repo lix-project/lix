@@ -1137,7 +1137,7 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
         Table table;
         std::ostringstream xmlStream;
         XMLWriter xml(true, xmlStream);
-        XMLOpenElement xmlRoot(xml, "items");
+        xml.openElement("items");
 
         for (auto & i : elems) {
             try {
@@ -1365,6 +1365,9 @@ static void opQuery(Globals & globals, Strings opFlags, Strings opArgs)
                 throw;
             }
         }
+
+        // </items>
+        xml.closeElement();
 
         if (!xmlOutput) {
             pager << formatTable(table);
