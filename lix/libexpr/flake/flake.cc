@@ -948,8 +948,6 @@ void callFlake(EvalState & state,
     Value vLocks;
     Value vRootSrc;
     Value vRootSubdir;
-    Value vTmp1;
-    Value vTmp2;
 
     vLocks.mkString(lockedFlake.lockFile.to_string());
 
@@ -975,9 +973,9 @@ void callFlake(EvalState & state,
         );
     }
 
-    state.callFunction(*state.ctx.caches.vCallFlake, vLocks, vTmp1, noPos);
-    state.callFunction(vTmp1, vRootSrc, vTmp2, noPos);
-    state.callFunction(vTmp2, vRootSubdir, vRes, noPos);
+    Value vTmp1 = state.callFunction(*state.ctx.caches.vCallFlake, vLocks, noPos);
+    Value vTmp2 = state.callFunction(vTmp1, vRootSrc, noPos);
+    vRes = state.callFunction(vTmp2, vRootSubdir, noPos);
 }
 
 void prim_getFlake(EvalState & state, Value * * args, Value & v)

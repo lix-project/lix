@@ -855,14 +855,14 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "use",
         [](NixRepl & repl, const std::string & arg) {
-            Value v, f, result;
+            Value v, f;
             repl.evalString(arg, v);
             repl.evalString(
                 R""("drv: (import <nixpkgs> {}).runCommand "shell")""
                 R""({ buildInputs = [ drv ]; } "")"",
                 f
             );
-            repl.state.callFunction(f, v, result, PosIdx());
+            Value result = repl.state.callFunction(f, v, PosIdx());
 
             StorePath drvPath = repl.getDerivationPath(result);
             runNix("nix-shell", {repl.evaluator.store->printStorePath(drvPath)});
@@ -1406,9 +1406,8 @@ void NixRepl::loadReplOverlays()
     notice("Loading '%1%'...", "repl-overlays");
     auto replInitFilesFunction = getReplOverlaysEvalFunction();
 
-    Value newAttrs;
     Value args[] = {replInitInfo(), bindingsToAttrs(), replOverlays()};
-    state.callFunction(replInitFilesFunction, args, newAttrs, noPos);
+    Value newAttrs = state.callFunction(replInitFilesFunction, args, noPos);
 
     // n.b. this does in fact load the stuff into the environment twice (once
     // from the superset of the environment returned by repl-overlays and once

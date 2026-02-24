@@ -1129,7 +1129,7 @@ Env & AttrsPattern::match(
     return env2;
 }
 
-void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, const PosIdx pos)
+Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx pos)
 {
     if (callDepth > evalSettings.maxCallDepth)
         ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
@@ -1143,12 +1143,12 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 
     Value vCur(fun);
 
-    auto makeAppChain = [&]() {
+    auto makeAppChain = [&]() -> Value {
         if (vCur.isApp()) {
             auto & app = vCur.app();
-            vRes = {NewValueAs::app, ctx.mem, app.left(), app.args(), args};
+            return {NewValueAs::app, ctx.mem, app.left(), app.args(), args};
         } else {
-            vRes = {NewValueAs::app, ctx.mem, vCur, args};
+            return {NewValueAs::app, ctx.mem, vCur, args};
         }
     };
 
@@ -1188,8 +1188,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 
             if (args.size() < argsLeft) {
                 /* We don't have enough arguments, so create a tPrimOpApp chain. */
-                makeAppChain();
-                return;
+                return makeAppChain();
             } else {
                 /* We have all the arguments, so call the primop. */
                 auto * fn = vCur.primOp();
@@ -1233,8 +1232,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
 
             if (args.size() < arity - prevArgs.size()) {
                 /* We still don't have enough arguments, so extend the tPrimOpApp chain. */
-                makeAppChain();
-                return;
+                return makeAppChain();
             } else {
                 /* We have all the arguments, so call the primop with
                    the previous and new arguments. */
@@ -1273,7 +1271,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
                heap-allocate a copy and use that instead. */
             Value args2[] = {vCur, args[0]};
             try {
-                callFunction(functor->value, args2, vCur, functor->pos);
+                vCur = callFunction(functor->value, args2, functor->pos);
             } catch (Error & e) {
                 e.addTrace(ctx.positions[pos], "while calling a functor (an attribute set with a '__functor' attribute)");
                 throw;
@@ -1293,7 +1291,7 @@ void EvalState::callFunction(Value & fun, std::span<Value> args, Value & vRes, c
         }
     }
 
-    vRes = vCur;
+    return vCur;
 }
 
 // Lifted out of callFunction() because it creates a temporary that
@@ -1311,8 +1309,7 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
     if (fun.type() == nAttrs) {
         auto found = fun.attrs()->get(ctx.symbols.sym___functor);
         if (found) {
-            Value v;
-            callFunction(found->value, fun, v, pos);
+            Value v = callFunction(found->value, fun, pos);
             forceValue(v, pos);
             return autoCallFunction(args, v, res, pos);
         }
@@ -1360,7 +1357,7 @@ https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
     }
 
     Value vAttrs{NewValueAs::attrs, attrs.finish()};
-    callFunction(fun, vAttrs, res, pos);
+    res = callFunction(fun, vAttrs, pos);
 }
 
 void EvalState::concatLists(
@@ -1588,9 +1585,8 @@ std::optional<std::string> EvalState::tryAttrsToString(const PosIdx pos, Value &
 {
     auto i = v.attrs()->get(ctx.symbols.sym___toString);
     if (i) {
-        Value v1;
         try {
-            callFunction(i->value, v, v1, i->pos);
+            Value v1 = callFunction(i->value, v, i->pos);
             return coerceToString(pos, v1, context,
                     "while evaluating the result of the `__toString` attribute",
                     mode, copyToStore).toOwned();

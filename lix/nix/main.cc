@@ -372,9 +372,8 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
     Value vDump;
     vDump.mkString(toplevel.dumpCli());
 
-    Value vRes;
-    state->callFunction(vGenerateManpage, evaluator.builtins.get("false"), vRes, noPos);
-    state->callFunction(vRes, vDump, vRes, noPos);
+    Value vRes = state->callFunction(vGenerateManpage, evaluator.builtins.get("false"), noPos);
+    vRes = state->callFunction(vRes, vDump, noPos);
 
     auto attr = vRes.attrs()->get(evaluator.symbols.create(mdName + ".md"));
     if (!attr)

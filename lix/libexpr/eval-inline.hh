@@ -219,7 +219,7 @@ void EvalState::forceValue(Value & v, const PosIdx pos)
             auto target = app.target();
             if (!target.isPrimOp() || target.primOp()->arity <= app.totalArgs()) {
                 auto tmp = v.app().left();
-                callFunction(tmp, v.app().args(), v, pos);
+                v = callFunction(tmp, v.app().args(), pos);
                 app.resolve(v);
             }
         }

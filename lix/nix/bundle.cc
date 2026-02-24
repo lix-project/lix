@@ -96,9 +96,8 @@ struct CmdBundle : InstallableCommand
             lockFlags
         };
 
-        Value vRes;
         auto fn = bundler.toValue(*evalState).first;
-        evalState->callFunction(fn, val, vRes, noPos);
+        Value vRes = evalState->callFunction(fn, val, noPos);
 
         if (!evalState->isDerivation(vRes)) {
             throw Error("the bundler '%s' does not produce a derivation", bundler.what());

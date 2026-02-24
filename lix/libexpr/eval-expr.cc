@@ -722,9 +722,7 @@ Value ExprCall::eval(EvalState & state, Env & env)
         vArgs[i] = args[i]->maybeThunk(state, env);
     }
 
-    Value v;
-    state.callFunction(vFun, vArgs, v, pos);
-    return v;
+    return state.callFunction(vFun, vArgs, pos);
 }
 
 }

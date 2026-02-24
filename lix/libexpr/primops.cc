@@ -615,8 +615,7 @@ static void prim_genericClosure(EvalState & state, Value * * args, Value & v)
         res.push_back(e);
 
         /* Call the `operator' function with `e' as argument. */
-        Value newElements;
-        state.callFunction(op->value, {&e, 1}, newElements, noPos);
+        Value newElements = state.callFunction(op->value, {&e, 1}, noPos);
         state.forceList(newElements, noPos, "while evaluating the return value of the `operator` passed to builtins.genericClosure");
 
         /* Add the values returned by the operator to the work set. */
@@ -1681,8 +1680,7 @@ static void addPath(
                 "unknown" /* not supported, will fail! */);
 
             Value args[]{arg1, arg2};
-            Value res;
-            state.callFunction(*filterFun, args, res, noPos);
+            Value res = state.callFunction(*filterFun, args, noPos);
 
             return state.forceBool(res, noPos, "while evaluating the return value of the path filter function");
         }) : defaultPathFilter;
@@ -2286,8 +2284,7 @@ static void prim_filter(EvalState & state, Value * * args, Value & v)
 
     bool same = true;
     for (size_t n = 0; n < len; ++n) {
-        Value res;
-        state.callFunction(*args[0], args[1]->listElems()[n], res, noPos);
+        Value res = state.callFunction(*args[0], args[1]->listElems()[n], noPos);
         if (state.forceBool(res, noPos, "while evaluating the return value of the filtering function passed to builtins.filter"))
             vs[k++] = args[1]->listElems()[n];
         else
@@ -2356,7 +2353,7 @@ static void prim_foldlStrict(EvalState & state, Value * * args, Value & v)
 
         for (auto && [n, elem] : enumerate(args[2]->listItems())) {
             Value vs[]{vCur, elem};
-            state.callFunction(*args[0], vs, vCur, noPos);
+            vCur = state.callFunction(*args[0], vs, noPos);
         }
         v = vCur;
         state.forceValue(v, noPos);
@@ -2375,9 +2372,8 @@ static void anyOrAll(bool any, EvalState & state, Value * * args, Value & v)
         ? "while evaluating the return value of the function passed to builtins.any"
         : "while evaluating the return value of the function passed to builtins.all";
 
-    Value vTmp;
     for (auto & elem : args[1]->listItems()) {
-        state.callFunction(*args[0], elem, vTmp, noPos);
+        Value vTmp = state.callFunction(*args[0], elem, noPos);
         bool res = state.forceBool(vTmp, noPos, errorCtx);
         if (res == any) {
             v = {NewValueAs::boolean, any};
@@ -2456,8 +2452,7 @@ static void prim_sort(EvalState & state, Value * * args, Value & v)
         }
 
         Value vs[] = {a, b};
-        Value vBool;
-        state.callFunction(*args[0], vs, vBool, noPos);
+        Value vBool = state.callFunction(*args[0], vs, noPos);
         return state.forceBool(vBool, noPos, "while evaluating the return value of the sorting function passed to builtins.sort");
     };
 
@@ -2480,8 +2475,7 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
     for (size_t n = 0; n < len; ++n) {
         auto & vElem = args[1]->listElems()[n];
         state.forceValue(vElem, noPos);
-        Value res;
-        state.callFunction(*args[0], vElem, res, noPos);
+        Value res = state.callFunction(*args[0], vElem, noPos);
         if (state.forceBool(res, noPos, "while evaluating the return value of the partition function passed to builtins.partition"))
             right.push_back(n);
         else
@@ -2519,8 +2513,7 @@ static void prim_groupBy(EvalState & state, Value * * args, Value & v)
     auto elems = args[1]->listElems();
 
     for (auto [i, vElem] : enumerate(args[1]->listItems())) {
-        Value res;
-        state.callFunction(*args[0], vElem, res, noPos);
+        Value res = state.callFunction(*args[0], vElem, noPos);
         auto name = state.forceStringNoCtx(res, noPos, "while evaluating the return value of the grouping function passed to builtins.groupBy");
         auto sym = state.ctx.symbols.create(name);
         auto vector = attrs.try_emplace(sym, std::vector<size_t>()).first;
@@ -2554,7 +2547,7 @@ static void prim_concatMap(EvalState & state, Value * * args, Value & v)
 
     for (size_t n = 0; n < nrLists; ++n) {
         Value & vElem = args[1]->listElems()[n];
-        state.callFunction(*args[0], vElem, lists[n], noPos);
+        lists[n] = state.callFunction(*args[0], vElem, noPos);
         state.forceList(lists[n], noPos, "while evaluating the return value of the function passed to builtins.concatMap");
         len += lists[n].listSize();
     }

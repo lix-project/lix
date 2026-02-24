@@ -789,11 +789,11 @@ public:
 
     bool isFunctor(Value & fun);
 
-    void callFunction(Value & fun, std::span<Value> args, Value & vRes, const PosIdx pos);
+    Value callFunction(Value & fun, std::span<Value> args, const PosIdx pos);
 
-    void callFunction(Value & fun, Value & arg, Value & vRes, const PosIdx pos)
+    Value callFunction(Value & fun, Value & arg, const PosIdx pos)
     {
-        callFunction(fun, {&arg, 1}, vRes, pos);
+        return callFunction(fun, {&arg, 1}, pos);
     }
 
     /**
