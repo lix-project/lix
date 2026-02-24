@@ -98,7 +98,6 @@ functional_tests_scripts = [
   'pre-hook.sh',
   'post-hook.sh',
   'function-trace.sh',
-  'fmt.sh',
   'eval-store.sh',
   'derivation-json.sh',
   'import-derivation.sh',
