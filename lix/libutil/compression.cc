@@ -369,7 +369,6 @@ struct DecompressionStream : DecompressorPipes, AsyncInputStream
             try {
                 thread.get();
             } catch (...) {
-                ignoreExceptionInDestructor();
             }
         }
     }
