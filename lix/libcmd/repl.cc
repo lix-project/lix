@@ -858,7 +858,7 @@ void NixRepl::initBuiltinCommands()
             Value v, f;
             repl.evalString(arg, v);
             repl.evalString(
-                R""("drv: (import <nixpkgs> {}).runCommand "shell")""
+                R""("drv: (import <nixpkgs> {}).runCommand "shell") ""
                 R""({ buildInputs = [ drv ]; } "")"",
                 f
             );
