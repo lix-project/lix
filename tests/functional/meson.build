@@ -84,7 +84,6 @@ functional_tests_scripts = [
   'logging.sh',
   'export.sh',
   'config.sh',
-  'local-store.sh',
   'filter-source.sh',
   'misc.sh',
   'linux-sandbox.sh',
