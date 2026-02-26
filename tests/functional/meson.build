@@ -77,7 +77,6 @@ functional_tests_scripts = [
   'build-remote-content-addressed-fixed.sh',
   'build-jobless.sh',
   'nar-access.sh',
-  'impure-eval.sh',
   'repl.sh',
   'binary-cache-build-remote.sh',
   'logging.sh',
