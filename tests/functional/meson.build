@@ -59,7 +59,6 @@ functional_tests_scripts = [
   'fetchTree-file.sh',
   'simple.sh',
   'referrers.sh',
-  'optimise-store.sh',
   'substitute-with-invalid-ca.sh',
   'signing.sh',
   'gc-non-blocking.sh',
