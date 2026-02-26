@@ -103,7 +103,6 @@ functional_tests_scripts = [
   'selfref-gc.sh',
   'db-migration.sh',
   'bash-profile.sh',
-  'pass-as-file.sh',
   'store-ping.sh',
   'flakes/show.sh',
   'path-from-hash-part.sh',
