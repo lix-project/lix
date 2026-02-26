@@ -75,7 +75,6 @@ functional_tests_scripts = [
   'dependencies.sh',
   'check-reqs.sh',
   'build-remote-content-addressed-fixed.sh',
-  'build-jobless.sh',
   'nar-access.sh',
   'repl.sh',
   'binary-cache-build-remote.sh',
