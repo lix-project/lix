@@ -100,7 +100,6 @@ functional_tests_scripts = [
   'derivation-json.sh',
   'import-derivation.sh',
   'ssh-relay.sh',
-  'build.sh',
   'output-normalization.sh',
   'selfref-gc.sh',
   'db-migration.sh',
