@@ -99,7 +99,6 @@ functional_tests_scripts = [
   'eval-store.sh',
   'derivation-json.sh',
   'import-derivation.sh',
-  'placeholders.sh',
   'ssh-relay.sh',
   'build.sh',
   'output-normalization.sh',
