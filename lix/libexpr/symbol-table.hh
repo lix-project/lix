@@ -217,6 +217,7 @@ public:
     const Symbol sym___structuredAttrs = create("__structuredAttrs");
     const Symbol sym___contentAddressed = create("__contentAddressed");
     const Symbol sym___impure = create("__impure");
+    const Symbol sym___json = create("__json");
     /* Derivation */
     const Symbol sym_outPath = create("outPath");
     const Symbol sym_drvPath = create("drvPath");

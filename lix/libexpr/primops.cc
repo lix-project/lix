@@ -903,6 +903,14 @@ drvName, Bindings * attrs, Value & v)
             "attribute passed to builtins.derivationStrict"
         ))
     {
+        if (attrs->get(state.ctx.symbols.sym___json)) {
+            state.ctx.errors
+                .make<EvalError>(
+                    "a `__json` attribute cannot be passed to builtins.derivationStrict when structured "
+                    "attributes are enabled"
+                )
+                .debugThrow();
+        }
         jsonObject = JSON::object();
     }
 
