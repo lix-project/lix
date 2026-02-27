@@ -4,6 +4,7 @@
 #include <pwd.h>
 #include <string>
 #include <sys/mount.h>
+#include <sys/time.h>
 #include <sys/xattr.h>
 
 #include "c-calls.hh"
