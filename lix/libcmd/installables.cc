@@ -236,8 +236,7 @@ void SourceExprCommand::completeInstallable(EvalState & state, AddCompletions & 
 
             auto [v1, pos] = findAlongAttrPath(state, prefix_, *autoArgs, root);
             state.forceValue(v1, pos);
-            Value v2;
-            state.autoCallFunction(*autoArgs, v1, v2, pos);
+            Value v2 = state.autoCallFunction(*autoArgs, v1, pos);
 
             if (v2.type() == nAttrs) {
                 for (auto & i : *v2.attrs()) {

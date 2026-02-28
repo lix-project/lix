@@ -451,8 +451,7 @@ static void getDerivations(EvalState & state, Value & vIn, PosIdx pos,
     DrvInfos & drvs, Done & done,
     bool ignoreAssertionFailures)
 {
-    Value v;
-    state.autoCallFunction(autoArgs, vIn, v, pos);
+    Value v = state.autoCallFunction(autoArgs, vIn, pos);
 
     bool shouldRecurse = getDerivation(state, v, pathPrefix, drvs, ignoreAssertionFailures);
     if (!shouldRecurse) {

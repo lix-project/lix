@@ -1306,8 +1306,7 @@ void EvalStatistics::addCall(ExprLambda & fun)
     functionCalls[&fun]++;
 }
 
-
-void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosIdx pos)
+Value EvalState::autoCallFunction(Bindings & args, Value & fun, PosIdx pos)
 {
     forceValue(fun, pos);
 
@@ -1316,18 +1315,16 @@ void EvalState::autoCallFunction(Bindings & args, Value & fun, Value & res, PosI
         if (found) {
             Value v = callFunction(found->value, fun, pos);
             forceValue(v, pos);
-            return autoCallFunction(args, v, res, pos);
+            return autoCallFunction(args, v, pos);
         }
     }
 
     if (!fun.isLambda()) {
-        res = fun;
-        return;
+        return fun;
     }
     auto pattern = dynamic_cast<AttrsPattern *>(fun.lambda().fun->pattern.get());
     if (!pattern) {
-        res = fun;
-        return;
+        return fun;
     }
 
     auto attrs = ctx.buildBindings(std::max(static_cast<uint32_t>(pattern->formals.size()), args.size()));
@@ -1362,7 +1359,7 @@ https://docs.lix.systems/manual/lix/stable/language/constructs.html#functions)",
     }
 
     Value vAttrs{NewValueAs::attrs, attrs.finish()};
-    res = callFunction(fun, vAttrs, pos);
+    return callFunction(fun, vAttrs, pos);
 }
 
 void EvalState::concatLists(

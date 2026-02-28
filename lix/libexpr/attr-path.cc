@@ -83,9 +83,7 @@ findAlongAttrPath(EvalState & state, const std::string & attrPath, Bindings & au
         auto attrIndex = string2Int<unsigned int>(attr);
 
         /* Evaluate the expression. */
-        Value vNew;
-        state.autoCallFunction(autoArgs, v, vNew, pos);
-        v = vNew;
+        v = state.autoCallFunction(autoArgs, v, pos);
         state.forceValue(v, noPos);
 
         /* It should evaluate to either a set or an expression,

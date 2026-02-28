@@ -46,7 +46,7 @@ void processExpr(EvalState & state, const Strings & attrPaths,
             if (autoArgs.empty())
                 vRes = v;
             else
-                state.autoCallFunction(autoArgs, v, vRes, noPos);
+                vRes = state.autoCallFunction(autoArgs, v, noPos);
             if (output == okRaw)
                 std::cout << *state.coerceToString(noPos, vRes, context, "while generating the nix-instantiate output", StringCoercionMode::Strict);
                 // We intentionally don't output a newline here. The default PS1 for Bash in NixOS starts with a newline

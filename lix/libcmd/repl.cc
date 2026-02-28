@@ -1288,9 +1288,8 @@ void NixRepl::loadFile(const Path & path)
     try {
         loaded.remove(loadable);
         loaded.push_back(loadable);
-        Value v2;
         Value v = state.evalFile(state.aio.blockOn(lookupFileArg(evaluator, path)).unwrap(always_progresses));
-        state.autoCallFunction(*autoArgs, v, v2, noPos);
+        Value v2 = state.autoCallFunction(*autoArgs, v, noPos);
         addAttrsToScope(v2);
     } catch (...) {
         // In case of failure, do not keep the loaded path.

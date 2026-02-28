@@ -57,11 +57,7 @@ static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
                 .unwrap());
     }
 
-    nix::Value vRoot;
-
-    state.autoCallFunction(autoArgs, vTop, vRoot, {});
-
-    return vRoot;
+    return state.autoCallFunction(autoArgs, vTop, {});
 }
 
 static std::string attrPathJoin(nix::JSON input) {
@@ -196,8 +192,7 @@ try {
                 nix::findAlongAttrPath(*state, attrPathS, autoArgs, vRoot)
                     .first;
 
-            nix::Value v;
-            state->autoCallFunction(autoArgs, vTmp, v, {});
+            nix::Value v = state->autoCallFunction(autoArgs, vTmp, {});
 
             if (v.type() == nix::nAttrs) {
                 if (auto drvInfo = nix::getDerivation(*state, v, false)) {

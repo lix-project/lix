@@ -798,7 +798,7 @@ public:
      * Automatically call a function for which each argument has a
      * default value or has a binding in the `args` map.
      */
-    void autoCallFunction(Bindings & args, Value & fun, Value & res, PosIdx pos);
+    Value autoCallFunction(Bindings & args, Value & fun, PosIdx pos);
 
     void mkPos(Value & v, PosIdx pos);
 
