@@ -67,7 +67,7 @@ static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<
             return;
         } catch (SysError & e) {
             if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT
-                || e.errNo == ENOTDIR)
+                || e.errNo == ENOTDIR || e.errNo == ENOTSOCK)
             {
                 debug("skipping socket %s: %s", socket, strerror(e.errNo));
             } else {

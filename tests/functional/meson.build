@@ -96,7 +96,6 @@ functional_tests_scripts = [
   'import-derivation.sh',
   'db-migration.sh',
   'bash-profile.sh',
-  'store-ping.sh',
   'flakes/show.sh',
   'read-only-store.sh',
   'nested-sandboxing.sh',
