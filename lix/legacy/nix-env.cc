@@ -164,15 +164,13 @@ static void getAllExprs(Evaluator & state,
     }
 }
 
-
-
-static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & v)
+static Value loadSourceExpr(EvalState & state, const SourcePath & path_)
 {
     auto path = state.ctx.paths.checkSourcePath(path_);
     auto st = path.stat();
 
     if (isNixExpr(state.ctx.paths, path, st))
-        v = state.evalFile(path);
+        return state.evalFile(path);
 
     /* The path is a directory.  Put the Nix expressions in the
        directory in a set, with the file name of each expression as
@@ -185,7 +183,7 @@ static void loadSourceExpr(EvalState & state, const SourcePath & path_, Value & 
         attrs.alloc("_combineChannels") = Value::EMPTY_LIST;
         StringSet seen;
         getAllExprs(state.ctx, path, seen, attrs);
-        v = {NewValueAs::attrs, attrs};
+        return {NewValueAs::attrs, attrs};
     }
 
     else throw Error("path '%s' is not a directory or a Nix expression", path);
@@ -196,8 +194,7 @@ static void loadDerivations(EvalState & state, const SourcePath & nixExprPath,
     std::string systemFilter, Bindings & autoArgs,
     const std::string & pathPrefix, DrvInfos & elems)
 {
-    Value vRoot;
-    loadSourceExpr(state, nixExprPath, vRoot);
+    Value vRoot = loadSourceExpr(state, nixExprPath);
 
     Value v(findAlongAttrPath(state, pathPrefix, autoArgs, vRoot).first);
 
@@ -419,8 +416,7 @@ static void queryInstSources(EvalState & state,
            (import ./foo.nix)' = `(import ./foo.nix).bar'. */
         case srcNixExprs: {
 
-            Value vArg;
-            loadSourceExpr(state, *instSource.nixExprPath, vArg);
+            Value vArg = loadSourceExpr(state, *instSource.nixExprPath);
 
             for (auto & i : args) {
                 Expr & eFun = state.ctx.parseExprFromString(i, CanonPath::fromCwd());
@@ -477,8 +473,7 @@ static void queryInstSources(EvalState & state,
         }
 
         case srcAttrPath: {
-            Value vRoot;
-            loadSourceExpr(state, *instSource.nixExprPath, vRoot);
+            Value vRoot = loadSourceExpr(state, *instSource.nixExprPath);
             for (auto & i : args) {
                 Value v(findAlongAttrPath(state, i, *instSource.autoArgs, vRoot).first);
                 getDerivations(state, v, "", *instSource.autoArgs, elems, true);
