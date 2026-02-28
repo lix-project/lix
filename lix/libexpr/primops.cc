@@ -211,11 +211,11 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
         Value w{NewValueAs::attrs, attrs.finish()};
 
         if (!state.ctx.caches.vImportedDrvToDerivation) {
-            state.ctx.caches.vImportedDrvToDerivation = allocRootValue({});
-            *state.ctx.caches.vImportedDrvToDerivation = state.eval(state.ctx.parseExprFromString(
+            state.ctx.caches.vImportedDrvToDerivation =
+                allocRootValue(state.eval(state.ctx.parseExprFromString(
 #include "imported-drv-to-derivation.nix.gen.hh"
-                , CanonPath::root
-            ));
+                    , CanonPath::root
+                )));
         }
 
         state.forceFunction(
@@ -1702,11 +1702,10 @@ static void addPath(
 
             /* Call the filter function.  The first argument is the path,
                the second is a string indicating the type of the file. */
-            Value arg1;
-            if (isInDir(p, realPath))
-                arg1 = {NewValueAs::string, path + "/" + std::string(p, realPath.size() + 1)};
-            else
-                arg1 = {NewValueAs::string, p};
+            Value arg1 = {
+                NewValueAs::string,
+                isInDir(p, realPath) ? path + "/" + std::string(p, realPath.size() + 1) : p
+            };
 
             Value arg2 =
                 {NewValueAs::string,

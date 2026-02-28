@@ -163,13 +163,14 @@ findAlongAttrPath(EvalState & state, const std::string & attrPath, Bindings & au
 
 std::pair<SourcePath, uint32_t> findPackageFilename(EvalState & state, Value & v, std::string what)
 {
-    Value v2;
-    try {
-        auto dummyArgs = state.ctx.mem.allocBindings(0);
-        v2 = findAlongAttrPath(state, "meta.position", *dummyArgs, v).first;
-    } catch (Error &) {
-        throw NoPositionInfo("package '%s' has no source location information", what);
-    }
+    Value v2 = [&]() {
+        try {
+            auto dummyArgs = state.ctx.mem.allocBindings(0);
+            return findAlongAttrPath(state, "meta.position", *dummyArgs, v).first;
+        } catch (Error &) {
+            throw NoPositionInfo("package '%s' has no source location information", what);
+        }
+    }();
 
     // FIXME: is it possible to extract the Pos object instead of doing this
     //        toString + parsing?

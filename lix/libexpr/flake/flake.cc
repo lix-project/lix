@@ -942,10 +942,7 @@ LockedFlake lockFlake(
 
 Value callFlake(EvalState & state, const LockedFlake & lockedFlake)
 {
-    Value vLocks;
-    Value vRootSubdir;
-
-    vLocks = {NewValueAs::string, lockedFlake.lockFile.to_string()};
+    Value vLocks = {NewValueAs::string, lockedFlake.lockFile.to_string()};
 
     Value vRootSrc = emitTreeAttrs(
         state.ctx,
@@ -955,14 +952,13 @@ Value callFlake(EvalState & state, const LockedFlake & lockedFlake)
         lockedFlake.flake.forceDirty
     );
 
-    vRootSubdir = {NewValueAs::string, lockedFlake.flake.lockedRef.subdir};
+    Value vRootSubdir = {NewValueAs::string, lockedFlake.flake.lockedRef.subdir};
 
     if (!state.ctx.caches.vCallFlake) {
-        state.ctx.caches.vCallFlake = allocRootValue({});
-        *state.ctx.caches.vCallFlake = state.eval(state.ctx.parseExprFromString(
+        state.ctx.caches.vCallFlake = allocRootValue(state.eval(state.ctx.parseExprFromString(
 #include "call-flake.nix.gen.hh"
             , CanonPath::root
-        ));
+        )));
     }
 
     Value vTmp1 = state.callFunction(*state.ctx.caches.vCallFlake, vLocks, noPos);

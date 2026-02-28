@@ -1318,12 +1318,10 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
         .kind = ReplLoadKind::Flake,
     };
 
-    Value v;
-
     try {
         loaded.remove(loadable);
         loaded.push_back(loadable);
-        v = flake::callFlake(
+        Value v = flake::callFlake(
             state,
             flake::lockFlake(
                 state,
@@ -1451,7 +1449,6 @@ Value NixRepl::getReplOverlaysEvalFunction()
     }
 
     auto evalReplInitFilesPath = CanonPath::root + "repl-overlays.nix";
-    *replOverlaysEvalFunction = Value{};
     auto code =
         #include "repl-overlays.nix.gen.hh"
         ;
@@ -1461,16 +1458,15 @@ Value NixRepl::getReplOverlaysEvalFunction()
         evaluator.builtins.staticEnv
     );
 
-    **replOverlaysEvalFunction = state.eval(expr);
+    *replOverlaysEvalFunction = state.eval(expr);
 
     return **replOverlaysEvalFunction;
 }
 
 Value NixRepl::replOverlays()
 {
-    Value replInits;
     auto replInitStorage = evaluator.mem.newList(evalSettings.replOverlays.get().size());
-    replInits = {NewValueAs::list, replInitStorage};
+    Value replInits = {NewValueAs::list, replInitStorage};
 
     size_t i = 0;
     for (auto path : evalSettings.replOverlays.get()) {

@@ -72,8 +72,9 @@ public:
 
     const Attr * get(Symbol name)
     {
-        Attr key(name, {});
-        iterator i = std::lower_bound(begin(), end(), key);
+        iterator i = std::lower_bound(begin(), end(), name, [](const Attr & value, const Symbol & compare) {
+            return value.name < compare;
+        });
         if (i != end() && i->name == name) return &*i;
         return nullptr;
     }

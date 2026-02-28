@@ -162,18 +162,18 @@ Value ExprSet::eval(EvalState & state, Env & env)
          * http://github.com/NixOS/nix/issues/7012. Any accesses to the output attrset will thus infrec.
          */
         Value vBackup = v;
-        Value nameVal;
+        Symbol nameSym;
         {
             KJ_DEFER(v = vBackup);
             v = Value{NewValueAs::blackhole};
-            nameVal = i.nameExpr->eval(state, *dynamicEnv);
+            Value nameVal = i.nameExpr->eval(state, *dynamicEnv);
             state.forceValue(nameVal, i.pos);
             if (nameVal.type() == nNull) {
                 continue;
             }
             state.forceStringNoCtx(nameVal, i.pos, "while evaluating the name of a dynamic attribute");
+            nameSym = state.ctx.symbols.create(nameVal.str());
         }
-        auto nameSym = state.ctx.symbols.create(nameVal.str());
         auto j = v.attrs()->get(nameSym);
         if (j) {
             state.ctx.errors
@@ -617,19 +617,20 @@ Value ExprSelect::eval(EvalState & state, Env & env)
     // Position for the current selector in this select chain.
     PosIdx posCurrentSyntax;
 
-    Value baseSelectee;
-    try {
-        // Evaluate the original thing we're selecting on.
-        baseSelectee = e->eval(state, env);
-    } catch (Error & e) {
-        // clang-format off
-        e.addTrace(state.ctx.positions[getPos()], HintFmt(
-            "while evaluating an expression to select '%s' on it",
-            showAttrPath(state.ctx.symbols, attrPath)
-        ));
-        // clang-format on
-        throw;
-    }
+    Value baseSelectee = [&]() {
+        try {
+            // Evaluate the original thing we're selecting on.
+            return e->eval(state, env);
+        } catch (Error & e) {
+            // clang-format off
+            e.addTrace(state.ctx.positions[getPos()], HintFmt(
+                "while evaluating an expression to select '%s' on it",
+                showAttrPath(state.ctx.symbols, attrPath)
+            ));
+            // clang-format on
+            throw;
+        }
+    }();
 
     try {
         // With the original selectee evaluated, we'll walk the selection path starting

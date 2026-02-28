@@ -733,13 +733,13 @@ void mapStaticEnvBindings(const SymbolTable & st, const StaticEnv & se, const En
             // add 'with' bindings.
             Bindings::iterator j = env.values[0].attrs()->begin();
             while (j != env.values[0].attrs()->end()) {
-                vm[std::string(st[j->name])] = j->value;
+                vm.insert_or_assign(std::string(st[j->name]), j->value);
                 ++j;
             }
         } else {
             // iterate through staticenv bindings and add them.
             for (auto & i : se.vars)
-                vm[std::string(st[i.first])] = env.values[i.second];
+                vm.insert_or_assign(std::string(st[i.first]), env.values[i.second]);
         }
     }
 }

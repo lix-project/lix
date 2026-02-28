@@ -446,18 +446,18 @@ Installables SourceExprCommand::parseInstallables(
             throw UsageError("'--file' and '--expr' are exclusive");
 
         auto evaluator = getEvaluator();
-        Value vFile;
 
-        if (file == "-") {
-            auto & e = evaluator->parseStdin();
-            vFile = state.eval(e);
-        }
-        else if (file)
-            vFile = state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap());
-        else {
-            auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
-            vFile = state.eval(e);
-        }
+        Value vFile = [&](NeverAsync = {}) {
+            if (file == "-") {
+                auto & e = evaluator->parseStdin();
+                return state.eval(e);
+            } else if (file) {
+                return state.evalFile(state.aio.blockOn(lookupFileArg(*evaluator, *file)).unwrap());
+            } else {
+                auto & e = evaluator->parseExprFromString(*expr, CanonPath::fromCwd());
+                return state.eval(e);
+            }
+        }();
 
         for (auto & s : ss) {
             auto [prefix, extendedOutputsSpec] = ExtendedOutputsSpec::parse(s);
