@@ -40,6 +40,5 @@ class TestLocalStore:
         assert info["trusted"]
 
     def test_doctor_shows_trust(self, nix: Nix):
-        # doctor wants nix-env on path, and the profile lookup test will *always* fail
-        result = nix.nix(["--store", "./x", "doctor"]).run().expect(2)
+        result = nix.nix(["--store", "./x", "doctor"]).run().ok()
         assert "You are trusted by" in result.stderr_plain

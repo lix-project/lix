@@ -14,7 +14,7 @@ xdist_opts = [
 functional2_env = environment()
 # set the bin dir for us to know where to find the lix binaries for our declarative path
 # without leaking all of PATH or env
-functional2_env.set('NIX_BIN_DIR', fs.parent(nix.full_path()))
+functional2_env.set('NIX_BIN_DIR', bindir)
 if build_test_shell != ''
   functional2_env.set('BUILD_TEST_SHELL', build_test_shell)
 endif

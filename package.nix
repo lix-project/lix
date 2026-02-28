@@ -606,8 +606,10 @@ stdenv.mkDerivation (finalAttrs: {
       mkdir -p $out/nix-support
       echo "doc internal-api-docs $out/share/doc/nix/internal-api/html" >> "$out/nix-support/hydra-build-products"
     ''
-    + ''
+    + lib.optionalString (sanitize == null) ''
       # Drop all references to libstd++ include files due to `__FILE__` leaking in libstd++ assertions.
+      # we do NOT want to do this during asan builds because it breaks the test suite! but as we do not
+      # actually want to ship asan builds in any reasonable capacity the leak will not matter that much
       find "$out" -type f -exec remove-references-to -t ${stdenv.cc.cc.stdenv.cc.cc} '{}' +
     '';
 
