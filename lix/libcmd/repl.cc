@@ -223,7 +223,7 @@ struct NixRepl
     void addVarToScope(const Symbol name, Value & v);
     Expr & parseString(std::string s);
     std::variant<std::unique_ptr<Expr>, ExprReplBindings> parseReplString(std::string s);
-    void evalString(std::string s, Value & v);
+    Value evalString(std::string s);
     void loadDebugTraceEnv(const DebugTrace & dt);
 
     /**
@@ -545,8 +545,7 @@ StorePath NixRepl::getDerivationPath(Value & v) {
 
 StorePath NixRepl::evalIntoDerivationPath(const std::string & drvArg)
 {
-    Value v;
-    evalString(drvArg, v);
+    Value v = evalString(drvArg);
 
     return getDerivationPath(v);
 }
@@ -754,8 +753,7 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "add",
         [](NixRepl & repl, const std::string & arg) {
-            Value v;
-            repl.evalString(arg, v);
+            Value v = repl.evalString(arg);
             repl.addAttrsToScope(v);
 
             return ProcessLineResult::PromptAgain;
@@ -794,8 +792,7 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "edit",
         [](NixRepl & repl, const std::string & arg) {
-            Value v;
-            repl.evalString(arg, v);
+            Value v = repl.evalString(arg);
 
             const auto [path, line] = [&]() -> std::pair<SourcePath, uint32_t> {
                 if (v.type() == nPath || v.type() == nString) {
@@ -839,8 +836,7 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "type",
         [](NixRepl & repl, const std::string & arg) {
-            Value v;
-            repl.evalString(arg, v);
+            Value v = repl.evalString(arg);
             logger->cout(showType(v));
 
             return ProcessLineResult::PromptAgain;
@@ -855,12 +851,10 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "use",
         [](NixRepl & repl, const std::string & arg) {
-            Value v, f;
-            repl.evalString(arg, v);
-            repl.evalString(
+            Value v = repl.evalString(arg);
+            Value f = repl.evalString(
                 R""("drv: (import <nixpkgs> {}).runCommand "shell") ""
-                R""({ buildInputs = [ drv ]; } "")"",
-                f
+                R""({ buildInputs = [ drv ]; } "")""
             );
             Value result = repl.state.callFunction(f, v, PosIdx());
 
@@ -886,8 +880,7 @@ void NixRepl::initBuiltinCommands()
                 if (maybeDrvPath && maybeDrvPath->isDerivation()) {
                     return std::move(*maybeDrvPath);
                 } else {
-                    Value v;
-                    repl.evalString(arg, v);
+                    Value v = repl.evalString(arg);
                     return repl.getDerivationPath(v);
                 }
             })();
@@ -1007,8 +1000,7 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "print",
         [](NixRepl & repl, const std::string & arg) {
-            Value v;
-            repl.evalString(arg, v);
+            Value v = repl.evalString(arg);
             if (v.type() == nString) {
                 std::cout << v.str();
             } else if (v.type() == nAttrs && repl.state.isDerivation(v)) {
@@ -1040,8 +1032,7 @@ void NixRepl::initBuiltinCommands()
     addCommand(
         "doc",
         [](NixRepl & repl, const std::string & arg) {
-            Value v;
-            repl.evalString(arg, v);
+            Value v = repl.evalString(arg);
 
             if (auto doc = repl.evaluator.builtins.getDoc(v)) {
                 std::string markdown;
@@ -1577,12 +1568,12 @@ std::variant<std::unique_ptr<Expr>, ExprReplBindings> NixRepl::parseReplString(s
     return evaluator.parseReplInput(std::move(s), CanonPath::fromCwd(), staticEnv, featureSettings);
 }
 
-
-void NixRepl::evalString(std::string s, Value & v)
+Value NixRepl::evalString(std::string s)
 {
     Expr & e = parseString(s);
-    v = e.eval(state, *env);
+    Value v = e.eval(state, *env);
     state.forceValue(v, noPos);
+    return v;
 }
 
 Value NixRepl::evalFile(SourcePath & path)
