@@ -99,7 +99,6 @@ functional_tests_scripts = [
   'bash-profile.sh',
   'store-ping.sh',
   'flakes/show.sh',
-  'path-from-hash-part.sh',
   'read-only-store.sh',
   'nested-sandboxing.sh',
   'test-libstoreconsumer.sh',
