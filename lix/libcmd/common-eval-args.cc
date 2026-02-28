@@ -185,9 +185,7 @@ Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
     for (auto & i : autoArgs) {
         Value v;
         if (i.second[0] == 'E')
-            state.evalLazily(
-                state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()), v
-            );
+            v = state.evalLazily(state.parseExprFromString(i.second.substr(1), CanonPath::fromCwd()));
         else
             v = {NewValueAs::string, ((std::string_view) i.second).substr(1)};
         res.insert(state.symbols.create(i.first), v);

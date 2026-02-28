@@ -844,13 +844,11 @@ Value::List * EvalMemory::newList(size_t size)
     return list;
 }
 
-
-void Evaluator::evalLazily(Expr & e, Value & v)
+Value Evaluator::evalLazily(Expr & e)
 {
-    v = {NewValueAs::thunk, mem, builtins.env, e};
     stats.nrThunks++;
+    return {NewValueAs::thunk, mem, builtins.env, e};
 }
-
 
 void EvalState::mkPos(Value & v, PosIdx p)
 {

@@ -554,7 +554,7 @@ public:
     /**
      * Creates a thunk that will evaluate the given expression when forced.
      */
-    void evalLazily(Expr & e, Value & v);
+    Value evalLazily(Expr & e);
 
     /** If debugging is enabled, returns the next trace. Otherwise, std::nullopt. */
     std::optional<DebugTrace const *> nextDebugTrace() const;
