@@ -596,8 +596,7 @@ struct CmdFlakeCheck : FlakeCommand
         {
             auto act = logger->startActivity(lvlInfo, actUnknown, "evaluating flake");
 
-            Value vFlake;
-            flake::callFlake(*state, flake, vFlake);
+            Value vFlake = flake::callFlake(*state, flake);
 
             enumerateOutputs(
                 *state,

@@ -940,9 +940,7 @@ LockedFlake lockFlake(
     }
 }
 
-void callFlake(EvalState & state,
-    const LockedFlake & lockedFlake,
-    Value & vRes)
+Value callFlake(EvalState & state, const LockedFlake & lockedFlake)
 {
     Value vLocks;
     Value vRootSrc;
@@ -971,7 +969,7 @@ void callFlake(EvalState & state,
 
     Value vTmp1 = state.callFunction(*state.ctx.caches.vCallFlake, vLocks, noPos);
     Value vTmp2 = state.callFunction(vTmp1, vRootSrc, noPos);
-    vRes = state.callFunction(vTmp2, vRootSubdir, noPos);
+    return state.callFunction(vTmp2, vRootSubdir, noPos);
 }
 
 void prim_getFlake(EvalState & state, Value * * args, Value & v)
@@ -981,15 +979,19 @@ void prim_getFlake(EvalState & state, Value * * args, Value & v)
     if (evalSettings.pureEval && !flakeRef.input.isLocked())
         throw Error("cannot call 'getFlake' on unlocked flake reference '%s' (use --impure to override)", flakeRefS);
 
-    callFlake(state,
-        lockFlake(state, flakeRef,
-            LockFlags {
+    v = callFlake(
+        state,
+        lockFlake(
+            state,
+            flakeRef,
+            LockFlags{
                 .updateLockFile = false,
                 .writeLockFile = false,
                 .useRegistries = !evalSettings.pureEval && fetchSettings.useRegistries,
                 .allowUnlocked = !evalSettings.pureEval,
-            }),
-        v);
+            }
+        )
+    );
 }
 
 void prim_parseFlakeRef(

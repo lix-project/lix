@@ -1318,7 +1318,7 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
     try {
         loaded.remove(loadable);
         loaded.push_back(loadable);
-        flake::callFlake(
+        v = flake::callFlake(
             state,
             flake::lockFlake(
                 state,
@@ -1328,8 +1328,7 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
                     .useRegistries = !evalSettings.pureEval,
                     .allowUnlocked = !evalSettings.pureEval,
                 }
-            ),
-            v
+            )
         );
         addAttrsToScope(v);
     } catch (...) {

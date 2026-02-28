@@ -199,11 +199,7 @@ LockedFlake lockFlake(
     const FlakeRef & flakeRef,
     const LockFlags & lockFlags);
 
-void callFlake(
-    EvalState & state,
-    const LockedFlake & lockedFlake,
-    Value & v);
-
+Value callFlake(EvalState & state, const LockedFlake & lockedFlake);
 }
 
 void emitTreeAttrs(

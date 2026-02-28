@@ -409,8 +409,7 @@ ref<eval_cache::EvalCache> openEvalCache(
             if (getEnv("NIX_ALLOW_EVAL").value_or("1") == "0")
                 throw Error("not everything is cached, but evaluation is not allowed");
 
-            Value vFlake;
-            flake::callFlake(state, *lockedFlake, vFlake);
+            Value vFlake = flake::callFlake(state, *lockedFlake);
 
             state.forceAttrs(vFlake, noPos, "while parsing cached flake data");
 
