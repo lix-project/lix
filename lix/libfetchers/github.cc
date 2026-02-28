@@ -17,6 +17,18 @@
 
 namespace nix::fetchers {
 
+struct Ref
+{
+    std::string value;
+};
+
+struct Rev
+{
+    std::string value;
+};
+
+using RefOrRev = std::variant<Ref, Rev>;
+
 struct DownloadUrl
 {
     std::string url;
@@ -50,11 +62,20 @@ struct GitArchiveInputScheme : InputScheme
 
         auto path = tokenizeString<std::vector<std::string>>(url.path, "/");
 
-        std::optional<std::string> refOrRev;
+        std::optional<RefOrRev> refOrRev;
 
         auto size = path.size();
         if (size == 3) {
-            refOrRev = path[2];
+            auto rs = path[2];
+            if (std::regex_match(rs, revRegex)) {
+                refOrRev = Rev{rs};
+            } else if (std::regex_match(rs, refRegex)) {
+                refOrRev = Ref{rs};
+            } else {
+                throw BadURL(
+                    "in flake URL '%s', '%s' is not a commit hash or a branch/tag name", url.url, rs
+                );
+            }
         } else if (size > 3) {
             std::string rs;
             for (auto i = std::next(path.begin(), 2); i != path.end(); i++) {
@@ -65,7 +86,7 @@ struct GitArchiveInputScheme : InputScheme
             }
 
             if (std::regex_match(rs, refRegex)) {
-                refOrRev = rs;
+                refOrRev = Ref{rs};
             } else {
                 throw BadURL("in URL '%s', '%s' is not a branch/tag name", url.url, rs);
             }
@@ -82,7 +103,11 @@ struct GitArchiveInputScheme : InputScheme
                 if (refOrRev) {
                     throw BadURL("URL '%s' already contains a ref or rev", url.url);
                 } else {
-                    refOrRev = value;
+                    if (name == "rev") {
+                        refOrRev = Rev{value};
+                    } else {
+                        refOrRev = Ref{value};
+                    }
                 }
             } else if (name == "lastModified") {
                 if (auto n = string2Int<uint64_t>(value)) {
@@ -98,14 +123,22 @@ struct GitArchiveInputScheme : InputScheme
             }
         }
 
-        if (refOrRev) attrs.emplace("refOrRev", *refOrRev);
+        if (refOrRev) {
+            std::visit(
+                overloaded{
+                    [&attrs](const Ref & r) { attrs.emplace("ref", r.value); },
+                    [&attrs](const Rev & r) { attrs.emplace("rev", r.value); }
+                },
+                *refOrRev
+            );
+        }
 
         return inputFromAttrs(attrs);
     }
 
     Attrs preprocessAttrs(const Attrs & attrs) const override
     {
-        // Attributes can contain refOrRev and it needs to be figured out
+        // Attributes can contain ref or rev and it needs to be figured out
         // which one it is (see inputFromURL for when that may happen).
         // The correct one (ref or rev) will be written into finalAttrs and
         // it needs to be mutable for that.
@@ -121,20 +154,7 @@ struct GitArchiveInputScheme : InputScheme
             }
         }
 
-        if (auto refOrRev = maybeGetStrAttr(finalAttrs, "refOrRev")) {
-            finalAttrs.erase("refOrRev");
-            if (std::regex_match(*refOrRev, revRegex)) {
-                finalAttrs.emplace("rev", *refOrRev);
-            } else if (std::regex_match(*refOrRev, refRegex)) {
-                finalAttrs.emplace("ref", *refOrRev);
-            } else {
-                throw Error(
-                    "in URL '%s', '%s' is not a commit hash or a branch/tag name",
-                    url,
-                    *refOrRev
-                );
-            }
-        } else if (auto ref = maybeGetStrAttr(finalAttrs, "ref")) {
+        if (auto ref = maybeGetStrAttr(finalAttrs, "ref")) {
             if (!std::regex_match(*ref, refRegex)) {
                 throw BadURL("URL '%s' contains an invalid branch/tag name", url);
             }

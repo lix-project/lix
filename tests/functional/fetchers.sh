@@ -22,7 +22,7 @@ for provider in github gitlab sourcehut; do
 
     testFetchTreeError \
         "\"$provider://host/foo/bar/,\"" \
-        "URL '$provider:foo/bar', ',' is not a commit hash or a branch/tag name"
+        "URL '$provider://host/foo/bar/,', ',' is not a commit hash or a branch/tag name"
 
     testFetchTreeError \
         "\"$provider://host/foo/bar/f16d8f43dd0998cdb315a2cccf2e4d10027e7ca4?rev=abc\"" \
