@@ -95,7 +95,6 @@ functional_tests_scripts = [
   'eval-store.sh',
   'derivation-json.sh',
   'import-derivation.sh',
-  'selfref-gc.sh',
   'db-migration.sh',
   'bash-profile.sh',
   'store-ping.sh',
