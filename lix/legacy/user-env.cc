@@ -111,7 +111,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     /* Construct a Nix expression that calls the user environment
        builder with the manifest as argument. */
     auto attrs = state.ctx.buildBindings(3);
-    state.ctx.paths.mkStorePathString(manifestFile, attrs.alloc("manifest"));
+    attrs.alloc("manifest") = state.ctx.paths.mkStorePathString(manifestFile);
     attrs.insert(state.ctx.symbols.create("derivations"), vManifest);
     Value args = {NewValueAs::attrs, attrs};
 

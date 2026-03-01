@@ -27,8 +27,7 @@ RC_GTEST_FIXTURE_PROP(
     prop_opaque_path_round_trip,
     (const SingleDerivedPath::Opaque & o))
 {
-    Value v;
-    evaluator.paths.mkStorePathString(o.path, v);
+    Value v = evaluator.paths.mkStorePathString(o.path);
     auto d = state.coerceToSingleDerivedPath(noPos, v, "");
     RC_ASSERT(SingleDerivedPath { o } == d);
 }

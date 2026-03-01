@@ -449,7 +449,7 @@ public:
      * The string is the printed store path with a context containing a
      * single `NixStringContextElem::Opaque` element of that store path.
      */
-    void mkStorePathString(const StorePath & storePath, Value & v);
+    Value mkStorePathString(const StorePath & storePath);
 };
 
 struct EvalStatistics

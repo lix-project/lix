@@ -438,7 +438,7 @@ void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & 
 {
     allowPath(storePath);
 
-    mkStorePathString(storePath, v);
+    v = mkStorePathString(storePath);
 }
 
 CheckedSourcePath EvalPaths::checkSourcePath(const SourcePath & path_)
@@ -865,10 +865,9 @@ void EvalState::mkPos(Value & v, PosIdx p)
         v.mkNull();
 }
 
-
-void EvalPaths::mkStorePathString(const StorePath & p, Value & v)
+Value EvalPaths::mkStorePathString(const StorePath & p)
 {
-    v = {
+    return {
         NewValueAs::string,
         store->printStorePath(p),
         NixStringContext{

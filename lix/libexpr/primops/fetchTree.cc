@@ -26,7 +26,7 @@ Value emitTreeAttrs(
 
     auto attrs = state.buildBindings(10);
 
-    state.paths.mkStorePathString(tree.storePath, attrs.alloc(state.symbols.sym_outPath));
+    attrs.alloc(state.symbols.sym_outPath) = state.paths.mkStorePathString(tree.storePath);
 
     // FIXME: support arbitrary input attributes.
 
