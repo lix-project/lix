@@ -671,6 +671,7 @@ stdenv.mkDerivation (finalAttrs: {
         just,
         nixfmt-rfc-style,
         skopeo,
+        tree,
 
         # Lix specific packages
         pre-commit-checks,
@@ -769,6 +770,9 @@ stdenv.mkDerivation (finalAttrs: {
 
               # git-clang-format
               llvmPackages.libclang.python
+
+              # Required for releng scripts
+              tree
             ]
             ++ [
               rust-analyzer
