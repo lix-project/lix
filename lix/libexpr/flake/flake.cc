@@ -1003,15 +1003,15 @@ void prim_parseFlakeRef(
     auto binds = state.ctx.buildBindings(attrs.size());
     for (const auto & [key, value] : attrs) {
         auto s = state.ctx.symbols.create(key);
-        auto & vv = binds.alloc(s);
-        std::visit(
+        Value vv = std::visit(
             overloaded{
-                [&vv](const std::string & value) { vv = {NewValueAs::string, value}; },
-                [&vv](const uint64_t & value) { vv = {NewValueAs::integer, NixInt::Inner(value)}; },
-                [&vv](const Explicit<bool> & value) { vv = {NewValueAs::boolean, value.t}; }
+                [](const std::string & value) -> Value { return {NewValueAs::string, value}; },
+                [](const uint64_t & value) -> Value { return {NewValueAs::integer, NixInt::Inner(value)}; },
+                [](const Explicit<bool> & value) -> Value { return {NewValueAs::boolean, value.t}; }
             },
             value
         );
+        binds.insert(s, vv);
     }
     v = {NewValueAs::attrs, binds};
 }

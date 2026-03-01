@@ -22,7 +22,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             auto attrs = state.ctx.buildBindings(table.size());
 
             for (auto & elem : table) {
-                attrs.alloc(elem.first) = self(elem.second);
+                attrs.insert(elem.first, self(elem.second));
             }
 
             return {NewValueAs::attrs, attrs};

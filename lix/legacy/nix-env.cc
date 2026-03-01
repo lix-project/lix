@@ -154,8 +154,7 @@ static void getAllExprs(Evaluator & state,
             Value vArg = {NewValueAs::string, path2.canonical().abs()};
             if (seen.size() == maxAttrs)
                 throw Error("too many Nix expressions in directory '%1%'", path);
-            attrs.alloc(attrName
-            ) = {NewValueAs::app, state.mem, state.builtins.get("import"), vArg};
+            attrs.insert(attrName, {NewValueAs::app, state.mem, state.builtins.get("import"), vArg});
         }
         else if (st.type == InputAccessor::tDirectory)
             /* `path2' is a directory (with no default.nix in it);
@@ -180,7 +179,7 @@ static Value loadSourceExpr(EvalState & state, const SourcePath & path_)
        directory). */
     else if (st.type == InputAccessor::tDirectory) {
         auto attrs = state.ctx.buildBindings(maxAttrs);
-        attrs.alloc("_combineChannels") = Value::EMPTY_LIST;
+        attrs.insert("_combineChannels", Value::EMPTY_LIST);
         StringSet seen;
         getAllExprs(state.ctx, path, seen, attrs);
         return {NewValueAs::attrs, attrs};

@@ -88,16 +88,16 @@ void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
     auto [tree, input2] = state.aio.blockOn(input.fetch(state.ctx.store));
 
     auto attrs2 = state.ctx.buildBindings(8);
-    attrs2.alloc(state.ctx.symbols.sym_outPath) = state.ctx.paths.mkStorePathString(tree.storePath);
+    attrs2.insert(state.ctx.symbols.sym_outPath, state.ctx.paths.mkStorePathString(tree.storePath));
     if (input2.getRef())
-        attrs2.alloc("branch") = {NewValueAs::string, *input2.getRef()};
+        attrs2.insert("branch", {NewValueAs::string, *input2.getRef()});
     // Backward compatibility: set 'rev' to
     // 0000000000000000000000000000000000000000 for a dirty tree.
     auto rev2 = input2.getRev().value_or(Hash(HashType::SHA1));
-    attrs2.alloc("rev") = {NewValueAs::string, rev2.gitRev()};
-    attrs2.alloc("shortRev") = {NewValueAs::string, rev2.gitRev().substr(0, 12)};
+    attrs2.insert("rev", {NewValueAs::string, rev2.gitRev()});
+    attrs2.insert("shortRev", {NewValueAs::string, rev2.gitRev().substr(0, 12)});
     if (auto revCount = input2.getRevCount())
-        attrs2.alloc("revCount") = {NewValueAs::integer, NixInt::Inner(*revCount)};
+        attrs2.insert("revCount", {NewValueAs::integer, NixInt::Inner(*revCount)});
     v = {NewValueAs::attrs, attrs2};
 
     state.ctx.paths.allowPath(tree.storePath);

@@ -46,30 +46,31 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
         auto attrs = state.ctx.buildBindings(7 + outputs.size());
 
-        attrs.alloc(state.ctx.symbols.sym_type) = {NewValueAs::string, "derivation"};
-        attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, i.queryName(state)};
+        attrs.insert(state.ctx.symbols.sym_type, {NewValueAs::string, "derivation"});
+        attrs.insert(state.ctx.symbols.sym_name, {NewValueAs::string, i.queryName(state)});
         auto system = i.querySystem(state);
         if (!system.empty())
-            attrs.alloc(state.ctx.symbols.sym_system) = {NewValueAs::string, system};
-        attrs.alloc(state.ctx.symbols.sym_outPath) = {
-            NewValueAs::string, state.ctx.store->printStorePath(i.queryOutPath(state))
-        };
+            attrs.insert(state.ctx.symbols.sym_system, {NewValueAs::string, system});
+        attrs.insert(
+            state.ctx.symbols.sym_outPath,
+            {NewValueAs::string, state.ctx.store->printStorePath(i.queryOutPath(state))}
+        );
         if (drvPath)
-            attrs.alloc(state.ctx.symbols.sym_drvPath) = {
-                NewValueAs::string, state.ctx.store->printStorePath(*drvPath)
-            };
+            attrs.insert(
+                state.ctx.symbols.sym_drvPath, {NewValueAs::string, state.ctx.store->printStorePath(*drvPath)}
+            );
 
         // Copy each output meant for installation.
-        auto & vOutputs = attrs.alloc(state.ctx.symbols.sym_outputs);
         auto outputsList = state.ctx.mem.newList(outputs.size());
-        vOutputs = {NewValueAs::list, outputsList};
+        attrs.insert(state.ctx.symbols.sym_outputs, {NewValueAs::list, outputsList});
         for (const auto & [m, j] : enumerate(outputs)) {
             outputsList->elems[m] = {NewValueAs::string, j.first};
             auto outputAttrs = state.ctx.buildBindings(2);
-            outputAttrs.alloc(state.ctx.symbols.sym_outPath) = {
-                NewValueAs::string, state.ctx.store->printStorePath(*j.second)
-            };
-            attrs.alloc(j.first) = {NewValueAs::attrs, outputAttrs};
+            outputAttrs.insert(
+                state.ctx.symbols.sym_outPath,
+                {NewValueAs::string, state.ctx.store->printStorePath(*j.second)}
+            );
+            attrs.insert(j.first, {NewValueAs::attrs, outputAttrs});
 
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
@@ -87,7 +88,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             meta.insert(state.ctx.symbols.create(j), *v);
         }
 
-        attrs.alloc(state.ctx.symbols.sym_meta) = {NewValueAs::attrs, meta};
+        attrs.insert(state.ctx.symbols.sym_meta, {NewValueAs::attrs, meta});
 
         manifest->elems[n++] = {NewValueAs::attrs, attrs};
 
@@ -111,7 +112,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     /* Construct a Nix expression that calls the user environment
        builder with the manifest as argument. */
     auto attrs = state.ctx.buildBindings(3);
-    attrs.alloc("manifest") = state.ctx.paths.mkStorePathString(manifestFile);
+    attrs.insert("manifest", state.ctx.paths.mkStorePathString(manifestFile));
     attrs.insert(state.ctx.symbols.create("derivations"), vManifest);
     Value args = {NewValueAs::attrs, attrs};
 

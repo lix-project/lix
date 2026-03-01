@@ -856,10 +856,10 @@ void EvalState::mkPos(Value & v, PosIdx p)
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
         auto attrs = ctx.buildBindings(3);
-        attrs.alloc(ctx.symbols.sym_file) = {NewValueAs::string, path->to_string()};
-        Value & line = attrs.alloc(ctx.symbols.sym_line);
-        Value & col = attrs.alloc(ctx.symbols.sym_column);
-        std::tie(line, col) = makePositionThunks(*this, p);
+        attrs.insert(ctx.symbols.sym_file, {NewValueAs::string, path->to_string()});
+        auto [line, col] = makePositionThunks(*this, p);
+        attrs.insert(ctx.symbols.sym_line, line);
+        attrs.insert(ctx.symbols.sym_column, col);
         v = {NewValueAs::attrs, attrs};
     } else
         v = Value::VNULL;

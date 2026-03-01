@@ -140,6 +140,8 @@ public:
         insert(Attr(name, value, pos));
     }
 
+    void insert(std::string_view name, Value value, PosIdx pos = noPos);
+
     void insert(const Attr & attr)
     {
         push_back(attr);
@@ -150,10 +152,6 @@ public:
         assert(bindings->size() < capacity);
         bindings->push_back(attr);
     }
-
-    Value & alloc(Symbol name, PosIdx pos = noPos);
-
-    Value & alloc(std::string_view name, PosIdx pos = noPos);
 
     [[nodiscard("must use created bindings")]]
     Bindings * finish()

@@ -23,19 +23,10 @@ Bindings * EvalMemory::allocBindings(size_t capacity)
     return new (allocBytes(sizeof(Bindings) + sizeof(Attr) * capacity)) Bindings();
 }
 
-
-Value & BindingsBuilder::alloc(Symbol name, PosIdx pos)
+void BindingsBuilder::insert(std::string_view name, Value value, PosIdx pos)
 {
-    bindings->push_back(Attr(name, {}, pos));
-    return (bindings->end() - 1)->value;
+    return insert(symbols.create(name), value, pos);
 }
-
-
-Value & BindingsBuilder::alloc(std::string_view name, PosIdx pos)
-{
-    return alloc(symbols.create(name), pos);
-}
-
 
 void Bindings::sort()
 {

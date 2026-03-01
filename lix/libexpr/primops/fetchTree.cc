@@ -26,49 +26,51 @@ Value emitTreeAttrs(
 
     auto attrs = state.buildBindings(10);
 
-    attrs.alloc(state.symbols.sym_outPath) = state.paths.mkStorePathString(tree.storePath);
+    attrs.insert(state.symbols.sym_outPath, state.paths.mkStorePathString(tree.storePath));
 
     // FIXME: support arbitrary input attributes.
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.alloc("narHash") = {NewValueAs::string, narHash->to_string()};
+    attrs.insert("narHash", {NewValueAs::string, narHash->to_string()});
 
     if (input.getType() == "git")
-        attrs.alloc("submodules") = {
-            NewValueAs::boolean, fetchers::maybeGetBoolAttr(input.attrs, "submodules").value_or(false)
-        };
+        attrs.insert(
+            "submodules",
+            {NewValueAs::boolean, fetchers::maybeGetBoolAttr(input.attrs, "submodules").value_or(false)}
+        );
 
     if (!forceDirty) {
 
         if (auto rev = input.getRev()) {
-            attrs.alloc("rev") = {NewValueAs::string, rev->gitRev()};
-            attrs.alloc("shortRev") = {NewValueAs::string, rev->gitShortRev()};
+            attrs.insert("rev", {NewValueAs::string, rev->gitRev()});
+            attrs.insert("shortRev", {NewValueAs::string, rev->gitShortRev()});
         } else if (emptyRevFallback) {
             // Backwards compat for `builtins.fetchGit`: dirty repos return an empty sha1 as rev
             auto emptyHash = Hash(HashType::SHA1);
-            attrs.alloc("rev") = {NewValueAs::string, emptyHash.gitRev()};
-            attrs.alloc("shortRev") = {NewValueAs::string, emptyHash.gitShortRev()};
+            attrs.insert("rev", {NewValueAs::string, emptyHash.gitRev()});
+            attrs.insert("shortRev", {NewValueAs::string, emptyHash.gitShortRev()});
         }
 
         if (auto revCount = input.getRevCount())
-            attrs.alloc("revCount") = {NewValueAs::integer, NixInt::Inner(*revCount)};
+            attrs.insert("revCount", {NewValueAs::integer, NixInt::Inner(*revCount)});
         else if (emptyRevFallback)
-            attrs.alloc("revCount") = {NewValueAs::integer, 0};
+            attrs.insert("revCount", {NewValueAs::integer, 0});
     }
 
     if (auto dirtyRev = fetchers::maybeGetStrAttr(input.attrs, "dirtyRev")) {
-        attrs.alloc("dirtyRev") = {NewValueAs::string, *dirtyRev};
-        attrs.alloc("dirtyShortRev") = {
-            NewValueAs::string, *fetchers::maybeGetStrAttr(input.attrs, "dirtyShortRev")
-        };
+        attrs.insert("dirtyRev", {NewValueAs::string, *dirtyRev});
+        attrs.insert(
+            "dirtyShortRev", {NewValueAs::string, *fetchers::maybeGetStrAttr(input.attrs, "dirtyShortRev")}
+        );
     }
 
     if (auto lastModified = input.getLastModified()) {
-        attrs.alloc("lastModified") = {NewValueAs::integer, *lastModified};
-        attrs.alloc("lastModifiedDate") = {
-            NewValueAs::string, fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S"))
-        };
+        attrs.insert("lastModified", {NewValueAs::integer, *lastModified});
+        attrs.insert(
+            "lastModifiedDate",
+            {NewValueAs::string, fmt("%s", std::put_time(std::gmtime(&*lastModified), "%Y%m%d%H%M%S"))}
+        );
     }
 
     return {NewValueAs::attrs, attrs};

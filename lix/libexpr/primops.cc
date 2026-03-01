@@ -159,12 +159,15 @@ static void mkOutputString(
     const StorePath & drvPath,
     const std::pair<std::string, DerivationOutput> & o)
 {
-    attrs.alloc(o.first) = state.mkOutputString(
-        SingleDerivedPath::Built{
-            .drvPath = makeConstantStorePath(drvPath),
-            .output = o.first,
-        },
-        o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first)
+    attrs.insert(
+        o.first,
+        state.mkOutputString(
+            SingleDerivedPath::Built{
+                .drvPath = makeConstantStorePath(drvPath),
+                .output = o.first,
+            },
+            o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first)
+        )
     );
 }
 
@@ -188,17 +191,17 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
     if (auto storePath = isValidDerivationInStore()) {
         Derivation drv = state.aio.blockOn(state.ctx.store->readDerivation(*storePath));
         auto attrs = state.ctx.buildBindings(3 + drv.outputs.size());
-        attrs.alloc(state.ctx.symbols.sym_drvPath) = {
-            NewValueAs::string,
-            path2,
-            {
-                NixStringContextElem::DrvDeep{.drvPath = *storePath},
-            }
-        };
-        attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, drv.env["name"]};
-        auto & outputsVal = attrs.alloc(state.ctx.symbols.sym_outputs);
+        attrs.insert(
+            state.ctx.symbols.sym_drvPath,
+            {NewValueAs::string,
+             path2,
+             {
+                 NixStringContextElem::DrvDeep{.drvPath = *storePath},
+             }}
+        );
+        attrs.insert(state.ctx.symbols.sym_name, {NewValueAs::string, drv.env["name"]});
         auto outputsList = state.ctx.mem.newList(drv.outputs.size());
-        outputsVal = {NewValueAs::list, outputsList};
+        attrs.insert(state.ctx.symbols.sym_outputs, {NewValueAs::list, outputsList});
 
         for (const auto & [i, o] : enumerate(drv.outputs)) {
             mkOutputString(state, attrs, *storePath, o);
@@ -733,8 +736,8 @@ static void prim_tryEval(EvalState & state, Value * * args, Value & v)
     if (success)
         attrs.insert(state.ctx.symbols.sym_value, *args[0]);
     else
-        attrs.alloc(state.ctx.symbols.sym_value) = {NewValueAs::boolean, false};
-    attrs.alloc("success") = {NewValueAs::boolean, success};
+        attrs.insert(state.ctx.symbols.sym_value, {NewValueAs::boolean, false});
+    attrs.insert("success", {NewValueAs::boolean, success});
 
     v = {NewValueAs::attrs, attrs};
 }
@@ -1272,13 +1275,14 @@ drvName, Bindings * attrs, Value & v)
     }
 
     auto result = state.ctx.buildBindings(1 + drv.outputs.size());
-    result.alloc(state.ctx.symbols.sym_drvPath) = {
-        NewValueAs::string,
-        drvPathS,
-        {
-            NixStringContextElem::DrvDeep{.drvPath = drvPath},
-        }
-    };
+    result.insert(
+        state.ctx.symbols.sym_drvPath,
+        {NewValueAs::string,
+         drvPathS,
+         {
+             NixStringContextElem::DrvDeep{.drvPath = drvPath},
+         }}
+    );
     for (auto & i : drv.outputs)
         mkOutputString(state, result, drvPath, i);
 
@@ -1564,7 +1568,6 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
     Value * readFileType = nullptr;
 
     for (auto & [name, type] : entries) {
-        auto & attr = attrs.alloc(name);
         if (!type) {
             // Some filesystems or operating systems may not be able to return
             // detailed node info quickly in this case we produce a thunk to
@@ -1572,11 +1575,13 @@ static void prim_readDir(EvalState & state, Value * * args, Value & v)
             Value epath = {NewValueAs::path, path + name};
             if (!readFileType)
                 readFileType = &state.ctx.builtins.get("readFileType");
-            attr = {NewValueAs::app, state.ctx.mem, *readFileType, epath};
+            Value attr = {NewValueAs::app, state.ctx.mem, *readFileType, epath};
+            attrs.insert(name, attr);
         } else {
             // This branch of the conditional is much more likely.
             // Here we just stringize the directory entry type.
-            attr = {NewValueAs::string, fileTypeToString(*type)};
+            Value attr = {NewValueAs::string, fileTypeToString(*type)};
+            attrs.insert(name, attr);
         }
     }
 
@@ -2144,8 +2149,7 @@ static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
 
     auto attrs = state.ctx.buildBindings(formals->formals.size());
     for (auto & i : formals->formals)
-        // !!! should optimise booleans (allocate only once)
-        attrs.alloc(i.name, i.pos) = {NewValueAs::boolean, i.def != nullptr};
+        attrs.insert(i.name, {NewValueAs::boolean, i.def != nullptr}, i.pos);
     v = {NewValueAs::attrs, attrs};
 }
 
@@ -2159,7 +2163,7 @@ static void prim_mapAttrs(EvalState & state, Value * * args, Value & v)
     for (auto & i : *args[1]->attrs()) {
         auto vName = state.ctx.symbols[i.name].toValue();
         Value appArgs[] = {vName, i.value};
-        attrs.alloc(i.name) = {NewValueAs::app, state.ctx.mem, *args[0], appArgs};
+        attrs.insert(i.name, {NewValueAs::app, state.ctx.mem, *args[0], appArgs});
     }
 
     v = {NewValueAs::attrs, attrs.alreadySorted()};
@@ -2511,18 +2515,16 @@ static void prim_partition(EvalState & state, Value * * args, Value & v)
 
     auto attrs = state.ctx.buildBindings(2);
 
-    auto & vRight = attrs.alloc(state.ctx.symbols.sym_right);
     auto rsize = right.size();
     auto rlist = state.ctx.mem.newList(rsize);
-    vRight = {NewValueAs::list, rlist};
+    attrs.insert(state.ctx.symbols.sym_right, {NewValueAs::list, rlist});
     for (auto [i, idx] : enumerate(right)) {
         rlist->elems[i] = elems[idx];
     }
 
-    auto & vWrong = attrs.alloc(state.ctx.symbols.sym_wrong);
     auto wsize = wrong.size();
     auto wlist = state.ctx.mem.newList(wsize);
-    vWrong = {NewValueAs::list, wlist};
+    attrs.insert(state.ctx.symbols.sym_wrong, {NewValueAs::list, wlist});
     for (auto [i, idx] : enumerate(wrong)) {
         wlist->elems[i] = elems[idx];
     }
@@ -2550,10 +2552,9 @@ static void prim_groupBy(EvalState & state, Value * * args, Value & v)
     auto attrs2 = state.ctx.buildBindings(attrs.size());
 
     for (auto & i : attrs) {
-        auto & list = attrs2.alloc(i.first);
         auto size = i.second.size();
         auto content = state.ctx.mem.newList(size);
-        list = {NewValueAs::list, content};
+        attrs2.insert(i.first, {NewValueAs::list, content});
         for (auto [i, idx] : enumerate(i.second)) {
             content->elems[i] = elems[idx];
         }
@@ -3040,8 +3041,8 @@ static void prim_parseDrvName(EvalState & state, Value * * args, Value & v)
     auto name = state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.parseDrvName");
     DrvName parsed(name);
     auto attrs = state.ctx.buildBindings(2);
-    attrs.alloc(state.ctx.symbols.sym_name) = {NewValueAs::string, parsed.name};
-    attrs.alloc("version") = {NewValueAs::string, parsed.version};
+    attrs.insert(state.ctx.symbols.sym_name, {NewValueAs::string, parsed.name});
+    attrs.insert("version", {NewValueAs::string, parsed.version});
     v = {NewValueAs::attrs, attrs};
 }
 
@@ -3090,8 +3091,8 @@ Value EvalBuiltins::prepareNixPath(const SearchPath & searchPath)
     int n = 0;
     for (auto & i : searchPath.elements) {
         auto attrs = mem.buildBindings(symbols, 2);
-        attrs.alloc("path") = {NewValueAs::string, i.path.s};
-        attrs.alloc("prefix") = {NewValueAs::string, i.prefix.s};
+        attrs.insert("path", {NewValueAs::string, i.path.s});
+        attrs.insert("prefix", {NewValueAs::string, i.prefix.s});
         v->elems[n++] = {NewValueAs::attrs, attrs};
     }
     return {NewValueAs::list, v};

@@ -136,17 +136,16 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
     for (const auto & info : contextInfos) {
         auto infoAttrs = state.ctx.buildBindings(3);
         if (info.second.path)
-            infoAttrs.alloc(state.ctx.symbols.sym_path) = {NewValueAs::boolean, true};
+            infoAttrs.insert(state.ctx.symbols.sym_path, {NewValueAs::boolean, true});
         if (info.second.allOutputs)
-            infoAttrs.alloc(sAllOutputs) = {NewValueAs::boolean, true};
+            infoAttrs.insert(sAllOutputs, {NewValueAs::boolean, true});
         if (!info.second.outputs.empty()) {
-            auto & outputsVal = infoAttrs.alloc(state.ctx.symbols.sym_outputs);
             auto content = state.ctx.mem.newList(info.second.outputs.size());
-            outputsVal = {NewValueAs::list, content};
+            infoAttrs.insert(state.ctx.symbols.sym_outputs, {NewValueAs::list, content});
             for (const auto & [i, output] : enumerate(info.second.outputs))
                 content->elems[i] = {NewValueAs::string, output};
         }
-        attrs.alloc(state.ctx.store->printStorePath(info.first)) = {NewValueAs::attrs, infoAttrs};
+        attrs.insert(state.ctx.store->printStorePath(info.first), {NewValueAs::attrs, infoAttrs});
     }
 
     v = {NewValueAs::attrs, attrs};
