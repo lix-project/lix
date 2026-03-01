@@ -128,9 +128,8 @@ TEST_F(ValuePrintingTests, vLambda)
 
 TEST_F(ValuePrintingTests, vPrimOp)
 {
-    Value vPrimOp;
     PrimOp primOp{{.name = "puppy"}};
-    vPrimOp.mkPrimOp(&primOp);
+    Value vPrimOp = {NewValueAs::primop, primOp};
 
     test(vPrimOp, "«primop puppy»");
 }
@@ -139,8 +138,7 @@ TEST_F(ValuePrintingTests, vPrimOpApp)
 {
     EvalMemory mem;
     PrimOp primOp{{.name = "puppy"}};
-    Value vPrimOp;
-    vPrimOp.mkPrimOp(&primOp);
+    Value vPrimOp = {NewValueAs::primop, primOp};
 
     Value vPrimOpApp{NewValueAs::app, mem, vPrimOp, vPrimOp};
 
@@ -543,8 +541,7 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
 TEST_F(ValuePrintingTests, ansiColorsPrimOp)
 {
     PrimOp primOp{{.name = "puppy"}};
-    Value v;
-    v.mkPrimOp(&primOp);
+    Value v = {NewValueAs::primop, primOp};
 
     test(v,
          ANSI_BLUE "«primop puppy»" ANSI_NORMAL,
@@ -557,8 +554,7 @@ TEST_F(ValuePrintingTests, ansiColorsPrimOpApp)
 {
     EvalMemory mem;
     PrimOp primOp{{.name = "puppy"}};
-    Value vPrimOp;
-    vPrimOp.mkPrimOp(&primOp);
+    Value vPrimOp = {NewValueAs::primop, primOp};
 
     Value v{NewValueAs::app, mem, vPrimOp, vPrimOp};
 

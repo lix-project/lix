@@ -60,11 +60,6 @@ bool Value::isTrivial() const
             || thunk().expr->try_cast<ExprLambda>() || thunk().expr->try_cast<ExprList>());
 }
 
-void Value::mkPrimOp(PrimOp * p)
-{
-    *this = {NewValueAs::primop, *p};
-}
-
 Value::Value(string_t, Str * s, const NixStringContext & context)
     : Value(NewValueAs::string, s, copyContext(context))
 {

@@ -769,8 +769,6 @@ public:
         *this = {NewValueAs::null};
     }
 
-    void mkPrimOp(PrimOp * p);
-
     inline void mkExternal(ExternalValueBase * e)
     {
         *this = {NewValueAs::external, *e};

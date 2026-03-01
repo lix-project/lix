@@ -1921,13 +1921,8 @@ static struct LazyPosAcessors {
          }}
     };
 
-    Value lineOfPos, columnOfPos;
-
-    LazyPosAcessors()
-    {
-        lineOfPos.mkPrimOp(&primop_lineOfPos);
-        columnOfPos.mkPrimOp(&primop_columnOfPos);
-    }
+    Value lineOfPos = {NewValueAs::primop, primop_lineOfPos},
+          columnOfPos = {NewValueAs::primop, primop_columnOfPos};
 
     void operator()(EvalState & state, const PosIdx pos, Value & line, Value & column)
     {
