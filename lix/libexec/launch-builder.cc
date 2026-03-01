@@ -4,10 +4,12 @@
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include <csignal>
+#include <cstdint>
 #include <exception>
 #include <fcntl.h>
 #include <filesystem>
 #include <grp.h>
+#include <limits>
 #include <sys/resource.h>
 #include <unistd.h>
 #include <vector>
@@ -117,7 +119,9 @@ int main(int argc, char * argv[])
 
     try {
         capnp::MallocMessageBuilder buf;
-        capnp::readMessageCopyFromFd(STDIN_FILENO, buf);
+        capnp::readMessageCopyFromFd(
+            STDIN_FILENO, buf, {.traversalLimitInWords = std::numeric_limits<uint64_t>::max()}
+        );
 
         auto request = buf.getRoot<build::Request>().asReader();
 
