@@ -130,6 +130,10 @@ public:
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
     virtual Value eval(EvalState & state, Env & env);
     virtual Value maybeThunk(EvalState & state, Env & env);
+    /* Lambdas have a name associated with them, when they are declared in a binding:
+     * `identity = x: x` will print the resulting value as `«lambda identity @ «string»:1:14»`.
+     * This is set in the parser. After parsing, all expressions are immutable.
+     */
     virtual void setName(Symbol name);
     PosIdx getPos() const { return pos; }
 

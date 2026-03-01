@@ -187,7 +187,29 @@ Value ExprSet::eval(EvalState & state, Env & env)
                 .debugThrow();
         }
 
-        i.valueExpr->setName(nameSym);
+        // clang-format off
+        /* This line is so wrong that it is best kept in here with the documentation why it is wrong,
+         * lest some naive soul may add it once again some year in the future.
+         * See the following witness as to why it is wrong:
+         *
+         * nix-repl> fun = (name: { ${name} = x: x; }) # This function creates a dynamic attribute with a variable name
+         * Added fun.
+         * nix-repl> revSeq = x: y: builtins.seq x (builtins.seq y x) # evaluate x, then y in sequence, then return x
+         * Added revSeq.
+         * nix-repl> fun "foo" # The code seemingly works
+         * { foo = «lambda foo @ «string»:1:26»; }
+         * nix-repl> fun "bar" #
+         * { bar = «lambda bar @ «string»:1:26»; }
+         * nix-repl> revSeq (fun "foo") (fun "bar") # Until it doesn't
+         * { foo = «lambda bar @ «string»:1:26»; }
+         *
+         * What happened? Expressions are AST bound, therefore all lambdas share the same Expr and thus *the same name*.
+         * Using `setName` here updates the name of *all* lambdas from that expression, not just of the value at hand.
+         * And this is why all expressions must be treated as immutable after parsing.
+         */
+        /* i.valueExpr->setName(nameSym); */
+        // clang-format on
+
         /* Keep sorted order so find can catch duplicates */
         v.attrs()->push_back(Attr(nameSym, i.valueExpr->maybeThunk(state, *dynamicEnv), i.pos));
         v.attrs()->sort(); // FIXME: inefficient
