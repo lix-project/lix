@@ -55,6 +55,5 @@ void prim_importNative(EvalState & state, Value * * args, Value & v);
  */
 void prim_exec(EvalState & state, Value * * args, Value & v);
 
-void makePositionThunks(EvalState & state, const PosIdx pos, Value & line, Value & column);
-
+std::tuple<Value, Value> makePositionThunks(EvalState & state, const PosIdx pos);
 }

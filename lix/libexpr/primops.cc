@@ -26,6 +26,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <tuple>
 #include <unistd.h>
 
 #include <algorithm>
@@ -1931,17 +1932,18 @@ static struct LazyPosAcessors {
     Value lineOfPos = {NewValueAs::primop, primop_lineOfPos},
           columnOfPos = {NewValueAs::primop, primop_columnOfPos};
 
-    void operator()(EvalState & state, const PosIdx pos, Value & line, Value & column)
+    std::tuple<Value, Value> operator()(EvalState & state, const PosIdx pos)
     {
         Value posV{NewValueAs::integer, NixInt{pos.id}};
-        line = {NewValueAs::app, state.ctx.mem, lineOfPos, posV};
-        column = {NewValueAs::app, state.ctx.mem, columnOfPos, posV};
+        Value line = {NewValueAs::app, state.ctx.mem, lineOfPos, posV};
+        Value column = {NewValueAs::app, state.ctx.mem, columnOfPos, posV};
+        return std::make_tuple(line, column);
     }
 } makeLazyPosAccessors;
 
-void makePositionThunks(EvalState & state, const PosIdx pos, Value & line, Value & column)
+std::tuple<Value, Value> makePositionThunks(EvalState & state, const PosIdx pos)
 {
-    makeLazyPosAccessors(state, pos, line, column);
+    return makeLazyPosAccessors(state, pos);
 }
 
 /* Dynamic version of the `?' operator. */
