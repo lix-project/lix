@@ -3,6 +3,7 @@
 
 #include "lix/libcmd/command.hh"
 #include "lix/libexpr/eval-settings.hh"
+#include "lix/libfetchers/registry.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/serve-protocol.hh"
 #include "lix/libmain/shared.hh"
@@ -19,6 +20,11 @@
 namespace nix {
 
 namespace {
+
+struct FlakeRegistryEntryFacts
+{
+    fetchers::Registry::Entry entry;
+};
 
 std::string formatProtocol(unsigned int proto)
 {
@@ -49,6 +55,7 @@ void checkInfo(const std::string & msg) {
 struct CmdDoctor : StoreCommand
 {
     bool success = true;
+    std::map<std::string, FlakeRegistryEntryFacts> flakeRegistryFacts;
 
     /**
      * This command is stable before the others
@@ -82,6 +89,10 @@ struct CmdDoctor : StoreCommand
         {
             Path profile = getEnv("NIX_PROFILE").value_or(getDefaultProfile());
             checkValidCurrentProfileGeneration(profile);
+        }
+        {
+            printInfo("Collecting information about the Flake registry");
+            success &= checkFlakeRegistry(store);
         }
 
         if (!success)
@@ -154,6 +165,22 @@ struct CmdDoctor : StoreCommand
         checkInfo(fmt("Features: %1%", concatStringsSep(", ", getNixFeatures())));
 
         return true;
+    }
+
+    bool checkFlakeRegistry(ref<Store> store)
+    {
+        try {
+            auto registries = aio().blockOn(fetchers::getRegistries(store));
+            for (auto & registry : registries) {
+                for (auto & entry : registry->entries) {
+                    flakeRegistryFacts[entry.from.toURL().to_string()] = {.entry = entry};
+                }
+            }
+            return true;
+
+        } catch (...) {
+            return checkFail("Failed to obtain the Flake registry");
+        }
     }
 
     bool checkNixInPath()
