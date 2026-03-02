@@ -1906,7 +1906,7 @@ static void prim_unsafeGetAttrPos(EvalState & state, Value * * args, Value & v)
     if (!i) {
         v = Value::VNULL;
     } else {
-        state.mkPos(v, i->pos);
+        v = state.mkPos(i->pos);
     }
 }
 

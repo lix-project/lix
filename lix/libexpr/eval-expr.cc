@@ -527,9 +527,7 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
 
 Value ExprPos::eval(EvalState & state, Env & env)
 {
-    Value v;
-    state.mkPos(v, pos);
-    return v;
+    return state.mkPos(pos);
 }
 
 Value ExprBlackHole::eval(EvalState & state, Env & env)

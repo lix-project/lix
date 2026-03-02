@@ -800,7 +800,7 @@ public:
      */
     Value autoCallFunction(Bindings & args, Value & fun, PosIdx pos);
 
-    void mkPos(Value & v, PosIdx pos);
+    Value mkPos(PosIdx pos);
 
     /**
      * Create a string representing a `SingleDerivedPath::Built`.

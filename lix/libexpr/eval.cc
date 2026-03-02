@@ -851,7 +851,7 @@ Value Evaluator::evalLazily(Expr & e)
     return {NewValueAs::thunk, mem, builtins.env, e};
 }
 
-void EvalState::mkPos(Value & v, PosIdx p)
+Value EvalState::mkPos(PosIdx p)
 {
     auto origin = ctx.positions.originOf(p);
     if (auto path = std::get_if<CheckedSourcePath>(&origin)) {
@@ -860,9 +860,9 @@ void EvalState::mkPos(Value & v, PosIdx p)
         auto [line, col] = makePositionThunks(*this, p);
         attrs.insert(ctx.symbols.sym_line, line);
         attrs.insert(ctx.symbols.sym_column, col);
-        v = {NewValueAs::attrs, attrs};
+        return {NewValueAs::attrs, attrs};
     } else
-        v = Value::VNULL;
+        return Value::VNULL;
 }
 
 Value EvalPaths::mkStorePathString(const StorePath & p)
