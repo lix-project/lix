@@ -1899,7 +1899,7 @@ static void prim_unsafeGetAttrPos(EvalState & state, Value * * args, Value & v)
     state.forceAttrs(*args[1], noPos, "while evaluating the second argument passed to builtins.unsafeGetAttrPos");
     auto i = args[1]->attrs()->get(state.ctx.symbols.create(attr));
     if (!i) {
-        v.mkNull();
+        v = Value::VNULL;
     } else {
         state.mkPos(v, i->pos);
     }
@@ -2853,7 +2853,7 @@ void prim_match(EvalState & state, Value * * args, Value & v)
 
         std::cmatch match;
         if (!std::regex_match(str.begin(), str.end(), match, regex)) {
-            v.mkNull();
+            v = Value::VNULL;
             return;
         }
 
@@ -2863,7 +2863,7 @@ void prim_match(EvalState & state, Value * * args, Value & v)
         v = {NewValueAs::list, result};
         for (size_t i = 0; i < len; ++i) {
             if (!match[i+1].matched)
-                result->elems[i].mkNull();
+                result->elems[i] = Value::VNULL;
             else
                 result->elems[i] = {NewValueAs::string, match[i + 1].str()};
         }
@@ -2916,7 +2916,7 @@ void prim_split(EvalState & state, Value * * args, Value & v)
             elem = {NewValueAs::list, content};
             for (size_t si = 0; si < slen; ++si) {
                 if (!match[si + 1].matched)
-                    content->elems[si].mkNull();
+                    content->elems[si] = Value::VNULL;
                 else
                     content->elems[si] = {NewValueAs::string, match[si + 1].str()};
             }

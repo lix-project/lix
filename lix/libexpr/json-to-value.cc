@@ -94,7 +94,7 @@ public:
 
     bool null() override
     {
-        rs->value().mkNull();
+        rs->value() = Value::VNULL;
         rs->add();
         return true;
     }

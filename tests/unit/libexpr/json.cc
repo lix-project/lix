@@ -15,8 +15,7 @@ namespace nix {
     };
 
     TEST_F(JSONValueTest, null) {
-        Value v;
-        v.mkNull();
+        Value v = Value::VNULL;
         ASSERT_EQ(getJSONValue(v), "null");
     }
 

@@ -766,11 +766,6 @@ public:
      */
     inline ValueType type(bool invalidIsThunk = false) const;
 
-    inline void mkNull()
-    {
-        *this = {NewValueAs::null};
-    }
-
     bool isList() const
     {
         return internalType() == tList;

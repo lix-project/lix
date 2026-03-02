@@ -48,8 +48,7 @@ TEST_F(ValuePrintingTests, tPath)
 
 TEST_F(ValuePrintingTests, tNull)
 {
-    Value vNull;
-    vNull.mkNull();
+    Value vNull = Value::VNULL;
     test(vNull, "null");
 }
 
@@ -95,7 +94,7 @@ TEST_F(ValuePrintingTests, vThunk)
 TEST_F(ValuePrintingTests, vApp)
 {
     EvalMemory mem;
-    Value vFn{NewValueAs::null};
+    Value vFn = Value::VNULL;
     Value vApp{NewValueAs::app, mem, vFn, vFn};
 
     test(vApp, "«thunk»");
@@ -368,8 +367,7 @@ TEST_F(ValuePrintingTests, ansiColorsPath)
 
 TEST_F(ValuePrintingTests, ansiColorsNull)
 {
-    Value v;
-    v.mkNull();
+    Value v = Value::VNULL;
 
     test(v,
          ANSI_CYAN "null" ANSI_NORMAL,

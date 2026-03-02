@@ -29,7 +29,7 @@ static void prim_anotherNull (EvalState & state, Value ** args, Value & v)
 {
     assert(entryCalled);
     if (mySettings.settingSet)
-        v.mkNull();
+        v = Value::VNULL;
     else
         v = {NewValueAs::boolean, false};
 }

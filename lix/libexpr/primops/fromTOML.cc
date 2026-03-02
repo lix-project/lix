@@ -57,7 +57,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
             throw std::runtime_error("Dates and times are not supported");
             break;
         case toml::value_t::empty:
-            v.mkNull();
+            v = Value::VNULL;
             break;
         }
     };

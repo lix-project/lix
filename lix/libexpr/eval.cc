@@ -862,7 +862,7 @@ void EvalState::mkPos(Value & v, PosIdx p)
         std::tie(line, col) = makePositionThunks(*this, p);
         v = {NewValueAs::attrs, attrs};
     } else
-        v.mkNull();
+        v = Value::VNULL;
 }
 
 Value EvalPaths::mkStorePathString(const StorePath & p)
