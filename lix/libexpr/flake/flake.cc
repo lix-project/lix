@@ -943,16 +943,14 @@ LockedFlake lockFlake(
 Value callFlake(EvalState & state, const LockedFlake & lockedFlake)
 {
     Value vLocks;
-    Value vRootSrc;
     Value vRootSubdir;
 
     vLocks = {NewValueAs::string, lockedFlake.lockFile.to_string()};
 
-    emitTreeAttrs(
+    Value vRootSrc = emitTreeAttrs(
         state.ctx,
         *lockedFlake.flake.sourceInfo,
         lockedFlake.flake.lockedRef.input,
-        vRootSrc,
         false,
         lockedFlake.flake.forceDirty
     );

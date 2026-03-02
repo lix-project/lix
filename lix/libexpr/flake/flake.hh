@@ -202,12 +202,11 @@ LockedFlake lockFlake(
 Value callFlake(EvalState & state, const LockedFlake & lockedFlake);
 }
 
-void emitTreeAttrs(
+Value emitTreeAttrs(
     Evaluator & state,
     const fetchers::Tree & tree,
     const fetchers::Input & input,
-    Value & v,
     bool emptyRevFallback = false,
-    bool forceDirty = false);
-
+    bool forceDirty = false
+);
 }

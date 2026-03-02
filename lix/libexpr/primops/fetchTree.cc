@@ -14,13 +14,13 @@
 
 namespace nix {
 
-void emitTreeAttrs(
+Value emitTreeAttrs(
     Evaluator & state,
     const fetchers::Tree & tree,
     const fetchers::Input & input,
-    Value & v,
     bool emptyRevFallback,
-    bool forceDirty)
+    bool forceDirty
+)
 {
     assert(input.isLocked());
 
@@ -71,7 +71,7 @@ void emitTreeAttrs(
         };
     }
 
-    v = {NewValueAs::attrs, attrs};
+    return {NewValueAs::attrs, attrs};
 }
 
 std::string fixURI(std::string uri, EvalState & state, const std::string & defaultScheme = "file")
@@ -223,7 +223,7 @@ static void fetchTree(
 
     state.ctx.paths.allowPath(tree.storePath);
 
-    emitTreeAttrs(state.ctx, tree, input2, v, params.emptyRevFallback, false);
+    v = emitTreeAttrs(state.ctx, tree, input2, params.emptyRevFallback, false);
 }
 
 void prim_fetchTree(EvalState & state, Value * * args, Value & v)
