@@ -181,7 +181,26 @@ template<> std::optional<uint16_t> BaseSetting<std::optional<uint16_t>>::parse(c
         throw UsageError("setting '%s' has invalid value '%s'", name, str);
 }
 
+template<>
+std::optional<uint32_t>
+BaseSetting<std::optional<uint32_t>>::parse(const std::string & str, const ApplyConfigOptions & options) const
+{
+    if (str == "") {
+        return std::nullopt;
+    } else if (auto n = string2Int<uint32_t>(str)) {
+        return n;
+    } else {
+        throw UsageError("setting '%s' has invalid value '%s'", name, str);
+    }
+}
+
 template<> std::string BaseSetting<std::optional<uint16_t>>::to_string() const
+{
+    return value ? std::to_string(*value) : "";
+}
+
+template<>
+std::string BaseSetting<std::optional<uint32_t>>::to_string() const
 {
     return value ? std::to_string(*value) : "";
 }
