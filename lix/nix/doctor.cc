@@ -1,4 +1,5 @@
 #include <sstream>
+#include <sys/utsname.h>
 
 #include "lix/libcmd/command.hh"
 #include "lix/libutil/logging.hh"
@@ -8,6 +9,8 @@
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/exit.hh"
+#include "lix/libutil/systemd.hh"
+#include "lix/libutil/users.hh"
 #include "lix/libstore/profiles.hh"
 #include "doctor.hh"
 
@@ -62,6 +65,8 @@ struct CmdDoctor : StoreCommand
 
     void run(ref<Store> store) override
     {
+        printInfo("Collecting general system information");
+        printGeneralSystemInfo();
         printInfo("Running checks against store uri %1%", store->getUri());
 
         if (store.try_cast_shared<LocalFSStore>()) {
@@ -79,6 +84,53 @@ struct CmdDoctor : StoreCommand
             throw Exit(2);
     }
 
+    bool printGeneralSystemInfo()
+    {
+        checkInfo(fmt("Nix system type: '%1%'", settings.thisSystem));
+        {
+            std::stringstream ss;
+            struct utsname uname_buf;
+            if (auto err = uname(&uname_buf) != 0) {
+                return checkFail(fmt("Failed to obtain information via uname: %d", err));
+            }
+
+            ss << uname_buf.sysname << " " << uname_buf.version;
+#ifdef __linux__
+            if (auto hostInfo = aio().blockOn(systemd::get_host_information())) {
+                ss << ", " << hostInfo->os_pretty_name << ", " << hostInfo->build_id.value_or("no build id");
+                checkInfo(fmt("Host OS: %s", ss.str()));
+
+                checkInfo(fmt("Chassis: %s", hostInfo->chassis));
+                checkInfo(
+                    fmt("Hardware: %s (vendor: %s, version: %s)",
+                        hostInfo->hardware_vendor,
+                        hostInfo->hardware_model,
+                        hostInfo->hardware_version)
+                );
+                checkInfo(
+                    fmt("Firmware: %s (version: %s)", hostInfo->firmware_vendor, hostInfo->firmware_version)
+                );
+            }
+#else
+            checkInfo(fmt("Host OS: %s", ss.str()));
+#endif
+        }
+
+        {
+            auto targets = {"LOCALE", "LC_CTYPE", "LC_ALL", "LANG"};
+            std::list<std::string> vars;
+
+            for (auto & target : targets) {
+                if (auto var = getEnvNonEmpty(target)) {
+                    vars.push_back(fmt("%s=%s", target, *var));
+                }
+            }
+
+            checkInfo(fmt("User locale: %s", concatStringsSep(", ", vars)));
+        }
+
+        return true;
+    }
     bool checkNixInPath()
     {
         PathSet dirs;
