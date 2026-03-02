@@ -15,62 +15,53 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
 
     std::istringstream tomlStream(std::string{toml});
 
-    auto visit = [&](this const auto & self, Value & v, toml::value t) -> void {
+    auto visit = [&](this const auto & self, toml::value t) -> Value {
         switch (t.type()) {
         case toml::value_t::table: {
             auto table = toml::get<toml::table>(t);
             auto attrs = state.ctx.buildBindings(table.size());
 
             for (auto & elem : table) {
-                self(attrs.alloc(elem.first), elem.second);
+                attrs.alloc(elem.first) = self(elem.second);
             }
 
-            v = {NewValueAs::attrs, attrs};
-        } break;
+            return {NewValueAs::attrs, attrs};
+        }
         case toml::value_t::array: {
             auto array = toml::get<std::vector<toml::value>>(t);
 
             size_t size = array.size();
             auto list = state.ctx.mem.newList(size);
-            v = {NewValueAs::list, list};
             for (size_t i = 0; i < size; ++i) {
-                self(list->elems[i], array[i]);
+                list->elems[i] = self(array[i]);
             }
-        } break;
+            return {NewValueAs::list, list};
+        }
         case toml::value_t::boolean:
-            v = {NewValueAs::boolean, toml::get<bool>(t)};
-            break;
+            return {NewValueAs::boolean, toml::get<bool>(t)};
         case toml::value_t::integer:
-            v = {NewValueAs::integer, toml::get<int64_t>(t)};
-            break;
+            return {NewValueAs::integer, toml::get<int64_t>(t)};
         case toml::value_t::floating:
-            v = {NewValueAs::floating, toml::get<NixFloat>(t)};
-            break;
+            return {NewValueAs::floating, toml::get<NixFloat>(t)};
         case toml::value_t::string:
-            v = {NewValueAs::string, toml::get<std::string>(t)};
-            break;
+            return {NewValueAs::string, toml::get<std::string>(t)};
         case toml::value_t::local_datetime:
         case toml::value_t::offset_datetime:
         case toml::value_t::local_date:
         case toml::value_t::local_time:
             // NOLINTNEXTLINE(lix-foreign-exceptions)
             throw std::runtime_error("Dates and times are not supported");
-            break;
         case toml::value_t::empty:
-            v = Value::VNULL;
-            break;
+            return Value::VNULL;
         }
     };
 
     try {
-        visit(
-            val,
+        val = visit(
             toml::parse(
                 tomlStream,
                 "fromTOML", /* the "filename" */
-                toml::spec::v(
-                    1, 0, 0
-                ) // Be explicit that we are parsing TOML 1.0.0 without extensions
+                toml::spec::v(1, 0, 0) // Be explicit that we are parsing TOML 1.0.0 without extensions
             )
         );
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions) // TODO: toml::syntax_error
