@@ -3,6 +3,7 @@
 
 #include "lix/libcmd/command.hh"
 #include "lix/libexpr/eval-settings.hh"
+#include "lix/libexpr/search-path.hh"
 #include "lix/libfetchers/registry.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/serve-protocol.hh"
@@ -21,9 +22,22 @@ namespace nix {
 
 namespace {
 
+enum SearchPathBackingType {
+    Channel,
+    FlakeRegistry,
+    FlakeRef,
+    FilesystemPath,
+    Other,
+};
+
 struct FlakeRegistryEntryFacts
 {
     fetchers::Registry::Entry entry;
+};
+
+struct SearchPathFacts
+{
+    std::string originReference;
 };
 
 std::string formatProtocol(unsigned int proto)
@@ -55,6 +69,7 @@ void checkInfo(const std::string & msg) {
 struct CmdDoctor : StoreCommand
 {
     bool success = true;
+    std::map<std::string, SearchPathFacts> searchPathFacts;
     std::map<std::string, FlakeRegistryEntryFacts> flakeRegistryFacts;
 
     /**
@@ -93,6 +108,10 @@ struct CmdDoctor : StoreCommand
         {
             printInfo("Collecting information about the Flake registry");
             success &= checkFlakeRegistry(store);
+        }
+        {
+            printInfo("Collecting information about the ambient Nix search paths");
+            success &= checkAmbientNixSearchPaths();
         }
 
         if (!success)
@@ -181,6 +200,28 @@ struct CmdDoctor : StoreCommand
         } catch (...) {
             return checkFail("Failed to obtain the Flake registry");
         }
+    }
+
+    bool checkAmbientNixSearchPaths()
+    {
+        bool nixPathOverridden = evalSettings.nixPath.overridden;
+        bool influencedByEnvironment = getEnvNonEmpty("NIX_PATH") == std::nullopt;
+
+        auto nixPathS = concatStringsSep(", ", evalSettings.nixPath.get());
+
+        if (nixPathOverridden) {
+            if (influencedByEnvironment) {
+                checkInfo(fmt(
+                    "Default (influenced by $NIX_PATH) Nix configuration search path: %s", nixPathS
+                ));
+            } else {
+                checkInfo(fmt("Default Nix configuration search path: %s", nixPathS));
+            }
+        } else {
+            checkInfo(fmt("Overridden Nix configuration search path: %s", nixPathS));
+        }
+
+        return true;
     }
 
     bool checkNixInPath()
