@@ -39,6 +39,7 @@ class TestLocalStore:
         info = nix.nix(["--store", "./x", "store", "ping", "--json"]).run().json()
         assert info["trusted"]
 
+    @pytest.mark.usefixtures("fake_nixpkgs")
     def test_doctor_shows_trust(self, nix: Nix):
         result = nix.nix(["--store", "./x", "doctor"]).run().ok()
         assert "You are trusted by" in result.stderr_plain

@@ -113,6 +113,10 @@ struct CmdDoctor : StoreCommand
             printInfo("Collecting information about the ambient Nix search paths");
             success &= checkAmbientNixSearchPaths();
         }
+        {
+            printInfo("Collecting information about Nixpkgs provenance");
+            success &= checkNixpkgsProvenance();
+        }
 
         if (!success)
             throw Exit(2);
@@ -219,6 +223,41 @@ struct CmdDoctor : StoreCommand
             }
         } else {
             checkInfo(fmt("Overridden Nix configuration search path: %s", nixPathS));
+        }
+
+        // Parse all entries one by one to construct the search path.
+        for (auto entry : evalSettings.nixPath.get()) {
+            auto elem = SearchPath::Elem::parse(entry);
+            auto prefix = elem.prefix.s.empty() ? elem.path.s : elem.prefix.s;
+            searchPathFacts[prefix] = {
+                .originReference = entry,
+            };
+        }
+
+        return true;
+    }
+
+    bool checkNixpkgsProvenance()
+    {
+        if (!searchPathFacts.contains("nixpkgs")) {
+            return checkFail(
+                "Search path does not contain nixpkgs. All evaluations using nixpkgs (including nix-shell) "
+                "will fail."
+            );
+        }
+
+        auto entry = searchPathFacts["nixpkgs"];
+        checkInfo(fmt("Nixpkgs provenance: %s", entry.originReference));
+        try {
+            auto nixpkgsVersion = aio().blockOn(runProgram(
+                "nix-instantiate",
+                true,
+                {"--eval", "--raw", "--expr", "(import <nixpkgs> { }).lib.version"},
+                false
+            ));
+            checkInfo(fmt("Nixpkgs version: %s", nixpkgsVersion));
+        } catch (...) {
+            return checkFail("Failed obtaining the nixpkgs version: nixpkgs is either broken or invalid");
         }
 
         return true;

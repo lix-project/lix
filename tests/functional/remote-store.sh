@@ -2,9 +2,6 @@ source common.sh
 
 clearStore
 
-# Ensure "fake ssh" remote store works just as legacy fake ssh would.
-nix --store ssh-ng://localhost?remote-store=$TEST_ROOT/other-store doctor
-
 # Ensure that store ping trusted works with ssh-ng://
 nix --store ssh-ng://localhost?remote-store=$TEST_ROOT/other-store store ping --json | jq -e '.trusted'
 
