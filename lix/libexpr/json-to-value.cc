@@ -1,125 +1,75 @@
 #include "lix/libexpr/json-to-value.hh"
 #include "gc-alloc.hh"
+#include "libutil/types.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libutil/json.hh"
 
 #include <limits>
+#include <variant>
 
 namespace nix {
 
 // for more information, refer to
 // https://github.com/nlohmann/json/blob/master/include/nlohmann/detail/input/json_sax.hpp
 class JSONSax : nlohmann::json_sax<JSON> {
-    class JSONState {
-    protected:
-        std::unique_ptr<JSONState> parent;
-        JSONState() = default;
-    public:
-        virtual std::unique_ptr<JSONState> resolve(EvalState &) = 0;
-        explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
-        JSONState(JSONState & p) = delete;
-        virtual Value & finalValue()
-        {
-            assert(false && "tried to read a final value from a non-toplevel json parser state");
-        }
-        virtual ~JSONState() {}
-        virtual void addValue(Value v) = 0;
-    };
-
-    class TopLevelJSONState : public JSONState
+    struct WIPObject
     {
-        RootValue v;
-    public:
-        std::unique_ptr<JSONState> resolve(EvalState &) override
-        {
-            assert(false && "tried to close toplevel json parser state");
-        }
-        TopLevelJSONState() = default;
-        TopLevelJSONState(TopLevelJSONState & p) = delete;
-        Value & finalValue() override
-        {
-            assert(v && "tried to read nonexistent final value from json parser");
-            return *v;
-        }
-        void addValue(Value v) override
-        {
-            assert(!this->v && "duplicate value in toplevel JSON scope");
-            this->v = allocRootValue(v);
-        }
+        GcMap<Symbol, Value> entries;
+        Symbol nextKey;
     };
+    using WIPArray = GcVector<Value>;
 
-    class JSONObjectState : public JSONState {
-        using JSONState::JSONState;
-        GcMap<Symbol, Value> attrs;
-        Symbol _key;
-        std::unique_ptr<JSONState> resolve(EvalState & state) override
-        {
-            auto attrs2 = state.ctx.buildBindings(attrs.size());
-            for (auto & i : attrs)
-                attrs2.insert(i.first, i.second);
-            parent->addValue({NewValueAs::attrs, attrs2.alreadySorted()});
-            return std::move(parent);
-        }
-        void addValue(Value v) override
-        {
-            attrs.insert_or_assign(_key, v);
-        }
-    public:
-        void key(string_t & name, EvalState & state)
-        {
-            _key = state.ctx.symbols.create(name);
-        }
-    };
+    // A stack of all of the currently opened and not yet closed JSON objects and arrays at the current moment
+    // of parsing
+    std::vector<std::variant<WIPObject, WIPArray>> stack;
 
-    class JSONListState : public JSONState {
-        GcVector<Value> values;
-        std::unique_ptr<JSONState> resolve(EvalState & state) override
-        {
-            auto list = state.ctx.mem.newList(values.size());
-            parent->addValue({NewValueAs::list, list});
-            for (size_t n = 0; n < values.size(); ++n) {
-                list->elems[n] = values[n];
-            }
-            return std::move(parent);
+    std::optional<Value> final_value;
+
+    void addValue(Value v)
+    {
+        if (stack.size() == 0) {
+            assert(!final_value);
+            final_value = v;
+            return;
         }
-        void addValue(Value v) override
-        {
-            values.push_back(v);
-        }
-    public:
-        JSONListState(std::unique_ptr<JSONState> && p, std::size_t reserve) : JSONState(std::move(p))
-        {
-            values.reserve(reserve);
-        }
-    };
+        std::visit(
+            overloaded{
+                [&](WIPObject & currentObject) {
+                    currentObject.entries.insert_or_assign(currentObject.nextKey, v);
+                    currentObject.nextKey = {}; // clear the current symbol
+                },
+                [&](WIPArray & arr) { arr.push_back(v); }
+            },
+            stack.back()
+        );
+    }
 
     EvalState & state;
-    std::unique_ptr<JSONState> rs;
 
 public:
-    JSONSax(EvalState & state) : state(state), rs(new TopLevelJSONState()) {};
+    JSONSax(EvalState & state) : state(state) {};
 
     Value result()
     {
-        return rs->finalValue();
+        return final_value.value();
     }
 
     bool null() override
     {
-        rs->addValue(Value::VNULL);
+        addValue(Value::VNULL);
         return true;
     }
 
     bool boolean(bool val) override
     {
-        rs->addValue({NewValueAs::boolean, val});
+        addValue({NewValueAs::boolean, val});
         return true;
     }
 
     bool number_integer(number_integer_t val) override
     {
-        rs->addValue({NewValueAs::integer, val});
+        addValue({NewValueAs::integer, val});
         return true;
     }
 
@@ -131,19 +81,19 @@ public:
             return number_float(static_cast<number_float_t>(val_), "");
         }
         NixInt::Inner val = val_;
-        rs->addValue({NewValueAs::integer, val});
+        addValue({NewValueAs::integer, val});
         return true;
     }
 
     bool number_float(number_float_t val, const string_t & s) override
     {
-        rs->addValue({NewValueAs::floating, val});
+        addValue({NewValueAs::floating, val});
         return true;
     }
 
     bool string(string_t & val) override
     {
-        rs->addValue({NewValueAs::string, val});
+        addValue({NewValueAs::string, val});
         return true;
     }
 
@@ -158,28 +108,66 @@ public:
 
     bool start_object(std::size_t len) override
     {
-        rs = std::make_unique<JSONObjectState>(std::move(rs));
+        stack.emplace_back(std::in_place_type<WIPObject>);
         return true;
     }
 
     bool key(string_t & name) override
     {
-        dynamic_cast<JSONObjectState*>(rs.get())->key(name, state);
+        auto & back = stack.back();
+        std::visit(
+            overloaded{
+                [&](WIPObject & frame) {
+                    assert(!frame.nextKey);
+                    frame.nextKey = state.ctx.symbols.create(name);
+                },
+                [](const WIPArray &) { assert(false && "tried adding a json key to an array value??"); }
+            },
+            back
+        );
         return true;
     }
 
     bool end_object() override {
-        rs = rs->resolve(state);
+        auto back = std::move(stack.back());
+        stack.pop_back();
+        std::visit(
+            overloaded{
+                [&](const WIPObject & frame) {
+                    auto attrs2 = state.ctx.buildBindings(frame.entries.size());
+                    for (auto & i : frame.entries) {
+                        attrs2.insert(i.first, i.second);
+                    }
+                    addValue({NewValueAs::attrs, attrs2.alreadySorted()});
+                },
+                [](const WIPArray &) { assert(false && "tried to close a JSON object while in an array"); }
+            },
+            back
+        );
         return true;
     }
 
     bool end_array() override {
-        return end_object();
+        auto back = std::move(stack.back());
+        stack.pop_back();
+        std::visit(
+            overloaded{
+                [](const WIPObject &) { assert(false && "tried to close a JSON array while in an object"); },
+                [&](const WIPArray & values) {
+                    auto list = state.ctx.mem.newList(values.size());
+                    std::ranges::copy(values, list->elems);
+                    addValue({NewValueAs::list, list});
+                }
+            },
+            back
+        );
+        return true;
     }
 
     bool start_array(size_t len) override {
-        rs = std::make_unique<JSONListState>(std::move(rs),
-            len != std::numeric_limits<size_t>::max() ? len : 128);
+        auto v = WIPArray{};
+        v.reserve(len != std::numeric_limits<size_t>::max() ? len : 128);
+        stack.push_back(std::move(v));
         return true;
     }
 
