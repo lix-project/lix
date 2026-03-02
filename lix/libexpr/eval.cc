@@ -882,13 +882,9 @@ std::string EvalState::mkOutputStringRaw(
     return ctx.store->printStorePath(staticOutputPath);
 }
 
-
-void EvalState::mkOutputString(
-    Value & value,
-    const SingleDerivedPath::Built & b,
-    const StorePath & staticOutputPath)
+Value EvalState::mkOutputString(const SingleDerivedPath::Built & b, const StorePath & staticOutputPath)
 {
-    value = {NewValueAs::string, mkOutputStringRaw(staticOutputPath), NixStringContext{b}};
+    return {NewValueAs::string, mkOutputStringRaw(staticOutputPath), NixStringContext{b}};
 }
 
 

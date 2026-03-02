@@ -158,13 +158,13 @@ static void mkOutputString(
     const StorePath & drvPath,
     const std::pair<std::string, DerivationOutput> & o)
 {
-    state.mkOutputString(
-        attrs.alloc(o.first),
-        SingleDerivedPath::Built {
+    attrs.alloc(o.first) = state.mkOutputString(
+        SingleDerivedPath::Built{
             .drvPath = makeConstantStorePath(drvPath),
             .output = o.first,
         },
-        o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first));
+        o.second.path(*state.ctx.store, Derivation::nameFromPath(drvPath), o.first)
+    );
 }
 
 /* Load and evaluate an expression from path specified by the

@@ -809,18 +809,13 @@ public:
      * single `NixStringContextElem::Built` element of the drv path and
      * output name.
      *
-     * @param value Value we are settings
-     *
      * @param b the drv whose output we are making a string for, and the
      * output
      *
      * @param staticOutputPath Output path for that string.
      * Will be printed to form string.
      */
-    void mkOutputString(
-        Value & value,
-        const SingleDerivedPath::Built & b,
-        const StorePath & staticOutputPath);
+    Value mkOutputString(const SingleDerivedPath::Built & b, const StorePath & staticOutputPath);
 
     /**
      * Create a string representing a `SingleDerivedPath`.

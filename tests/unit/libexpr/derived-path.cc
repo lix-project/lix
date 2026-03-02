@@ -41,8 +41,7 @@ RC_GTEST_FIXTURE_PROP(
     prop_derived_path_built_out_path_round_trip,
     (const SingleDerivedPath::Built & b, const StorePath & outPath))
 {
-    Value v;
-    state.mkOutputString(v, b, outPath);
+    Value v = state.mkOutputString(b, outPath);
     auto [d, _] = state.coerceToSingleDerivedPathUnchecked(noPos, v, "");
     RC_ASSERT(SingleDerivedPath { b } == d);
 }
