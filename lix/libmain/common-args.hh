@@ -6,7 +6,6 @@
 
 namespace nix {
 
-//static constexpr auto commonArgsCategory = "Miscellaneous common options";
 static constexpr auto loggingCategory = "Logging-related options";
 static constexpr auto miscCategory = "Miscellaneous global options";
 
@@ -29,7 +28,6 @@ struct MixDryRun : virtual Args
         addFlag({
             .longName = "dry-run",
             .description = "Show what this command would do without doing it.",
-            //.category = commonArgsCategory,
             .handler = {&dryRun, true},
         });
     }
@@ -44,7 +42,6 @@ struct MixJSON : virtual Args
         addFlag({
             .longName = "json",
             .description = "Produce output in JSON format, suitable for consumption by another program.",
-            //.category = commonArgsCategory,
             .handler = {&json, true},
         });
     }
