@@ -30,8 +30,7 @@ TEST_F(ValuePrintingTests, tInt)
 
 TEST_F(ValuePrintingTests, tBool)
 {
-    Value vBool;
-    vBool = {NewValueAs::boolean, true};
+    Value vBool = {NewValueAs::boolean, true};
     test(vBool, "true");
 }
 
@@ -164,8 +163,7 @@ TEST_F(ValuePrintingTests, vExternal)
             return str;
         }
     } myExternal;
-    Value vExternal;
-    vExternal.mkExternal(&myExternal);
+    Value vExternal = {NewValueAs::external, myExternal};
 
     test(vExternal, "testing-external!");
 }

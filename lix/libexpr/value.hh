@@ -769,11 +769,6 @@ public:
         *this = {NewValueAs::null};
     }
 
-    inline void mkExternal(ExternalValueBase * e)
-    {
-        *this = {NewValueAs::external, *e};
-    }
-
     bool isList() const
     {
         return internalType() == tList;

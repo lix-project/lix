@@ -152,8 +152,7 @@ TEST_F(TypeValuePrintingTests, vExternal)
         }
     } myExternal;
 
-    Value vExternal;
-    vExternal.mkExternal(&myExternal);
+    Value vExternal = {NewValueAs::external, myExternal};
 
     test(vExternal, "an external value from MyExternal");
 }
