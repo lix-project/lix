@@ -39,13 +39,13 @@ private:
     }
 
 public:
-    using typename base::const_iterator, typename base::value_type;
+    using typename base::const_iterator, typename base::const_reverse_iterator, typename base::value_type;
     LinearMap() = default;
     LinearMap(size_t expectedSize)
     {
         reserve(expectedSize);
     }
-    using base::size, base::reserve, base::clear, base::cbegin, base::cend;
+    using base::size, base::reserve, base::clear, base::cbegin, base::cend, base::crbegin, base::crend;
 
     /* Insert an element at the correct position, shifting later elements back by
      * one place. Returns `true` if a previous element with that key was
@@ -147,6 +147,14 @@ public:
     const_iterator end() const
     {
         return cend();
+    }
+    const_reverse_iterator rbegin() const
+    {
+        return crbegin();
+    }
+    const_reverse_iterator rend() const
+    {
+        return crend();
     }
 };
 } // namespace nix
