@@ -2,7 +2,9 @@
 #include "error.hh"
 #include "file-descriptor.hh"
 #include "logging.hh"
+#include <deque>
 #include <fcntl.h>
+#include <filesystem>
 #include <sys/poll.h>
 #if __linux__
 
@@ -170,8 +172,29 @@ destroyCgroup(const std::string & name, const std::filesystem::path & aliveCgrou
 
     Result<CgroupStats> stats = readStatistics(aliveCgroup);
 
-    if (sys::rmdir(aliveCgroup) == -1) {
-        throw SysError("deleting cgroup '%s' at '%s'", name, aliveCgroup);
+    std::deque<std::filesystem::path> pending, toDelete;
+
+    pending.push_back(aliveCgroup);
+    while (!pending.empty()) {
+        auto current = std::move(pending.back());
+        pending.pop_back();
+
+        toDelete.push_front(current);
+        try {
+            for (auto sub : std::filesystem::directory_iterator(current)) {
+                if (sub.is_directory()) {
+                    pending.push_front(sub);
+                }
+            }
+        } catch (std::filesystem::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
+            throw Error("listing cgroup '%s': %s", name, e.what());
+        }
+    }
+
+    for (auto & candidate : toDelete) {
+        if (sys::rmdir(candidate) == -1) {
+            throw SysError("deleting cgroup '%s' at '%s'", name, aliveCgroup);
+        }
     }
 
     debug("cgroup '%s' destroyed", name);
