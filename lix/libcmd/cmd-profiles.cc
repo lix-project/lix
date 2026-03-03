@@ -98,6 +98,10 @@ void ProfileElement::updateStorePaths(
                     for (auto & output : bfd.outputs) {
                         storePaths.insert(output.second);
                     }
+
+                    if (settings.envKeepDerivations) {
+                        storePaths.insert(bfd.drvPath.path);
+                    }
                 },
             },
             buildable.raw()

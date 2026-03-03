@@ -2,6 +2,7 @@ import re
 import json
 import pytest
 from textwrap import dedent
+from pathlib import Path
 
 from testlib.fixtures.file_helper import File, with_files
 from testlib.fixtures.nix import Nix
@@ -279,3 +280,39 @@ def test_conflict_resolution_cppnix_8284(nix: Nix):
 
     expr = f'(builtins.getFlake "./flake2").packages.{system}.default'
     nix.nix(["profile", "install", "--impure", "--expr", expr]).run().expect(1)
+
+
+class TestKeepEnvDerivations:
+    @with_files({"flake1": flake})
+    def test_keep_derivations_enabled(self, nix: Nix, env: ManagedEnv):
+        nix.settings["keep-env-derivations"] = "true"
+        nix.settings["keep-derivations"] = "false"  # NOTE: This defaults to `true`.
+
+        nix.nix(["profile", "install", "./flake1", "-L"]).run().ok()
+        assert run_hello(env) == "Hello World\n"
+        res = nix.nix(["eval", "--raw", "./flake1#default.drvPath"]).run().ok()
+        drv_path = Path(res.stdout_s.strip())
+
+        assert drv_path.exists()
+
+        # The derivation should NOT be collected because `keep-env-derivations` is true
+        nix.nix(["store", "gc"]).run().ok()
+
+        assert drv_path.exists()
+
+    @with_files({"flake1": flake})
+    def test_keep_derivations_disabled(self, nix: Nix, env: ManagedEnv):
+        nix.settings["keep-derivations"] = "false"  # NOTE: This defaults to `true`
+
+        nix.nix(["profile", "install", "./flake1", "-L"]).run().ok()
+        assert run_hello(env) == "Hello World\n"
+
+        res = nix.nix(["eval", "--raw", "./flake1#default.drvPath"]).run().ok()
+        drv_path = Path(res.stdout_s.strip())
+
+        assert drv_path.exists()
+
+        # The derivation should be collected because `keep-env-derivations` is false AND `keep-derivations` is false.
+        res = nix.nix(["store", "gc"]).run().ok()
+
+        assert not drv_path.exists()
