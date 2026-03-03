@@ -36,6 +36,15 @@ MakeError(FormatError, Error);
 template<class C> C tokenizeString(std::string_view s, std::string_view separators = " \t\n\r");
 
 /**
+ * Returns a pair that partitions the string when the separator is encountered for the first time in the
+ * string. e.g. `a=b` with separator `=` would split into {a, b} If the string passed does not contain the
+ * separator, the returned pair will set the second element to nullopt and put the whole string in the first
+ * element.
+ */
+std::pair<std::string_view, std::optional<std::string_view>>
+partitionString(std::string_view s, char separator);
+
+/**
  * Concatenate the given strings with a separator between the
  * elements.
  */

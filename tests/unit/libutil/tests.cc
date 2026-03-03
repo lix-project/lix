@@ -730,6 +730,71 @@ namespace nix {
     }
 
     /* ----------------------------------------------------------------------------
+     * partitionString
+     * --------------------------------------------------------------------------*/
+
+    TEST(partitionString, emptyString)
+    {
+        auto result = partitionString("", '=');
+
+        ASSERT_EQ(result.first, "");
+        ASSERT_FALSE(result.second.has_value());
+    }
+
+    TEST(partitionString, noSeparator)
+    {
+        auto result = partitionString("foobar", '=');
+
+        ASSERT_EQ(result.first, "foobar");
+        ASSERT_FALSE(result.second.has_value());
+    }
+
+    TEST(partitionString, separatorInMiddle)
+    {
+        auto result = partitionString("a=b", '=');
+
+        ASSERT_EQ(result.first, "a");
+        ASSERT_TRUE(result.second.has_value());
+        ASSERT_EQ(result.second.value(), "b");
+    }
+
+    TEST(partitionString, separatorAtBeginning)
+    {
+        auto result = partitionString("=abc", '=');
+
+        ASSERT_EQ(result.first, "");
+        ASSERT_TRUE(result.second.has_value());
+        ASSERT_EQ(result.second.value(), "abc");
+    }
+
+    TEST(partitionString, separatorAtEnd)
+    {
+        auto result = partitionString("abc=", '=');
+
+        ASSERT_EQ(result.first, "abc");
+        ASSERT_TRUE(result.second.has_value());
+        ASSERT_EQ(result.second.value(), "");
+    }
+
+    TEST(partitionString, multipleSeparatorsOnlyFirstIsUsed)
+    {
+        auto result = partitionString("a=b=c", '=');
+
+        ASSERT_EQ(result.first, "a");
+        ASSERT_TRUE(result.second.has_value());
+        ASSERT_EQ(result.second.value(), "b=c");
+    }
+
+    TEST(partitionString, differentSeparator)
+    {
+        auto result = partitionString("key:value", ':');
+
+        ASSERT_EQ(result.first, "key");
+        ASSERT_TRUE(result.second.has_value());
+        ASSERT_EQ(result.second.value(), "value");
+    }
+
+    /* ----------------------------------------------------------------------------
      * get
      * --------------------------------------------------------------------------*/
 

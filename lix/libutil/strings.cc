@@ -36,6 +36,16 @@ template Strings tokenizeString(std::string_view s, std::string_view separators)
 template StringSet tokenizeString(std::string_view s, std::string_view separators);
 template std::vector<std::string> tokenizeString(std::string_view s, std::string_view separators);
 
+std::pair<std::string_view, std::optional<std::string_view>>
+partitionString(std::string_view s, char separator)
+{
+    auto pos = s.find_first_of(separator);
+    if (pos == std::string::npos) {
+        return {s, std::nullopt};
+    } else {
+        return {s.substr(0, pos), s.substr(pos + 1)};
+    }
+}
 
 std::string chomp(std::string_view s)
 {
