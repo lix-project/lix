@@ -218,7 +218,7 @@ struct NixRepl
 
     void loadFile(const Path & path);
     void loadFlake(const std::string & flakeRef);
-    void loadFiles();
+    void loadFiles(std::list<ReplLoadable> const & loadables);
     void reloadFiles();
 
     void addCommand(
@@ -374,7 +374,8 @@ ReplExitStatus NixRepl::mainLoop()
 
     isFirstRepl = false;
 
-    loadFiles();
+    std::list<ReplLoadable> loadables = std::exchange(loaded, {});
+    loadFiles(loadables);
 
     auto _guard = interacter->init(static_cast<detail::ReplCompleterMixin *>(this));
 
@@ -1383,24 +1384,26 @@ void NixRepl::initEnv()
 
 void NixRepl::reloadFiles()
 {
-    if (loaded.empty() && getValues().empty()) {
-        notice("No file to reload, skipping");
-        return;
+    auto && newEnv = initNewEnv(evaluator, envSize);
+    swapEnv(newEnv);
+
+    std::list<ReplLoadable> saved = std::exchange(loaded, {});
+
+    try {
+        loadFiles(saved);
+    } catch (Error const & e) {
+        // Stop loading on the first error, but restore the environment so errors
+        // don't throw everything away.
+        swapEnv(newEnv);
+        std::swap(loaded, saved);
+        throw;
     }
-
-    initEnv();
-
-    loadFiles();
 }
 
 
-void NixRepl::loadFiles()
+void NixRepl::loadFiles(std::list<ReplLoadable> const & loadables)
 {
-    std::list<ReplLoadable> saved{loaded};
-
-    loaded.clear();
-
-    for (auto const & [spec, kind] : saved) {
+    for (auto const & [spec, kind] : loadables) {
         switch (kind) {
             case ReplLoadKind::File:
                 notice("Loading '%s'...", Magenta(spec));
