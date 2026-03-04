@@ -141,6 +141,14 @@ struct UnexpectedArgument : Error
     }
 };
 
+struct ReplEnv
+{
+    Env * env;
+    int displ;
+    LinearMap<Symbol, Displacement> vars;
+    StringSet varNames;
+};
+
 struct NixRepl
     : AbstractNixRepl
     , detail::ReplCompleterMixin
@@ -170,6 +178,11 @@ struct NixRepl
 
     ReplExitStatus mainLoop() override;
     void initEnv() override;
+
+    /** Swaps our `env`, `displ`, `staticEnv->vars`, and `varNames` values
+     * with the ones provided in @param swapWith.
+     */
+    void swapEnv(ReplEnv & swapWith);
 
     void initDebugBuiltinCommands();
     void initBuiltinCommands();
@@ -1330,17 +1343,41 @@ void NixRepl::loadFlake(const std::string & flakeRefS)
     }
 }
 
+/** Creates the stuff for a fresh, empty REPL environment. */
+ReplEnv initNewEnv(Evaluator & evaluator, int envSize)
+{
+    Env * newEnv = &evaluator.mem.allocEnv(envSize);
+    newEnv->up = &evaluator.builtins.env;
+
+    int newDispl = 0;
+
+    LinearMap<Symbol, Displacement> newVars;
+
+    StringSet newVarNames;
+    for (auto && [key, _] : evaluator.builtins.staticEnv->vars) {
+        newVarNames.emplace(evaluator.symbols[key]);
+    }
+
+    return {
+        .env = newEnv,
+        .displ = newDispl,
+        .vars = newVars,
+        .varNames = newVarNames,
+    };
+}
+
+void NixRepl::swapEnv(ReplEnv & swapWith)
+{
+    std::swap(env, swapWith.env);
+    std::swap(displ, swapWith.displ);
+    std::swap(staticEnv->vars, swapWith.vars);
+    std::swap(varNames, swapWith.varNames);
+}
 
 void NixRepl::initEnv()
 {
-    env = &evaluator.mem.allocEnv(envSize);
-    env->up = &evaluator.builtins.env;
-    displ = 0;
-    staticEnv->vars.clear();
-
-    varNames.clear();
-    for (auto & i : evaluator.builtins.staticEnv->vars)
-        varNames.emplace(evaluator.symbols[i.first]);
+    auto && newEnv = initNewEnv(evaluator, envSize);
+    swapEnv(newEnv);
 }
 
 
