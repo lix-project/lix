@@ -34,7 +34,9 @@
 #include <cstdint>
 #include <cstring>
 
+#include <exception>
 #include <kj/async.h>
+#include <kj/exception.h>
 #include <string>
 #include <unistd.h>
 #include <signal.h>
@@ -536,13 +538,20 @@ static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
 
     aio.blockOn(connSocket->pumpTo(*asyncStdout)
                     .then([](auto) -> Result<void> {
-                        return {
-                            std::make_exception_ptr(EndOfFile("unexpected EOF from daemon socket"))
-                        };
+                        return {std::make_exception_ptr(EndOfFile("unexpected EOF from daemon socket"))};
                     })
                     .exclusiveJoin(asyncStdin->pumpTo(*connSocket).then([](auto) -> Result<void> {
                         return result::success();
-                    })));
+                    }))
+                    .catch_([](kj::Exception && e) -> Result<void> {
+                        if (e.getType() == kj::Exception::Type::DISCONNECTED) {
+                            return std::make_exception_ptr(Error("peer disconnected unexpectedly"));
+                        } else {
+                            return std::make_exception_ptr(
+                                Error("forwarding daemon connection: %s", e.getDescription().cStr())
+                            );
+                        }
+                    }));
 }
 
 /**
