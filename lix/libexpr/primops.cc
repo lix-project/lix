@@ -1325,13 +1325,14 @@ static void prim_toPath(EvalState & state, Value * * args, Value & v)
    corner cases. */
 static void prim_storePath(EvalState & state, Value * * args, Value & v)
 {
+    if (evalSettings.pureEval)
+        state.ctx.errors.make<EvalError>(
+            "'%s' is not allowed in pure evaluation mode",
+            "builtins.storePath"
+        ).debugThrow();
+
     NixStringContext context;
-    auto path =
-        state
-            .coerceToPath(
-                noPos, *args[0], context, "while evaluating the first argument passed to builtins.storePath"
-            )
-            .canonical();
+    auto path = state.ctx.paths.checkSourcePath(state.coerceToPath(noPos, *args[0], context, "while evaluating the first argument passed to builtins.storePath")).canonical();
     /* Resolve symlinks in ‘path’, unless ‘path’ itself is a symlink
        directly in the store.  The latter condition is necessary so
        e.g. nix-push does the right thing. */
