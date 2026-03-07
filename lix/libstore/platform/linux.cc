@@ -230,7 +230,10 @@ static void raiseAmbientCaps(std::span<const unsigned> caps)
     }
 
     for (auto cap : caps) {
-        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0) {
+        // We might be running on a kernel older than the API headers, lacking some capabilities.
+        // While capset will silently ignore them, PR_CAP_AMBIENT_RAISE fails with EINVAL.
+        // Swallow the error ourselves to not introduce unnecessary failures.
+        if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, cap, 0, 0) < 0 && errno != EINVAL) {
             throw SysError("couldn't set ambient caps");
         }
     }
