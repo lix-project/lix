@@ -25,7 +25,8 @@ struct Attr
     PosIdx pos;
     mutable Value value;
     Attr(Symbol name, Value value, PosIdx pos = noPos) : name(name), pos(pos), value(value) {}
-    Attr() { };
+    [[deprecated]]
+    Attr() {};
     bool operator < (const Attr & a) const
     {
         return name < a.name;
