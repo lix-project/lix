@@ -39,7 +39,9 @@
   lowdown-unsandboxed,
   lowdown,
   mdbook,
-  mdbook-linkcheck,
+  # older nixpkgs only have v1, newer nixpkgs only have v2
+  mdbook-linkcheck ? null,
+  mdbook-linkcheck2 ? mdbook-linkcheck,
   mercurial,
   meson,
   ninja,
@@ -420,7 +422,7 @@ stdenv.mkDerivation (finalAttrs: {
       "Workarounds for mdbook 0.4.x/0.5.x interoperability can be removed as 0.5.0 is in nixpkgs-stable"
       mdbook
     )
-    mdbook-linkcheck
+    mdbook-linkcheck2
   ]
   ++ [
     pkg-config
