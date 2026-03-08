@@ -6,7 +6,6 @@
 #include "lix/libexpr/eval-error.hh"
 #include "lix/libexpr/gc-alloc.hh"
 #include "value.hh"
-#include <cstdint>
 
 namespace nix {
 

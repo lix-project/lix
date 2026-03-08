@@ -1,4 +1,5 @@
 #include "eval.hh"
+#include "libexpr/nixexpr.hh"
 #include "primops.hh"
 #include "gc-small-vector.hh"
 
@@ -10,14 +11,19 @@
 
 namespace nix {
 
+Value Expr::makeThunk(Evaluator & ctx, Env & env)
+{
+    ctx.stats.nrThunks++;
+    return {NewValueAs::thunk, ctx.mem, env, *this};
+}
+
 /* Create a thunk for the delayed computation of the given expression
    in the given environment.  But if the expression is a variable,
    then look it up right away.  This significantly reduces the number
    of thunks allocated. */
 Value Expr::maybeThunk(EvalState & state, Env & env)
 {
-    state.ctx.stats.nrThunks++;
-    return {NewValueAs::thunk, state.ctx.mem, env, *this};
+    return makeThunk(state.ctx, env);
 }
 
 Value ExprVar::maybeThunk(EvalState & state, Env & env)
@@ -99,18 +105,10 @@ Value ExprSet::eval(EvalState & state, Env & env)
            in the original environment. */
         Displacement displ = 0;
         for (auto & i : attrs) {
-            Value vAttr;
-            if (hasOverrides && i.second.kind != ExprAttrs::AttrDef::Kind::Inherited) {
-                vAttr = {
-                    NewValueAs::thunk,
-                    state.ctx.mem,
-                    *i.second.chooseByKind(&env2, &env, inheritEnv),
-                    *i.second.e
-                };
-                state.ctx.stats.nrThunks++;
-            } else {
-                vAttr = i.second.e->maybeThunk(state, *i.second.chooseByKind(&env2, &env, inheritEnv));
-            }
+            Env & thunkEnv = *i.second.chooseByKind(&env2, &env, inheritEnv);
+            Value vAttr = hasOverrides && i.second.kind != ExprAttrs::AttrDef::Kind::Inherited
+                ? i.second.e->makeThunk(state.ctx, thunkEnv)
+                : i.second.e->maybeThunk(state, thunkEnv);
             env2.values[displ++] = vAttr;
             v.attrs()->push_back(Attr(i.first, vAttr, i.second.pos));
         }

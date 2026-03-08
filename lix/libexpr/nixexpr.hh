@@ -129,6 +129,7 @@ public:
     virtual JSON toJSON(const SymbolTable & symbols) const;
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
     virtual Value eval(EvalState & state, Env & env);
+    Value makeThunk(Evaluator & ctx, Env & env);
     virtual Value maybeThunk(EvalState & state, Env & env);
     /* Lambdas have a name associated with them, when they are declared in a binding:
      * `identity = x: x` will print the resulting value as `«lambda identity @ «string»:1:14»`.
