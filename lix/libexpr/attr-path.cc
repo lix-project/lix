@@ -7,8 +7,7 @@
 
 namespace nix {
 
-
-std::vector<std::string> parseAttrPath(std::string_view const s)
+std::vector<std::string> parseAttrPath(std::string_view const s, bool allowRhsTrailingDot)
 {
     std::vector<std::string> res;
     std::string cur;
@@ -52,7 +51,11 @@ std::vector<std::string> parseAttrPath(std::string_view const s)
         }
         ++i;
     }
-    if (haveData) res.push_back(cur);
+    if (haveData) {
+        res.push_back(cur);
+    } else if (!allowRhsTrailingDot) {
+        throw ParseError("Trailing dot on the right-hand side of path expr '%1%' is not allowed!", s);
+    };
     return res;
 }
 

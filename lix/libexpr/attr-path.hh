@@ -25,7 +25,7 @@ std::pair<SourcePath, uint32_t> findPackageFilename(EvalState & state, Value & v
  * Such an attr path is a dot-separated sequence of attribute names, which are possibly quoted.
  * No escaping is performed; attribute names containing double quotes are unrepresentable.
  */
-std::vector<std::string> parseAttrPath(std::string_view const s);
+std::vector<std::string> parseAttrPath(std::string_view const s, bool allowRhsTrailingDot = true);
 
 /**
  * Converts an attr path from a list of strings into a string once more.

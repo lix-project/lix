@@ -177,6 +177,12 @@ Most commands in Lix accept the following command-line options:
   You can override this using `--arg`, e.g., `nix-env --install --attr pkgname --arg system \"i686-freebsd\"`.
   (Note that since the argument is a Nix string literal, you have to escape the quotes.)
 
+  Additionally, dots are interpreted as attribute-path separators.
+  I.e. `nix-instantiate '<nixpkgs>' -A hello-unfree --arg config.allowUnfree true` will result in an argument `config` with value `{ allowUnfree = true; }` being passed to `<nixpkgs>`.
+
+  Please note that merging of different arguments is rejected.
+  I.e. `--arg config '{ cudaSupport = true; }' --arg config.allowUnfree true` will not work whereas `--arg config.cudaSupport true --arg config.allowUnfree true` is accepted.
+
 - <span id="opt-argstr">[`--argstr`](#opt-argstr)</span> *name* *value*
 
   This option is like `--arg`, only the value is not a Nix expression but a string.

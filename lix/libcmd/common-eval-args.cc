@@ -1,3 +1,6 @@
+#include "libexpr/value.hh"
+#include "libutil/strings.hh"
+#include "lix/libexpr/attr-path.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libmain/shared.hh"
@@ -10,30 +13,9 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
-#include "lix/libutil/regex.hh"
-
-#include <regex>
+#include <deque>
 
 namespace nix {
-
-static std::regex const identifierRegex = regex::parse("^[A-Za-z_][A-Za-z0-9_'-]*$");
-static void checkValidNixIdentifier(const std::string & name)
-{
-    std::smatch match;
-    if (!std::regex_match(name, match, identifierRegex)) {
-        throw UsageError(
-            "This invocation specifies a value for argument '%s' "
-            "which isn't a valid Nix identifier. "
-            "The project is dropping support for this so that it's possible to make e.g. "
-            "'%s' evaluating to '%s' in the future. "
-            "If you depend on this behavior, please reach out in "
-            "<https://git.lix.systems/lix-project/lix/issues/496> so we can discuss your use-case.",
-            name,
-            "--arg config.allowUnfree true",
-            "{ config.allowUnfree = true; }"
-        );
-    }
-}
 
 MixEvalArgs::MixEvalArgs()
 {
@@ -42,10 +24,7 @@ MixEvalArgs::MixEvalArgs()
          .description = "Pass the value *expr* as the argument *name* to Nix functions.",
          .category = category,
          .labels = {"name", "expr"},
-         .handler = {[&](std::string name, std::string expr) {
-             checkValidNixIdentifier(name);
-             autoArgs[name] = ExprArgument(expr);
-         }}}
+         .handler = {[&](std::string name, std::string expr) { autoArgs[name] = ExprArgument(expr); }}}
     );
 
     addFlag({
@@ -53,10 +32,7 @@ MixEvalArgs::MixEvalArgs()
         .description = "Pass the string *string* as the argument *name* to Nix functions.",
         .category = category,
         .labels = {"name", "string"},
-        .handler = {[&](std::string name, std::string s) {
-            checkValidNixIdentifier(name);
-            autoArgs[name] = StringArgument(s);
-        }},
+        .handler = {[&](std::string name, std::string s) { autoArgs[name] = StringArgument(s); }},
     });
 
     addFlag({
@@ -179,9 +155,75 @@ MixEvalArgs::MixEvalArgs()
     });
 }
 
+struct AutoArgsContainer
+{
+    std::map<Symbol, std::variant<Value, AutoArgsContainer>> data;
+
+    Bindings * toBindings(Evaluator & state)
+    {
+        auto bb = state.buildBindings(data.size());
+
+        for (auto & [sym, v] : data) {
+            bb.insert(
+                sym,
+                std::visit(
+                    overloaded{
+                        [&](Value & v) { return v; },
+                        [&](AutoArgsContainer & aac) -> Value {
+                            return {NewValueAs::attrs, aac.toBindings(state)};
+                        }
+                    },
+                    v
+                )
+            );
+        }
+
+        return bb.finish();
+    }
+};
+
+static void addAutoArgRecursive(
+    AutoArgsContainer & container,
+    Evaluator & state,
+    std::vector<std::string> && path,
+    Value & val,
+    const std::string_view pathStr
+)
+{
+    auto * data = &container.data;
+    auto size = path.size();
+    for (auto [i, pathCmp] : enumerate(path)) {
+        auto next = state.symbols.create(pathCmp);
+        auto entry = data->find(next);
+
+        if (entry == data->end()) {
+            if (i == size - 1) {
+                (*data)[next] = val;
+            } else {
+                (*data)[next] = AutoArgsContainer{};
+                data = &std::get<AutoArgsContainer>((*data)[next]).data;
+            }
+        } else {
+            std::visit(
+                overloaded{
+                    [&](Value & v) {
+                        throw Error(
+                            "Cannot set %s via --arg/--argstr when it's the path-extension of another "
+                            "auto-argument!",
+                            pathStr
+                        );
+                    },
+                    [&](AutoArgsContainer & v) { data = &v.data; }
+                },
+                entry->second
+            );
+        }
+    }
+}
+
 Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
 {
-    auto res = state.buildBindings(autoArgs.size());
+    AutoArgsContainer aac;
     for (auto & [name, value] : autoArgs) {
         Value v = std::visit(
             overloaded{
@@ -193,9 +235,10 @@ Bindings * MixEvalArgs::getAutoArgs(Evaluator & state)
             value
         );
 
-        res.insert(state.symbols.create(name), v);
+        addAutoArgRecursive(aac, state, parseAttrPath(name, false), v, name);
     }
-    return res.finish();
+
+    return aac.toBindings(state);
 }
 
 kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
