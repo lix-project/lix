@@ -429,12 +429,12 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
     };
 
     // List of returned strings. References to these Values must NOT be persisted.
-    SmallTemporaryValueVector<conservativeStackReservation> values(es.size());
-    Value * vTmpP = values.data();
+    SmallTemporaryValueVector<conservativeStackReservation> values;
+    values.reserve(es.size());
 
     for (auto & [i_pos, i] : es) {
-        Value & vTmp = *vTmpP++;
-        vTmp = i->eval(state, env);
+        values.push_back(i->eval(state, env));
+        Value & vTmp = values.back();
 
         /* If the first element is a path, then the result will also
            be a path, we don't copy anything (yet - that's done later,
@@ -715,9 +715,10 @@ Value ExprCall::eval(EvalState & state, Env & env)
     // 5: under 10
     // This excluded attrset lambdas (`{...}:`). Contributions of mixed lambdas appears insignificant at ~150
     // total.
-    SmallValueVector<4> vArgs(args.size());
+    SmallValueVector<4> vArgs;
+    vArgs.reserve(args.size());
     for (size_t i = 0; i < args.size(); ++i) {
-        vArgs[i] = args[i]->maybeThunk(state, env);
+        vArgs.push_back(args[i]->maybeThunk(state, env));
     }
 
     return state.callFunction(vFun, vArgs, pos);

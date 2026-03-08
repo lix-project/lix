@@ -2109,8 +2109,8 @@ static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
     auto attrName = state.ctx.symbols.create(state.forceStringNoCtx(*args[0], noPos, "while evaluating the first argument passed to builtins.catAttrs"));
     state.forceList(*args[1], noPos, "while evaluating the second argument passed to builtins.catAttrs");
 
-    SmallValueVector<nonRecursiveStackReservation> res(args[1]->listSize());
-    size_t found = 0;
+    SmallValueVector<nonRecursiveStackReservation> res;
+    res.reserve(args[1]->listSize());
 
     for (auto & v2 : args[1]->listItems()) {
         state.forceAttrs(
@@ -2120,15 +2120,13 @@ static void prim_catAttrs(EvalState & state, Value * * args, Value & v)
         );
         auto i = v2.attrs()->get(attrName);
         if (i) {
-            res[found++] = i->value;
+            res.push_back(i->value);
         }
     }
 
-    auto result = state.ctx.mem.newList(found);
+    auto result = state.ctx.mem.newList(res.size());
+    std::copy(res.cbegin(), res.cend(), result->elems);
     v = {NewValueAs::list, result};
-    for (size_t n = 0; n < found; ++n) {
-        result->elems[n] = res[n];
-    }
 }
 
 static void prim_functionArgs(EvalState & state, Value * * args, Value & v)
@@ -2310,26 +2308,30 @@ static void prim_filter(EvalState & state, Value * * args, Value & v)
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filter");
 
     auto len = args[1]->listSize();
-    SmallValueVector<nonRecursiveStackReservation> vs(len);
-    size_t k = 0;
+    SmallValueVector<nonRecursiveStackReservation> vs;
+    vs.reserve(len);
 
     bool same = true;
     for (size_t n = 0; n < len; ++n) {
         Value res = state.callFunction(*args[0], args[1]->listElems()[n], noPos);
-        if (state.forceBool(res, noPos, "while evaluating the return value of the filtering function passed to builtins.filter"))
-            vs[k++] = args[1]->listElems()[n];
-        else
+        if (state.forceBool(
+                res,
+                noPos,
+                "while evaluating the return value of the filtering function passed to builtins.filter"
+            ))
+        {
+            vs.push_back(args[1]->listElems()[n]);
+        } else {
             same = false;
+        }
     }
 
     if (same)
         v = *args[1];
     else {
-        auto result = state.ctx.mem.newList(k);
+        auto result = state.ctx.mem.newList(vs.size());
         v = {NewValueAs::list, result};
-        for (unsigned int n = 0; n < k; ++n) {
-            result->elems[n] = vs[n];
-        }
+        std::copy(vs.cbegin(), vs.cend(), result->elems);
     }
 }
 
@@ -2570,12 +2572,13 @@ static void prim_concatMap(EvalState & state, Value * * args, Value & v)
     auto nrLists = args[1]->listSize();
 
     // List of returned lists before concatenation. References to these Values must NOT be persisted.
-    SmallTemporaryValueVector<conservativeStackReservation> lists(nrLists);
+    SmallTemporaryValueVector<conservativeStackReservation> lists;
+    lists.reserve(nrLists);
     size_t len = 0;
 
     for (size_t n = 0; n < nrLists; ++n) {
         Value & vElem = args[1]->listElems()[n];
-        lists[n] = state.callFunction(*args[0], vElem, noPos);
+        lists.push_back(state.callFunction(*args[0], vElem, noPos));
         state.forceList(lists[n], noPos, "while evaluating the return value of the function passed to builtins.concatMap");
         len += lists[n].listSize();
     }
