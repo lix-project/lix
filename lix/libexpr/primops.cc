@@ -1974,7 +1974,7 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
        We keep them as Attrs instead of Symbols so std::set_difference
        can be used to remove them from attrs[0]. */
     // 64: large enough to fit the attributes of a derivation
-    boost::container::small_vector<Attr, 64> names;
+    boost::container::small_vector<Symbol, 64> names;
     names.reserve(args[1]->listSize());
     for (auto & elem : args[1]->listItems()) {
         state.forceStringNoCtx(
@@ -1982,7 +1982,7 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
             noPos,
             "while evaluating the values of the second argument passed to builtins.removeAttrs"
         );
-        names.emplace_back(state.ctx.symbols.create(elem.str()), Value());
+        names.push_back(state.ctx.symbols.create(elem.str()));
     }
     std::sort(names.begin(), names.end());
 
@@ -1991,9 +1991,16 @@ static void prim_removeAttrs(EvalState & state, Value * * args, Value & v)
        vector. */
     auto attrs = state.ctx.buildBindings(args[0]->attrs()->size());
     std::set_difference(
-        args[0]->attrs()->begin(), args[0]->attrs()->end(),
-        names.begin(), names.end(),
-        std::back_inserter(attrs));
+        args[0]->attrs()->begin(),
+        args[0]->attrs()->end(),
+        names.begin(),
+        names.end(),
+        std::back_inserter(attrs),
+        overloaded{
+            [](const Attr & a, const Symbol & s) { return a.name < s; },
+            [](const Symbol & s, const Attr & a) { return s < a.name; }
+        }
+    );
     v = {NewValueAs::attrs, attrs.alreadySorted()};
 }
 
