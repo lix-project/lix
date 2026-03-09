@@ -39,6 +39,15 @@ norecursedirs = [ '.*' ]
 [tool.ruff]
 extend = "../../pyproject.toml"
 
+[tool.ruff.lint]
+# T20: disallow prints in favor of using a logger for better tap compatibility
+extend-select = ["T20"]
+
+[tool.ruff.lint.per-file-ignores]
+# ignore open() and os.path.join() calls in test_evil_nars, as that file is working with raw bytes
+# which pathlib does not support
+"**/store/test_evil_nars.py" = ["PTH118", "PTH123"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]

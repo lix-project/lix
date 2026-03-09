@@ -69,7 +69,6 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # LOG: creation of logger objects
 # G: style of logging messages
 # PIE: unnecessary providing of stuff (placeholders, definitions, duplicates etc)
-# T20: disallow prints in favor of using a logger
 # PT: pytest formatting things; fixtures, asserts, parametrizastions etc
 # Q: quote styling
 # RSE: check on raise statements
@@ -140,13 +139,9 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # PGH: things about pygrep, we don't use
 # FURB: covered by other rule sets
 # TRY: try and raise related things, not helpful as we only do testing
-select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
+# T20: Scripts usually output to stdout as either they are directly cli or passed into files
+select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "ISC", "INP", "LOG", "G", "PIE", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
 ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005", "RUF003"]
-
-[tool.ruff.lint.per-file-ignores]
-# ignore open() and os.path.join() calls in test_evil_nars, as that file is working with raw bytes
-# which pathlib does not support
-"**/store/test_evil_nars.py" = ["PTH118", "PTH123"]
 
 [tool.ruff.format]
 indent-style = "space"

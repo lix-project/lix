@@ -1,6 +1,5 @@
 #!@python@
 
-# ruff: noqa: T201 # Our generated MD file is expected on stdout
 # This is the only file and is executable
 
 from collections import defaultdict
