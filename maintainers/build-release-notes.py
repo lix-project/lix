@@ -73,17 +73,16 @@ def format_link(ident: str, gh_part: str, fj_part: str) -> str:
     if ident.isdigit():
         ident = f"lix#{ident}"
 
-    if ident.startswith("gh#"):
-        num, link, base = int(ident[3:]), ident, f"{GH_REPO_BASE}/{gh_part}"
-    elif ident.startswith("nix#"):
+    # Unify the strings, in order for them to be consistent throughout the release notes.
+    ident = ident.replace("gh#", "nix#").replace("fj#", "lix#")
+
+    if ident.startswith("nix#"):
         num, link, base = int(ident[4:]), ident, f"{GH_REPO_BASE}/{gh_part}"
-    elif ident.startswith("fj#"):
-        num, link, base = int(ident[3:]), ident, f"{FORGEJO_REPO_BASE}/{fj_part}"
     elif ident.startswith("lix#"):
         num, link, base = int(ident[4:]), ident, f"{FORGEJO_REPO_BASE}/{fj_part}"
     else:
         msg = f"unrecognized reference format: {ident}"
-        raise Exception(msg)
+        raise ValueError(msg)
     return f"[{link}]({base}/{num})"
 
 
