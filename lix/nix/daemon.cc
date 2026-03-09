@@ -536,22 +536,17 @@ static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
     auto asyncStdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
     auto asyncStdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
 
-    aio.blockOn(connSocket->pumpTo(*asyncStdout)
-                    .then([](auto) -> Result<void> {
-                        return {std::make_exception_ptr(EndOfFile("unexpected EOF from daemon socket"))};
-                    })
-                    .exclusiveJoin(asyncStdin->pumpTo(*connSocket).then([](auto) -> Result<void> {
-                        return result::success();
-                    }))
-                    .catch_([](kj::Exception && e) -> Result<void> {
-                        if (e.getType() == kj::Exception::Type::DISCONNECTED) {
-                            return std::make_exception_ptr(Error("peer disconnected unexpectedly"));
-                        } else {
-                            return std::make_exception_ptr(
-                                Error("forwarding daemon connection: %s", e.getDescription().cStr())
-                            );
-                        }
-                    }));
+    try {
+        connSocket->pumpTo(*asyncStdout)
+            .exclusiveJoin(asyncStdin->pumpTo(*connSocket))
+            .wait(aio.kj.waitScope);
+    } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions): kj may throw immediate from pumpTo
+        if (e.getType() == kj::Exception::Type::DISCONNECTED) {
+            throw Error("peer disconnected unexpectedly");
+        } else {
+            throw Error("forwarding daemon connection: %s", e.getDescription().cStr());
+        }
+    }
 }
 
 /**
