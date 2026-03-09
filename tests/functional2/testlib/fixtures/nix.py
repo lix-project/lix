@@ -238,6 +238,20 @@ class Nix:
         self._settings = orig
         return cmd.run()
 
+    def eval_builtin(self, name: str, *args: _NixValue) -> CommandResult:
+        """
+        This is a high-level wrapper, to easily evaluate and obtain the result of a builtin.
+
+        In the background, it calls `nix eval --json --expr builtins.{name} {args}`
+        It is recommended to call `.json()` on the return value.
+
+        :param name: name of the builtin
+        :param args: list of arguments to provide to the builtin
+        :return: result of the evaluation
+        """
+        args = [serialise_nix(arg) for arg in args]
+        return self.eval(f"builtins.{name} {' '.join(args)}")
+
     @property
     def store_dir(self) -> Path:
         """

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from testlib.fixtures.env import ManagedEnv
-from testlib.fixtures.nix import NixSettings, serialise_nix
+from testlib.fixtures.nix import NixSettings, Nix, serialise_nix
 
 from textwrap import dedent
 
@@ -117,6 +117,17 @@ def test_nix_settings_to_env_overlay_no_store_dir(tmp_path: Path):
 
     settings.to_env_overlay(env)
     assert "store = local?root=/some/path\n" in env._env["NIX_CONFIG"]
+
+
+class TestNixEvalBuiltins:
+    def test_add(self, nix: Nix):
+        assert nix.eval_builtin("add", 1, 2).ok().stdout_plain == "3"
+
+    def test_attrnames(self, nix: Nix):
+        assert nix.eval_builtin("attrNames", {"a": "b", "c": 1}).json() == ["a", "c"]
+
+    def test_attrvalues(self, nix: Nix):
+        assert nix.eval_builtin("attrValues", {"a": "b", "c": 1}).json() == ["b", 1]
 
 
 class TestSerialiseNix:
