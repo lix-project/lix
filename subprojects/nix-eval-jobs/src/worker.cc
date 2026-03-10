@@ -45,17 +45,18 @@
 static nix::Value releaseExprTopLevelValue(nix::EvalState &state,
                                            nix::Bindings &autoArgs,
                                            MyArgs &args) {
-    nix::Value vTop;
-
-    if (args.fromArgs) {
-        nix::Expr &e = state.ctx.parseExprFromString(args.releaseExpr,
-                                                     nix::CanonPath::fromCwd());
-        vTop = state.eval(e);
-    } else {
-        vTop = state.evalFile(
-            state.aio.blockOn(nix::lookupFileArg(state.ctx, args.releaseExpr))
-                .unwrap());
-    }
+    nix::Value vTop = [&]() {
+        if (args.fromArgs) {
+            nix::Expr &e = state.ctx.parseExprFromString(
+                args.releaseExpr, nix::CanonPath::fromCwd());
+            return state.eval(e);
+        } else {
+            return state.evalFile(
+                state.aio
+                    .blockOn(nix::lookupFileArg(state.ctx, args.releaseExpr))
+                    .unwrap());
+        }
+    }();
 
     return state.autoCallFunction(autoArgs, vTop, {});
 }
