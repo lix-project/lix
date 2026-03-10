@@ -9,7 +9,7 @@ credits: [just1602]
 The `fetch-closure` experimental feature has been removed.
 
 Outside of allowing the user to import closure from binary cache,
-`fetchClosure` also allow you to do the following:
+`fetchClosure` also allowed you to do the following:
 
 * rewrite non-CA path to CA
 * reject non-CA paths at fetching time
@@ -21,7 +21,7 @@ software without paying the evaluation cost of a second nixpkgs.
 
 Both use cases are somewhat of an antipattern in Nix semantics. If the user
 cannot fetch a program directly via the substituter mechanism and fall back to
-local build, this is a feature AND a misconfiguration. If the user cannot build
+local build, this is a feature *and* a misconfiguration. If the user cannot build
 certain derivations because they are too expensive, the build directives should
 pass `-j0` or similar.
 
@@ -33,5 +33,5 @@ or once, and possess stable names.
 
 Finally, as for the non-CA → CA features, Lix removed ca-derivations.
 fetchClosure offers ca-derivations-like features which suffers from similar
-shortcomings albeit lessened. It only follows that we should rather deprecate
+shortcomings albeit lessened. It only follows that we should deprecate
 and remove these capabilities.

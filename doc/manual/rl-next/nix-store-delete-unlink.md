@@ -1,5 +1,5 @@
 ---
-synopsis: nix store delete can now unlink a GC root before deleting its closure
+synopsis: "`nix store delete` can now unlink a GC root before deleting its closure"
 cls: [4660]
 category: Improvements
 credits: [Qyriad]

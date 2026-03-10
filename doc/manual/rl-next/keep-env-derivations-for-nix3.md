@@ -1,5 +1,5 @@
 ---
-synopsis: "keep-env-derivations is now supported for nix3 CLI (nix profile)"
+synopsis: "`keep-env-derivations` is now supported for nix3 CLI (`nix profile`)"
 cls: [5332]
 issues: [fj#1095]
 category: "Features"

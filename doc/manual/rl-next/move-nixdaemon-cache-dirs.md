@@ -1,5 +1,5 @@
 ---
-synopsis: "Move /root/.cache/nix to /var/cache/nix by default"
+synopsis: "Move `/root/.cache/nix` to `/var/cache/nix` by default"
 cls: [4671]
 issues: [fj#634]
 category: "Breaking Changes"

@@ -1,5 +1,5 @@
 ---
-synopsis: "nix store add-path now supports references"
+synopsis: "`nix store add-path` now supports references"
 cls: [5205]
 category: "Features"
 credits: [jade]

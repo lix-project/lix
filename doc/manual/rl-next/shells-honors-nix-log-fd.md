@@ -1,12 +1,12 @@
 ---
-synopsis: "Shells supports $NIX_LOG_FD now"
+synopsis: "Shells support `$NIX_LOG_FD` now"
 cls: [4694, 4695]
 issues: [fj#336]
 category: "Improvements"
 credits: [raito]
 ---
 
-Lix's "debugging" shells (`nix3-develop` and `nix-shell`) now supports
+Lix's "debugging" shells (`nix3-develop` and `nix-shell`) now set the
 `$NIX_LOG_FD` environment variable.
 
 This means that [hook logging in

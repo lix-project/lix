@@ -1,5 +1,5 @@
 ---
-synopsis: 'more deprecated features'
+synopsis: 'More deprecated features'
 issues: []
 cls: [2092, 2310, 2311, 4638, 4652, 4764]
 category: Breaking Changes

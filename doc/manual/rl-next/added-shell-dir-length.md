@@ -1,5 +1,5 @@
 ---
-synopsis: "Nix shells' $NIX_BUILD_TOP are shorter"
+synopsis: "Nix shells' `$NIX_BUILD_TOP` are shorter"
 cls: [4663]
 issues: [fj#1044]
 category: "Fixes"

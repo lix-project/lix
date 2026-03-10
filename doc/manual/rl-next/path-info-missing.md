@@ -1,5 +1,5 @@
 ---
-synopsis: "nix path-info no longer lies to the user about fetching paths"
+synopsis: "`nix path-info` no longer lies to the user about fetching paths"
 cls: [4866]
 issues: [fj#323]
 category: "Improvements"
