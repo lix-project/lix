@@ -608,7 +608,6 @@ add_project_arguments(
   # for consistency with the installed header being lix/config.h
   '-include', 'lix/config.h',
   '-Wno-unused-parameter',
-  '-Wno-deprecated-declarations',
   '-Wno-missing-field-initializers',
   '-Wimplicit-fallthrough',
   '-Werror=switch',

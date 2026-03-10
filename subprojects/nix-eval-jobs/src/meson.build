@@ -1,6 +1,5 @@
 add_project_arguments(
   '-Wno-unused-parameter',
-  '-Wno-deprecated-declarations',
   '-Wno-missing-field-initializers',
   '-Wimplicit-fallthrough',
   '-Werror=switch',
