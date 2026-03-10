@@ -510,7 +510,7 @@
             dockerImage =
               let
                 pkgs = nixpkgsFor.${system}.native;
-                nix2container' = import nix2container { inherit pkgs system; };
+                nix2container' = import nix2container { inherit pkgs; };
               in
               import ./docker.nix {
                 inherit pkgs;
