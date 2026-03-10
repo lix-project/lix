@@ -36,9 +36,12 @@ int helperMain(const char * name, std::span<char *> args) noexcept
            other things, determines if kill(-1, signo) affects the
            calling process. In the OSX libc, it's set to true,
            which means "follow POSIX", which we don't want here */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (syscall(SYS_kill, -1, SIGKILL, false) == 0) {
             break;
         }
+#pragma clang diagnostic pop
 #else
         if (kill(-1, SIGKILL) == 0) {
             break;
