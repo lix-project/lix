@@ -135,7 +135,7 @@ How those are combined within the configuration file differs for the formats, an
 8.  `ssh-public-host-key` (**optional**)
     The public host key of the remote machine.
 
-    Defaults to basic ssh behavior (checking contests of the known-hosts file)
+    Defaults to basic ssh behavior (checking contents of the known-hosts file)
 
 
 ### Using a TOML configuration
