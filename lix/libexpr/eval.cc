@@ -297,30 +297,29 @@ EvalPaths::EvalPaths(
         }
     }
 
-#if LIX_MAJOR >= 3 || (LIX_MAJOR == 2 && LIX_MINOR >= 96)
+#if LIX_MAJOR >= 3 || (LIX_MAJOR == 2 && LIX_MINOR >= 98)
 #warning \
-    "The feature nix-path-shadow was deprecated in 2.95 with a warning, which needs to be turned into an error in 2.96"
+    "The feature nix-path-shadow was deprecated in 2.95 with a warning, error in 2.96, and we should consider removing the bypass in 2.98"
 #endif
+
     if (!featureSettings.isEnabled(DeprecatedFeature::NixPathShadow)) {
         for (auto & [prefix, path] : searchPath_.elements) {
             // Match on the 'nix' prefix
             if (prefix.s == "nix") {
-                logWarning(
-                    {.msg = HintFmt(
-                         "The prefix '%s' is reserved for internal use by Lix in the Nix search "
-                         "path, its usage is deprecated and will be forbidden in the future.\n"
-                         "Use %s to silence this warning.\n"
-                         "This is due to adding '%s=%s' in the Nix search path, either through the "
-                         "environment variable '%s' or by passing the flag %s to the nix "
-                         "invocation.",
-                         "nix",
-                         "--extra-deprecated-features nix-path-shadow",
-                         prefix.s,
-                         path.s,
-                         "NIX_PATH",
-                         "-I"
-                     )}
-                );
+                throw EvalError(HintFmt(
+                    "The prefix '%s' is reserved for internal use by Lix in the Nix search "
+                    "path, its usage is deprecated and will be forbidden in the future.\n"
+                    "Use %s to silence this error.\n"
+                    "This is due to adding '%s=%s' in the Nix search path, either through the "
+                    "environment variable '%s' or by passing the flag %s to the nix "
+                    "invocation.",
+                    "nix",
+                    "--extra-deprecated-features nix-path-shadow",
+                    prefix.s,
+                    path.s,
+                    "NIX_PATH",
+                    "-I"
+                ));
             } else
                 // Match prefixless paths that contain a `nix` directory
                 if (auto res =
@@ -333,21 +332,19 @@ EvalPaths::EvalPaths(
                                 });
                         }))
                 {
-                    logWarning(
-                        {.msg = HintFmt(
-                             "Shadowing '%s' by configuring the nix-path is deprecated and "
-                             "will be forbidden in the future.\n"
-                             "Use %s to silence this warning.\n"
-                             "This is due to adding '%s' to the nix-path without a prefix, "
-                             "either by passing the flag '-I %s' to the nix invocation or by "
-                             "adding this path to the environment variable '%s'.",
-                             "<nix/...>",
-                             "--extra-deprecated-features nix-path-shadow",
-                             path.s,
-                             path.s,
-                             "NIX_PATH"
-                         )}
-                    );
+                    throw EvalError(HintFmt(
+                        "Shadowing '%s' by configuring the nix-path is deprecated and "
+                        "will be forbidden in the future.\n"
+                        "Use %s to silence this error.\n"
+                        "This is due to adding '%s' to the nix-path without a prefix, "
+                        "either by passing the flag '-I %s' to the nix invocation or by "
+                        "adding this path to the environment variable '%s'.",
+                        "<nix/...>",
+                        "--extra-deprecated-features nix-path-shadow",
+                        path.s,
+                        path.s,
+                        "NIX_PATH"
+                    ));
                 }
         }
     }

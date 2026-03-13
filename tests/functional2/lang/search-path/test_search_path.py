@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from lang.test_lang import test_eval_okay as nix_eval
+from lang.test_lang import test_eval_fail as nix_eval_fail, test_eval_okay as nix_eval_okay
 from testlib.fixtures.file_helper import AssetSymlink, CopyFile, CopyTree, with_files
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.snapshot import Snapshot
@@ -21,7 +21,7 @@ from testlib.fixtures.snapshot import Snapshot
 )
 def test_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
     nix.env.set_env("NIX_PATH", "dir3:dir4")
-    nix_eval(
+    nix_eval_okay(
         files,
         nix,
         [
@@ -43,12 +43,26 @@ def test_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot])
         "nix-shadow": CopyTree("nix-shadow"),
         "in.nix": CopyFile("in-fetchurl.nix"),
         "out.exp": AssetSymlink("eval-okay-prefixed.out.exp"),
+    }
+)
+def test_prefixed_search_path_deprecated(
+    files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]
+):
+    nix.env.set_env("NIX_PATH", "nix=nix-shadow")
+    nix.settings.add_dp_feature("nix-path-shadow")
+    nix_eval_okay(files, nix, [], snapshot)
+
+
+@with_files(
+    {
+        "nix-shadow": CopyTree("nix-shadow"),
+        "in.nix": CopyFile("in-fetchurl.nix"),
         "err.exp": AssetSymlink("eval-okay-prefixed.err.exp"),
     }
 )
 def test_prefixed_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
     nix.env.set_env("NIX_PATH", "nix=nix-shadow")
-    nix_eval(files, nix, [], snapshot)
+    nix_eval_fail(files, nix, [], snapshot)
 
 
 @with_files(
@@ -56,11 +70,24 @@ def test_prefixed_search_path(files: Path, nix: Nix, snapshot: Callable[[str], S
         "nix-shadow": CopyTree("nix-shadow"),
         "in.nix": CopyFile("in-fetchurl.nix"),
         "out.exp": AssetSymlink("eval-okay-prefixless.out.exp"),
+    }
+)
+def test_prefixless_search_path_deprecated(
+    files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]
+):
+    nix.settings.add_dp_feature("nix-path-shadow")
+    nix_eval_okay(files, nix, ["-I", "nix-shadow"], snapshot)
+
+
+@with_files(
+    {
+        "nix-shadow": CopyTree("nix-shadow"),
+        "in.nix": CopyFile("in-fetchurl.nix"),
         "err.exp": AssetSymlink("eval-okay-prefixless.err.exp"),
     }
 )
 def test_prefixless_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
-    nix_eval(files, nix, ["-I", "nix-shadow"], snapshot)
+    nix_eval_fail(files, nix, ["-I", "nix-shadow"], snapshot)
 
 
 @with_files(
@@ -71,4 +98,4 @@ def test_prefixless_search_path(files: Path, nix: Nix, snapshot: Callable[[str],
     }
 )
 def test_empty_search_path(files: Path, nix: Nix, snapshot: Callable[[str], Snapshot]):
-    nix_eval(files, nix, [], snapshot)
+    nix_eval_okay(files, nix, [], snapshot)
