@@ -376,12 +376,7 @@ curl = dependency('libcurl', 'curl', required : true, include_type : 'system')
 
 editline = dependency('libeditline', 'editline', version : '>=1.14', required : true, include_type : 'system')
 
-lowdown = dependency('lowdown', version : '>=0.9.0', required : true, include_type : 'system')
-
-# TODO(sterni): drop the corresponding #ifdef after NixOS 25.05 is EOL which still distributes lowdown < 1.4.0
-if lowdown.version().version_compare('>= 1.4.0')
-  add_project_arguments('-DLOWDOWN_SEPARATE_TERM_OPTS', language: 'cpp')
-endif
+lowdown = dependency('lowdown', version : '>=1.4.0', required : true, include_type : 'system')
 
 # TODO(sterni): drop the corresponding #ifdef after NixOS 25.11 is EOL which still distributes lowdown < 3.0.0
 if lowdown.version().version_compare('>= 3.0.0')

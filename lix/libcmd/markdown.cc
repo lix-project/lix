@@ -55,7 +55,6 @@ std::string renderMarkdownToTerminal(std::string_view markdown, StandardOutputSt
 
     struct lowdown_opts opts{
         .type = LOWDOWN_TERM,
-#ifdef LOWDOWN_SEPARATE_TERM_OPTS
         .term =
             {
                 .cols = lowdown_cols,
@@ -65,14 +64,7 @@ std::string renderMarkdownToTerminal(std::string_view markdown, StandardOutputSt
                 .vmargin = 0,
                 .centre = 0,
             },
-        // maxdepth needs to be part of the ifdefs to match declaration order
         .maxdepth = 20,
-#else
-        .maxdepth = 20,
-        .cols = lowdown_cols,
-        .hmargin = 0,
-        .vmargin = 0,
-#endif /* LOWDOWN_SEPARATE_TERM_OPTS */
         .feat = LOWDOWN_COMMONMARK | LOWDOWN_FENCED | LOWDOWN_DEFLIST | LOWDOWN_TABLES,
 #ifdef LOWDOWN_CONSOLIDATED_OFLAGS
         .oflags = LOWDOWN_NOLINK,
