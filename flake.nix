@@ -185,9 +185,6 @@
                 });
           };
 
-          # Forward from the previous stage as we don’t want it to pick the lowdown override
-          nixUnstable = prev.nixUnstable;
-
           check-headers = final.buildPackages.callPackage ./maintainers/check-headers.nix { };
           check-syscalls = final.buildPackages.callPackage ./maintainers/check-syscalls.nix { };
 
