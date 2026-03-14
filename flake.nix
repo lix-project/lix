@@ -219,6 +219,9 @@
             inherit versionSuffix officialRelease;
             stdenv = currentStdenv;
             busybox-sandbox-shell = final.busybox-sandbox-shell or final.default-busybox-sandbox-shell;
+            # See below
+            lowdown = final.lowdown_3_0;
+            lowdown-unsandboxed = final.lowdown_3_0.override { enableDarwinSandbox = false; };
           };
 
           lix-clang-tidy = final.callPackage ./subprojects/lix-clang-tidy { };
@@ -243,6 +246,30 @@
           boehmgc-nix = final.nix.passthru.boehmgc-nix;
           # And same thing for our build-release-notes package.
           build-release-notes = final.nix.passthru.build-release-notes;
+
+          # As soon as Nixpkgs updates to >= 3.0.0, change to lowdown_2_0!
+          # We don't change the default version in order to not change the hash
+          # of Nix/Lix from upstream Nixpkgs.
+          lowdown_3_0 =
+            assert lib.versionOlder prev.lowdown.version "3.0.0";
+            prev.lowdown.overrideAttrs (
+              finalAttrs: prevAttrs: {
+                version = "3.0.1";
+                src = final.fetchurl {
+                  url = "https://kristaps.bsd.lv/lowdown/snapshots/lowdown-${finalAttrs.version}.tar.gz";
+                  sha512 = "fe68e1b7ff23f3992398356d7aa9a330dfd7b72e22bea9a91eeef74182b209ecea0c9f3e2b2216e1a07b2358da2b746238ec9cbbdeebdd3551cef14dd2d79f46";
+                };
+
+                # no longer compiles with GNU make
+                nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ final.bmake ];
+                # dylib fixups on darwin are no longer necessary
+                postInstall = "";
+                # doesn't work on darwin due to disallowed nested sandboxes
+                doInstallCheck = prevAttrs.doInstallCheck && !(final.stdenv.hostPlatform.isDarwin);
+                doCheck = prevAttrs.doCheck && !(final.stdenv.hostPlatform.isDarwin);
+              }
+            );
+
         };
     in
     {
@@ -256,6 +283,15 @@
       hydraJobs = {
         # Binary package for various platforms.
         build = forAllSystems (system: self.packages.${system}.nix);
+
+        # Ensure support for lowdown < 3.0 doesn't regress for NixOS 25.11
+        build-lowdown_2_0.aarch64-linux = lib.genAttrs [ "aarch64-linux" ] (
+          system:
+          self.packages.${system}.nix.override {
+            lowdown = nixpkgsFor.${system}.native.lowdown;
+            lowdown-unsandboxed = nixpkgsFor.${system}.native.lowdown-unsandboxed;
+          }
+        );
 
         devShell = forAllSystems (system: {
           default = self.devShells.${system}.default;

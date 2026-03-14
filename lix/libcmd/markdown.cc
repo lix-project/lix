@@ -34,7 +34,11 @@ std::string renderMarkdownToTerminal(std::string_view markdown)
         .vmargin = 0,
 #endif /* LOWDOWN_SEPARATE_TERM_OPTS */
         .feat = LOWDOWN_COMMONMARK | LOWDOWN_FENCED | LOWDOWN_DEFLIST | LOWDOWN_TABLES,
+#ifdef LOWDOWN_CONSOLIDATED_OFLAGS
+        .oflags = LOWDOWN_NOLINK,
+#else
         .oflags = LOWDOWN_TERM_NOLINK,
+#endif /* LOWDOWN_CONSOLIDATED_OFLAGS */
     };
     if (!shouldANSI()) {
         opts.oflags |= LOWDOWN_TERM_NOANSI;
