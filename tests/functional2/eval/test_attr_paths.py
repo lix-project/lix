@@ -23,12 +23,15 @@ ERR_CASES: list[ShouldError] = [
         "1",
         """error: the expression selected by the selection path '1' should be a list but is a set: { }""",
     ),
-    ShouldError("{}", ".", """error: empty attribute name in selection path '.'"""),
     ShouldError(
-        '{ x."" = 2; }', 'x.""', """error: empty attribute name in selection path 'x.""'"""
+        "{}",
+        ".",
+        """error: Leading dot in attribute selection path '.' is not allowed! If the attribute name is an empty string, use '\"\".foo.bar'""",
     ),
     ShouldError(
-        '{ x."".y = 2; }', 'x."".y', """error: empty attribute name in selection path 'x."".y'"""
+        "{}",
+        "bla..blub",
+        """error: consecutive dots not allowed in selection path 'bla..blub', use 'foo."".bar' to denote an empty attribute name""",
     ),
     ShouldError(
         "[]", "1", """error: list index 1 in selection path '1' is out of range for list [ ]"""

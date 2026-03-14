@@ -38,12 +38,56 @@ std::pair<Value, PosIdx> AttrPathEval::testFindAlongAttrPath(std::string expr, s
 
 // n.b. I do not know why we throw for empty attrs but they are apparently
 // disallowed.
-TEST_F(AttrPathEval, emptyAttrsThrows)
+TEST_F(AttrPathEval, emptyAttrsThrowsWithoutQuotes)
 {
     std::string expr = "{a.\"\".b = 2;}";
     ASSERT_NO_THROW(testFindAlongAttrPath(expr, "a"));
-    ASSERT_THROW(testFindAlongAttrPath(expr, "a.\"\".b"), Error);
-    ASSERT_THROW(testFindAlongAttrPath(expr, "a.\"\""), Error);
+    ASSERT_NO_THROW(testFindAlongAttrPath(expr, "a.\"\".b"));
+    ASSERT_THROW(testFindAlongAttrPath(expr, "a..b"), Error);
+    ASSERT_NO_THROW(testFindAlongAttrPath(expr, "a.\"\""));
 }
 
+TEST(attr_path_eval, quotes)
+{
+    auto p1 = parseAttrPath("foo.\"foo bar\".baz");
+    ASSERT_EQ(3, p1.size());
+    ASSERT_EQ("foo", p1[0]);
+    ASSERT_EQ("foo bar", p1[1]);
+    ASSERT_EQ("baz", p1[2]);
+
+    auto p2 = parseAttrPath("foo.\"foo bar\"");
+    ASSERT_EQ(2, p2.size());
+    ASSERT_EQ("foo", p2[0]);
+    ASSERT_EQ("foo bar", p2[1]);
+
+    auto p3 = parseAttrPath("\"foo bar\"");
+    ASSERT_EQ(1, p3.size());
+    ASSERT_EQ("foo bar", p3[0]);
+}
+
+TEST(attr_path_eval, quotes_empty)
+{
+    auto p1 = parseAttrPath("foo.\"\".bar");
+    ASSERT_EQ(3, p1.size());
+    ASSERT_EQ("foo", p1[0]);
+    ASSERT_EQ("", p1[1]);
+    ASSERT_EQ("bar", p1[2]);
+
+    auto p2 = parseAttrPath("foo.\"\"");
+    ASSERT_EQ(2, p2.size());
+    ASSERT_EQ("foo", p2[0]);
+    ASSERT_EQ("", p2[1]);
+
+    auto p3 = parseAttrPath("\"\"");
+    ASSERT_EQ(1, p3.size());
+    ASSERT_EQ("", p3[0]);
+}
+
+TEST(attr_path_eval, quotes_syntax)
+{
+    ASSERT_THROW(parseAttrPath("foo.\"bar"), ParseError);
+
+    // escaped quotes (\") are not supported
+    ASSERT_THROW(parseAttrPath("foo.\"bar\\\"\""), ParseError);
+}
 }

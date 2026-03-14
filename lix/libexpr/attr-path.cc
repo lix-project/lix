@@ -16,6 +16,22 @@ std::vector<std::string> parseAttrPath(std::string_view const s)
     auto i = s.begin();
     while (i != s.end()) {
         if (*i == '.') {
+            if (!haveData) {
+                if (res.empty()) {
+                    throw ParseError(
+                        "Leading dot in attribute selection path '%1%' is not allowed! If the attribute name "
+                        "is an empty string, use '\"\".foo.bar'",
+                        s
+                    );
+                } else {
+                    throw ParseError(
+                        "consecutive dots not allowed in selection path '%1%', use 'foo.\"\".bar' to denote "
+                        "an "
+                        "empty attribute name",
+                        s
+                    );
+                }
+            }
             res.push_back(cur);
             haveData = false;
             cur.clear();
@@ -90,9 +106,6 @@ findAlongAttrPath(EvalState & state, const std::string & attrPath, Bindings & au
            according to what is specified in the attrPath. */
 
         if (!attrIndex) {
-            if (attr.empty())
-                throw Error("empty attribute name in selection path '%1%'", attrPath);
-
             if (v.type() != nAttrs) {
                 auto pathPart =
                     std::vector<std::string>(tokens.begin(), tokens.begin() + attrPathIdx);
