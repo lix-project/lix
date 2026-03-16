@@ -1,3 +1,4 @@
+#include "libfetchers/attrs.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -605,9 +606,18 @@ struct GitInputScheme : InputScheme
             return {std::move(storePath), input};
         };
 
+        // If the input isn't present in the fetcher cache, we get a lock for
+        // fetching the given input. We want to hold this lock until we're done
+        // fetching, so we keep it in this scope.
+        std::optional<PathLock> fetchLock;
         if (input.getRev()) {
-            if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
+            auto resOrLock = TRY_AWAIT(getCache()->lookupOrLock(store, getLockedAttrs()));
+
+            if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resOrLock))
                 co_return makeResult(res->first, std::move(res->second));
+            auto lock = std::get_if<PathLock>(&resOrLock);
+            assert(lock);
+            fetchLock = std::move(*lock);
         }
 
         auto [isLocal, actualUrl_] = getActualUrl(input);
@@ -676,7 +686,10 @@ struct GitInputScheme : InputScheme
                 }
             }
 
-            if (auto res = TRY_AWAIT(getCache()->lookup(store, unlockedAttrs))) {
+            // If the input isn't in the cache, we get a lock for fetching it.
+            // Make sure to keep this until we're done fetching!
+            auto cached = TRY_AWAIT(getCache()->lookupOrLock(store, unlockedAttrs));
+            if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&cached)) {
                 auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
                 if (!input.getRev() || input.getRev() == rev2) {
                     input.attrs.insert_or_assign("rev", rev2.gitRev());
@@ -858,8 +871,21 @@ struct GitInputScheme : InputScheme
 
         /* Now that we know the ref, check again whether we have it in
            the store. */
-        if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
-            co_return makeResult(res->first, std::move(res->second));
+        // If we already have a lock for fetching this path, we can't use lookupOrLock because it would deadlock.
+        if (fetchLock) {
+            if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs()))) {
+                co_return makeResult(res->first, std::move(res->second));
+            }
+        } else {
+            // If we don't have the lock, we need to acquire it by using lookupOrLock.
+            auto resultOrLock = TRY_AWAIT(getCache()->lookupOrLock(store, getLockedAttrs()));
+            if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resultOrLock)) {
+                co_return makeResult(res->first, std::move(res->second));
+            }
+            auto lock = std::get_if<PathLock>(&resultOrLock);
+            assert(lock);
+            fetchLock = std::move(*lock);
+        }
 
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);

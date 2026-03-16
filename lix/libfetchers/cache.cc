@@ -1,4 +1,6 @@
 #include "lix/libfetchers/cache.hh"
+#include "libstore/pathlocks.hh"
+#include "libutil/hash.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/sync.hh"
@@ -86,6 +88,28 @@ struct CacheImpl : Cache
                 attrsToJSON(inAttrs).dump());
         }
         co_return std::nullopt;
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
+    kj::Promise<Result<std::variant<std::pair<Attrs, StorePath>, PathLock>>> lookupOrLock(ref<Store> store, const Attrs & inAttrs) override try {
+        // In order to avoid fetching the same input multiple times
+        // concurrently, we first acquire a lock based on the input attributes.
+        auto hashResult = hashString(HashType::SHA256, attrsToJSON(inAttrs).dump());
+        auto lockPath = getCacheDir() + "/nix/fetcher-lock-" + hashResult.to_string(HashFormat::Base32, false);
+        auto pathLock = TRY_AWAIT(lockPathAsync(lockPath));
+        // Once this lock is acquired, we check if the input is already present
+        // in the cache (which requires locking the cache db)
+        auto lookedUp = TRY_AWAIT(lookup(store, inAttrs));
+        // We return either the cache hit or the lock; this allows fetchers to
+        // keep a lock on fetching the input in question if it's not already in
+        // the cache, and otherwise frees the cache db up again.
+        std::variant<std::pair<Attrs, StorePath>, PathLock> result(std::move(pathLock));
+        if (lookedUp) {
+            // Reassigning the variant frees the lock
+            result = *lookedUp;
+        }
+        co_return result;
     } catch (...) {
         co_return result::current_exception();
     }
