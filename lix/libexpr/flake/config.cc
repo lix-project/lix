@@ -35,11 +35,13 @@ static bool batchAskForSetting(
     TrustedList & trustedList,
     std::map<std::string, std::string> & untrustedSettings)
 {
-    printWarning("The following settings require your decision:");
+    std::string warning("The following settings require your decision:");
     for (const auto & [name, valueS] : untrustedSettings) {
         // FIXME: filter ANSI escapes, newlines, \r, etc.
-        logger->cout("- %s = %s", name, valueS);
+        warning += fmt("\n- %s = %s", name, valueS);
     }
+
+    printWarning("%s", warning);
 
     auto reply = logger
                      ->ask(
