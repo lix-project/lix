@@ -175,7 +175,7 @@ struct ExprLiteral : Expr
 {
 protected:
     Value v;
-    ExprLiteral(const PosIdx pos) : Expr(pos) {};
+    ExprLiteral(const PosIdx pos, Value v) : Expr(pos), v(v) {};
 public:
     Value maybeThunk(EvalState & state, Env & env) override;
     JSON toJSON(const SymbolTable & symbols) const override;
@@ -183,34 +183,46 @@ public:
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
 
-struct ExprInt : ExprLiteral
+struct ExprInt : private std::tuple<Value::Int>, ExprLiteral
 {
-    Value::Int i;
-    ExprInt(const PosIdx pos, NixInt n) : ExprLiteral(pos), i{{Value::Acb::tInt}, n}
+    ExprInt(const PosIdx pos, NixInt n)
+        : tuple({{Value::Acb::tInt}, n})
+        , ExprLiteral(
+              pos,
+              Value::isTaggableInteger(n) ? Value{NewValueAs::integer, n} : Value(std::get<Value::Int>(*this))
+          )
     {
-        v = Value::isTaggableInteger(n) ? Value{NewValueAs::integer, n} : Value(i);
     }
     ExprInt(const PosIdx pos, NixInt::Inner n) : ExprInt(pos, NixInt(n)) {}
 };
 
-struct ExprFloat : ExprLiteral
+struct ExprFloat : private std::tuple<Value::Float>, ExprLiteral
 {
-    Value::Float f;
     ExprFloat(const PosIdx pos, NewValueAs::floating_t, double f)
-        : ExprLiteral(pos)
-        , f{{Value::Acb::tFloat}, f}
+        : tuple({{Value::Acb::tFloat}, f})
+        , ExprLiteral(pos, Value(std::get<Value::Float>(*this)))
     {
-        v = Value(this->f);
     }
 };
 
-struct ExprString : ExprLiteral
+struct ExprStringBase
 {
     std::unique_ptr<Value::Str, Value::Str::Deleter> contents;
-    Value::String strcb{.content = contents.get(), .context = nullptr};
-    ExprString(const PosIdx pos, std::string s) : ExprLiteral(pos), contents(Value::Str::copy(s))
+    Value::String strcb;
+protected:
+    ExprStringBase(std::string_view s, const char ** context = nullptr)
+        : contents(Value::Str::copy(s))
+        , strcb{.content = contents.get(), .context = context}
     {
-        v = {NewValueAs::string, &strcb};
+    }
+};
+
+struct ExprString : private ExprStringBase, ExprLiteral
+{
+    ExprString(const PosIdx pos, std::string s)
+        : ExprStringBase(s)
+        , ExprLiteral(pos, Value{NewValueAs::string, &strcb})
+    {
     }
 
     std::string_view str() const
@@ -219,11 +231,11 @@ struct ExprString : ExprLiteral
     }
 };
 
-struct ExprPath : ExprLiteral
+struct ExprPath : private ExprStringBase, ExprLiteral
 {
-    std::unique_ptr<Value::Str, Value::Str::Deleter> contents;
-    Value::String strcb{.content = contents.get(), .context = Value::String::path};
-    ExprPath(const PosIdx pos, std::string s) : ExprLiteral(pos), contents(Value::Str::copy(s))
+    ExprPath(const PosIdx pos, std::string s)
+        : ExprStringBase(s, Value::String::path)
+        , ExprLiteral(pos, Value{NewValueAs::path, &strcb})
     {
         v = Value{NewValueAs::path, &strcb};
     }
