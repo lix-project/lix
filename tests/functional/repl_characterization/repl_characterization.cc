@@ -197,5 +197,7 @@ REPL_TEST(idempotent);
 REPL_TEST(debug_frames);
 REPL_TEST(debug_ignore_try);
 REPL_TEST(debug_ignore_try_defaults);
+REPL_TEST(stacktrace_invalid_arg);
+REPL_TEST(stacktrace_oob);
 
 }; // namespace nix

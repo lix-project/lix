@@ -712,14 +712,21 @@ void NixRepl::initDebugBuiltinCommands()
     addCommand(
         "show-trace",
         [](NixRepl & repl, const std::string & arg) {
-            try {
-                repl.debugTraceIndex = stoi(arg);
-            } catch (...) {
+            int requestedTraceIdx = repl.debugTraceIndex;
+            if (arg.length() != 0) {
+                std::optional<int> maybeIdx = string2Int<int>(arg);
+                if (!maybeIdx) {
+                    throw Error("argument '%s' is not a valid integer", arg);
+                }
+                requestedTraceIdx = maybeIdx.value();
             }
 
+            size_t traceCount = 0;
             auto traces = repl.evaluator.debug->traces();
             for (const auto & [idx, i] : enumerate(traces)) {
-                if (idx == repl.debugTraceIndex) {
+                traceCount++;
+                if (idx == (size_t) requestedTraceIdx) {
+                    repl.debugTraceIndex = requestedTraceIdx;
                     std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
                     showDebugTrace(std::cout, repl.evaluator.positions, *i);
                     std::cout << std::endl;
@@ -728,6 +735,20 @@ void NixRepl::initDebugBuiltinCommands()
                     break;
                 }
             }
+
+            // if we didn't find any trace matching the user's request
+            if (repl.debugTraceIndex != (size_t) requestedTraceIdx) {
+                // note: if we get here, then the loop ran fully without matching anything,
+                // so `traceCount` is the total number of traces
+                throw Error(
+                    "stack index must be between %ld and %ld (inclusive), but was %ld",
+                    0,
+                    // decrease it by one to get the max *index*, since stacks are indexed by 0
+                    traceCount - 1,
+                    requestedTraceIdx
+                );
+            }
+
             return ProcessLineResult::PromptAgain;
         },
         {.aliases = {"st"},
