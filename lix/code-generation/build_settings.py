@@ -90,7 +90,7 @@ class Setting:
         aliases = [f"`{item}`" for item in self.aliases]
         description = dedent(f"""
 
-            {indent(indentation, self.documentation)}
+{indent(indentation, self.documentation)}
 
             {indent(indentation, PLATFORM_WARNING.format(platforms=str(platforms)[1:-1])) if self.platforms else ""}
             {indent(indentation, XP_WARNING.format(feature=self.experimental_feature, name=self.name)) if self.experimental_feature is not None else ""}
