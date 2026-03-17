@@ -366,7 +366,10 @@ stdenv.mkDerivation (finalAttrs: {
       "-Dc_link_args=-fuse-ld=lld"
       "-Dcpp_link_args=-fuse-ld=lld"
     ]
-    ++ lib.optional hostPlatform.isStatic "-Denable-embedded-sandbox-shell=true"
+    ++ lib.optionals hostPlatform.isStatic [
+      "-Denable-embedded-sandbox-shell=true"
+      "-Denable-contrib-plugins=false"
+    ]
     ++ lib.optional ciBuildAndDeleteBothLibraries "-Ddefault_library=both"
     # musl doesn't support fibers, and we can't detect this with meson alone.
     ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"

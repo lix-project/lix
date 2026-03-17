@@ -1348,7 +1348,10 @@ Pid LinuxLocalDerivationGoal::startChild(AutoCloseFD setupFD, AutoCloseFD logPTY
             (wantUserNS ? CLONE_NEWUSER : 0) | (wantNetNS ? CLONE_NEWNET : 0) | CLONE_VM | CLONE_FILES,
             []() -> int {
                 for (;;) {
-                    raise(SIGSTOP);
+                    // NOTE: musl apparently caches the pid of the process, which fucks with raise().
+                    // we must explicitly use getpid() to bypass this cache instead of using raise; a
+                    // raise(SIGSTOP) would stop the *daemon* process, and this breaks sandbox setup.
+                    kill(getpid(), SIGSTOP);
                 }
             }
         )};
