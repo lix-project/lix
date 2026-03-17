@@ -52,7 +52,7 @@ class Builtin:
             </dt>
             <dd>
 
-            {indent(self.documentation, "    " * 3)}
+{indent(self.documentation, "    " * 3)}
 
             {
             f"This function is only available if the [{self.experimental_feature}](@docroot@/contributing/experimental-features.md#xp-feature-{self.experimental_feature}) experimental feature is enabled."
