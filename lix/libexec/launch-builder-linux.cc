@@ -3,6 +3,7 @@
 #include "lix/libutil/rpc.hh"
 #include <cassert>
 #include <csignal>
+#include <fcntl.h>
 #include <filesystem>
 #include <format>
 #include <kj/io.h>
@@ -224,7 +225,11 @@ bool prepareChildSetup(build::Request::Reader request)
                     };
             const fs::path dst = chrootRootDir / target.relative_path();
             fs::create_directories(dst.parent_path());
-            writeFile(dst, std::string_view((const char *) sh, sizeof(sh)));
+            kj::AutoCloseFd fd(open(dst.c_str(), O_RDWR | O_CREAT, 0755));
+            if (fd == nullptr) {
+                throw SysError("cannot create sandbox shell");
+            }
+            writeFull(fd.get(), std::string_view((const char *) sh, sizeof(sh)));
             fs::permissions(dst, fs::perms(0555));
         } else
 #endif
