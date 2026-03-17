@@ -20,8 +20,6 @@ lix_doc = static_library(
     rnix,
   ],
   rust_args : [
-    # Empty when default_library=static
-    rust_dynamic_args,
     lix_doc_rust_args,
   ],
 )
