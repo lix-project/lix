@@ -199,5 +199,6 @@ REPL_TEST(debug_ignore_try);
 REPL_TEST(debug_ignore_try_defaults);
 REPL_TEST(stacktrace_invalid_arg);
 REPL_TEST(stacktrace_oob);
+REPL_TEST(stacktrace_relative);
 
 }; // namespace nix

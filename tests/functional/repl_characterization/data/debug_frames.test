@@ -40,7 +40,7 @@
     :bt, :backtrace                       Show trace stack
     :c, :continue                         Go until end of program, exception or builtins.break
     :s, :step                             Go one step
-    :st, :show-trace [integer index]      Show current trace. If an integer is provided, this switches to that stack beforehand.
+    :st, :show-trace [integer index]      Show current trace. If an integer is provided, this switches to that stack beforehand. If the integer has an explicit + or - sign, it is treated as relative to the current stack index.
 
       Flakes commands
 

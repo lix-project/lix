@@ -1,10 +1,13 @@
+#include <algorithm>
 #include <cstdio>
 #include <editline.h>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 #include <string_view>
 
+#include "libutil/logging.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libcmd/repl-interacter.hh"
@@ -711,50 +714,111 @@ void NixRepl::initDebugBuiltinCommands()
 
     addCommand(
         "show-trace",
+        // this command has a bit of nuance to its function and error states.
+        // it can either:
+        //      1. be called without any argument
+        //          -> just display the current stack frame (still have to walk up the stack :/)
+        //      2. be called with an absolute index
+        //          -> try to go to that frame
+        //          -> if it doesn't exist, print an "arg out of range" error
+        //      3. be called with a relative index
+        //          -> if the final offset is in-bounds, go to that frame
+        //          -> otherwise: clamp the index, i.e. go to 0/$max instead of out-of-bounds
+        //
+        // because the collection of frames is lazy and isn't a random-access list,
+        // we need to iterate the whole stack for most of these if we want to have
+        // good error messages; this is the biggest reason why this function is so
+        // long/complex compared to its role
+        //
         [](NixRepl & repl, const std::string & arg) {
-            int requestedTraceIdx = repl.debugTraceIndex;
-            if (arg.length() != 0) {
+            auto setTrace = [&](size_t traceIdx, const DebugTrace * trace) {
+                repl.debugTraceIndex = traceIdx;
+                std::cout << "\n" << ANSI_BLUE << traceIdx << ANSI_NORMAL << ": ";
+                showDebugTrace(std::cout, repl.evaluator.positions, *trace);
+                std::cout << std::endl;
+                printEnvBindings(repl.state, trace->expr, trace->env);
+                repl.loadDebugTraceEnv(*trace);
+            };
+
+            // tries to find a trace at a given index.
+            // - if it is found, it returns the requested trace, along with its
+            //   index, which will be *the same* as requested
+            // - otherwise, it returns the last (=outermost) trace, along with
+            //   its index, which will be *different* than the one requested
+            auto tryFindTrace = [&](size_t traceIdx) -> std::pair<size_t, const DebugTrace *> {
+                size_t lastIndex = 0;
+                const DebugTrace * lastTrace;
+                auto traces = repl.evaluator.debug->traces();
+                for (const auto & [idx, i] : enumerate(traces)) {
+                    lastTrace = i;
+                    lastIndex = idx;
+                    if (idx == traceIdx) {
+                        return std::pair(idx, i);
+                    }
+                }
+                return std::pair(lastIndex, lastTrace);
+            };
+
+            bool isRelativeIdx = false;
+            int requestedTraceIdx;
+            if (arg.length() == 0) {
+                // if there's no argument, just re-print the current frame
+                requestedTraceIdx = repl.debugTraceIndex;
+            } else {
                 std::optional<int> maybeIdx = string2Int<int>(arg);
                 if (!maybeIdx) {
                     throw Error("argument '%s' is not a valid integer", arg);
                 }
-                requestedTraceIdx = maybeIdx.value();
+
+                isRelativeIdx = arg.starts_with('+') || arg.starts_with('-');
+                requestedTraceIdx =
+                    isRelativeIdx ? maybeIdx.value() + repl.debugTraceIndex : maybeIdx.value();
             }
 
-            size_t traceCount = 0;
-            auto traces = repl.evaluator.debug->traces();
-            for (const auto & [idx, i] : enumerate(traces)) {
-                traceCount++;
-                if (idx == (size_t) requestedTraceIdx) {
-                    repl.debugTraceIndex = requestedTraceIdx;
-                    std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-                    showDebugTrace(std::cout, repl.evaluator.positions, *i);
-                    std::cout << std::endl;
-                    printEnvBindings(repl.state, i->expr, i->env);
-                    repl.loadDebugTraceEnv(*i);
-                    break;
-                }
+            auto [actualTraceIdx, trace] = tryFindTrace((size_t) requestedTraceIdx);
+
+            // if we *did* find the frame we wanted originally, all is well
+            // in the world and we can just load it and exit
+            if (actualTraceIdx == (size_t) requestedTraceIdx) {
+                setTrace(actualTraceIdx, trace);
+                return ProcessLineResult::PromptAgain;
             }
 
-            // if we didn't find any trace matching the user's request
-            if (repl.debugTraceIndex != (size_t) requestedTraceIdx) {
-                // note: if we get here, then the loop ran fully without matching anything,
-                // so `traceCount` is the total number of traces
+            // if we couldn't immediately find the requested trace on the "happy path", then either:
+
+            // a) it was an absolute index but didn't exist
+            //      -> print a specific error showing the exact valid range
+            if (!isRelativeIdx) {
                 throw Error(
                     "stack index must be between %ld and %ld (inclusive), but was %ld",
                     0,
-                    // decrease it by one to get the max *index*, since stacks are indexed by 0
-                    traceCount - 1,
+                    actualTraceIdx, // tryFindTrace sets *idx to the final (max) frame index if it fails
                     requestedTraceIdx
                 );
             }
 
-            return ProcessLineResult::PromptAgain;
+            // b) it was a relative index
+            //      -> clamp the index to the bounds and print a warning
+            if (requestedTraceIdx < 0) {
+                // just load frame 0 but print a warning about the bounds
+                std::tie(actualTraceIdx, trace) = tryFindTrace(0);
+                setTrace(actualTraceIdx, trace);
+                printTaggedWarning("stopped at stack frame %ld, cannot go any deeper", 0);
+                return ProcessLineResult::PromptAgain;
+            } else {
+                // (if we're here, then requestedTraceIdx > $max, since tryFindTrace failed)
+                // load the max frame (that `tryFindFrame` kindly already got for us),
+                // but print a warning that we can't go any further
+                setTrace(actualTraceIdx, trace);
+                printTaggedWarning("stopped at stack frame %ld, cannot go any higher", actualTraceIdx);
+                return ProcessLineResult::PromptAgain;
+            }
         },
         {.aliases = {"st"},
          .debugModeOnly = true,
          .help = "Show current trace. If an integer is provided, this switches to that stack "
-                 "beforehand.",
+                 "beforehand. If the integer has an explicit + or - sign, it is treated as"
+                 "relative to the current stack index.",
          .section = "Debug mode",
          .positionalArgsSpecifiers = {{.placeholderText = "integer index", .optional = true}}}
     );
