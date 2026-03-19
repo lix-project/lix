@@ -14,24 +14,39 @@ class JSONSax : nlohmann::json_sax<JSON> {
     class JSONState {
     protected:
         std::unique_ptr<JSONState> parent;
+        JSONState() = default;
+    public:
+        virtual std::unique_ptr<JSONState> resolve(EvalState &) = 0;
+        explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
+        JSONState(JSONState & p) = delete;
+        virtual Value & finalValue()
+        {
+            assert(false && "tried to read a final value from a non-toplevel json parser state");
+        }
+        virtual ~JSONState() {}
+        virtual void addValue(Value v) = 0;
+    };
+
+    class TopLevelJSONState : public JSONState
+    {
         RootValue v;
     public:
-        virtual std::unique_ptr<JSONState> resolve(EvalState &)
+        std::unique_ptr<JSONState> resolve(EvalState &) override
         {
             assert(false && "tried to close toplevel json parser state");
         }
-        explicit JSONState(std::unique_ptr<JSONState> && p) : parent(std::move(p)) {}
-        JSONState() = default;
-        JSONState(JSONState & p) = delete;
-        Value & value()
+        TopLevelJSONState() = default;
+        TopLevelJSONState(TopLevelJSONState & p) = delete;
+        Value & finalValue() override
         {
-            if (!v) {
-                v = allocRootValue({});
-            }
+            assert(v && "tried to read nonexistent final value from json parser");
             return *v;
         }
-        virtual ~JSONState() {}
-        virtual void add() {}
+        void addValue(Value v) override
+        {
+            assert(!this->v && "duplicate value in toplevel JSON scope");
+            this->v = allocRootValue(v);
+        }
     };
 
     class JSONObjectState : public JSONState {
@@ -43,13 +58,12 @@ class JSONSax : nlohmann::json_sax<JSON> {
             auto attrs2 = state.ctx.buildBindings(attrs.size());
             for (auto & i : attrs)
                 attrs2.insert(i.first, i.second);
-            parent->value() = {NewValueAs::attrs, attrs2.alreadySorted()};
+            parent->addValue({NewValueAs::attrs, attrs2.alreadySorted()});
             return std::move(parent);
         }
-        void add() override
+        void addValue(Value v) override
         {
-            attrs.insert_or_assign(_key, value());
-            v = nullptr;
+            attrs.insert_or_assign(_key, v);
         }
     public:
         void key(string_t & name, EvalState & state)
@@ -63,16 +77,15 @@ class JSONSax : nlohmann::json_sax<JSON> {
         std::unique_ptr<JSONState> resolve(EvalState & state) override
         {
             auto list = state.ctx.mem.newList(values.size());
-            parent->value() = {NewValueAs::list, list};
+            parent->addValue({NewValueAs::list, list});
             for (size_t n = 0; n < values.size(); ++n) {
                 list->elems[n] = values[n];
             }
             return std::move(parent);
         }
-        void add() override
+        void addValue(Value v) override
         {
-            values.push_back(*v);
-            v = nullptr;
+            values.push_back(v);
         }
     public:
         JSONListState(std::unique_ptr<JSONState> && p, std::size_t reserve) : JSONState(std::move(p))
@@ -85,31 +98,28 @@ class JSONSax : nlohmann::json_sax<JSON> {
     std::unique_ptr<JSONState> rs;
 
 public:
-    JSONSax(EvalState & state) : state(state), rs(new JSONState()) {};
+    JSONSax(EvalState & state) : state(state), rs(new TopLevelJSONState()) {};
 
     Value result()
     {
-        return rs->value();
+        return rs->finalValue();
     }
 
     bool null() override
     {
-        rs->value() = Value::VNULL;
-        rs->add();
+        rs->addValue(Value::VNULL);
         return true;
     }
 
     bool boolean(bool val) override
     {
-        rs->value() = {NewValueAs::boolean, val};
-        rs->add();
+        rs->addValue({NewValueAs::boolean, val});
         return true;
     }
 
     bool number_integer(number_integer_t val) override
     {
-        rs->value() = {NewValueAs::integer, val};
-        rs->add();
+        rs->addValue({NewValueAs::integer, val});
         return true;
     }
 
@@ -121,22 +131,19 @@ public:
             return number_float(static_cast<number_float_t>(val_), "");
         }
         NixInt::Inner val = val_;
-        rs->value() = {NewValueAs::integer, val};
-        rs->add();
+        rs->addValue({NewValueAs::integer, val});
         return true;
     }
 
     bool number_float(number_float_t val, const string_t & s) override
     {
-        rs->value() = {NewValueAs::floating, val};
-        rs->add();
+        rs->addValue({NewValueAs::floating, val});
         return true;
     }
 
     bool string(string_t & val) override
     {
-        rs->value() = {NewValueAs::string, val};
-        rs->add();
+        rs->addValue({NewValueAs::string, val});
         return true;
     }
 
@@ -163,7 +170,6 @@ public:
 
     bool end_object() override {
         rs = rs->resolve(state);
-        rs->add();
         return true;
     }
 
