@@ -1,4 +1,22 @@
 # Lix 2.95 "Kakigōri" (2026-03-13)
+# Lix 2.95.1 (2026-03-19)
+## Fixes
+
+- fix static builds [cl/5385](https://gerrit.lix.systems/c/lix/+/5385)
+
+  Static builds using musl were broken in 2.95.0 and should work again now.
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae) for this.
+
+- flake config warnings are now printed to stderr [lix#1155](https://git.lix.systems/lix-project/lix/issues/1155) [cl/5379](https://gerrit.lix.systems/c/lix/+/5379)
+
+  The settings listed in a flake-config confirmation prompt are now printed to stderr rather than stdout, which allows `nix print-dev-env` to emit valid bash again even in the presence of untrusted settings.
+
+  Many thanks to [lheckemann](https://git.lix.systems/lheckemann) for this.
+
+
+
+
 
 
 # Lix 2.95.0 (2026-03-13)
