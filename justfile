@@ -1,4 +1,10 @@
 # https://just.systems/man/en/
+#
+# Take a look at ./doc/manual/src/contributing/hacking.md for a detailed
+# explanation on how to use this file!
+
+outdir := x"${out:-$PWD/outputs/out}"
+builddir := "build"
 
 # List all available targets
 list:
@@ -6,40 +12,32 @@ list:
 
 # Clean build artifacts
 clean:
-    rm -rf build
+    rm -rf {{ builddir }}
 
-# Prepare meson for building with extra options
-setup-custom *OPTIONS:
-    meson setup build --prefix="$PWD/outputs/out" $mesonFlags {{ OPTIONS }}
-
-# Prepare meson for building
-setup: (setup-custom)
+# Prepare meson for building.
+setup *OPTIONS:
+    meson setup {{ builddir }} --reconfigure --prefix="{{outdir}}" $mesonFlags {{ OPTIONS }}
 
 # Build lix with extra options
-build-custom *OPTIONS:
-    meson compile -C build {{ OPTIONS }}
-
-# Build lix
-build: (build-custom)
+build *OPTIONS:
+    meson compile -C {{ builddir }} {{ OPTIONS }}
 
 alias compile := build
 
-# Install lix for local development with extra options
-install-custom *OPTIONS: (build-custom OPTIONS)
-    meson install -C build
+# `meson install` will automatically build anything that needs to be built to install it.
+[doc("Install Lix for local development")]
+install *OPTIONS:
+    meson install --quiet -C {{ builddir }} {{ OPTIONS }}
 
-# Install lix for local development
-install: (install-custom)
-
-# Run tests (usually requires `install`) with extra options
-test *OPTIONS:
-    meson test -C build --print-errorlogs --max-lines 10000 {{ OPTIONS }}
+# Run all tests tests (installs first).
+test *OPTIONS: (install)
+    meson test -C {{ builddir }} --print-errorlogs --max-lines 10000 {{ OPTIONS }}
 
 # Run unit tests only
 test-unit *OPTIONS: (test "--suite" "check")
 
 # Run integration tests only
-test-integration *OPTIONS: install (test "--suite" "installcheck")
+test-integration *OPTIONS: (test "--suite" "installcheck" OPTIONS)
 
 # Run functional2 tests using pytest directly, allowing for additional arguments to be passed to pytest e.g. for more granular test selection
 test-functional2 *OPTIONS:

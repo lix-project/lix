@@ -51,28 +51,64 @@ $ nix-shell -A native-clangStdenvPackages
 
 ### Building from the development shell
 
-Run a clean build and test with `just clean setup build install test`.
+We have a [justfile](just.systems) for extra convenient building.
+It defaults to using `./build` as the build directory, and `$out` (`./outputs/out`) as the install directory.
+For most cases, you can clean-build, install, and run the tests with:
+
+```bash
+$ just setup --wipe && just test
+```
+
+> **Note**
+>
+> The `--wipe` argument to `meson setup` conveniently works whether you have an existing build directory or not.
+>
+> However, it is *mostly*, but not *exactly* equivalent to deleting the build directory first.
+> In particular, previously specified `-D` build options are **preserved** with `--wipe` (for some reason).
+> For example, if you fetch and checkout a new version of Lix, and that new version *removes* a Meson build option from `./meson.options`, *and* a previous invocation in that build directory explicitly set that option, then `meson setup --wipe build` will error, complaining about the unknown option.
+> For these cases, `just clean` will give you a well-and-truly-this-time-for-real clean build.
+
+Because the integration tests require installation to work, `just test` automatically also calls `just install`, and Meson helpfully will automatically build any targets that need building when trying to install them.
+
+You can override the build directory or install directory by setting the justfile [variables](https://just.systems/man/en/setting-variables-from-the-command-line.html) `outdir` and `builddir` on the command-line:
+
+```bash
+$ just builddir=build-before-bisect outdir=out-before-bisect setup
+$ just builddir=build-before-bisect test
+```
+
+You'll have to set `builddir` for every target, but `outdir` only needs to be set for `setup`.
 
 You can also run the unit tests and integration tests separately:
 
 ```bash
-$ just setup build test-unit
-$ just install test-integration
+$ just setup
+$ just test-unit
+$ just test-integration
 ```
 
-Many justfile aliases have a `-custom` variant which pass extra arguments to `meson`.
+Most justfile targets forward all further arguments to the underlying Meson invocation.
 For example, to work on both Lix and nix-eval-jobs you can run:
 
-```
-$ just setup-custom -Dnix-eval-jobs=enabled
-$ # or
-$ mesonFlags=-Dnix-eval-jobs=enabled just setup
+```bash
+$ just setup -Dnix-eval-jobs=enabled
 ```
 
-Note that only targets which don't accept extra arguments can be used when
-running multiple targets at once; `just setup build` is fine, but `just
-setup-custom build` is an error. The `test` target is usually the last one to
-run, so it always accepts extra arguments.
+Note that only targets which *don't* accept extra arguments can have other targets following them.
+`just clean setup` is equivalent to `just clean && just setup`, but `just build test` runs the `build` target with the argument `test`.
+This means that if you want to, for example, build with lower parallelism, and then test, you will have to do something like this:
+
+```bash
+$ just build -j4
+$ just test
+```
+
+Finally, the rewrite of the integration test suite, functional2, also has its own justfile target which allows passing extra arguments to pytest.
+For example, to collect and list all functional2 tests without running them, you can pass pytest's `--collect-only` argument:
+
+```bash
+$ just test-functional2 --collect-only
+```
 
 You can also build Lix manually:
 
