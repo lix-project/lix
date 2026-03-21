@@ -87,18 +87,22 @@ If we :st past the frame in the backtrace with the meow in it, the meow should n
 
   nix-repl> :quit
   error:
-         … while calling the 'trace' builtin
-           at $TEST_DATA/stack_vars.nix:2:7:
-              1| let
-              2|   a = builtins.trace "before inner break" (
-               |       ^
-              3|     let meow' = 3; in builtins.break { msg = "hello"; }
+         … while evaluating the file '$TEST_DATA/stack_vars.nix':
 
-         … while calling the 'break' builtin
-           at $TEST_DATA/stack_vars.nix:3:23:
-              2|   a = builtins.trace "before inner break" (
-              3|     let meow' = 3; in builtins.break { msg = "hello"; }
-               |                       ^
+         … while evaluating b
+           at $TEST_DATA/stack_vars.nix:9:3:
+              8| in
+              9|   b
+               |   ^
+             10|
+
+         … while calling the 'trace' builtin
+           at $TEST_DATA/stack_vars.nix:5:7:
               4|   );
+              5|   b = builtins.trace "before outer break" (
+               |       ^
+              6|     let meow = 2; in builtins.break a
+
+         (stack trace truncated; use '--show-trace' to show the full trace)
 
          error: breakpoint reached

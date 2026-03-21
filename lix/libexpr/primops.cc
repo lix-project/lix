@@ -656,6 +656,7 @@ static void prim_break(EvalState & state, Value * * args, Value & v)
     }
 
     // Return the value we were passed.
+    state.forceValue(*args[0], noPos);
     v = *args[0];
 }
 

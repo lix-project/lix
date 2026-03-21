@@ -14,26 +14,56 @@ This test ensures that continues don't skip opportunities to enter the debugger.
   0: error: breakpoint reached
   $TEST_DATA/regression_9917.nix:3:5
 
-       2|   a = builtins.trace "before inner break" (
-       3|     builtins.break { msg = "hello"; }
-        |     ^
-       4|   );
+      2|   a = builtins.trace "before inner break" (
+      3|     builtins.break { msg = "hello"; }
+      |     ^
+      4|   );
 
   1: while calling a function
   $TEST_DATA/regression_9917.nix:3:5
 
-       2|   a = builtins.trace "before inner break" (
-       3|     builtins.break { msg = "hello"; }
-        |     ^
-       4|   );
+      2|   a = builtins.trace "before inner break" (
+      3|     builtins.break { msg = "hello"; }
+      |     ^
+      4|   );
 
   2: while calling a function
   $TEST_DATA/regression_9917.nix:2:7
 
-       1| let
-       2|   a = builtins.trace "before inner break" (
-        |       ^
-       3|     builtins.break { msg = "hello"; }
+      1| let
+      2|   a = builtins.trace "before inner break" (
+      |       ^
+      3|     builtins.break { msg = "hello"; }
+
+  3: while calling a function
+  $TEST_DATA/regression_9917.nix:6:5
+
+      5|   b = builtins.trace "before outer break" (
+      6|     builtins.break a
+      |     ^
+      7|   );
+
+  4: while calling a function
+  $TEST_DATA/regression_9917.nix:5:7
+
+      4|   );
+      5|   b = builtins.trace "before outer break" (
+      |       ^
+      6|     builtins.break a
+
+  5: while evaluating a 'let' expression
+  $TEST_DATA/regression_9917.nix:1:1
+
+      1| let
+      | ^
+      2|   a = builtins.trace "before inner break" (
+
+  6: while evaluating the file '$TEST_DATA/regression_9917.nix':
+  $TEST_DATA/regression_9917.nix:1:1
+
+      1| let
+      | ^
+      2|   a = builtins.trace "before inner break" (
 
   nix-repl> :c
 
