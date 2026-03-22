@@ -325,7 +325,7 @@
         build = forAllSystems (system: self.packages.${system}.nix);
 
         # Ensure support for lowdown < 3.0 doesn't regress for NixOS 25.11
-        build-lowdown_2_0.aarch64-linux = lib.genAttrs [ "aarch64-linux" ] (
+        build-lowdown_2_0 = lib.genAttrs [ "aarch64-linux" ] (
           system:
           self.packages.${system}.nix.override {
             lowdown = nixpkgsFor.${system}.native.lowdown;
