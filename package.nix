@@ -32,7 +32,6 @@
   libcpuid,
   libseccomp,
   libsystemtap,
-  linuxPackages,
   lix-clang-tidy ? null,
   llvmPackages,
   lsof,
