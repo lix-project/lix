@@ -4,7 +4,7 @@ import dataclasses
 import sys
 from functools import partialmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, get_args
 from collections.abc import Callable, Generator
 import shutil
 import subprocess
@@ -172,57 +172,6 @@ class Nix:
     ) -> Command:
         return self.nix_cmd([nix_exe, *cmd], flake=flake, cwd=cwd)
 
-    @contextlib.contextmanager
-    def daemon(
-        self,
-        args: list[str] | None = None,
-        settings: dict[str, _NixSettingValue] | None = None,
-        **kwargs,
-    ) -> "Nix":
-        daemon = copy.deepcopy(self)
-        daemon.logger = self.logger.getChild("daemon")
-        daemon.settings["allowed-users"] = ["*"]
-        daemon.settings["trusted-users"] = []
-        daemon.settings.store = f"local?root={self.env.dirs.test_root}"
-        daemon.settings.update(settings)
-
-        sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
-        sockets = [sockets_dir / "socket"]
-        for p in sockets:
-            p.unlink(missing_ok=True)
-
-        proc = daemon.nix(args or [], nix_exe="nix-daemon", **kwargs).start()
-
-        def log_daemon_result(result: CommandResult | None, level: int):
-            if result:
-                daemon.logger.log(level, "daemon exited with code %i", result.rc)
-                daemon.logger.log(level, "stdout: %s", result.stdout_s)
-                daemon.logger.log(level, "stderr: %s", result.stderr_s)
-            else:
-                daemon.logger.error("daemon exited unexpectedly")
-
-        # wait for daemon to come up. this may take a while under load.
-        # we only test the *last* socket in the list because that's the
-        # last one the daemon creates, once it's there the daemon is up
-        while not sockets[-1].exists():
-            if status := proc.wait(0.01):
-                log_daemon_result(status, logging.ERROR)
-                raise RuntimeError("daemon exited during startup")
-
-        inner = copy.deepcopy(self)
-        inner.settings.store = f"unix://{sockets[-1]}"  # missing multi socket support
-
-        try:
-            timeout, level = 1, logging.ERROR
-            yield inner
-            # 5 seconds should be enough to wait for a *graceful* exit.
-            timeout, level = 5, logging.DEBUG
-        finally:
-            result = proc.terminate(timeout)
-            if not result:
-                result = proc.kill()
-            log_daemon_result(result, level)
-
     # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
     nix_build = partialmethod(nix, nix_exe="nix-build")  # noqa: RUF045
     nix_shell = partialmethod(nix, nix_exe="nix-shell")  # noqa: RUF045
@@ -339,6 +288,75 @@ def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Ni
     # for pytest to be able to delete the files during cleanup
     cmd = Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], _env=env)
     cmd.run().ok()
+
+
+type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
+
+type NixDaemonProtocol = Literal["legacy-combined"]
+
+daemon_protocols: list[NixDaemonProtocol] = get_args(NixDaemonProtocol.__value__)
+
+
+# paramterize every daemon tests to run using all supported nix protocols
+@pytest.fixture(params=daemon_protocols)
+def daemon(request: pytest.FixtureRequest) -> NixDaemon:
+    default_protocol = request.param
+
+    @contextlib.contextmanager
+    def wrapper(
+        nix: Nix,
+        args: list[str] | None = None,
+        settings: dict[str, _NixSettingValue] | None = None,
+        protocol: NixDaemonProtocol | None = None,
+        **kwargs,
+    ) -> contextlib.AbstractAsyncContextManager[Nix]:
+        protocol = protocol or default_protocol
+
+        daemon = copy.deepcopy(nix)
+        daemon.logger = nix.logger.getChild("daemon")
+        daemon.settings["allowed-users"] = ["*"]
+        daemon.settings["trusted-users"] = []
+        daemon.settings.store = f"local?root={nix.env.dirs.test_root}"
+        daemon.settings.update(settings)
+
+        sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
+        sockets = [sockets_dir / "socket"]
+        for p in sockets:
+            p.unlink(missing_ok=True)
+
+        proc = daemon.nix(args or [], nix_exe="nix-daemon", **kwargs).start()
+
+        def log_daemon_result(result: CommandResult | None, level: int):
+            if result:
+                daemon.logger.log(level, "daemon exited with code %i", result.rc)
+                daemon.logger.log(level, "stdout: %s", result.stdout_s)
+                daemon.logger.log(level, "stderr: %s", result.stderr_s)
+            else:
+                daemon.logger.error("daemon exited unexpectedly")
+
+        # wait for daemon to come up. this may take a while under load.
+        # we only test the *last* socket in the list because that's the
+        # last one the daemon creates, once it's there the daemon is up
+        while not sockets[-1].exists():
+            if status := proc.wait(0.01):
+                log_daemon_result(status, logging.ERROR)
+                raise RuntimeError("daemon exited during startup")
+
+        inner = copy.deepcopy(nix)
+        inner.settings.store = f"unix://{sockets[-1]}"  # missing multi socket support
+
+        try:
+            timeout, level = 1, logging.ERROR
+            yield inner
+            # 5 seconds should be enough to wait for a *graceful* exit.
+            timeout, level = 5, logging.DEBUG
+        finally:
+            result = proc.terminate(timeout)
+            if not result:
+                result = proc.kill()
+            log_daemon_result(result, level)
+
+    return wrapper
 
 
 @pytest.fixture

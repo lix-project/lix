@@ -1,7 +1,7 @@
 import pytest
 import json
 
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, NixDaemon
 
 
 @pytest.mark.parametrize(
@@ -13,9 +13,9 @@ from testlib.fixtures.nix import Nix
         (["*"], ["--force-untrusted"], False),
     ],
 )
-def test_trust(nix: Nix, trusted: list[str], flags: list[str], expected: bool):
+def test_trust(nix: Nix, daemon: NixDaemon, trusted: list[str], flags: list[str], expected: bool):
     nix.settings.add_xp_feature("nix-command", "daemon-trust-override")
 
-    with nix.daemon(flags, settings={"trusted-users": trusted}) as inner:
+    with daemon(nix, flags, settings={"trusted-users": trusted}) as inner:
         trusted = json.loads(inner.nix(["store", "ping", "--json"]).run().ok().stdout)
         assert trusted["trusted"] == expected

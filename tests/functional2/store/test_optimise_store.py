@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from testlib.fixtures.file_helper import with_files
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, NixDaemon
 from testlib.utils import get_global_asset
 
 
@@ -40,7 +40,7 @@ class TestOptimizeStore:
     def test_optimise_store(self, nix: Nix):
         self._test_optimise_store(nix)
 
-    def test_optimise_store_daemon(self, nix: Nix):
+    def test_optimise_store_daemon(self, nix: Nix, daemon: NixDaemon):
         nix.settings.auto_optimise_store = True
-        with nix.daemon([], {"trusted-users": "*"}) as inner:
+        with daemon(nix, [], {"trusted-users": "*"}) as inner:
             self._test_optimise_store(inner)
