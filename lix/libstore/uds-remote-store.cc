@@ -66,7 +66,9 @@ static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<
             nix::connect(sockFD.get(), socket);
             return;
         } catch (SysError & e) {
-            if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT) {
+            if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT
+                || e.errNo == ENOTDIR)
+            {
                 debug("skipping socket %s: %s", socket, strerror(e.errNo));
             } else {
                 throw;

@@ -64,13 +64,35 @@ static void bindConnectProcHelper(
     // special case.
     auto * psaddr = reinterpret_cast<struct sockaddr *>(&addr);
 
+    Pipe resultFd;
+    resultFd.create();
+
     if (path.size() + 1 >= sizeof(addr.sun_path)) {
         runHelper(
             "unix-bind-connect",
             {.args =
-                 {std::to_string(fd), std::string(operationName), dirOf(path), std::string(baseNameOf(path))},
-             .redirections = {{.dup = fd, .from = fd}}}
+                 {
+                     std::to_string(fd),
+                     std::string(operationName),
+                     dirOf(path),
+                     std::string(baseNameOf(path)),
+                     std::to_string(resultFd.writeSide.get()),
+                 },
+             .redirections = {
+                 {.dup = fd, .from = fd},
+                 {.dup = resultFd.writeSide.get(), .from = resultFd.writeSide.get()},
+             }}
         ).waitAndCheck();
+        resultFd.writeSide.close();
+        auto resultRaw = drainFD(resultFd.readSide.get());
+        int result;
+        if (resultRaw.size() != sizeof(result)) {
+            throw Error("bind-connect helper returned bad result! bailing");
+        }
+        memcpy(&result, resultRaw.data(), sizeof(result));
+        if (result != 0) {
+            throw SysError(result, "cannot %s to socket at '%s'", operationName, path);
+        }
     } else {
         memcpy(addr.sun_path, path.c_str(), path.size() + 1);
         if (operation(fd, psaddr, sizeof(addr)) == -1)
