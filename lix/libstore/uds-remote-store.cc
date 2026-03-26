@@ -78,8 +78,8 @@ static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<
     throw Error("could not connect to any lix socket (tried %s)", concatStringsSep(", ", paths));
 }
 
-ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
-{
+kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection()
+try {
     auto conn = make_ref<Connection>();
 
     /* Connect to a daemon that does the privileged work for us. */
@@ -109,7 +109,9 @@ ref<RemoteStore::Connection> UDSRemoteStore::openConnection()
 
     conn->startTime = std::chrono::steady_clock::now();
 
-    return conn;
+    co_return conn;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 

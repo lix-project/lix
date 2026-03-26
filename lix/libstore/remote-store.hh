@@ -178,11 +178,11 @@ public:
 
     struct Connection;
 
-    ref<Connection> openConnectionWrapper();
+    kj::Promise<Result<ref<Connection>>> openConnectionWrapper();
 
 protected:
 
-    virtual ref<Connection> openConnection() = 0;
+    virtual kj::Promise<Result<ref<Connection>>> openConnection() = 0;
 
     kj::Promise<Result<ref<Connection>>> openAndInitConnection();
 

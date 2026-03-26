@@ -101,7 +101,7 @@ protected:
         }
     };
 
-    ref<RemoteStore::Connection> openConnection() override;
+    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
 
     std::string host;
 
@@ -119,8 +119,8 @@ protected:
     };
 };
 
-ref<RemoteStore::Connection> SSHStore::openConnection()
-{
+kj::Promise<Result<ref<RemoteStore::Connection>>> SSHStore::openConnection()
+try {
     auto conn = make_ref<Connection>();
 
     std::string command = config_.remoteProgram + " --stdio";
@@ -128,7 +128,9 @@ ref<RemoteStore::Connection> SSHStore::openConnection()
         command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = ssh.startCommand(command);
-    return conn;
+    return {conn};
+} catch (...) {
+    return {result::current_exception()};
 }
 
 void registerSSHStore() {

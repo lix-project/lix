@@ -101,7 +101,7 @@ private:
         }
     };
 
-    ref<RemoteStore::Connection> openConnection() override;
+    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
     std::optional<std::string> path;
 };
 

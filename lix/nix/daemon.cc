@@ -531,7 +531,7 @@ daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt
  */
 static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
 {
-    auto conn = store.openConnectionWrapper();
+    auto conn = aio.blockOn(store.openConnectionWrapper());
     auto connSocket = AIO().lowLevelProvider.wrapSocketFd(conn->getFD());
     auto asyncStdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
     auto asyncStdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
