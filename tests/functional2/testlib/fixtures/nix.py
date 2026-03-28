@@ -20,9 +20,9 @@ from testlib.utils import is_value_of_type
 type _NixSettingValue = str | int | list[str] | bool | None
 
 
-def _serialise(value: Any) -> str:
+def _serialise_config(value: _NixSettingValue) -> str:
     if is_value_of_type(value, list[str]):
-        return " ".join(_serialise(e) for e in value)
+        return " ".join(_serialise_config(e) for e in value)
     if is_value_of_type(value, bool):
         return "true" if value else "false"
     if is_value_of_type(value, str | int):
@@ -105,7 +105,7 @@ class NixSettings:
 
         self["extra-sandbox-paths"] += env.path.to_sandbox_paths()
 
-        def field_may(name: str, value: Any, serializer: Callable[[Any], str] = _serialise):
+        def field_may(name: str, value: Any, serializer: Callable[[Any], str] = _serialise_config):
             nonlocal config
             if value is not None:
                 config += f"{name} = {serializer(value)}\n"
