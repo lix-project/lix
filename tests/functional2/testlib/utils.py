@@ -116,6 +116,8 @@ def is_value_of_type(value: Any, expected_type: type[Any] | UnionType) -> bool:
         return True
     match origin:
         case None:
+            if expected_type is None:
+                return origin is None
             return isinstance(value, expected_type)
         case types.UnionType:
             return any(is_value_of_type(value, t) for t in get_args(expected_type))

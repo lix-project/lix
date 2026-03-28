@@ -30,6 +30,14 @@ def test_list_type_nested_single_invalid():
     assert not is_value_of_type([[1], [2, 3], ["a"]], list[list[int]])
 
 
+def test_none_type():
+    assert is_value_of_type(None, None)
+
+
+def test_none_type_union():
+    assert is_value_of_type(None, int | None)
+
+
 def test_weird_type_valid():
     assert is_value_of_type(42, Literal[42])
 
