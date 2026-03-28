@@ -596,6 +596,8 @@ foreach pkgconf : [ 'lix-base.pc', 'lix.pc' ]
       'PACKAGE_VERSION' : meson.project_version(),
       'AWS_SDK_IF_FOUND' : aws_sdk.found() ? 'aws-cpp-sdk-core aws-cpp-sdk-s3 aws-cpp-sdk-transfer' : '',
       'BOEHM_IF_FOUND' : boehm.found() ? 'bdw-gc' : '',
+      'CPUID_IF_FOUND' : cpuid.found() ? 'libcpuid' : '',
+      'SECCOMP_IF_FOUND' : seccomp.found() ? 'libseccomp' : '',
     },
   )
 endforeach
