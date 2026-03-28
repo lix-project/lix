@@ -16,8 +16,11 @@ from testlib.fixtures.command import CommandResult, Command
 from testlib.fixtures.env import ManagedEnv
 from testlib.utils import is_value_of_type
 
+from textwrap import dedent
+
 
 type _NixSettingValue = str | int | list[str] | bool | None
+type _NixValue = str | int | float | list[_NixValue] | dict[str, _NixValue] | bool | None
 
 
 def _serialise_config(value: _NixSettingValue) -> str:
@@ -29,6 +32,39 @@ def _serialise_config(value: _NixSettingValue) -> str:
         return str(value)
 
     msg = f"Value is unsupported in nix config: {value!r}, must be {_NixSettingValue.__value__}"
+    raise ValueError(msg)
+
+
+def serialise_nix(value: _NixValue) -> str:
+    """
+    Serialises the given python object into a nix represenatation.
+    NOTE: this interface does not allow accessing variables unless using interpolation, as all strings will be surrounded by quotes.
+    """
+
+    def escape(v: str) -> str:
+        if "\\r" in v:
+            raise ValueError("\\r is not supported for conversion")
+        escaped = v.replace("\\", "\\\\").replace("$", "\\$").replace('"', '\\"')
+        return f'"{escaped}"'
+
+    if is_value_of_type(value, list[_NixValue.__value__]):
+        return f"[{' '.join([serialise_nix(v) for v in value])}]"
+    if is_value_of_type(value, dict[str, _NixValue.__value__]):
+        return dedent(f"""
+            {{
+                {"\n                ".join([f"{escape(k)} = {serialise_nix(v)};" for k, v in value.items()])}
+            }}
+        """)
+    if is_value_of_type(value, bool):
+        return "true" if value else "false"
+    if is_value_of_type(value, int | float):
+        return str(value)
+    if is_value_of_type(value, str):
+        return escape(value)
+    if is_value_of_type(value, None):
+        return "null"
+
+    msg = f"Value is unsupported in nix code: {value!r}"
     raise ValueError(msg)
 
 

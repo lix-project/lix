@@ -3,7 +3,9 @@ from pathlib import Path
 import pytest
 
 from testlib.fixtures.env import ManagedEnv
-from testlib.fixtures.nix import NixSettings
+from testlib.fixtures.nix import NixSettings, serialise_nix
+
+from textwrap import dedent
 
 
 def test_nix_settings_set_item():
@@ -115,3 +117,38 @@ def test_nix_settings_to_env_overlay_no_store_dir(tmp_path: Path):
 
     settings.to_env_overlay(env)
     assert "store = local?root=/some/path\n" in env._env["NIX_CONFIG"]
+
+
+class TestSerialiseNix:
+    def test_list(self):
+        assert serialise_nix(["a", 1, None]) == '["a" 1 null]'
+
+    def test_dict(self):
+        assert serialise_nix(
+            {"a": 1, "b": None, "c": "hello world", "d": 3.14159265, "e": True}
+        ) == dedent("""
+            {
+                "a" = 1;
+                "b" = null;
+                "c" = "hello world";
+                "d" = 3.14159265;
+                "e" = true;
+            }
+        """)
+
+    def test_escaping(self):
+        assert serialise_nix({'"a': 'Hello ""', "1": "${foo}", "${foo}": None}) == dedent("""
+            {
+                "\\"a" = "Hello \\"\\"";
+                "1" = "\\${foo}";
+                "\\${foo}" = null;
+            }
+        """)
+
+    def test_quotes(self):
+        assert serialise_nix({"a b": None, "\\n": '${awa}"'}) == dedent("""
+            {
+                "a b" = null;
+                "\\\\n" = "\\${awa}\\"";
+            }
+        """)
