@@ -5,11 +5,12 @@ import functools
 import subprocess
 import dataclasses
 
-S3_HOST = 's3.lix.systems'
+S3_HOST = 's3-admin.afnix.fr'
+S3_USER = 'lix-releng'
 
 DEFAULT_STORE_URI_BITS = {
-    'region': 'garage',
-    'endpoint': 's3.lix.systems',
+    'region': 'global',
+    'endpoint': 's3.afnix.fr',
     'want-mass-query': 'true',
     'write-nar-listing': 'true',
     'ls-compression': 'zstd',
@@ -54,7 +55,9 @@ class RelengEnvironment:
     git_repo: Callable[[], str]
     git_repo_is_gerrit: bool
     s3_endpoint: str
+    s3_region: str
     s3_ssh_host: str | None
+    s3_ssh_user: str | None
 
     docker_targets: list[DockerTarget]
 
@@ -86,7 +89,9 @@ LOCAL = RelengEnvironment(
     git_repo_is_gerrit=False,
     docker_targets=[],
     s3_endpoint = 'http://localhost:3900',
+    s3_region = 'garage',
     s3_ssh_host = None,
+    s3_ssh_user = None,
 )
 
 
@@ -107,7 +112,9 @@ STAGING = RelengEnvironment(
                      tags=['{version}', '{major}']),
     ],
     s3_endpoint = 'https://s3.lix.systems',
+    s3_region = 'garage',
     s3_ssh_host = S3_HOST,
+    s3_ssh_user = S3_USER,
 )
 
 GERRIT_REMOTE_RE = re.compile(r'^ssh://(\w+@)?gerrit.lix.systems:2022/lix$')
@@ -127,13 +134,13 @@ def guess_gerrit_remote():
 PROD = RelengEnvironment(
     name='production',
     colour=functools.partial(sgr, RED),
-    docs_bucket='s3://docs',
-    cache_bucket='s3://cache',
+    docs_bucket='s3://docs.lix.systems',
+    cache_bucket='s3://cache.lix.systems',
     # FIXME: we should decrypt this with age into a tempdir in the future, but
     # the issue is how to deal with the recipients file. For now, we should
     # just delete it after doing a release.
     cache_store_overlay={'secret-key': 'prod.key'},
-    releases_bucket='s3://releases',
+    releases_bucket='s3://releases.lix.systems',
     git_repo=guess_gerrit_remote,
     git_repo_is_gerrit=True,
     docker_targets=[
@@ -142,8 +149,10 @@ PROD = RelengEnvironment(
                      tags=['{version}', '{major}']),
         DockerTarget('ghcr.io/lix-project/lix', tags=['{version}', '{major}']),
     ],
-    s3_endpoint = 'https://s3.lix.systems',
+    s3_endpoint = 'https://s3.afnix.fr',
+    s3_region = 'global',
     s3_ssh_host = S3_HOST,
+    s3_ssh_user = S3_USER,
 )
 
 ENVIRONMENTS = {
