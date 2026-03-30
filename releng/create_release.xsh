@@ -40,7 +40,7 @@ def setup_creds(env: RelengEnvironment):
     key = keys.get_ephemeral_key(env)
     $AWS_SECRET_ACCESS_KEY = key.secret_key
     $AWS_ACCESS_KEY_ID = key.id
-    $AWS_DEFAULT_REGION = 'garage'
+    $AWS_DEFAULT_REGION = env.s3_region
     $AWS_ENDPOINT_URL = env.s3_endpoint
 
 
