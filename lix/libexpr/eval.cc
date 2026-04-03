@@ -1206,7 +1206,7 @@ Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx p
                 } catch (ThrownError & e) {
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
-                    if (fn->name == "throw") {
+                    if (fn->name == "throw" && !e.hasTrace()) {
                         e.addTrace(ctx.positions[pos], "caused by explicit %s", "throw");
                     } else {
                         e.addTrace(ctx.positions[pos], "while calling the '%s' builtin", fn->name);

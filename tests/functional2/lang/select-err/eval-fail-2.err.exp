@@ -1,0 +1,23 @@
+error:
+       … while calling the 'throw' builtin
+         at /pwd/in.nix:6:1:
+            5| in
+            6| throw set.inner
+             | ^
+            7|
+
+       … while evaluating the attribute 'inner'
+         at /pwd/in.nix:3:5:
+            2|   set = {
+            3|     inner = throw "nested throw";
+             |     ^
+            4|   };
+
+       … caused by explicit throw
+         at /pwd/in.nix:3:13:
+            2|   set = {
+            3|     inner = throw "nested throw";
+             |             ^
+            4|   };
+
+       error: nested throw
