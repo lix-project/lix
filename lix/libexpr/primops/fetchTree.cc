@@ -299,7 +299,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             });
 
         if (state.aio.blockOn(state.ctx.store->isValidPath(expectedPath))) {
-            state.ctx.paths.allowAndSetStorePathString(expectedPath, v);
+            v = state.ctx.paths.allowAndSetStorePathString(expectedPath);
             return;
         }
     }
@@ -331,7 +331,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         }
     }
 
-    state.ctx.paths.allowAndSetStorePathString(storePath, v);
+    v = state.ctx.paths.allowAndSetStorePathString(storePath);
 }
 
 void prim_fetchurl(EvalState & state, Value * * args, Value & v)

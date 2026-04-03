@@ -1659,7 +1659,7 @@ static void prim_toFile(EvalState & state, Value * * args, Value & v)
        used in args[1]. */
 
     /* Add the output of this to the allowed paths. */
-    state.ctx.paths.allowAndSetStorePathString(storePath, v);
+    v = state.ctx.paths.allowAndSetStorePathString(storePath);
 }
 
 static void addPath(
@@ -1746,9 +1746,9 @@ static void addPath(
                     "store path mismatch in (possibly filtered) path added from '%s'",
                     path
                 ).debugThrow();
-            state.ctx.paths.allowAndSetStorePathString(dstPath, v);
+            v = state.ctx.paths.allowAndSetStorePathString(dstPath);
         } else
-            state.ctx.paths.allowAndSetStorePathString(*expectedStorePath, v);
+            v = state.ctx.paths.allowAndSetStorePathString(*expectedStorePath);
     } catch (Error & e) {
         e.addTrace(nullptr, "while adding path '%s'", path);
         throw;

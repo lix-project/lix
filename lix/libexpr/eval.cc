@@ -434,11 +434,11 @@ void EvalPaths::allowPath(const StorePath & storePath)
         allowPath(store->toRealPath(storePath));
 }
 
-void EvalPaths::allowAndSetStorePathString(const StorePath & storePath, Value & v)
+Value EvalPaths::allowAndSetStorePathString(const StorePath & storePath)
 {
     allowPath(storePath);
 
-    v = mkStorePathString(storePath);
+    return mkStorePathString(storePath);
 }
 
 CheckedSourcePath EvalPaths::checkSourcePath(const SourcePath & path_)

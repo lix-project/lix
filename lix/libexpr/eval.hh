@@ -370,7 +370,7 @@ public:
     /**
      * Allow access to a store path and return it as a string.
      */
-    void allowAndSetStorePathString(const StorePath & storePath, Value & v);
+    Value allowAndSetStorePathString(const StorePath & storePath);
 
     /**
      * Check whether access to a path is allowed and throw an error if
