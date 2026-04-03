@@ -12,6 +12,5 @@ struct Value;
 
 MakeError(JSONParseError, Error);
 
-void parseJSON(EvalState & state, const std::string_view & s, Value & v);
-
+Value parseJSON(EvalState & state, const std::string_view & s);
 }

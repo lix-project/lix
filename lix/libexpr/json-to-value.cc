@@ -190,13 +190,13 @@ public:
     }
 };
 
-void parseJSON(EvalState & state, const std::string_view & s_, Value & v)
+Value parseJSON(EvalState & state, const std::string_view & s_)
 {
     JSONSax parser(state);
     bool res = JSON::sax_parse(s_, &parser);
     if (!res)
         throw JSONParseError("Invalid JSON Value");
-    v = parser.result();
+    return parser.result();
 }
 
 }
