@@ -1711,6 +1711,23 @@ try {
                     anyHashMismatchSeen = true;
                     // XXX: shameless layering violation hack that makes the hash mismatch error at least not utterly worthless
                     auto guessedUrl = getOr(drv->env, "urls", getOr(drv->env, "url", "(unknown)"));
+                    if (guessedUrl == "(unknown)") {
+                        if (auto structuredAttrs = parsedDrv->getStructuredAttrs()) {
+                            auto json = *structuredAttrs;
+                            if (json.contains("urls") && json["urls"].is_array() && !json["urls"].empty()) {
+                                guessedUrl = "";
+                                for (auto it = json["urls"].begin(); it != json["urls"].end(); ++it) {
+                                    if (!it->is_string()) continue;
+                                    if (guessedUrl != "") {
+                                        guessedUrl += " or ";
+                                    }
+                                    guessedUrl += it->get<std::string>();
+                                }
+                            } else if (json.contains("url") && json["url"].is_string()) {
+                                guessedUrl = json["url"].get<std::string>();
+                            }
+                        }
+                    }
                     delayedException = std::make_exception_ptr(BuildError(
                         "hash mismatch in fixed-output derivation '%s':\n    likely URL: %s\n     "
                         "specified: %s\n           got: %s\n expected path: %s\n      got path: %s",

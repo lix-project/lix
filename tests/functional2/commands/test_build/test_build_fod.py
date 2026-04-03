@@ -1,5 +1,7 @@
 import re
 
+import pytest
+
 from testlib.fixtures.file_helper import with_files, CopyFile
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset
@@ -27,8 +29,7 @@ def test_url_keep_going_1(nix: Nix):
     assert re.findall(r"hash mismatch in fixed-output derivation '.*-x.\.drv'", err)
     assert "likely URL: " in err
     assert re.findall(
-        r"error: build of '.*-x[1-4]\.drv\^out', '.*-x[1-4]\.drv\^out', '.*-x[1-4]\.drv\^out', '.*-x[1-4]\.drv\^out' failed",
-        err,
+        r"error: build of '.*-x[1-8]\.drv\^out'(, '.*-x[1-7]\.drv\^out'){6} failed", err
     )
 
 
@@ -65,6 +66,23 @@ def test_missing_dependency_keep_going(nix: Nix):
     assert re.findall(r"error: 2 dependencies of derivation '.*-x4\.drv' failed to build", err)
     for f in ["x2", "x3"]:
         assert re.findall(rf"hash mismatch in fixed-output derivation '.*-{f}\.drv'", err)
+
+
+@with_files(_fod_files)
+@pytest.mark.parametrize(
+    ("attr", "url"),
+    [
+        ("x5", "https://avian.example/owls.tar.gz"),
+        ("x6", "https://avian.example/geese.tar.gz"),
+        ("x7", "(unknown)"),
+        ("x8", "https://avian.example/swan1.tar.gz or https://avian.example/swan2.tar.gz"),
+    ],
+)
+def test_structured_attrs_url(nix: Nix, attr: str, url: str):
+    res = nix.nix([*_build_args, attr], flake=True).run().expect(1)
+    err = res.stderr_plain
+    assert err.count("error: ") == 1
+    assert f"likely URL: {url}" in err
 
 
 @with_files({"config.nix": get_global_asset("config.nix")})
