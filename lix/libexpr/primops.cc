@@ -2244,27 +2244,27 @@ static void prim_isList(EvalState & state, Value * * args, Value & v)
     v = {NewValueAs::boolean, args[0]->type() == nList};
 }
 
-static void elemAt(EvalState & state, Value & list, NixInt::Inner n, Value & v)
+static Value elemAt(EvalState & state, Value & list, NixInt::Inner n)
 {
     state.forceList(list, noPos, "while evaluating the first argument passed to builtins.elemAt");
     if (n < 0 || std::make_unsigned_t<NixInt::Inner>(n) >= list.listSize()) {
         state.ctx.errors.make<EvalError>("list index %1% is out of bounds", n).debugThrow();
     }
     state.forceValue(list.listElems()[n], noPos);
-    v = list.listElems()[n];
+    return list.listElems()[n];
 }
 
 /* Return the n-1'th element of a list. */
 static void prim_elemAt(EvalState & state, Value * * args, Value & v)
 {
     NixInt::Inner elem = state.forceInt(*args[1], noPos, "while evaluating the second argument passed to builtins.elemAt").value;
-    elemAt(state, *args[0], elem, v);
+    v = elemAt(state, *args[0], elem);
 }
 
 /* Return the first element of a list. */
 static void prim_head(EvalState & state, Value * * args, Value & v)
 {
-    elemAt(state, *args[0], 0, v);
+    v = elemAt(state, *args[0], 0);
 }
 
 /* Return a list consisting of everything but the first element of
