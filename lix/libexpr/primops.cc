@@ -173,7 +173,7 @@ static void mkOutputString(
 
 /* Load and evaluate an expression from path specified by the
    argument. */
-static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
+static Value import(EvalState & state, Value & vPath, Value * vScope)
 {
     auto path = realisePath(state, vPath);
     auto path2 = path.canonical().abs();
@@ -223,12 +223,13 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
             noPos,
             "while evaluating imported-drv-to-derivation.nix.gen.hh"
         );
-        v = {NewValueAs::app, state.ctx.mem, *state.ctx.caches.vImportedDrvToDerivation, w};
+        Value v = {NewValueAs::app, state.ctx.mem, *state.ctx.caches.vImportedDrvToDerivation, w};
         state.forceAttrs(v, noPos, "while calling imported-drv-to-derivation.nix.gen.hh");
+        return v;
     }
 
     else if (path2 == corepkgsPrefix + "fetchurl.nix") {
-        v = state.eval(state.ctx.parseExprFromString(
+        return state.eval(state.ctx.parseExprFromString(
 #include "fetchurl.nix.gen.hh"
             , CanonPath::root
         ));
@@ -236,7 +237,7 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
 
     else {
         if (!vScope)
-            v = state.evalFile(path);
+            return state.evalFile(path);
         else {
             state.forceAttrs(*vScope, noPos, "while evaluating the first argument passed to builtins.scopedImport");
 
@@ -259,14 +260,14 @@ static void import(EvalState & state, Value & vPath, Value * vScope, Value & v)
             debug("evaluating file '%1%'", path);
             Expr & e = state.ctx.parseExprFromFile(state.ctx.paths.resolveExprPath(path), staticEnv);
 
-            v = e.eval(state, *env);
+            return e.eval(state, *env);
         }
     }
 }
 
 static void prim_import(EvalState & state, Value * * args, Value & v)
 {
-    import(state, *args[0], nullptr, v);
+    v = import(state, *args[0], nullptr);
 }
 
 /* Want reasonable symbol names, so extern C */
