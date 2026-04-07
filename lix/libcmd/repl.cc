@@ -867,8 +867,7 @@ void NixRepl::initBuiltinCommands()
         [](NixRepl & repl, const std::string & arg) {
             Value v = repl.evalString(arg);
             Value f = repl.evalString(
-                R""("drv: (import <nixpkgs> {}).runCommand "shell") ""
-                R""({ buildInputs = [ drv ]; } "")""
+                R"(drv: (import <nixpkgs> {}).runCommand "shell" { buildInputs = [ drv ]; } "")"
             );
             Value result = repl.state.callFunction(f, v, PosIdx());
 
