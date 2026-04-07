@@ -1,6 +1,6 @@
 ---
 name: scopedImport
-implementation: "[](EvalState & state, Value ** args, Value & v) { v = import(state, *args[1], args[0]); }"
+implementation: "[](EvalState & state, Value ** args) -> Value { return import(state, *args[1], args[0]); }"
 args: [scope, path]
 renameInGlobalScope: false
 ---

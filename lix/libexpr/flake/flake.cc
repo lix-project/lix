@@ -966,14 +966,14 @@ Value callFlake(EvalState & state, const LockedFlake & lockedFlake)
     return state.callFunction(vTmp2, vRootSubdir, noPos);
 }
 
-void prim_getFlake(EvalState & state, Value * * args, Value & v)
+Value prim_getFlake(EvalState & state, Value ** args)
 {
     std::string flakeRefS(state.forceStringNoCtx(*args[0], noPos, "while evaluating the argument passed to builtins.getFlake"));
     auto flakeRef = parseFlakeRef(flakeRefS, {}, true);
     if (evalSettings.pureEval && !flakeRef.input.isLocked())
         throw Error("cannot call 'getFlake' on unlocked flake reference '%s' (use --impure to override)", flakeRefS);
 
-    v = callFlake(
+    return callFlake(
         state,
         lockFlake(
             state,
@@ -988,10 +988,7 @@ void prim_getFlake(EvalState & state, Value * * args, Value & v)
     );
 }
 
-void prim_parseFlakeRef(
-    EvalState & state,
-    Value * * args,
-    Value & v)
+Value prim_parseFlakeRef(EvalState & state, Value ** args)
 {
     std::string flakeRefS(state.forceStringNoCtx(*args[0], noPos,
         "while evaluating the argument passed to builtins.parseFlakeRef"));
@@ -1009,13 +1006,10 @@ void prim_parseFlakeRef(
         );
         binds.insert(s, vv);
     }
-    v = {NewValueAs::attrs, binds};
+    return {NewValueAs::attrs, binds};
 }
 
-void prim_flakeRefToString(
-    EvalState & state,
-    Value * * args,
-    Value & v)
+Value prim_flakeRefToString(EvalState & state, Value ** args)
 {
     state.forceAttrs(*args[0], noPos,
         "while evaluating the argument passed to builtins.flakeRefToString");
@@ -1047,7 +1041,7 @@ void prim_flakeRefToString(
         }
     }
     auto flakeRef = FlakeRef::fromAttrs(attrs);
-    v = {NewValueAs::string, flakeRef.to_string()};
+    return {NewValueAs::string, flakeRef.to_string()};
 }
 
 }

@@ -48,12 +48,12 @@ public:
 /**
  * Load a ValueInitializer from a DSO and return whatever it initializes
  */
-void prim_importNative(EvalState & state, Value * * args, Value & v);
+Value prim_importNative(EvalState & state, Value ** args);
 
 /**
  * Execute a program and parse its output
  */
-void prim_exec(EvalState & state, Value * * args, Value & v);
+Value prim_exec(EvalState & state, Value ** args);
 
 std::tuple<Value, Value> makePositionThunks(EvalState & state, const PosIdx pos);
 }

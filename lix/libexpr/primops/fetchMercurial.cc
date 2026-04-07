@@ -5,7 +5,7 @@
 
 namespace nix {
 
-void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
+Value prim_fetchMercurial(EvalState & state, Value ** args)
 {
     std::string url;
     std::optional<Hash> rev;
@@ -98,8 +98,8 @@ void prim_fetchMercurial(EvalState & state, Value ** args, Value & v)
     attrs2.insert("shortRev", {NewValueAs::string, rev2.gitRev().substr(0, 12)});
     if (auto revCount = input2.getRevCount())
         attrs2.insert("revCount", {NewValueAs::integer, NixInt::Inner(*revCount)});
-    v = {NewValueAs::attrs, attrs2};
 
     state.ctx.paths.allowPath(tree.storePath);
+    return {NewValueAs::attrs, attrs2};
 }
 }

@@ -7,22 +7,21 @@
 
 namespace nix {
 
-void prim_unsafeDiscardStringContext(EvalState & state, Value ** args, Value & v)
+Value prim_unsafeDiscardStringContext(EvalState & state, Value ** args)
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardStringContext");
-    v = {NewValueAs::string, *s};
+    return {NewValueAs::string, *s};
 }
 
-void prim_hasContext(EvalState & state, Value * * args, Value & v)
+Value prim_hasContext(EvalState & state, Value ** args)
 {
     NixStringContext context;
     state.forceString(*args[0], context, noPos, "while evaluating the argument passed to builtins.hasContext");
-    v = {NewValueAs::boolean, !context.empty()};
+    return {NewValueAs::boolean, !context.empty()};
 }
 
-
-void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value & v)
+Value prim_unsafeDiscardOutputDependency(EvalState & state, Value ** args)
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.unsafeDiscardOutputDependency");
@@ -39,11 +38,10 @@ void prim_unsafeDiscardOutputDependency(EvalState & state, Value * * args, Value
         }
     }
 
-    v = {NewValueAs::string, *s, context2};
+    return {NewValueAs::string, *s, context2};
 }
 
-
-void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v)
+Value prim_addDrvOutputDependencies(EvalState & state, Value ** args)
 {
     NixStringContext context;
     auto s = state.coerceToString(noPos, *args[0], context, "while evaluating the argument passed to builtins.addDrvOutputDependencies");
@@ -82,7 +80,7 @@ void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v)
         }, context.begin()->raw) }),
     };
 
-    v = {NewValueAs::string, *s, context2};
+    return {NewValueAs::string, *s, context2};
 }
 
 
@@ -105,7 +103,7 @@ void prim_addDrvOutputDependencies(EvalState & state, Value * * args, Value & v)
    Note that for a given path any combination of the above attributes
    may be present.
 */
-void prim_getContext(EvalState & state, Value * * args, Value & v)
+Value prim_getContext(EvalState & state, Value ** args)
 {
     struct ContextInfo {
         bool path = false;
@@ -148,7 +146,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
         attrs.insert(state.ctx.store->printStorePath(info.first), {NewValueAs::attrs, infoAttrs});
     }
 
-    v = {NewValueAs::attrs, attrs};
+    return {NewValueAs::attrs, attrs};
 }
 
 
@@ -157,7 +155,7 @@ void prim_getContext(EvalState & state, Value * * args, Value & v)
    See the commentary above unsafeGetContext for details of the
    context representation.
 */
-void prim_appendContext(EvalState & state, Value ** args, Value & v)
+Value prim_appendContext(EvalState & state, Value ** args)
 {
     NixStringContext context;
     auto orig = state.forceString(*args[0], context, noPos, "while evaluating the first argument passed to builtins.appendContext");
@@ -231,6 +229,6 @@ void prim_appendContext(EvalState & state, Value ** args, Value & v)
         }
     }
 
-    v = {NewValueAs::string, orig, context};
+    return {NewValueAs::string, orig, context};
 }
 }

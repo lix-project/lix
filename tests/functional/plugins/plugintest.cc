@@ -25,13 +25,13 @@ static void maybeRequireMeowForDlopen() {
     meow();
 }
 
-static void prim_anotherNull (EvalState & state, Value ** args, Value & v)
+static Value prim_anotherNull(EvalState & state, Value ** args)
 {
     assert(entryCalled);
     if (mySettings.settingSet)
-        v = Value::VNULL;
+        return Value::VNULL;
     else
-        v = {NewValueAs::boolean, false};
+        return {NewValueAs::boolean, false};
 }
 
 extern "C" void nix_plugin_entry()

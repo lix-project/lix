@@ -228,9 +228,9 @@ static Value fetchTree(
     return emitTreeAttrs(state.ctx, tree, input2, params.emptyRevFallback, false);
 }
 
-void prim_fetchTree(EvalState & state, Value * * args, Value & v)
+Value prim_fetchTree(EvalState & state, Value ** args)
 {
-    v = fetchTree(state, noPos, args, std::nullopt, FetchTreeParams{.allowNameArgument = false});
+    return fetchTree(state, noPos, args, std::nullopt, FetchTreeParams{.allowNameArgument = false});
 }
 
 static Value fetch(
@@ -334,19 +334,19 @@ static Value fetch(
     return state.ctx.paths.allowAndSetStorePathString(storePath);
 }
 
-void prim_fetchurl(EvalState & state, Value * * args, Value & v)
+Value prim_fetchurl(EvalState & state, Value ** args)
 {
-    v = fetch(state, noPos, args, "fetchurl", false, "");
+    return fetch(state, noPos, args, "fetchurl", false, "");
 }
 
-void prim_fetchTarball(EvalState & state, Value * * args, Value & v)
+Value prim_fetchTarball(EvalState & state, Value ** args)
 {
-    v = fetch(state, noPos, args, "fetchTarball", true, "source");
+    return fetch(state, noPos, args, "fetchTarball", true, "source");
 }
 
-void prim_fetchGit(EvalState & state, Value * * args, Value & v)
+Value prim_fetchGit(EvalState & state, Value ** args)
 {
-    v = fetchTree(
+    return fetchTree(
         state, noPos, args, "git", FetchTreeParams{.emptyRevFallback = true, .allowNameArgument = true}
     );
 }

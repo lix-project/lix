@@ -1202,7 +1202,7 @@ Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx p
                     for (unsigned i = 0; i < argsLeft; i++) {
                         pargs[i] = &args[i];
                     }
-                    fn->fun(*this, pargs.data(), vCur);
+                    vCur = fn->fun(*this, pargs.data());
                 } catch (ThrownError & e) {
                     // Distinguish between an error that simply happened while "throw"
                     // was being evaluated and an explicit thrown error.
@@ -1257,7 +1257,7 @@ Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx p
                     // 1. Unify this and above code. Heavily redundant.
                     // 2. Create a fake env (arg1, arg2, etc.) and a fake expr (arg1: arg2: etc: builtins.name arg1 arg2 etc)
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
-                    fn->fun(*this, vArgs.data(), vCur);
+                    vCur = fn->fun(*this, vArgs.data());
                 } catch (Error & e) {
                     e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
                     throw;

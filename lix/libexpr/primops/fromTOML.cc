@@ -7,7 +7,7 @@
 
 namespace nix {
 
-void prim_fromTOML(EvalState & state, Value ** args, Value & val)
+Value prim_fromTOML(EvalState & state, Value ** args)
 {
     auto toml = state.forceStringNoCtx(
         *args[0], noPos, "while evaluating the argument passed to builtins.fromTOML"
@@ -57,7 +57,7 @@ void prim_fromTOML(EvalState & state, Value ** args, Value & val)
     };
 
     try {
-        val = visit(
+        return visit(
             toml::parse(
                 tomlStream,
                 "fromTOML", /* the "filename" */

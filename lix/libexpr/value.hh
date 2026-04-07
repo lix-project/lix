@@ -32,7 +32,7 @@ struct Value;
 /**
  * Function that implements a primop.
  */
-using PrimOpImpl = void(EvalState & state, Value ** args, Value & v);
+using PrimOpImpl = Value(EvalState & state, Value ** args);
 
 /**
  * Info about a primitive operation, and its implementation
