@@ -834,7 +834,7 @@ static void prim_second(EvalState & state, Value * * args, Value & v)
  * Derivations
  *************************************************************/
 
-static void derivationStrictInternal(EvalState & state, const std::string & name, Bindings * attrs, Value & v);
+static Value derivationStrictInternal(EvalState & state, const std::string & name, Bindings * attrs);
 
 /* Construct (as a unobservable side effect) a Nix derivation
    expression that performs the derivation described by the argument
@@ -872,7 +872,7 @@ static void prim_derivationStrict(EvalState & state, Value * * args, Value & v)
     }
 
     try {
-        derivationStrictInternal(state, drvName, attrs, v);
+        v = derivationStrictInternal(state, drvName, attrs);
     } catch (Error & e) {
         Pos pos = state.ctx.positions[nameAttr->pos];
         /*
@@ -902,8 +902,7 @@ static void prim_derivationStrict(EvalState & state, Value * * args, Value & v)
     }
 }
 
-static void derivationStrictInternal(EvalState & state, const std::string &
-drvName, Bindings * attrs, Value & v)
+static Value derivationStrictInternal(EvalState & state, const std::string & drvName, Bindings * attrs)
 {
     /* Check whether attributes should be passed as a JSON file. */
     std::optional<JSON> jsonObject;
@@ -1288,7 +1287,7 @@ drvName, Bindings * attrs, Value & v)
     for (auto & i : drv.outputs)
         mkOutputString(state, result, drvPath, i);
 
-    v = {NewValueAs::attrs, result};
+    return {NewValueAs::attrs, result};
 }
 
 /* Return a placeholder string for the specified output that will be
