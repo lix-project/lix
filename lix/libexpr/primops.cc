@@ -1662,15 +1662,15 @@ static void prim_toFile(EvalState & state, Value * * args, Value & v)
     v = state.ctx.paths.allowAndSetStorePathString(storePath);
 }
 
-static void addPath(
+static Value addPath(
     EvalState & state,
     std::string_view name,
     Path path,
     Value * filterFun,
     FileIngestionMethod method,
     const std::optional<Hash> expectedHash,
-    Value & v,
-    const NixStringContext & context)
+    const NixStringContext & context
+)
 {
     try {
         // FIXME: handle CA derivation outputs (where path needs to
@@ -1746,9 +1746,9 @@ static void addPath(
                     "store path mismatch in (possibly filtered) path added from '%s'",
                     path
                 ).debugThrow();
-            v = state.ctx.paths.allowAndSetStorePathString(dstPath);
+            return state.ctx.paths.allowAndSetStorePathString(dstPath);
         } else
-            v = state.ctx.paths.allowAndSetStorePathString(*expectedStorePath);
+            return state.ctx.paths.allowAndSetStorePathString(*expectedStorePath);
     } catch (Error & e) {
         e.addTrace(nullptr, "while adding path '%s'", path);
         throw;
@@ -1762,7 +1762,15 @@ static void prim_filterSource(EvalState & state, Value * * args, Value & v)
     auto path = state.coerceToPath(noPos, *args[1], context,
         "while evaluating the second argument (the path to filter) passed to builtins.filterSource");
     state.forceFunction(*args[0], noPos, "while evaluating the first argument passed to builtins.filterSource");
-    addPath(state, path.baseName(), path.canonical().abs(), args[0], FileIngestionMethod::Recursive, std::nullopt, v, context);
+    v = addPath(
+        state,
+        path.baseName(),
+        path.canonical().abs(),
+        args[0],
+        FileIngestionMethod::Recursive,
+        std::nullopt,
+        context
+    );
 }
 
 static void prim_path(EvalState & state, Value * * args, Value & v)
@@ -1828,7 +1836,7 @@ static void prim_path(EvalState & state, Value * * args, Value & v)
     if (name.empty())
         name = path->baseName();
 
-    addPath(state, name, path->canonical().abs(), filterFun, method, expectedHash, v, context);
+    v = addPath(state, name, path->canonical().abs(), filterFun, method, expectedHash, context);
 }
 
 
