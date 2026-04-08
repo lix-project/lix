@@ -108,14 +108,14 @@ struct FetchTreeParams {
     bool allowNameArgument = false;
 };
 
-static void fetchTree(
+static Value fetchTree(
     EvalState & state,
     const PosIdx pos,
-    Value * * args,
-    Value & v,
+    Value ** args,
     std::optional<std::string> type,
     const FetchTreeParams & params = FetchTreeParams{}
-) {
+)
+{
     fetchers::Input input;
     NixStringContext context;
 
@@ -225,12 +225,12 @@ static void fetchTree(
 
     state.ctx.paths.allowPath(tree.storePath);
 
-    v = emitTreeAttrs(state.ctx, tree, input2, params.emptyRevFallback, false);
+    return emitTreeAttrs(state.ctx, tree, input2, params.emptyRevFallback, false);
 }
 
 void prim_fetchTree(EvalState & state, Value * * args, Value & v)
 {
-    fetchTree(state, noPos, args, v, std::nullopt, FetchTreeParams { .allowNameArgument = false });
+    v = fetchTree(state, noPos, args, std::nullopt, FetchTreeParams{.allowNameArgument = false});
 }
 
 static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v,
@@ -346,7 +346,9 @@ void prim_fetchTarball(EvalState & state, Value * * args, Value & v)
 
 void prim_fetchGit(EvalState & state, Value * * args, Value & v)
 {
-    fetchTree(state, noPos, args, v, "git", FetchTreeParams { .emptyRevFallback = true, .allowNameArgument = true });
+    v = fetchTree(
+        state, noPos, args, "git", FetchTreeParams{.emptyRevFallback = true, .allowNameArgument = true}
+    );
 }
 
 }
