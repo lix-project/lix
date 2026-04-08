@@ -233,8 +233,9 @@ void prim_fetchTree(EvalState & state, Value * * args, Value & v)
     v = fetchTree(state, noPos, args, std::nullopt, FetchTreeParams{.allowNameArgument = false});
 }
 
-static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v,
-    const std::string & who, bool unpack, std::string name)
+static Value fetch(
+    EvalState & state, const PosIdx pos, Value ** args, const std::string & who, bool unpack, std::string name
+)
 {
     std::optional<std::string> url;
     std::optional<Hash> expectedHash;
@@ -299,8 +300,7 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
             });
 
         if (state.aio.blockOn(state.ctx.store->isValidPath(expectedPath))) {
-            v = state.ctx.paths.allowAndSetStorePathString(expectedPath);
-            return;
+            return state.ctx.paths.allowAndSetStorePathString(expectedPath);
         }
     }
 
@@ -331,17 +331,17 @@ static void fetch(EvalState & state, const PosIdx pos, Value * * args, Value & v
         }
     }
 
-    v = state.ctx.paths.allowAndSetStorePathString(storePath);
+    return state.ctx.paths.allowAndSetStorePathString(storePath);
 }
 
 void prim_fetchurl(EvalState & state, Value * * args, Value & v)
 {
-    fetch(state, noPos, args, v, "fetchurl", false, "");
+    v = fetch(state, noPos, args, "fetchurl", false, "");
 }
 
 void prim_fetchTarball(EvalState & state, Value * * args, Value & v)
 {
-    fetch(state, noPos, args, v, "fetchTarball", true, "source");
+    v = fetch(state, noPos, args, "fetchTarball", true, "source");
 }
 
 void prim_fetchGit(EvalState & state, Value * * args, Value & v)
