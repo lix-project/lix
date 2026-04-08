@@ -2403,7 +2403,7 @@ static void prim_foldlStrict(EvalState & state, Value * * args, Value & v)
     }
 }
 
-static void anyOrAll(bool any, EvalState & state, Value * * args, Value & v)
+static Value anyOrAll(bool any, EvalState & state, Value ** args)
 {
     state.forceFunction(*args[0], noPos, std::string("while evaluating the first argument passed to builtins.") + (any ? "any" : "all"));
     state.forceList(*args[1], noPos, std::string("while evaluating the second argument passed to builtins.") + (any ? "any" : "all"));
@@ -2416,23 +2416,22 @@ static void anyOrAll(bool any, EvalState & state, Value * * args, Value & v)
         Value vTmp = state.callFunction(*args[0], elem, noPos);
         bool res = state.forceBool(vTmp, noPos, errorCtx);
         if (res == any) {
-            v = {NewValueAs::boolean, any};
-            return;
+            return {NewValueAs::boolean, any};
         }
     }
 
-    v = {NewValueAs::boolean, !any};
+    return {NewValueAs::boolean, !any};
 }
 
 
 static void prim_any(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(true, state, args, v);
+    v = anyOrAll(true, state, args);
 }
 
 static void prim_all(EvalState & state, Value * * args, Value & v)
 {
-    anyOrAll(false, state, args, v);
+    v = anyOrAll(false, state, args);
 }
 
 static void prim_genList(EvalState & state, Value * * args, Value & v)
