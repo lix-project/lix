@@ -2367,8 +2367,7 @@ static void prim_elem(EvalState & state, Value * * args, Value & v)
 static void prim_concatLists(EvalState & state, Value * * args, Value & v)
 {
     state.forceList(*args[0], noPos, "while evaluating the first argument passed to builtins.concatLists");
-    state.concatLists(
-        v,
+    v = state.concatLists(
         std::span{args[0]->listElems(), args[0]->listSize()},
         noPos,
         "while evaluating a value of the list passed to builtins.concatLists"

@@ -1400,9 +1400,7 @@ Value EvalState::updateAttrs(const Value & v1, const Value & v2)
     return v;
 }
 
-void EvalState::concatLists(
-    Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx
-)
+Value EvalState::concatLists(std::span<Value> lists, const PosIdx pos, std::string_view errorCtx)
 {
     ctx.stats.nrListConcats++;
 
@@ -1418,12 +1416,10 @@ void EvalState::concatLists(
     }
 
     if (nonEmpty && len == nonEmpty->listSize()) {
-        v = *nonEmpty;
-        return;
+        return *nonEmpty;
     }
 
     auto list = ctx.mem.newList(len);
-    v = {NewValueAs::list, list};
     auto out = list->elems;
     for (size_t n = 0, pos = 0; n < lists.size(); ++n) {
         auto l = lists[n].listSize();
@@ -1432,6 +1428,7 @@ void EvalState::concatLists(
         }
         pos += l;
     }
+    return {NewValueAs::list, list};
 }
 
 // always force this to be separate, otherwise forceValue may inline it and take

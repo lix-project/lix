@@ -827,8 +827,7 @@ public:
         Value & v);
 
     Value updateAttrs(const Value & v1, const Value & v2);
-    void
-    concatLists(Value & v, std::span<Value> lists, const PosIdx pos, std::string_view errorCtx);
+    Value concatLists(std::span<Value> lists, const PosIdx pos, std::string_view errorCtx);
 
 private:
 
