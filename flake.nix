@@ -249,17 +249,19 @@
           # We don't change the default version in order to not change the hash
           # of Nix/Lix from upstream Nixpkgs.
           lowdown_3_0 =
-            assert lib.versionOlder prev.lowdown.version "3.0.0";
-            prev.lowdown.overrideAttrs (
-              finalAttrs: _prevAttrs: {
-                version = "3.0.0";
+            if (lib.versions.major prev.lowdown.version == 3) then
+              prev.lowdown.version
+            else
+              prev.lowdown.overrideAttrs (
+                finalAttrs: _prevAttrs: {
+                  version = "3.0.0";
 
-                src = final.fetchurl {
-                  url = "https://kristaps.bsd.lv/lowdown/snapshots/lowdown-${finalAttrs.version}.tar.gz";
-                  sha512 = "94e97234d598382c3c3dc27f9bfdb3a3a2fcf7dbb6a8df3c85ee09f27f792449034a41d49d9cfd3d8450d2de01b8562c20c3d120e65c81af4d7d6c9454119e93";
-                };
-              }
-            );
+                  src = final.fetchurl {
+                    url = "https://kristaps.bsd.lv/lowdown/snapshots/lowdown-${finalAttrs.version}.tar.gz";
+                    sha512 = "94e97234d598382c3c3dc27f9bfdb3a3a2fcf7dbb6a8df3c85ee09f27f792449034a41d49d9cfd3d8450d2de01b8562c20c3d120e65c81af4d7d6c9454119e93";
+                  };
+                }
+              );
 
           capnproto = prev.capnproto.overrideAttrs (old: {
             patches =
@@ -327,6 +329,7 @@
         # Ensure support for lowdown < 3.0 doesn't regress for NixOS 25.11
         build-lowdown_2_0 = lib.genAttrs [ "aarch64-linux" ] (
           system:
+          assert lib.versionOlder nixpkgsFor.${system}.native.lowdown.version "3.0.0";
           self.packages.${system}.nix.override {
             lowdown = nixpkgsFor.${system}.native.lowdown;
             lowdown-unsandboxed = nixpkgsFor.${system}.native.lowdown-unsandboxed;
