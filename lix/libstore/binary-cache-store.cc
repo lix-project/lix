@@ -221,6 +221,7 @@ try {
 
         auto * buildIdDir = std::get_if<nar_index::Directory>(&narIndex);
         for (auto subdir : { "lib", "debug", ".build-id" }) {
+            if (!buildIdDir) break;
             // get returns nullptr subdir does not exist, and std::get_if propagates it.
             buildIdDir = std::get_if<nar_index::Directory>(get(buildIdDir->contents, subdir));
         }
