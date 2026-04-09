@@ -5,7 +5,7 @@
 FIXME(Lix): This chapter is quite outdated with respect to recommended practices in 2024 and needs updating.
 The commands in here will work, however, and the installation section is up to date.
 
-For more updated guidance, see the links on <https://lix.systems/resources/>
+For more updated guidance, see the links on <https://wiki.lix.systems/books/lix-users/page/nix-resources>
 
 </div>
 
