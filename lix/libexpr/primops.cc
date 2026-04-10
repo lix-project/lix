@@ -300,8 +300,16 @@ Value prim_importNative(EvalState & state, Value ** args)
             state.ctx.errors.make<EvalError>("symbol '%1%' from '%2%' resolved to NULL when a function pointer was expected", sym, path).debugThrow();
     }
 
+    // Default construction of `Value` is deprecated, and uses of `Value&` out parameters
+    // have mostly been removed in favor of returning a `Value` instead. However in this
+    // particular case, this signature (ValueInitializer defined above) is externally visible,
+    // changing it would be an API breaking change, so for this one instance we just suppress
+    // the warning instead.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     Value v;
     (func)(state, v);
+#pragma clang diagnostic pop
 
     /* We don't dlclose because v may be a primop referencing a function in the shared object file */
     return v;
