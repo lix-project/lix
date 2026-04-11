@@ -249,8 +249,8 @@
           # We don't change the default version in order to not change the hash
           # of Nix/Lix from upstream Nixpkgs.
           lowdown_3_0 =
-            if (lib.versions.major prev.lowdown.version == 3) then
-              prev.lowdown.version
+            if (lib.versions.major prev.lowdown.version == "3") then
+              prev.lowdown
             else
               prev.lowdown.overrideAttrs (
                 finalAttrs: _prevAttrs: {
