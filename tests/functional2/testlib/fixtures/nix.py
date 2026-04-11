@@ -158,7 +158,6 @@ class Nix:
     def nix_cmd(self, argv: list[str], flake: bool = False, cwd: Path | None = None) -> Command:
         """
         Constructs a NixCommand with the appropriate settings.
-        :param build: if the executed command wants to build stuff. This is required due to darwin shenanigans. "auto" will try to autodetect, override using `True` or `False`. Has no effect on linux.
         """
         # Create a copy of settings to not have a writing side effect
         settings = self.settings.clone()
