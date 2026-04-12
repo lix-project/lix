@@ -336,21 +336,7 @@
           }
         );
 
-        # Building Lix twice in CI is expensive, but we can catch a lot of static
-        # build regressions by at least making sure it evals and configures.
-        configure-static = lib.genAttrs linux64BitSystems (
-          system:
-          self.packages.${system}.nix-static.overrideAttrs {
-            dontBuild = true;
-            installPhase = ''
-              runHook preInstall
-
-              echo "configure-static complete. exiting with success"
-              mkdir -p "$out"
-              exit 0
-            '';
-          }
-        );
+        buildStatic = lib.genAttrs linux64BitSystems (system: self.packages.${system}.nix-static);
 
         devShell = forAllSystems (system: {
           default = self.devShells.${system}.default;
