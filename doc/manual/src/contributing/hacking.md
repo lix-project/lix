@@ -566,7 +566,7 @@ Then add the new file there, and don't forget to register it in the appropriate 
 The following metadata properties are supported for builtin functions:
 * `name` (required): the language-facing name (as a member of the `builtins` attribute set) of the function.
 * `implementation` (optional): a C++ expression specifying the implementation of the builtin.
-  It must be a function of signature `void(EvalState &, PosIdx, Value * *, Value &)`.
+  It must be a function of signature `Value(EvalState &, PosIdx, Value * *)`.
   If not specified, defaults to `prim_${name}`.
 * `renameInGlobalScope` (optional): whether the definition should be "hidden" in the global scope by prefixing its name with two underscores.
   If not specified, defaults to `true`.
