@@ -17,10 +17,10 @@ Each file is called with three arguments:
    except that it's available in
    [`pure-eval`](@docroot@/command-ref/conf-file.html#conf-pure-eval)
    mode).
-2. The top-level bindings produced by the previous `repl-overlays`
-   value (or the default top-level bindings).
-3. The final top-level bindings produced by calling all
+2. The final top-level bindings produced by calling all
    `repl-overlays`.
+3. The top-level bindings produced by the previous `repl-overlays`
+   value (or the default top-level bindings).
 
 For example, the following file would alias `pkgs` to
 `legacyPackages.${info.currentSystem}` (if that attribute is defined):
