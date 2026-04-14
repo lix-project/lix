@@ -10,7 +10,8 @@ present in *args*. All are optional except `path`:
 
   - name\
     The name of the path when added to the store. This can used to
-    reference paths that have nix-illegal characters in their names,
+    reference paths that have
+    [nix-illegal characters in their names](./derivations.md),
     like `@`.
 
   - filter\

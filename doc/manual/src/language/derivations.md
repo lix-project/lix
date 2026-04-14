@@ -17,6 +17,12 @@ the attributes of which specify the inputs of the build.
     string. This is used as a symbolic name for the package by
     `nix-env`, and it is appended to the output paths of the derivation.
 
+    > **Note**
+    >
+    > Names can only contain alphanumerical characters (0-9, a-z, A-Z)
+    > as well as `+`, `-`, `.`, `_`, `?` and `=`. Names must be neither
+    > `.` nor `..`, and must not start with `.-` or `..-`.
+
   - There must be an attribute named [`builder`]{#attr-builder} that identifies the
     program that is executed to perform the build. It can be either a
     derivation or a source (a local file reference, e.g.,
