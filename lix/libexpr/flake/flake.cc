@@ -1015,6 +1015,7 @@ Value prim_flakeRefToString(EvalState & state, Value ** args)
         "while evaluating the argument passed to builtins.flakeRefToString");
     fetchers::Attrs attrs;
     for (const auto & attr : *args[0]->attrs()) {
+        state.forceValue(attr.value, noPos);
         auto t = attr.value.type();
         if (t == nInt) {
             auto intValue = attr.value.integer().value;
