@@ -5,7 +5,6 @@ let
   Z = "z";
 
 in
-if builtins.hasAttr A as then
-  builtins.getAttr A as
-else
-  assert builtins.hasAttr Z as; builtins.getAttr Z as
+assert !(builtins.hasAttr A as);
+assert builtins.hasAttr Z as;
+builtins.getAttr Z as

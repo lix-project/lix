@@ -1,6 +1,6 @@
-error: attribute 'x' already defined at /pwd/in.nix:6:13
-       at /pwd/in.nix:7:13:
-            6|     inherit x;
-            7|     inherit x;
+error: attribute 'x' already defined at /pwd/in.nix:4:13
+       at /pwd/in.nix:5:13:
+            4|     inherit x;
+            5|     inherit x;
              |             ^
-            8|   };
+            6|   };

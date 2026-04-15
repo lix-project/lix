@@ -1,7 +1,7 @@
 error: attribute 'x' missing
-       at /pwd/in.nix:4:29:
+       at /pwd/in.nix:4:27:
             3| in
-            4|   (removeAttrs attrs ["x"]).x
-             |                             ^
+            4| (removeAttrs attrs ["x"]).x
+             |                           ^
             5|
        Did you mean y?

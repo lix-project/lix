@@ -66,15 +66,15 @@ let
   };
   
 in
-
-  [ pkgs.stdenv.name
-    pkgs.fetchurl.name
-    pkgs.aterm.name
-    pkgs2.aterm.name
-    pkgs.xorg.libX11.name
-    pkgs.xorg.libXv.name
-    pkgs.mplayer.name
-    pkgs2.mplayer.name
-    pkgs.nix.name
-    pkgs2.nix.name
-  ]
+[
+  pkgs.stdenv.name
+  pkgs.fetchurl.name
+  pkgs.aterm.name
+  pkgs2.aterm.name
+  pkgs.xorg.libX11.name
+  pkgs.xorg.libXv.name
+  pkgs.mplayer.name
+  pkgs2.mplayer.name
+  pkgs.nix.name
+  pkgs2.nix.name
+]

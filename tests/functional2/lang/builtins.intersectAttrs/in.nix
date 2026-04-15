@@ -1,6 +1,6 @@
 let
-  alphabet =
-  { a = "a";
+  alphabet = {
+    a = "a";
     b = "b";
     c = "c";
     d = "d";
@@ -33,7 +33,8 @@ let
   };
   alphabetFail = builtins.mapAttrs throw alphabet;
 in
-[ (builtins.intersectAttrs { a = abort "l1"; } { b = abort "r1"; })
+[
+  (builtins.intersectAttrs { a = abort "l1"; } { b = abort "r1"; })
   (builtins.intersectAttrs { a = abort "l2"; } { a = 1; })
   (builtins.intersectAttrs alphabetFail { a = 1; })
   (builtins.intersectAttrs  { a = abort "laa"; } alphabet)

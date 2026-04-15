@@ -1,0 +1,34 @@
+_type: ExprIf
+cond:
+  _type: ExprOpNEq
+  e1:
+    _type: ExprLiteral
+    value: foo
+    valueType: String
+  e2:
+    _type: ExprConcatStrings
+    es:
+      - _type: ExprLiteral
+        value: f
+        valueType: String
+      - _type: ExprLiteral
+        value: oo
+        valueType: String
+    isInterpolation: false
+else:
+  _type: ExprIf
+  cond:
+    _type: ExprVar
+    value: 'false'
+  else:
+    _type: ExprLiteral
+    value: 3
+    valueType: Int
+  then:
+    _type: ExprLiteral
+    value: 2
+    valueType: Int
+then:
+  _type: ExprLiteral
+  value: 1
+  valueType: Int

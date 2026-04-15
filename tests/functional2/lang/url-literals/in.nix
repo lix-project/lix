@@ -1,5 +1,6 @@
 # This test needs to be run with --extra-deprecated-features url-literals
-[ x:x
+[
+  x:x
   https://svn.cs.uu.nl:12443/repos/trace/trunk
   http://www2.mplayerhq.hu/MPlayer/releases/fonts/font-arial-iso-8859-1.tar.bz2
   http://losser.st-lab.cs.uu.nl/~armijn/.nix/gcc-3.3.4-static-nix.tar.gz

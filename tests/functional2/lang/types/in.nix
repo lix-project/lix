@@ -1,6 +1,7 @@
 with builtins;
 
-[ (isNull null)
+[
+  (isNull null)
   (isNull (x: x))
   (isFunction (x: x))
   (isFunction "fnord")

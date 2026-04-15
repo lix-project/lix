@@ -1,6 +1,7 @@
 with builtins;
 
-[ (concatStringsSep "" [])
+[
+  (concatStringsSep "" [])
   (concatStringsSep "" ["foo" "bar" "xyzzy"])
   (concatStringsSep ", " ["foo" "bar" "xyzzy"])
   (concatStringsSep ", " ["foo"])
