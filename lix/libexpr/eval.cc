@@ -908,19 +908,6 @@ std::string EvalState::mkSingleDerivedPathStringRaw(
 }
 
 
-void EvalState::mkSingleDerivedPathString(
-    const SingleDerivedPath & p,
-    Value & v)
-{
-    v = {
-        NewValueAs::string,
-        mkSingleDerivedPathStringRaw(p),
-        NixStringContext{
-            std::visit([](auto && v) -> NixStringContextElem { return v; }, p),
-        }
-    };
-}
-
 struct CachedEvalFile
 {
     Value result;

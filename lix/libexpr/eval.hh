@@ -817,15 +817,6 @@ public:
      */
     Value mkOutputString(const SingleDerivedPath::Built & b, const StorePath & staticOutputPath);
 
-    /**
-     * Create a string representing a `SingleDerivedPath`.
-     *
-     * A combination of `mkStorePathString` and `mkOutputString`.
-     */
-    void mkSingleDerivedPathString(
-        const SingleDerivedPath & p,
-        Value & v);
-
     Value updateAttrs(const Value & v1, const Value & v2);
     Value concatLists(std::span<Value> lists, const PosIdx pos, std::string_view errorCtx);
 
