@@ -221,8 +221,12 @@ class ManagedEnv:
         if platform.system() == "Darwin":
             # Darwin / Apple behaves differently and requires _NIX_TEST_NO_SANDBOX to be set for whatever reason
             self._env |= {"_NIX_TEST_NO_SANDBOX": "1"}
-            # copy global path to maintain features usually provided by busybox
-            [self.path.append(p) for p in global_path.split(":") if Path(p).exists()]
+            # Copy coreutils from the global path to maintain availability of commands that are not part of
+            # XCode Developer Tools and provided by busybox on Linux, which does not build on Darwin
+            for p in global_path.split(":"):
+                if Path(p).exists() and "coreutils" in p:
+                    self.path.append(p)
+                    break
 
     def set_env(self, name: str, value: str):
         if name in self.dirs.get_env_keys():
