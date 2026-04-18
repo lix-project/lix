@@ -200,7 +200,7 @@ Our instance is at <https://gerrit.lix.systems>.
 There's much more information about how to use Gerrit in the [wiki section on Gerrit][wiki-gerrit] including how to use Jujutsu, how to use the UI and more.
 The Snix project also has some Gerrit information [in their contributing docs][snix-gerrit].
 
-[wiki-gerrit]: https://wiki.lix.systems/books/lix-contributors/chapter/gerrit
+[wiki-gerrit]: https://wiki.lix.systems/books/contributing/chapter/intro-to-gerrit
 [snix-gerrit]: https://snix.dev/docs/guides/contributing/
 
 The gist is that once you have your SSH key and git remote set up, you can send commits for review with:
