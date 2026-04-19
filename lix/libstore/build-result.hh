@@ -21,7 +21,7 @@ struct BuildResult
      * Therefore, don't remove status codes, and only add new status
      * codes at the end of the list.
      */
-    enum Status {
+    enum Status : uint8_t {
         Built = 0,
         Substituted,
         AlreadyValid,

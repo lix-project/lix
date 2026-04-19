@@ -39,13 +39,13 @@ struct GCOptions
      *    Any that could not be deleted are returned via the
      *    `kept` field of GCResults.
      */
-    typedef enum {
+    enum GCAction : uint8_t {
         gcReturnLive,
         gcReturnDead,
         gcDeleteDead,
         gcDeleteSpecific,
         gcTryDeleteSpecific,
-    } GCAction;
+    };
 
     GCAction action{gcDeleteDead};
 

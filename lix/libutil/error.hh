@@ -35,8 +35,7 @@
 
 namespace nix {
 
-
-typedef enum {
+enum Verbosity : uint8_t {
     lvlError = 0,
     lvlWarn,
     lvlNotice,
@@ -45,7 +44,7 @@ typedef enum {
     lvlChatty,
     lvlDebug,
     lvlVomit
-} Verbosity;
+};
 
 template<>
 struct json::is_integral_enum<Verbosity> : std::true_type {};
