@@ -434,7 +434,7 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
                 } else {
                     state.ctx.errors
                         .make<EvalError>("integer overflow in adding %1% + %2%", n, vTmp.integer())
-                        .atPos(i_pos)
+                        .atPos(isInterpolation ? i_pos : pos)
                         .debugThrow();
                 }
             } else if (vTmp.type() == nFloat) {
@@ -444,7 +444,7 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
                 nf += vTmp.fpoint();
             } else {
                 state.ctx.errors.make<EvalError>("cannot add %1% to an integer", showType(vTmp))
-                    .atPos(i_pos)
+                    .atPos(isInterpolation ? i_pos : pos)
                     .withFrame(env, *this)
                     .debugThrow();
             }
@@ -455,7 +455,7 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
                 nf += vTmp.fpoint();
             } else {
                 state.ctx.errors.make<EvalError>("cannot add %1% to a float", showType(vTmp))
-                    .atPos(i_pos)
+                    .atPos(isInterpolation ? i_pos : pos)
                     .withFrame(env, *this)
                     .debugThrow();
             }
@@ -471,13 +471,18 @@ Value ExprConcatStrings::eval(EvalState & state, Env & env)
                 : StringCoercionMode::Strict;
 
             /* skip canonization of first path, which would only be not
-            canonized in the first place if it's coming from a ./${foo} type
-            path */
+             canonized in the first place if it's coming from a ./${foo} type
+             path */
             auto part = state.coerceToString(
-                i_pos,
+                isInterpolation ? i_pos : pos,
                 vTmp,
                 context,
-                "while evaluating a path segment",
+                (isInterpolation && firstType == nPath)
+                    ? "while evaluating a path interpolation"
+                    : (isInterpolation ? "while evaluating a string interpolation"
+                                       // TODO: to the person who eventually cleans up all of this mess,
+                                       // please turn this into "cannot concatenate $type to a $type" instead.
+                                       : "while concatenating"),
                 coercionMode,
                 firstType == nString,
                 !first

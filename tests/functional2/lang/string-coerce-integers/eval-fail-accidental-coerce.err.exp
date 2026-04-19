@@ -5,10 +5,10 @@ error:
              |                     ^
             2|
 
-       … while evaluating a path segment
-         at /pwd/in.nix:1:14:
+       … while concatenating
+         at /pwd/in.nix:1:12:
             1| let x = "" + 42; in x == "42"
-             |              ^
+             |            ^
             2|
 
        error: cannot coerce an integer to a string: 42

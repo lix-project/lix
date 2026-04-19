@@ -1,5 +1,5 @@
 error:
-       … while evaluating a path segment
+       … while evaluating a string interpolation
          at /pwd/in.nix:9:3:
             8| # The error message should not be too long.
             9| ''${pkgs}''

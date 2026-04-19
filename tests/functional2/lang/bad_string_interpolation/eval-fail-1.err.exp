@@ -1,5 +1,5 @@
 error:
-       … while evaluating a path segment
+       … while evaluating a string interpolation
          at /pwd/in.nix:1:2:
             1| "${x: x}"
              |  ^
