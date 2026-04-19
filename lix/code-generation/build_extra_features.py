@@ -52,7 +52,7 @@ class ExtraFeature:
             {
                 "\n            ".join(
                     [
-                        f"- {event.date}, {event.release}: {event.message} [{", ".join([f'[CL {cl}](https://git.lix.systems/c/lix/+/{cl})' for cl in event.cls])}]"
+                        f"- {event.date}, {event.release}: {event.message} [{", ".join([f'[CL {cl}](https://gerrit.lix.systems/c/lix/+/{cl})' for cl in event.cls])}]"
                         for event in self.timeline
                     ]
                 )
