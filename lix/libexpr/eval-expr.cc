@@ -356,12 +356,14 @@ Value ExprOpConcatLists::eval(EvalState & state, Env & env)
 {
     state.ctx.stats.nrListConcats++;
 
-    /* We don't call into `concatLists` as that loses the position information of the expressions. */
+    /* We could simply call into `state.concatLists`, but that would add a redundant trace to our errors,
+     * and to fix that we would need to make the error on it and `forceList` optional, and *sigh*
+     */
 
     Value v1 = e1->eval(state, env);
-    state.checkList(v1, env, *e1);
+    state.checkList(v1, env, *this); // Pass in `this` instead of `e1` to make the error point to the `++`
     Value v2 = e2->eval(state, env);
-    state.checkList(v2, env, *e2);
+    state.checkList(v2, env, *this); // Pass in `this` instead of `e2` to make the error point to the `++`
 
     size_t l1 = v1.listSize(), l2 = v2.listSize(), len = l1 + l2;
 
