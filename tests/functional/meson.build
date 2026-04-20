@@ -93,7 +93,6 @@ functional_tests_scripts = [
   'post-hook.sh',
   'eval-store.sh',
   'derivation-json.sh',
-  'import-derivation.sh',
   'db-migration.sh',
   'bash-profile.sh',
   'flakes/show.sh',
@@ -103,7 +102,6 @@ functional_tests_scripts = [
   'extra-sandbox-profile.sh',
   'regression-484.sh',
   'redirected-filter-source.sh',
-  'warn-import-from-derivation.sh',
 ]
 
 # Plugin tests require shared libraries support.

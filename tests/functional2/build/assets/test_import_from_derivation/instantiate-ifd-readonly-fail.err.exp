@@ -1,0 +1,58 @@
+error:
+       … while evaluating an expression to select 'drvPath' on it
+         at «internal»:1:552:
+       … while evaluating strict
+         at «internal»:1:552:
+       … while calling the 'derivationStrict' builtin
+         at «internal»:1:208:
+       … while evaluating derivation 'foo'
+         whose name attribute is located at /test-home/import-derivation.nix:21:3
+         at /test-home/import-derivation.nix:21:3:
+           20| mkDerivation {
+           21|   name = "foo";
+             |   ^
+           22|   builder = builtins.toFile "builder.sh"
+
+       … while evaluating attribute 'args' of derivation 'foo'
+         at /test-home/config.nix:26:7:
+           25|       builder = shell;
+           26|       args = ["-e" args.builder or (builtins.toFile "builder-${args.name}.sh" ''
+             |       ^
+           27|         if [ -e "$NIX_ATTRS_SH_FILE" ]; then source $NIX_ATTRS_SH_FILE; fi;
+
+       … while evaluating the attribute 'builder'
+         at /test-home/import-derivation.nix:22:3:
+           21|   name = "foo";
+           22|   builder = builtins.toFile "builder.sh"
+             |   ^
+           23|     ''
+
+       … while calling the 'toFile' builtin
+         at /test-home/import-derivation.nix:22:13:
+           21|   name = "foo";
+           22|   builder = builtins.toFile "builder.sh"
+             |             ^
+           23|     ''
+
+       … while evaluating the second argument passed to builtins.toFile
+
+       … while calling the 'toString' builtin
+         at /test-home/import-derivation.nix:24:20:
+           23|     ''
+           24|       echo -n FOO${toString value} > $out
+             |                    ^
+           25|     '';
+
+       … while calling the 'pathExists' builtin
+         at /test-home/import-derivation.nix:15:12:
+           14|     # Test that pathExists can check the existence of /nix/store paths
+           15|     assert builtins.pathExists bar;
+             |            ^
+           16|     import bar;
+
+       … while realising the context of path '/nix/store/hashfilteredforrepeatableoutputs-bar'
+
+       error: path '/nix/store/hashfilteredforrepeatableoutputs-bar.drv' did not exist in the store during evaluation
+
+       note: trace involved the following derivations:
+       derivation 'foo'

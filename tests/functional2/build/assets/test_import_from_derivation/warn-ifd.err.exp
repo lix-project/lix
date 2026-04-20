@@ -1,0 +1,6 @@
+warning: building '/nix/store/hashfilteredforrepeatableoutputs-bar.drv^out' during evaluation due to the use of import from derivation
+building '/nix/store/hashfilteredforrepeatableoutputs-bar.drv'...
+warning: building '/nix/store/hashfilteredforrepeatableoutputs-bar.drv^out' during evaluation due to the use of import from derivation
+this derivation will be built:
+  /nix/store/hashfilteredforrepeatableoutputs-foo.drv
+building '/nix/store/hashfilteredforrepeatableoutputs-foo.drv'...
