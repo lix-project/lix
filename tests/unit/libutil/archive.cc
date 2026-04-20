@@ -509,4 +509,27 @@ INSTANTIATE_TEST_SUITE_P(
             concat({header, make_directory({{"DE", make_file(false, "meow")}, {"de", make_file(false, "mrrp")}})})
         ))
 );
+
+TEST_F(NarTest, stringSizeLimit)
+{
+    GeneratorSource source([]() -> Generator<Bytes> {
+        const char preamble[] =
+            "\x0d\x00\x00\x00\x00\x00\x00\x00nix-archive-1\x00\x00\x00"
+            "\x01\x00\x00\x00\x00\x00\x00\x00(\x00\x00\x00\x00\x00\x00\x00"
+            "\x04\x00\x00\x00\x00\x00\x00\x00type\x00\x00\x00\x00";
+        co_yield Bytes{preamble, sizeof(preamble) - 1};
+        // the nar parser keeps all strings in a buffer with the 8 byte length prefix in front.
+        // sufficiently large strings overflowed caused the buffer size calculation to overflow
+        // and thus allowed out-of-bounds writes in the daemon and potentially privesc to root.
+        co_yield Bytes{"\xf7\xff\xff\xff\xff\xff\xff\xff", 8};
+        // overflow would happen while reading data
+        while (true) {
+            co_yield Bytes{"foo-", 4};
+        }
+    }());
+
+    auto parser = nar::parse(source);
+
+    ASSERT_THROW(parser.next(), SerialisationError);
+}
 }

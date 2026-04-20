@@ -367,16 +367,22 @@ struct Parser
         buffer.clear();       \
         u;                    \
     })
-#define READ_STRING_LIMITED(limit)                                        \
-    ({                                                                    \
-        size_t len = FETCH_INT(size_t);                                   \
-        co_yield WantBytes{len + (8 - len % 8) % 8};                      \
-        StringSource src(std::string_view(buffer.data(), buffer.size())); \
-        auto str = readString(src, (limit));                              \
-        buffer.clear();                                                   \
-        std::move(str);                                                   \
+#define READ_STRING_LIMITED(limit)                                                                 \
+    ({                                                                                             \
+        size_t len = FETCH_INT(size_t);                                                            \
+        if (len > (limit)) {                                                                       \
+            throw SerialisationError(                                                              \
+                "found malformed string tag. input may be a compressed NAR, which cannot be read " \
+                "directly"                                                                         \
+            );                                                                                     \
+        }                                                                                          \
+        co_yield WantBytes{len + (8 - len % 8) % 8};                                               \
+        StringSource src(std::string_view(buffer.data(), buffer.size()));                          \
+        auto str = readString(src, (limit));                                                       \
+        buffer.clear();                                                                            \
+        std::move(str);                                                                            \
     })
-#define READ_STRING() READ_STRING_LIMITED(std::numeric_limits<size_t>::max())
+#define READ_STRING() READ_STRING_LIMITED(1048576)
 #define READ_PADDING(size)                                                    \
     do {                                                                      \
         if ((size) % 8) {                                                     \
