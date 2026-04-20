@@ -384,7 +384,7 @@ struct Parser
         buffer.clear();                                                                            \
         std::move(str);                                                                            \
     })
-#define READ_STRING() READ_STRING_LIMITED(std::numeric_limits<size_t>::max())
+#define READ_STRING() READ_STRING_LIMITED(1048576)
 #define READ_PADDING(size)                                                    \
     do {                                                                      \
         if ((size) % 8) {                                                     \
