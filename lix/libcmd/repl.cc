@@ -699,17 +699,26 @@ void NixRepl::initDebugBuiltinCommands()
     addCommand(
         "backtrace",
         [](NixRepl & repl, const std::string & _arg) {
-            auto traces = repl.evaluator.debug->traces();
-            for (const auto & [idx, i] : enumerate(traces)) {
-                std::cout << "\n" << ANSI_BLUE << idx << ANSI_NORMAL << ": ";
-                showDebugTrace(std::cout, repl.evaluator.positions, *i);
+            auto tracesGenerator = repl.evaluator.debug->traces();
+
+            // since we want to print the stack trace in reverse order,
+            // we have to first traverse all frames and accumulate them
+            // in a list (in which we store each new trace at the /beginning/)
+            std::list<std::pair<size_t, const DebugTrace *>> reversedTraces;
+            for (const auto trace : tracesGenerator) {
+                // because the original traces are indexed from 0 upto N,
+                // this gives us their original index
+                auto idx = reversedTraces.size();
+                reversedTraces.push_front({idx, trace});
+            }
+
+            for (const auto & [traceIdx, trace] : reversedTraces) {
+                std::cout << "\n" << ANSI_BLUE << traceIdx << ANSI_NORMAL << ": ";
+                showDebugTrace(std::cout, repl.evaluator.positions, *trace);
             }
             return ProcessLineResult::PromptAgain;
         },
-        {.aliases = {"bt"},
-         .debugModeOnly = true,
-         .help = "Show trace stack",
-         .section = "Debug mode"}
+        {.aliases = {"bt"}, .debugModeOnly = true, .help = "Show trace stack", .section = "Debug mode"}
     );
 
     addCommand(

@@ -48,13 +48,14 @@
 
 we can now inspect state
   nix-repl> :bt
-  0: error: undefined variable 'a'
+
+  1: error: Fake frame for debugging purposes
   «string»:1:10
 
        1| with {}; a
         |          ^
 
-  1: error: Fake frame for debugging purposes
+  0: error: undefined variable 'a'
   «string»:1:10
 
        1| with {}; a
@@ -92,13 +93,13 @@ leaving the debugger from a toplevel error and entering it again doesn't leave o
 
   nix-repl> :bt
 
-  0: error: undefined variable 'b'
+  1: error: Fake frame for debugging purposes
   «string»:1:10
 
        1| with {}; b
         |          ^
 
-  1: error: Fake frame for debugging purposes
+  0: error: undefined variable 'b'
   «string»:1:10
 
        1| with {}; b
