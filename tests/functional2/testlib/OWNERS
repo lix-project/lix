@@ -1,0 +1,7 @@
+# tests includes everyone, but testlib is more of its own codebase
+# so no inclusion of parent files here
+set noparent
+
+# Experts in the test infrasturcture
+lix@rootile.de
+qyriad@qyriad.me
