@@ -279,6 +279,8 @@ Logger * makeJSONLogger(Logger & prevLogger)
     return new JSONLogger(prevLogger);
 }
 
+MakeError(StructuredLogError, Error);
+
 static Logger::Fields getFields(JSON & json)
 {
     Logger::Fields fields;
@@ -287,7 +289,7 @@ static Logger::Fields getFields(JSON & json)
             fields.emplace_back(Logger::Field(f.get<uint64_t>()));
         else if (f.type() == JSON::value_t::string)
             fields.emplace_back(Logger::Field(f.get<std::string>()));
-        else throw Error("unsupported JSON type %d", (int) f.type());
+        else throw StructuredLogError("unsupported log field type '%s'", f.type_name());
     }
     return fields;
 }
@@ -346,6 +348,11 @@ std::optional<Logger::BufferState> handleJSONLogMessage(
 
         return Logger::BufferState::HasSpace;
     } catch (json::JSONError & e) {
+        printTaggedWarning(
+            "Unable to handle a JSON message from %s: %s", Uncolored(source), e.what()
+        );
+        return std::nullopt;
+    } catch (StructuredLogError & e) {
         printTaggedWarning(
             "Unable to handle a JSON message from %s: %s", Uncolored(source), e.what()
         );
