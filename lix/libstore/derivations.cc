@@ -744,12 +744,6 @@ WireFormatGenerator serializeDerivation(const Store & store, const BasicDerivati
     }
 }
 
-void writeDerivation(Sink & out, const Store & store, const BasicDerivation & drv)
-{
-    out << serializeDerivation(store, drv);
-}
-
-
 std::string hashPlaceholder(const OutputNameView outputName)
 {
     // FIXME: memoize?

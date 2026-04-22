@@ -360,10 +360,6 @@ public:
     {
         return false;
     }
-
-    JobCategory jobCategory() const override {
-        return JobCategory::Build;
-    };
 };
 
 MakeError(NotDeterministic, BuildError);

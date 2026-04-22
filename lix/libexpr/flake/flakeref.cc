@@ -67,16 +67,6 @@ FlakeRef parseFlakeRef(
     return flakeRef;
 }
 
-std::optional<FlakeRef> maybeParseFlakeRef(
-    const std::string & url, const std::optional<Path> & baseDir)
-{
-    try {
-        return parseFlakeRef(url, baseDir);
-    } catch (Error &) {
-        return {};
-    }
-}
-
 std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
     const std::string & url,
     const std::optional<Path> & baseDir,
@@ -231,16 +221,6 @@ std::pair<FlakeRef, std::string> parseFlakeRefWithFragment(
         return std::make_pair(
             FlakeRef(std::move(input), getOr(parsedURL.query, "dir", "")),
             fragment);
-    }
-}
-
-std::optional<std::pair<FlakeRef, std::string>> maybeParseFlakeRefWithFragment(
-    const std::string & url, const std::optional<Path> & baseDir)
-{
-    try {
-        return parseFlakeRefWithFragment(url, baseDir);
-    } catch (Error & e) {
-        return {};
     }
 }
 
