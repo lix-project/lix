@@ -53,7 +53,7 @@ public:
     ref<AttrCursor> getRoot();
 };
 
-enum AttrType {
+enum AttrType : uint8_t {
     Placeholder = 0,
     FullAttrs = 1,
     String = 2,

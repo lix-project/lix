@@ -284,6 +284,7 @@ private:
 
     InternalType internalType() const
     {
+        // NOLINTNEXTLINE(lix-cast-to-non-fixed-enum): TAG_MASK ensures it's in range
         return InternalType(raw & TAG_MASK);
     }
 
@@ -723,6 +724,8 @@ public:
 
         Type type() const
         {
+            // TAG_MASK == 7, max enumerator is 5, so all possible values are in range
+            // NOLINTNEXTLINE(lix-cast-to-non-fixed-enum)
             return Type(raw & TAG_MASK);
         }
     };

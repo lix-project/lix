@@ -12,7 +12,7 @@
 
 namespace nix {
 
-typedef enum {
+enum ActivityType : uint8_t {
     actUnknown = 0,
     actCopyPath = 100,
     actFileTransfer = 101,
@@ -47,12 +47,12 @@ typedef enum {
      */
     actPostBuildHook = 110,
     actBuildWaiting = 111,
-} ActivityType;
+};
 
 template<>
 struct json::is_integral_enum<ActivityType> : std::true_type {};
 
-typedef enum {
+enum ResultType : uint8_t {
     /** Fields:
      * 0: int: bytes linked
      */
@@ -88,7 +88,7 @@ typedef enum {
      * 0: string: last line
      */
     resPostBuildLogLine = 107,
-} ResultType;
+};
 
 template<>
 struct json::is_integral_enum<ResultType> : std::true_type {};
