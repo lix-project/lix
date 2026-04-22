@@ -124,9 +124,12 @@ checkSystemdService
 
 set -x
 exec "$NIX" run \
+    --store local \
     --extra-experimental-features "nix-command flakes" \
     "${SUBSTITUTER_ARGS[@]}" \
     "${LIX_BASE}?ref=${LIX_REF}" \
+    -- \
+    --store local \
     --extra-experimental-features "nix-command flakes" \
     upgrade-nix \
     "${SUBSTITUTER_ARGS[@]}"

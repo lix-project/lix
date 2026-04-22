@@ -141,6 +141,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             // install the new one, in case the new and old versions aren't considered
             // to be "the same package" by nix-env's logic (e.g., if their pnames differ).
             Strings removeArgs = {
+                "--store",
+                "local",
                 "--uninstall",
                 oldNixEnv,
                 "--profile",
@@ -150,6 +152,8 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             aio().blockOn(runProgram(newNixEnv, false, removeArgs));
 
             Strings upgradeArgs = {
+                "--store",
+                "local",
                 "--profile",
                 this->profileDir,
                 "--install",
