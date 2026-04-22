@@ -239,10 +239,11 @@ static int main_nix_prefetch_url(AsyncIoRoot & aio, std::string programName, Str
             /* Extract the name. */
             if (!name) {
                 auto attr3 = v.attrs()->get(evaluator->symbols.create("name"));
-                if (!attr3)
+                if (attr3) {
                     name = state->forceString(
                         attr3->value, noPos, "while evaluating the name of the source to prefetch"
                     );
+                }
             }
         }
 
