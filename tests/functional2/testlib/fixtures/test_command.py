@@ -79,3 +79,10 @@ def test_command_exec_fails_on_other_bad_exit_code(
     out_msg, err_msg = msgs
     assert out_msg == "stdout: drgn fops\n"
     assert err_msg == "stderr: "
+
+
+def test_command_wrapping(command: Callable[[list[str]], Command]):
+    cmd = command(["echo $0 -- $@", "wrapper", "hello", "world"]).with_wrapper("bash", "-c")
+    res = cmd.run().ok()
+
+    assert res.stdout_plain == "wrapper -- hello world"
