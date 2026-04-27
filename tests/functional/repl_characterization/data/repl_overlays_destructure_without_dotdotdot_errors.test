@@ -7,4 +7,4 @@
               3| in
               4|   {currentSystem}: final: prev: {
                |   ^
-              5|     inherit puppy;\n
+              5|     inherit puppy;

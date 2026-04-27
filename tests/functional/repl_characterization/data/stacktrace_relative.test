@@ -8,7 +8,7 @@ absolute indices still work:
   1: while calling a function
   «string»:1:12
 
-      1| let f = _: throw "x_x"; x = f 5; in x
+       1| let f = _: throw "x_x"; x = f 5; in x
         |            ^
 
   Env level 0
@@ -29,7 +29,7 @@ index with + goes up the stack relative to current (1 in this case):
   4: while evaluating a 'let' expression
   «string»:1:1
 
-      1| let f = _: throw "x_x"; x = f 5; in x
+       1| let f = _: throw "x_x"; x = f 5; in x
         | ^
 
   Env level 0
@@ -47,7 +47,7 @@ index with - goes down and is also relative to current (4):
   3: while calling a function
   «string»:1:29
 
-      1| let f = _: throw "x_x"; x = f 5; in x
+       1| let f = _: throw "x_x"; x = f 5; in x
         |                             ^
 
   Env level 0

@@ -817,7 +817,7 @@ void NixRepl::initDebugBuiltinCommands()
         {.aliases = {"st"},
          .debugModeOnly = true,
          .help = "Show current trace. If an integer is provided, this switches to that stack "
-                 "beforehand. If the integer has an explicit + or - sign, it is treated as"
+                 "beforehand. If the integer has an explicit + or - sign, it is treated as "
                  "relative to the current stack index.",
          .section = "Debug mode",
          .positionalArgsSpecifiers = {{.placeholderText = "integer index", .optional = true}}}

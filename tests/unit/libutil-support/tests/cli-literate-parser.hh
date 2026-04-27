@@ -26,7 +26,7 @@ struct BaseNode {
   virtual auto kind() const -> std::string = 0;
   virtual auto emitNewlineAfter() const -> bool = 0;
 
-  auto operator<=>(const BaseNode &rhs) const = default;
+  auto operator<=>(const BaseNode & rhs) const = default;
 };
 
 /**
@@ -37,10 +37,12 @@ struct TextNode : BaseNode {
   std::string text;
 
   explicit TextNode(std::string text) : text(text) {}
+  auto operator<=>(const TextNode & rhs) const = default;
 };
 
 std::ostream &operator<<(std::ostream &output, const TextNode &node);
 
+// clang-format off
 #define DECLARE_TEXT_NODE(NAME, NEEDS_NEWLINE, SHOULD_COMPARE)                 \
   struct NAME : TextNode {                                                     \
     using TextNode::TextNode;                                                  \
@@ -49,7 +51,9 @@ std::ostream &operator<<(std::ostream &output, const TextNode &node);
     auto kind() const -> std::string override { return #NAME; }                \
     auto emitNewlineAfter() const -> bool override { return NEEDS_NEWLINE; }   \
     auto shouldCompare() const -> bool override { return SHOULD_COMPARE; }     \
+    auto operator<=>(const NAME & rhs) const = default;                         \
   };
+// clang-format on
 
 /* name, needsNewline, shouldCompare */
 DECLARE_TEXT_NODE(Prompt, false, false)

@@ -14,9 +14,9 @@ Expect the trace to not contain any traceback:
   nix-repl> f 2
   error:
          … while evaluating a path segment
-           at «string»:1:10:
-              1|  a: "" + a
-               |          ^
+           at «string»:1:13:
+              1| f = a: "" + a
+               |             ^
 
          error: cannot coerce an integer to a string: 2
 
@@ -33,14 +33,14 @@ Expect the trace to have traceback:
                | ^
 
          … while calling anonymous lambda
-           at «string»:1:2:
-              1|  a: "" + a
-               |  ^
+           at «string»:1:5:
+              1| f = a: "" + a
+               |     ^
 
          … while evaluating a path segment
-           at «string»:1:10:
-              1|  a: "" + a
-               |          ^
+           at «string»:1:13:
+              1| f = a: "" + a
+               |             ^
 
          error: cannot coerce an integer to a string: 2
 
@@ -52,8 +52,8 @@ Turning it off should also work:
   nix-repl> f 2
   error:
          … while evaluating a path segment
-           at «string»:1:10:
-              1|  a: "" + a
-               |          ^
+           at «string»:1:13:
+              1| f = a: "" + a
+               |             ^
 
          error: cannot coerce an integer to a string: 2

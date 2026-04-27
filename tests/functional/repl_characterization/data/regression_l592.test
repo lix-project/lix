@@ -1,6 +1,6 @@
 @args --debugger
 
-  breakpoint reached
+  info: breakpoint reached
 
   nix-repl> :quit
   error:

@@ -14,7 +14,7 @@ print the error, skip the breakpoint, etc as appropriate.
 
   nix-repl> builtins.throw "foo"
   error:
-         … while calling the 'throw' builtin
+         … caused by explicit throw
            at «string»:1:1:
               1| builtins.throw "foo"
                | ^
@@ -22,7 +22,7 @@ print the error, skip the breakpoint, etc as appropriate.
          error: foo
 
   nix-repl> assert false; 2
-  error: assertion 'false' failed
+  error: assertion failed
          at «string»:1:1:
               1| assert false; 2
                | ^

@@ -3,7 +3,7 @@
 @args ${PWD}/extra_data/repl-overlay-fail.nix
 @should-start false
   error:
-         … while evaluating variable final
+         … while evaluating final
            at «string»:6:1:
               5| in
               6| final
