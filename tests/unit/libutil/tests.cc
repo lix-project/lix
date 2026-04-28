@@ -282,7 +282,11 @@ namespace nix {
         pipe_read.close();
     }
 
-    TEST(guessOrInventPath, sockets) {
+    TEST(guessOrInventPath, DISABLED_sockets)
+    {
+        // this test no longer works correctly as a unit test because overly long socket paths
+        // require a libexec helper to bind/connect. we leave it around for reference; sockets
+        // are rarely passed to guessOrInventPath (if this happens at all, we haven't checked)
         Path socketPath = getUnitTestDataPath("guess-or-invent/socket");
         createDirs(dirOf(socketPath));
         AutoCloseFD socket = createUnixDomainSocket(socketPath, 0666);
