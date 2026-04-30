@@ -1,0 +1,6 @@
+error: stack overflow; max-call-depth exceeded
+       at /pwd/in.nix:2:22:
+            1| # Exactly two function calls deep, so should fail with maxCallDepth < 2
+            2| let f = x: x + 1; in f (f 0)
+             |                      ^
+            3|

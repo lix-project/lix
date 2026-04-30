@@ -1,0 +1,21 @@
+[[test]]
+runner = "eval-fail"
+in = ["in-infrec.nix", "in-mutrec.nix"]
+matrix = true
+
+[[test]]
+runner = "eval-okay"
+in = "in-maxCallDepth.nix"
+flags = ["--option", "max-call-depth", "2"]
+
+[[test]]
+name = "evail-fail-maxCallDepth1"
+runner = "eval-fail"
+in = "in-maxCallDepth.nix"
+flags = ["--option", "max-call-depth", "1"]
+
+[[test]]
+name = "evail-fail-maxCallDepth0"
+runner = "eval-fail"
+in = "in-maxCallDepth.nix"
+flags = ["--option", "max-call-depth", "0"]

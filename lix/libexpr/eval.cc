@@ -1118,8 +1118,9 @@ Env & AttrsPattern::match(
 
 Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx pos)
 {
-    if (callDepth > evalSettings.maxCallDepth)
+    if (callDepth >= evalSettings.maxCallDepth) {
         ctx.errors.make<EvalError>("stack overflow; max-call-depth exceeded").atPos(pos).debugThrow();
+    }
     MaintainCount _level(callDepth);
 
     auto trace = evalSettings.traceFunctionCalls
