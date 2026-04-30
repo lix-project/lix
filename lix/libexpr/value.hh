@@ -778,13 +778,6 @@ public:
 
     size_t listSize() const;
 
-    /**
-     * Check whether forcing this value requires a trivial amount of
-     * computation. In particular, function applications are
-     * non-trivial.
-     */
-    bool isTrivial() const;
-
     auto listItems() const
     {
         struct ListIterable

@@ -141,7 +141,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # FURB: covered by other rule sets
 # TRY: try and raise related things, not helpful as we only do testing
 select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "ISC", "INP", "LOG", "G", "PIE", "T20", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
-ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005"]
+ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 # ignore open() and os.path.join() calls in test_evil_nars, as that file is working with raw bytes

@@ -78,10 +78,21 @@ try {
     co_return result::current_exception();
 }
 
+/** Force a value that cannot contain any function calls */
 static void forceTrivialValue(EvalState & state, Value & value, const PosIdx pos)
 {
-    if (value.isThunk() && value.isTrivial())
-        state.forceValue(value, pos);
+    /* /piegames sighs at the settings API */
+    auto prevOverridden = evalSettings.maxCallDepth.overridden;
+    auto prevMaxCallDepth = evalSettings.maxCallDepth;
+    evalSettings.maxCallDepth.override(0);
+
+    /* /piegames sighs at C++ */
+    KJ_DEFER({
+        evalSettings.maxCallDepth.override(prevMaxCallDepth);
+        evalSettings.maxCallDepth.overridden = prevOverridden;
+    });
+
+    state.forceValue(value, pos);
 }
 
 
@@ -327,11 +338,17 @@ static Flake getFlake(
     Expr & flakeExpr = state.ctx.parseExprFromFile(resolvedFlakeFile);
 
     // Enforce that 'flake.nix' is a direct attrset, not a computation.
-    if (!flakeExpr.try_cast<ExprAttrs>()) {
-        state.ctx.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile).debugThrow();
-    }
+    // We do this by disallowing any function calls (maxCallDepth 0) and checking that the resulting value is
+    // an attrset.
+    // The logic is already implemented in `forceTrivialValue`, but that takes a value instead of an Expr, so
+    // we wrap the expression in a thunk to be able to call it.
+    Value vInfo = flakeExpr.maybeThunk(state, state.ctx.builtins.env);
+    forceTrivialValue(state, vInfo, flakeExpr.getPos());
 
-    Value vInfo = state.eval(flakeExpr);
+    if (vInfo.type() != nAttrs) {
+        state.ctx.errors.make<EvalError>("file '%s' must be an attribute set", resolvedFlakeFile)
+            .debugThrow();
+    }
 
     if (auto description = vInfo.attrs()->get(state.ctx.symbols.sym_description)) {
         expectType(state, nString, description->value, description->pos);

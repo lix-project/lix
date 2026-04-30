@@ -53,15 +53,6 @@ void Value::print(EvalState & state, std::ostream & str, PrintOptions options)
     printValue(state, str, *this, options);
 }
 
-bool Value::isTrivial() const
-{
-    return internalType() != tApp
-        && (internalType() != tThunk
-            || (thunk().expr->try_cast<ExprSet>()
-                && static_cast<ExprSet *>(thunk().expr)->dynamicAttrs.empty())
-            || thunk().expr->try_cast<ExprLambda>() || thunk().expr->try_cast<ExprList>());
-}
-
 Value::Value(string_t, Str * s, const NixStringContext & context)
     : Value(NewValueAs::string, s, copyContext(context))
 {
