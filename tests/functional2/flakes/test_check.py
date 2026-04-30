@@ -36,34 +36,6 @@ def test_check_overlay_args_good(nix: Nix, files: Path):
 
 @with_files(
     make_flake("""{
-      outputs = { self }: {
-        overlay = one: two: three: {};
-      };
-    }""")
-)
-def test_check_overlay_too_many_args(nix: Nix, files: Path):
-    assert (
-        "error: overlay is not a function with two arguments, but takes more than two"
-        in nix.nix(["flake", "check", str(files)]).run().expect(1).stderr_s
-    )
-
-
-@with_files(
-    make_flake("""{
-      outputs = { self }: {
-        overlay = one: {};
-      };
-    }""")
-)
-def test_check_overlay_not_enough_args(nix: Nix, files: Path):
-    assert (
-        "error: overlay is not a function with two arguments, but only takes one"
-        in nix.nix(["flake", "check", str(files)]).run().expect(1).stderr_s
-    )
-
-
-@with_files(
-    make_flake("""{
       outputs = { self, ... }: {
         overlays.x86_64-linux.foo = final: prev: {};
       };

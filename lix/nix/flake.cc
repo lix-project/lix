@@ -469,11 +469,6 @@ struct CmdFlakeCheck : FlakeCommand
                 if (!v.isLambda()) {
                     throw Error("overlay is not a function, but %s instead", showType(v));
                 }
-                auto body = v.lambda().fun->body->try_cast<ExprLambda>();
-                if (!body)
-                    throw Error("overlay is not a function with two arguments, but only takes one");
-                if (body->body->try_cast<ExprLambda>())
-                    throw Error("overlay is not a function with two arguments, but takes more than two");
                 // FIXME: if we have a 'nixpkgs' input, use it to
                 // evaluate the overlay.
             } catch (Error & e) {
