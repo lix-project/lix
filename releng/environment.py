@@ -98,10 +98,10 @@ LOCAL = RelengEnvironment(
 STAGING = RelengEnvironment(
     name='staging',
     colour=functools.partial(sgr, GREEN),
-    docs_bucket='s3://staging-docs',
-    cache_bucket='s3://staging-cache',
+    docs_bucket='s3://docs.staging.lix.systems',
+    cache_bucket='s3://cache.staging.lix.systems',
     cache_store_overlay={'secret-key': 'staging.key'},
-    releases_bucket='s3://staging-releases',
+    releases_bucket='s3://releases.staging.lix.systems',
     git_repo=lambda: 'ssh://git@git.lix.systems/lix-project/lix-releng-staging',
     git_repo_is_gerrit=False,
     docker_targets=[
@@ -111,7 +111,7 @@ STAGING = RelengEnvironment(
         DockerTarget('ghcr.io/lix-project/lix-releng-staging',
                      tags=['{version}', '{major}']),
     ],
-    s3_endpoint = 'https://s3.lix.systems',
+    s3_endpoint = 'https://s3.afnix.fr',
     s3_region = 'garage',
     s3_ssh_host = S3_HOST,
     s3_ssh_user = S3_USER,
