@@ -14,7 +14,7 @@ def get_ephemeral_key(
         env.docs_bucket.removeprefix('s3://'),
     ]
     if env.s3_ssh_host is not None:
-        command = ['ssh', '-l', env.s3_ssh_user, *command]
+        command = ['ssh', f'{env.s3_ssh_user}@{env.s3_ssh_host}', *command]
     output = subprocess.check_output(command)
     d = json.loads(output.decode())
     return environment.S3Credentials(name=d['name'],
