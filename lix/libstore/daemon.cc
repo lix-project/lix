@@ -1,5 +1,6 @@
 #include "lix/libstore/daemon.hh"
 #include "filetransfer.hh"
+#include "libutil/async.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -857,6 +858,62 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 }
 
+static void processLegacyRequests(
+    AsyncIoRoot & aio,
+    Logger * prevLogger,
+    TunnelLogger * tunnelLogger,
+    ref<Store> store,
+    FdSource & from,
+    FdSink & to,
+    TrustedFlag trusted,
+    WorkerProto::Version clientVersion
+)
+{
+    unsigned int opCount = 0;
+
+    Finally finally([&]() { printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount); });
+
+    while (true) {
+        WorkerProto::Op op;
+        try {
+            op = (enum WorkerProto::Op) readNum<unsigned>(from);
+        } catch (Interrupted & e) {
+            break;
+        } catch (EndOfFile & e) {
+            break;
+        }
+
+        printMsgUsing(prevLogger, lvlDebug, "received daemon op %d", op);
+
+        opCount++;
+
+        debug("performing daemon worker op: %d", op);
+
+        try {
+            performOp(aio, tunnelLogger, store, trusted, clientVersion, from, to, op);
+        } catch (Error & e) {
+            /* If we're not in a state where we can send replies, then
+               something went wrong processing the input of the
+               client.  This can happen especially if I/O errors occur
+               during addTextToStore() / importPath().  If that
+               happens, just send the error message and exit. */
+            bool errorAllowed = tunnelLogger->state_.lock()->canSendStderr;
+            tunnelLogger->stopWork(&e);
+            if (!errorAllowed) {
+                throw;
+            }
+        } catch (std::bad_alloc & e) {
+            auto ex = Error("Lix daemon out of memory");
+            tunnelLogger->stopWork(&ex);
+            throw;
+        }
+
+        to.flush();
+
+        assert(!tunnelLogger->state_.lock()->canSendStderr);
+    }
+}
+
 void processLegacyConnection(
     AsyncIoRoot & aio, ref<Store> store, FdSource & from, FdSink & to, TrustedFlag trusted
 )
@@ -876,10 +933,6 @@ void processLegacyConnection(
     auto tunnelLogger = new TunnelLogger(to, clientVersion);
     auto prevLogger = nix::logger;
     logger = tunnelLogger;
-
-    unsigned int opCount = 0;
-
-    Finally finally([&]() { printMsgUsing(prevLogger, lvlDebug, "%d operations", opCount); });
 
     // FIXME: what is *supposed* to be in this even?
     if (readNum<unsigned>(from)) {
@@ -903,49 +956,10 @@ void processLegacyConnection(
     tunnelLogger->startWork();
 
     try {
-
         tunnelLogger->stopWork();
         to.flush();
 
-        /* Process client requests. */
-        while (true) {
-            WorkerProto::Op op;
-            try {
-                op = (enum WorkerProto::Op) readNum<unsigned>(from);
-            } catch (Interrupted & e) {
-                break;
-            } catch (EndOfFile & e) {
-                break;
-            }
-
-            printMsgUsing(prevLogger, lvlDebug, "received daemon op %d", op);
-
-            opCount++;
-
-            debug("performing daemon worker op: %d", op);
-
-            try {
-                performOp(aio, tunnelLogger, store, trusted, clientVersion, from, to, op);
-            } catch (Error & e) {
-                /* If we're not in a state where we can send replies, then
-                   something went wrong processing the input of the
-                   client.  This can happen especially if I/O errors occur
-                   during addTextToStore() / importPath().  If that
-                   happens, just send the error message and exit. */
-                bool errorAllowed = tunnelLogger->state_.lock()->canSendStderr;
-                tunnelLogger->stopWork(&e);
-                if (!errorAllowed) throw;
-            } catch (std::bad_alloc & e) {
-                auto ex = Error("Lix daemon out of memory");
-                tunnelLogger->stopWork(&ex);
-                throw;
-            }
-
-            to.flush();
-
-            assert(!tunnelLogger->state_.lock()->canSendStderr);
-        };
-
+        processLegacyRequests(aio, prevLogger, tunnelLogger, store, from, to, trusted, clientVersion);
     } catch (Error & e) {
         tunnelLogger->stopWork(&e);
         to.flush();
