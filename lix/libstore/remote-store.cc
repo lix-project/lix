@@ -56,29 +56,15 @@ RemoteStore::RemoteStore(const RemoteStoreConfig & config)
 
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionWrapper()
-try {
-    if (failed)
-        throw Error("opening a connection to remote store '%s' previously failed", getUri());
-    try {
-        co_return TRY_AWAIT(openConnection());
-    } catch (...) {
-        failed = true;
-        throw;
-    }
-} catch (...) {
-    co_return result::current_exception();
+{
+    return openConnection();
 }
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openAndInitConnection()
 try {
     auto conn = TRY_AWAIT(openConnection());
-    try {
-        TRY_AWAIT(initConnection(*conn));
-        co_return conn;
-    } catch (...) {
-        failed = true;
-        throw;
-    }
+    TRY_AWAIT(initConnection(*conn));
+    co_return conn;
 } catch (...) {
     co_return result::current_exception();
 }

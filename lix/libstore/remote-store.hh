@@ -206,9 +206,6 @@ protected:
     narFromPath(const StorePath & path, const Activity * context) override;
 
 private:
-
-    std::atomic_bool failed{false};
-
     kj::Promise<Result<void>> copyDrvsFromEvalStore(
         const std::vector<DerivedPath> & paths,
         std::shared_ptr<Store> evalStore);
