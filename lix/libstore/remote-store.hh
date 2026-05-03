@@ -178,7 +178,7 @@ public:
 
     struct Connection;
 
-    kj::Promise<Result<ref<Connection>>> openConnectionWrapper();
+    kj::Promise<Result<ref<Connection>>> openConnectionForDaemonForwarding();
 
 protected:
 

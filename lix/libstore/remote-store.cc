@@ -54,8 +54,7 @@ RemoteStore::RemoteStore(const RemoteStoreConfig & config)
 {
 }
 
-
-kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionWrapper()
+kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionForDaemonForwarding()
 {
     return openConnection();
 }
