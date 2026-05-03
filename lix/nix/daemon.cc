@@ -530,7 +530,7 @@ static void daemonInstance(
     case daemon::Protocol::LEGACY: {
         FdSource from(connectionFd);
         FdSink to(connectionFd);
-        processConnection(aio, store, from, to, trusted);
+        processLegacyConnection(aio, store, from, to, trusted);
         break;
     }
     }
@@ -578,7 +578,7 @@ processStdioConnection(AsyncIoRoot & aio, ref<Store> store, TrustedFlag trustCli
 {
     FdSource from(STDIN_FILENO);
     FdSink to(STDOUT_FILENO);
-    processConnection(aio, store, from, to, trustClient);
+    processLegacyConnection(aio, store, from, to, trustClient);
 }
 
 /**

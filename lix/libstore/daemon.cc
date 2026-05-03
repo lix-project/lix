@@ -857,12 +857,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     }
 }
 
-void processConnection(
-    AsyncIoRoot & aio,
-    ref<Store> store,
-    FdSource & from,
-    FdSink & to,
-    TrustedFlag trusted)
+void processLegacyConnection(
+    AsyncIoRoot & aio, ref<Store> store, FdSource & from, FdSink & to, TrustedFlag trusted
+)
 {
     auto monitor = std::make_unique<MonitorFdHup>(from.fd);
 

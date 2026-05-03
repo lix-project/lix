@@ -7,11 +7,7 @@
 
 namespace nix::daemon {
 
-void processConnection(
-    AsyncIoRoot & aio,
-    ref<Store> store,
-    FdSource & from,
-    FdSink & to,
-    TrustedFlag trusted);
-
+void processLegacyConnection(
+    AsyncIoRoot & aio, ref<Store> store, FdSource & from, FdSink & to, TrustedFlag trusted
+);
 }
