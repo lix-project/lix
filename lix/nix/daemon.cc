@@ -392,6 +392,8 @@ try {
                         peer.pid ? fmt("%1%", *peer.pid) : "unknown",
                         "--log-level",
                         fmt("%1%", int(verbosity)),
+                        "--protocol",
+                        std::string(socket.id()),
                     },
                 .redirections = {{.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()}}
             };
@@ -455,15 +457,22 @@ try {
     co_return result::current_exception();
 }
 
-static void
-daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt, char * peerPidArg)
+static void daemonInstance(
+    daemon::Protocol protocol,
+    AsyncIoRoot & aio,
+    std::optional<TrustedFlag> forceTrustClientOpt,
+    char * peerPidArg
+)
 {
     //  Handle socket-based activation by systemd.
-    const auto [launchedByManager, connectionFd] = []() -> std::pair<bool, int> {
+    const auto [launchedByManager, connectionFd] = [&]() -> std::pair<bool, int> {
         auto listenFds = getEnv("LISTEN_FDS");
         if (listenFds) {
             if (getEnv("LISTEN_PID") != std::to_string(getpid()) || listenFds != "1") {
                 throw Error("unexpected systemd environment variables");
+            }
+            if (auto fdnames = getEnv("LISTEN_FDNAMES")) {
+                protocol = daemon::getProtocol(*fdnames);
             }
             closeOnExec(SD_LISTEN_FDS_START);
             // these unsets are not critical, we never did this for accept=no sockets either
@@ -516,9 +525,15 @@ daemonInstance(AsyncIoRoot & aio, std::optional<TrustedFlag> forceTrustClientOpt
     }
 
     //  Handle the connection.
-    FdSource from(connectionFd);
-    FdSink to(connectionFd);
-    processConnection(aio, store, from, to, trusted);
+    switch (protocol.type) {
+    case daemon::Protocol::LEGACY_COMBINED:
+    case daemon::Protocol::LEGACY: {
+        FdSource from(connectionFd);
+        FdSink to(connectionFd);
+        processConnection(aio, store, from, to, trusted);
+        break;
+    }
+    }
 }
 
 /**
@@ -606,6 +621,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
         bool isInstance = false;
         char * peerPidArg = nullptr;
         Verbosity subdaemonLogLevel = lvlInfo;
+        std::string protocol = "legacy-combined";
 
         LegacyArgs(aio, programName, [&](Strings::iterator & arg, const Strings::iterator & end) {
             if (*arg == "--daemon")
@@ -628,6 +644,8 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
             } else if (*arg == "--for") {
                 isInstance = true;
                 getArg(*arg, arg, end);
+            } else if (*arg == "--protocol") {
+                protocol = getArg(*arg, arg, end);
             } else if (*arg == "--for-socket-activation") {
                 isInstance = true;
                 // HACK: too many copies and rewrites happen by the time we get here to
@@ -653,7 +671,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
 
         if (isInstance) {
             verbosity = Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit));
-            daemonInstance(aio, isTrustedOpt, peerPidArg);
+            daemonInstance(daemon::getProtocol(protocol), aio, isTrustedOpt, peerPidArg);
         } else {
             runDaemon(aio, stdio, isTrustedOpt);
         }

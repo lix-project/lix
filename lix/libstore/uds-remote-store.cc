@@ -8,8 +8,8 @@
 #include "lix/libutil/unix-domain-socket.hh"
 #include "lix/libstore/worker-protocol.hh"
 
+#include <algorithm>
 #include <cerrno>
-#include <ranges>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -59,26 +59,21 @@ std::string UDSRemoteStore::getUri()
     }
 }
 
-static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<daemon::Protocol> & paths)
+static bool tryToConnect(AutoCloseFD & sockFD, const daemon::Protocol & socket)
 {
-    for (const auto & socket : paths) {
-        try {
-            nix::connect(sockFD.get(), socket.path);
-            return;
-        } catch (SysError & e) {
-            if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT
-                || e.errNo == ENOTDIR || e.errNo == ENOTSOCK)
-            {
-                debug("skipping socket %s: %s", socket.path, strerror(e.errNo));
-            } else {
-                throw;
-            }
+    try {
+        nix::connect(sockFD.get(), socket.path);
+        return true;
+    } catch (SysError & e) {
+        if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT
+            || e.errNo == ENOTDIR || e.errNo == ENOTSOCK)
+        {
+            debug("skipping socket %s: %s", socket.path, strerror(e.errNo));
+            return false;
+        } else {
+            throw;
         }
     }
-    throw Error(
-        "could not connect to any lix socket (tried %s)",
-        concatMapStringsSep(", ", paths, [](auto & s) { return s.path; })
-    );
 }
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection()
@@ -92,25 +87,42 @@ try {
 
     if (path) {
         if (config().protocol == "any") {
-            candidates.push_back(daemon::Protocol{*path + LEGACY_SOCKET_COMBINED});
+            candidates = daemon::supportedProtocols(*path);
         } else {
             for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
-                if (proto == "legacy-combined") {
-                    candidates.push_back(daemon::Protocol{*path});
-                } else {
-                    throw Error("can't connect to %s with unknown daemon protocol %s", *path, proto);
-                }
+                candidates.push_back(daemon::getProtocol(proto, *path));
             }
         }
     } else {
-        candidates = settings.nixDaemonSockets();
+        if (config().protocol == "any") {
+            candidates = settings.nixDaemonSockets();
+        } else {
+            for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
+                auto socket = daemon::getProtocol(proto);
+                for (auto & candidate : settings.nixDaemonSockets()) {
+                    // legacy-combined has even more special socket search behavior for `daemon` uris. sigh.
+                    if (candidate.type == socket.type
+                        || (socket.type == daemon::Protocol::LEGACY_COMBINED
+                            && candidate.type == daemon::Protocol::LEGACY))
+                    {
+                        candidates.push_back(candidate);
+                    }
+                }
+            }
+        }
     }
 
-    connectToFirstAvailableSocket(conn->fd, candidates);
+    for (const auto & path : candidates) {
+        if (tryToConnect(conn->fd, path)) {
+            conn->startTime = std::chrono::steady_clock::now();
+            co_return conn;
+        }
+    }
 
-    conn->startTime = std::chrono::steady_clock::now();
-
-    co_return conn;
+    throw Error(
+        "could not connect to any lix socket (tried %s)",
+        concatMapStringsSep(", ", candidates, [](auto & s) { return s.path; })
+    );
 } catch (...) {
     co_return result::current_exception();
 }

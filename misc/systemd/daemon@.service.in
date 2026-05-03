@@ -1,5 +1,5 @@
 [Unit]
-Description=Nix Daemon instance
+Description=Lix Daemon instance (@desc@)
 Documentation=man:nix-daemon https://docs.lix.systems/manual/lix/stable
 CollectMode=inactive-or-failed
 RequiresMountsFor=@storedir@
@@ -13,3 +13,4 @@ LimitNOFILE=1048576
 TasksMax=1048576
 Delegate=yes
 DelegateSubgroup=supervisor
+Slice=system-lix-daemon-@slice@.slice

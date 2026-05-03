@@ -342,7 +342,7 @@ def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Ni
 
 type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
 
-type NixDaemonProtocol = Literal["legacy-combined"]
+type NixDaemonProtocol = Literal["legacy-combined", "legacy"]
 
 daemon_protocols: list[NixDaemonProtocol] = get_args(NixDaemonProtocol.__value__)
 
@@ -385,15 +385,14 @@ def daemon(request: pytest.FixtureRequest) -> NixDaemon:
                 daemon.logger.error("daemon exited unexpectedly")
 
         # wait for daemon to come up. this may take a while under load.
-        # we only test the *last* socket in the list because that's the
-        # last one the daemon creates, once it's there the daemon is up
-        while not sockets[-1].exists():
+        while not all(s.exists() for s in sockets):
             if status := proc.wait(0.01):
                 log_daemon_result(status, logging.ERROR)
                 raise RuntimeError("daemon exited during startup")
 
         inner = copy.deepcopy(nix)
-        inner.settings.store = f"unix://{sockets[-1]}"  # missing multi socket support
+        socket_path = sockets_dir / "socket" if protocol == "legacy-combined" else sockets_dir
+        inner.settings.store = f"unix://{socket_path}?protocol={protocol}"
 
         try:
             timeout, level = 1, logging.ERROR

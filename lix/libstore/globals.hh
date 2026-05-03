@@ -13,8 +13,31 @@ namespace nix {
 namespace daemon {
 struct Protocol
 {
+    /// path of socket. may be relative or absolute, depending on context.
     Path path;
+    enum Type : int {
+        LEGACY_COMBINED,
+        LEGACY,
+    } type;
+
+    /// external identifier of the protocol (eg for `protocol` store parameters)
+    std::string_view id() const;
 };
+
+/**
+ * returns the list of protocols we can serve, most preferred first. set the `prefix` to
+ * retrieve socket paths beneath the prefix, otherwise the search suffices are returned.
+ */
+std::list<Protocol> supportedProtocols(std::optional<PathView> prefix = {});
+
+/**
+ * get the protocol description with id `protocol` at `prefix`. if `prefix` is `nullopt`
+ * the returned protocol will contain a relative path. throws an exception if `protocol`
+ * is not supported or unknown. understands all protocols in `supportedProtocols` and is
+ * able to resolve `legacy-combined` even though `supportedProtocols` would never return
+ * it; this is mainly useful for client-side socket resolution using default store uris.
+ */
+Protocol getProtocol(std::string_view protocol, std::optional<PathView> prefix = {});
 }
 
 typedef enum { smEnabled, smRelaxed, smDisabled } SandboxMode;

@@ -1,12 +1,13 @@
 [Unit]
-Description=Nix Daemon Socket
+Description=Lix Daemon Socket (@desc@)
 Before=multi-user.target
 Conflicts=nix-daemon.service
 RequiresMountsFor=@storedir@
 ConditionPathIsReadWrite=@localstatedir@/nix/daemon-socket
 
 [Socket]
-ListenStream=@localstatedir@/nix/daemon-socket/socket
+ListenStream=@localstatedir@/nix/daemon-socket/@path@
+FileDescriptorName=@protocol@
 Accept=yes
 
 [Install]

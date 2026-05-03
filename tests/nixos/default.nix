@@ -21,14 +21,19 @@ let
         # nixos-option fails to build with lix and no tests use any of the tools
         system.disableInstallerTools = true;
         # FIXME: remove this once the nixos module sets these overrides
-        systemd.services."nix-daemon@" =
-          let prev = config.systemd.services.nix-daemon;
+        systemd.services =
+          let
+            prev = config.systemd.services.nix-daemon;
+            daemonConfig =
+              {
+                path = prev.path;
+                environment = lib.filterAttrs (n: v: n != "PATH") prev.environment;
+                serviceConfig = prev.serviceConfig;
+                unitConfig = prev.unitConfig;
+              };
           in
             {
-              path = prev.path;
-              environment = lib.filterAttrs (n: v: n != "PATH") prev.environment;
-              serviceConfig = prev.serviceConfig;
-              unitConfig = prev.unitConfig;
+              "nix-daemon@" = daemonConfig;
             };
       };
       _module.args.nixpkgs = nixpkgs;

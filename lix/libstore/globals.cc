@@ -67,15 +67,13 @@ Settings::Settings()
     , nixManDir(canonPath(NIX_MAN_DIR))
 {
     if (auto socketDirFromEnv = getEnvNonEmpty("LIX_DAEMON_SOCKET_DIR")) {
-        nixDaemonSockets_ = {{canonPath(*socketDirFromEnv + LEGACY_SOCKET_COMBINED)}};
+        nixDaemonSockets_ = daemon::supportedProtocols(*socketDirFromEnv);
     } else if (auto socketPathFromEnv = getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH")) {
-        nixDaemonSockets_ = {{canonPath(*socketPathFromEnv)}};
+        nixDaemonSockets_ = {{canonPath(*socketPathFromEnv), daemon::Protocol::LEGACY_COMBINED}};
     } else {
         auto baseDir = nixStateDir + DEFAULT_SOCKET_DIR;
         // this should always match the list of sockets created by daemonLoop and the socket units
-        nixDaemonSockets_ = {
-            {canonPath(baseDir + LEGACY_SOCKET_COMBINED)},
-        };
+        nixDaemonSockets_ = daemon::supportedProtocols(baseDir);
     }
 
     buildUsersGroup.setDefault(getuid() == 0 ? "nixbld" : "");
@@ -529,5 +527,40 @@ void initLibStore()
     registerStoreImplementations();
 
     initLibStoreDone = true;
+}
+
+namespace daemon {
+static inline constexpr auto LEGACY_COMBINED_STR = "legacy-combined";
+static inline constexpr auto LEGACY_STR = "legacy";
+
+std::list<daemon::Protocol> supportedProtocols(std::optional<PathView> prefix)
+{
+    const Path base = prefix ? *prefix + "/" : "";
+    return {
+        {base + "socket", Protocol::LEGACY},
+    };
+}
+
+std::string_view daemon::Protocol::id() const
+{
+    switch (type) {
+    case LEGACY_COMBINED:
+        return LEGACY_COMBINED_STR;
+    case LEGACY:
+        return LEGACY_STR;
+    }
+}
+
+daemon::Protocol getProtocol(std::string_view protocol, std::optional<PathView> prefix)
+{
+    const Path base = prefix ? *prefix + "/" : "";
+    if (protocol == LEGACY_COMBINED_STR) {
+        return {prefix ? Path(*prefix) : "", Protocol::LEGACY_COMBINED};
+    } else if (protocol == LEGACY_STR) {
+        return {base + "socket", Protocol::LEGACY_COMBINED};
+    } else {
+        throw Error("unsupported daemon protocol %s", protocol);
+    }
+}
 }
 }
