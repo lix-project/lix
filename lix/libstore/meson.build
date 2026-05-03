@@ -11,27 +11,31 @@ endforeach
 
 libstore_rpc = []
 
-libstore_rpc += custom_target(
-  command : [
-    capnpc_wrapper,
-    '--language=c++',
-    '--src-prefix=@CURRENT_SOURCE_DIR@',
-    '--outdir=@OUTDIR@',
-    '--depfile=@DEPFILE@',
-    '-I@SOURCE_ROOT@',
-    '@INPUT@',
-  ],
-  input : files(
-    # keep-sorted start
-    'types.capnp',
-    # keep-sorted end
-  ),
-  output : [
-    '@PLAINNAME@.h',
-    '@PLAINNAME@.c++',
-  ],
-  depfile : '@PLAINNAME@.d',
+libstore_rpc_files = files(
+  # keep-sorted start
+  'types.capnp',
+  # keep-sorted end
 )
+
+foreach rpc_file : libstore_rpc_files
+  libstore_rpc += custom_target(
+    command : [
+      capnpc_wrapper,
+      '--language=c++',
+      '--src-prefix=@CURRENT_SOURCE_DIR@',
+      '--outdir=@OUTDIR@',
+      '--depfile=@DEPFILE@',
+      '-I@SOURCE_ROOT@',
+      '@INPUT@',
+    ],
+    input : rpc_file,
+    output : [
+      '@PLAINNAME@.h',
+      '@PLAINNAME@.c++',
+    ],
+    depfile : '@PLAINNAME@.d',
+  )
+endforeach
 
 # rpc definitions only here to get relative paths of generated files right
 subdir('build')
