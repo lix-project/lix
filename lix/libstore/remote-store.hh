@@ -178,7 +178,7 @@ public:
 
     struct Connection;
 
-    kj::Promise<Result<ref<Connection>>> openConnectionForDaemonForwarding();
+    virtual kj::Promise<Result<ref<Connection>>> openConnectionForDaemonForwarding();
 
 protected:
 
@@ -186,7 +186,7 @@ protected:
 
     kj::Promise<Result<ref<Connection>>> openAndInitConnection();
 
-    kj::Promise<Result<void>> initConnection(Connection & conn);
+    virtual kj::Promise<Result<void>> initConnection(Connection & conn);
 
     ref<Pool<Connection>> connections;
 

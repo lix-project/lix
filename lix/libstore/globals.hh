@@ -18,6 +18,7 @@ struct Protocol
     enum Type : int {
         LEGACY_COMBINED,
         LEGACY,
+        RPC_V1,
     } type;
 
     /// external identifier of the protocol (eg for `protocol` store parameters)
@@ -127,6 +128,11 @@ public:
      * The directory where state is stored.
      */
     Path nixStateDir;
+
+    /**
+     * The directory where sockets are stored.
+     */
+    Path socketsPath;
 
     /**
      * The directory where system configuration files are stored.

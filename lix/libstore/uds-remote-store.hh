@@ -1,10 +1,18 @@
 #pragma once
 ///@file
 
+#include "libutil/box_ptr.hh"
+#include "libutil/logging-rpc.hh"
+#include "libutil/logging.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/indirect-root-store.hh"
 #include "lix/libutil/async-io.hh"
+#include "lix/libstore/daemon.capnp.h"
+#include <capnp/rpc-twoparty.h>
+#include <kj/async-io.h>
+#include <kj/async.h>
+#include <memory>
 
 namespace nix {
 
@@ -28,6 +36,7 @@ struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreCon
               The provided path will be used *unmodified* to locate the combined daemon socket.
             - `legacy`: legacy wire protocol using a single socket, but the path is used as the
               base directory for protocol-dependent socket lookup (appending `/socket` to path)
+            - `lix-xp-1`: experimental RPC protocol. Will use the path as directory of sockets.
 
           Also supports the special value `any` to try *all* known protocols using the provided
           path as the *base* directory for sockets. Unlike `legacy-combined` this will append a
@@ -95,10 +104,37 @@ public:
     kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
 private:
+    struct RpcState
+    {
+        kj::Own<kj::AsyncIoStream> rpcStream;
+        box_ptr<AsyncFdIoStream> proxySock;
+        box_ptr<capnp::TwoPartyClient> client;
+        Activity loggerActivity;
+        rpc::daemon::LegacyStream::Client requestStream;
+
+        kj::Promise<void> forwarder;
+        std::exception_ptr error;
+
+        kj::Promise<void> forwardRequests();
+    };
+
+    // this class is lifetime-bound to its rpc state; requestStream holds onto one of
+    // these proxies. ideally we'd use RpcState itself for this, but kj does not have
+    // shared pointers and cannot provide capabilities through anything except `Own`.
+    struct LegacyStreamProxy final : rpc::daemon::LegacyStream::Server
+    {
+        RpcState & state;
+
+        LegacyStreamProxy(RpcState & state) : state(state) {}
+
+        kj::Promise<void> feed(FeedContext context) override;
+        kj::Promise<void> sync(SyncContext context) override;
+    };
 
     struct Connection : RemoteStore::Connection
     {
         AutoCloseFD fd;
+        std::shared_ptr<RpcState> rpc;
 
         int getFD() const override
         {
@@ -106,7 +142,12 @@ private:
         }
     };
 
+    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection(bool allowRPC);
+
+    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnectionForDaemonForwarding() override;
     kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
+    kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
+    kj::Promise<Result<void>> initConnection(RemoteStore::Connection & conn) override;
     std::optional<std::string> path;
 };
 

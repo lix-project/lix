@@ -13,6 +13,7 @@ libstore_rpc = []
 
 libstore_rpc_files = files(
   # keep-sorted start
+  'daemon.capnp',
   'types.capnp',
   # keep-sorted end
 )

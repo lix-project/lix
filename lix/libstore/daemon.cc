@@ -1,6 +1,7 @@
 #include "lix/libstore/daemon.hh"
 #include "filetransfer.hh"
 #include "libutil/async.hh"
+#include "libutil/logging-rpc.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -18,10 +19,17 @@
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/args.hh"
+#include "lix/libstore/daemon.capnp.h"
+#include "lix/libutil/rpc.hh"
+#include "lix/libutil/types-rpc.hh"
 
 #include <boost/core/demangle.hpp>
+#include <capnp/rpc-twoparty.h>
 #include <cstdint>
 #include <ctime>
+#include <kj/encoding.h>
+#include <kj/exception.h>
+#include <kj/memory.h>
 #include <sstream>
 
 namespace nix::daemon {
@@ -978,4 +986,279 @@ void processLegacyConnection(
     }
 }
 
+namespace {
+using namespace rpc::daemon;
+
+// Shared state for all legacy protocol implementation structs
+struct LegacyState
+{
+    ref<Store> store;
+    TrustedFlag trusted;
+
+    LegacyState(ref<Store> store, TrustedFlag trusted) : store(store), trusted(trusted) {}
+};
+
+struct RequestStreamImpl final : LegacyStream::Server
+{
+    ref<LegacyState> state;
+    std::exception_ptr error;
+    AsyncFdIoStream workerSock;
+    kj::Promise<void> responseForwarder;
+
+    RequestStreamImpl(
+        ref<LegacyState> state,
+        kj::Promise<std::exception_ptr> error,
+        LegacyStream::Client callbacks,
+        AutoCloseFD workerFd
+    )
+        : state(state)
+        , workerSock(std::move(workerFd))
+        , responseForwarder(forwardResponse(callbacks).exclusiveJoin(
+              error.then([&](std::exception_ptr e) -> kj::Promise<void> {
+                  onError(e);
+                  return kj::NEVER_DONE;
+              })
+          ))
+    {
+    }
+
+    void onError(std::exception_ptr e)
+    {
+        if (!error) {
+            error = e;
+        }
+    }
+
+    kj::Promise<void> forwardResponse(LegacyStream::Client callbacks)
+    try {
+        std::array<char, 8192> buf;
+        while (true) {
+            if (auto got = TRY_AWAIT(workerSock.read(buf.data(), buf.size())); !got) {
+                break;
+            } else {
+                auto req = callbacks.feedRequest();
+                req.initRaw(*got);
+                std::copy(buf.begin(), buf.begin() + *got, req.getRaw().begin());
+                co_await req.send();
+            }
+        }
+        co_await callbacks.syncRequest().send();
+    } catch (...) {
+        onError(std::current_exception());
+    }
+
+    kj::Promise<void> feed(FeedContext context) override
+    try {
+        auto bytes = context.getParams().getRaw();
+        if (!error) {
+            TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
+        }
+    } catch (...) {
+        onError(std::current_exception());
+    }
+
+    kj::Promise<void> sync(SyncContext context) override
+    try {
+        TRY_AWAIT(logger->flush());
+        if (error) {
+            RPC_FILL(context.initResults(), initResult, error);
+        } else {
+            context.initResults().initResult().setGood();
+        }
+    } catch (...) {
+        RPC_FILL(context.initResults(), initResult, std::current_exception());
+    }
+};
+
+struct LegacyBootImpl final : LegacyBoot::Server
+{
+    ref<LegacyState> state;
+    bool used = false;
+
+    LegacyBootImpl(TrustedFlag trusted, ref<Store> store) : state(make_ref<LegacyState>(store, trusted)) {}
+
+    kj::Promise<void> init(InitContext context) override
+    try {
+        if (used) {
+            throw Error("connection already initialized");
+        }
+
+        auto prevLogger = logger;
+        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
+
+        auto args = context.getParams();
+        auto result = context.initResults().initResult().initGood();
+        // We and the underlying store both need to trust the client for it to be trusted.
+        if (!state->trusted) {
+            result.setTrust(LegacyBoot::Trust::UNTRUSTED);
+        } else if (auto trust = TRY_AWAIT(state->store->isTrustedClient()); trust) {
+            result.setTrust(*trust ? LegacyBoot::Trust::TRUSTED : LegacyBoot::Trust::UNTRUSTED);
+        } else {
+            result.setTrust(LegacyBoot::Trust::UNKNOWN);
+        }
+        result.setVersion(PACKAGE_VERSION);
+
+        auto [rpcSock, workerSock] = SocketPair::stream();
+        auto pfp = kj::newPromiseAndCrossThreadFulfiller<std::exception_ptr>();
+
+        struct Request
+        {
+            AutoCloseFD fd;
+            kj::Own<kj::CrossThreadPromiseFulfiller<std::exception_ptr>> signal;
+
+            Request(AutoCloseFD fd, kj::Own<kj::CrossThreadPromiseFulfiller<std::exception_ptr>> fulfiller)
+                : fd(std::move(fd))
+                , signal(std::move(fulfiller))
+            {
+            }
+        };
+
+        auto req = make_ref<Request>(std::move(rpcSock), std::move(pfp.fulfiller));
+
+        auto legacyThread = std::async(std::launch::async, [prevLogger, state{state}, req] {
+            AsyncIoRoot aio;
+            FdSource from(req->fd.get());
+            FdSink to(req->fd.get());
+            TunnelLogger logger(to, PROTOCOL_VERSION);
+
+            try {
+                processLegacyRequests(
+                    aio, prevLogger, &logger, state->store, from, to, state->trusted, PROTOCOL_VERSION
+                );
+            } catch (Error & e) {
+                req->signal->fulfill(std::current_exception());
+            } catch (std::bad_alloc & e) {
+                req->signal->fulfill(std::make_exception_ptr(Error("Lix daemon out of memory")));
+            } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+                // TODO print stack trace to daemon log, maybe crash?
+                // boost stacktrace has from_current_exception (at a cost) with not-great symbolization,
+                // cpptrace has a *much* better symbolizer (at unknown cost)
+                req->signal->fulfill(
+                    std::make_exception_ptr(Error(
+                        "Unexpected exception on the Lix daemon; this is a bug in Lix.\n"
+                        "We would appreciate a report of the circumstances it happened in at "
+                        "https://git.lix.systems/lix-project/lix.\n%s: %s",
+                        Uncolored(boost::core::demangle(typeid(e).name())),
+                        e.what()
+                    ))
+                );
+            } catch (...) {
+                // TODO print stack trace to daemon log, maybe crash?
+                req->signal->fulfill(
+                    std::make_exception_ptr(Error(
+                        "Unexpected exception on the Lix daemon; this is a bug in Lix.\n"
+                        "We would appreciate a report of the circumstances it happened in at "
+                        "https://git.lix.systems/lix-project/lix.\n"
+                    ))
+                );
+            }
+        });
+
+        result.setRequestStream(
+            kj::heap<RequestStreamImpl>(
+                state, std::move(pfp.promise), args.getReplyStream(), std::move(workerSock)
+            )
+                .attach(std::move(legacyThread))
+        );
+        used = true;
+    } catch (...) {
+        RPC_FILL(context.initResults(), initResult, std::current_exception());
+    }
+};
+
+struct BootstrapImpl final : Bootstrap::Server
+{
+    struct ProtocolEntry
+    {
+        std::string description;
+        std::function<rpc::daemon::Protocol::Client(TrustedFlag, ref<Store>)> factory;
+    };
+
+    TrustedFlag trusted;
+    ref<Store> store;
+    std::map<kj::StringPtr, ProtocolEntry> protocols;
+    bool used = false;
+
+    BootstrapImpl(TrustedFlag trusted, ref<Store> store) : trusted(trusted), store(store)
+    {
+        if (store->isThreadSafe()) {
+            protocols.emplace(
+                rpc::daemon::UNSTABLE_LEGACY_TUNNELED,
+                ProtocolEntry{"tunneled legacy wire protocol", [](TrustedFlag trusted, ref<Store> store) {
+                                  return kj::heap<LegacyBootImpl>(trusted, store);
+                              }}
+            );
+        }
+    }
+
+    kj::Promise<void> supported(SupportedContext context) override
+    {
+        if (!experimentalFeatureSettings.isEnabled(Xp::RpcSockets)) {
+            kj::throwFatalException(
+                kj::Exception(
+                    kj::Exception::Type::UNIMPLEMENTED, "main", 0, kj::str("rpc sockets not enabled")
+                )
+            );
+            throw Error("rpc sockets not enabled");
+        }
+
+        auto result = context.initResults();
+        auto protocols = result.initProtocols(this->protocols.size());
+        for (auto [i, proto] : enumerate(this->protocols)) {
+            protocols[i].setId(proto.first);
+            protocols[i].setDescription(proto.second.description);
+        }
+        return kj::READY_NOW;
+    }
+
+    kj::Promise<void> request(RequestContext context) override
+    try {
+        auto id = rpc::to<std::string>(context.getParams().getProtocol());
+        if (used) {
+            throw Error("connection already initialized");
+        } else if (const auto & protocol = get(protocols, id)) {
+            used = true;
+            context.initResults().initResult().setGood(protocol->factory(trusted, store));
+        } else {
+            throw Error("unsupported protocol %s", id);
+        }
+        return kj::READY_NOW;
+    } catch (...) {
+        RPC_FILL(context.initResults(), initResult, std::current_exception());
+        return kj::READY_NOW;
+    }
+};
+}
+
+kj::Promise<Result<void>>
+processConnection(ref<Store> store, kj::AsyncIoStream & connection, TrustedFlag trusted)
+try {
+    // TODO trace encoders can do neat error info things, use them. we could stuff some serialized
+    // error struct into the remote trace field instead of using result types and get pipelineable
+    // calls out of it. needs more investigation to say if it's worth the possible reporting skew.
+    capnp::TwoPartyServer server{kj::heap<BootstrapImpl>(trusted, store)};
+
+    // NOTE we can't easily disconnect a peer without shutting shutting down the socket connection
+    // independently of capnp since capnp does not offer such functionality. shutting down sockets
+    // in this manner is very disruptive and pretty unreliable, so we will have to find some other
+    // way to disconnect clients. or we just don't do it because the DoS risk is not large anyway.
+    //
+    // since we have control over the promise we can have the following await finish early to stop
+    // processing events, and if we close the socket after that we've dropped the connection. this
+    // does not guarantee that responses have been sent though, so we can only do this on requests
+    // received *after* a fatal error response has been *sent*, inflicting per-operation overhead.
+    {
+        auto prevLogger = logger;
+        co_await server.accept(connection).exclusiveJoin(connection.whenWriteDisconnected());
+        // NOTE: we do not flush the logger here because the connection is already closed! we only
+        // delete the non-local logger (if one was set) to ensure all rpc references were dropped.
+        if (prevLogger != logger) {
+            std::swap(prevLogger, logger);
+            delete prevLogger;
+        }
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
 }

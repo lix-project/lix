@@ -9,8 +9,10 @@
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/processes.hh"
@@ -441,6 +443,16 @@ try {
 
     std::list<std::pair<daemon::Protocol, AutoCloseFD>> sockets;
     for (auto & socket : settings.nixDaemonSockets()) {
+        switch (socket.type) {
+        case daemon::Protocol::LEGACY_COMBINED:
+        case daemon::Protocol::LEGACY:
+            break;
+        case daemon::Protocol::RPC_V1:
+            if (!experimentalFeatureSettings.isEnabled(Xp::RpcSockets)) {
+                continue;
+            }
+            break;
+        }
         createDirs(dirOf(socket.path));
         sockets.emplace_back(socket, createUnixDomainSocket(socket.path, 0666));
     }
@@ -531,6 +543,11 @@ static void daemonInstance(
         FdSource from(connectionFd);
         FdSink to(connectionFd);
         processLegacyConnection(aio, store, from, to, trusted);
+        break;
+    }
+    case daemon::Protocol::RPC_V1: {
+        auto stream = AIO().lowLevelProvider.wrapSocketFd(connectionFd);
+        aio.blockOn(processConnection(store, *stream, trusted));
         break;
     }
     }

@@ -197,8 +197,10 @@ Logger::BufferState ProgressBar::startActivityImpl(
 
     if ((type == actFileTransfer && hasAncestor(*state, actCopyPath, parent))
         || (type == actFileTransfer && hasAncestor(*state, actQueryPathInfo, parent))
-        || (type == actCopyPath && hasAncestor(*state, actSubstitute, parent)))
+        || (type == actCopyPath && hasAncestor(*state, actSubstitute, parent)) || (s == "daemon connection"))
+    {
         i->visible = false;
+    }
 
     update(*state);
     return BufferState::HasSpace;

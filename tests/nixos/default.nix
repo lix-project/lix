@@ -34,7 +34,9 @@ let
           in
             {
               "nix-daemon@" = daemonConfig;
+              "lix-daemon-lix-xp-1@" = daemonConfig;
             };
+        systemd.sockets."lix-daemon-lix-xp-1".wantedBy = [ "sockets.target" ];
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;

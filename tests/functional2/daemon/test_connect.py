@@ -27,7 +27,8 @@ def test_connection_order_plain(nix: Nix):
 
 def test_connection_order_any(nix: Nix):
     assert _observe_socket_order(nix, f"unix://{nix.env.dirs.home}?protocol=any") == [
-        str(nix.env.dirs.home / "socket")
+        str(nix.env.dirs.home / "lix-xp-1/socket"),
+        str(nix.env.dirs.home / "socket"),
     ]
 
 
@@ -43,7 +44,11 @@ def test_connection_protocol_any_not_standalone(nix: Nix):
     assert "unsupported daemon protocol any" in cmd.stderr_s
 
 
-_protocols: dict[str, str] = {"legacy-combined": ".", "legacy": "socket"}
+_protocols: dict[str, str] = {
+    "lix-xp-1": "lix-xp-1/socket",
+    "legacy-combined": ".",
+    "legacy": "socket",
+}
 
 
 @pytest.mark.parametrize(

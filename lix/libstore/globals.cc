@@ -68,10 +68,13 @@ Settings::Settings()
 {
     if (auto socketDirFromEnv = getEnvNonEmpty("LIX_DAEMON_SOCKET_DIR")) {
         nixDaemonSockets_ = daemon::supportedProtocols(*socketDirFromEnv);
+        socketsPath = *socketDirFromEnv;
     } else if (auto socketPathFromEnv = getEnvNonEmpty("NIX_DAEMON_SOCKET_PATH")) {
         nixDaemonSockets_ = {{canonPath(*socketPathFromEnv), daemon::Protocol::LEGACY_COMBINED}};
+        socketsPath = *socketPathFromEnv;
     } else {
         auto baseDir = nixStateDir + DEFAULT_SOCKET_DIR;
+        socketsPath = baseDir;
         // this should always match the list of sockets created by daemonLoop and the socket units
         nixDaemonSockets_ = daemon::supportedProtocols(baseDir);
     }
@@ -532,11 +535,13 @@ void initLibStore()
 namespace daemon {
 static inline constexpr auto LEGACY_COMBINED_STR = "legacy-combined";
 static inline constexpr auto LEGACY_STR = "legacy";
+static inline constexpr auto LIX_XP_1_STR = "lix-xp-1";
 
 std::list<daemon::Protocol> supportedProtocols(std::optional<PathView> prefix)
 {
     const Path base = prefix ? *prefix + "/" : "";
     return {
+        {base + "lix-xp-1/socket", Protocol::RPC_V1},
         {base + "socket", Protocol::LEGACY},
     };
 }
@@ -548,6 +553,8 @@ std::string_view daemon::Protocol::id() const
         return LEGACY_COMBINED_STR;
     case LEGACY:
         return LEGACY_STR;
+    case RPC_V1:
+        return LIX_XP_1_STR;
     }
 }
 
@@ -558,6 +565,8 @@ daemon::Protocol getProtocol(std::string_view protocol, std::optional<PathView> 
         return {prefix ? Path(*prefix) : "", Protocol::LEGACY_COMBINED};
     } else if (protocol == LEGACY_STR) {
         return {base + "socket", Protocol::LEGACY_COMBINED};
+    } else if (protocol == LIX_XP_1_STR) {
+        return {base + "lix-xp-1/socket", Protocol::RPC_V1};
     } else {
         throw Error("unsupported daemon protocol %s", protocol);
     }

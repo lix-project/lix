@@ -342,9 +342,13 @@ def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Ni
 
 type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
 
-type NixDaemonProtocol = Literal["legacy-combined", "legacy"]
+# NOTE: the order of items here is important. the daemon fixture requires
+# the first item in this list to be the last socket opened by the daemon.
+type NixDaemonProtocol = Literal["legacy-combined", "legacy", "lix-xp-1"]
 
 daemon_protocols: list[NixDaemonProtocol] = get_args(NixDaemonProtocol.__value__)
+
+_daemon_protocol_xp_features: dict[NixDaemon, list[str]] = {"lix-xp-1": ["rpc-sockets"]}
 
 
 # paramterize every daemon tests to run using all supported nix protocols
@@ -368,9 +372,11 @@ def daemon(request: pytest.FixtureRequest) -> NixDaemon:
         daemon.settings["trusted-users"] = []
         daemon.settings.store = f"local?root={nix.env.dirs.test_root}"
         daemon.settings.update(settings)
+        if requires_features := _daemon_protocol_xp_features.get(protocol):
+            daemon.settings.add_xp_feature(*requires_features)
 
         sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
-        sockets = [sockets_dir / "socket"]
+        sockets = [sockets_dir / "socket", sockets_dir / "lix-xp-1/socket"]
         for p in sockets:
             p.unlink(missing_ok=True)
 
@@ -385,7 +391,10 @@ def daemon(request: pytest.FixtureRequest) -> NixDaemon:
                 daemon.logger.error("daemon exited unexpectedly")
 
         # wait for daemon to come up. this may take a while under load.
-        while not all(s.exists() for s in sockets):
+        # we wait only for the first socket in the list, expecting that
+        # it'll be the last one opened by the daemon. this is to ensure
+        # that we always return correctly regardless of rpc xp settings
+        while not sockets[0].exists():
             if status := proc.wait(0.01):
                 log_daemon_result(status, logging.ERROR)
                 raise RuntimeError("daemon exited during startup")

@@ -167,6 +167,7 @@ experimental_feature_definitions = files(
   'experimental-features/pipe-operator.md',
   'experimental-features/read-only-local-store.md',
   'experimental-features/repl-automation.md',
+  'experimental-features/rpc-sockets.md',
   # keep-sorted end
 )
 

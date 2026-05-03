@@ -3,7 +3,8 @@
 #
 # specs are (protocol, socket path, unit name, unit description, slice name)
 lix_daemon_sockets = [
-  ['legacy-combined', 'socket', 'nix-daemon', 'legacy', 'legacy'],
+  ['lix-xp-1',        'lix-xp-1/socket', 'lix-daemon-xp1', 'experimental RPC', 'xp1'],
+  ['legacy-combined', 'socket',          'nix-daemon',     'legacy',           'legacy'],
 ]
 
 lix_daemon_socket_units = []
