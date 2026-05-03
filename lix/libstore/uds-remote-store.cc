@@ -59,23 +59,26 @@ std::string UDSRemoteStore::getUri()
     }
 }
 
-static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<Path> & paths)
+static void connectToFirstAvailableSocket(AutoCloseFD & sockFD, const std::list<daemon::Protocol> & paths)
 {
     for (const auto & socket : paths) {
         try {
-            nix::connect(sockFD.get(), socket);
+            nix::connect(sockFD.get(), socket.path);
             return;
         } catch (SysError & e) {
             if (e.errNo == EACCES || e.errNo == EPERM || e.errNo == ECONNREFUSED || e.errNo == ENOENT
                 || e.errNo == ENOTDIR || e.errNo == ENOTSOCK)
             {
-                debug("skipping socket %s: %s", socket, strerror(e.errNo));
+                debug("skipping socket %s: %s", socket.path, strerror(e.errNo));
             } else {
                 throw;
             }
         }
     }
-    throw Error("could not connect to any lix socket (tried %s)", concatStringsSep(", ", paths));
+    throw Error(
+        "could not connect to any lix socket (tried %s)",
+        concatMapStringsSep(", ", paths, [](auto & s) { return s.path; })
+    );
 }
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection()
@@ -85,24 +88,22 @@ try {
     /* Connect to a daemon that does the privileged work for us. */
     conn->fd = createUnixDomainSocket();
 
-    std::list<Path> candidates;
+    std::list<daemon::Protocol> candidates;
 
     if (path) {
         if (config().protocol == "any") {
-            candidates.emplace_back(*path + LEGACY_SOCKET_COMBINED);
+            candidates.push_back(daemon::Protocol{*path + LEGACY_SOCKET_COMBINED});
         } else {
             for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
                 if (proto == "legacy-combined") {
-                    candidates.emplace_back(*path);
+                    candidates.push_back(daemon::Protocol{*path});
                 } else {
                     throw Error("can't connect to %s with unknown daemon protocol %s", *path, proto);
                 }
             }
         }
     } else {
-        candidates = settings.nixDaemonSockets()
-            | std::views::transform([](auto & socket) { return socket.path; })
-            | std::ranges::to<std::list<Path>>();
+        candidates = settings.nixDaemonSockets();
     }
 
     connectToFirstAvailableSocket(conn->fd, candidates);

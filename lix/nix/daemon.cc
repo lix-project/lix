@@ -340,7 +340,7 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
 
 static kj::Promise<Result<void>> daemonLoopForSocket(
     const Path & self,
-    const Settings::DaemonSocketPath & socket,
+    const daemon::Protocol & socket,
     AutoCloseFD & fdSocket,
     std::optional<TrustedFlag> forceTrustClientOpt
 )
@@ -437,7 +437,7 @@ try {
         return *tmp;
     }();
 
-    std::list<std::pair<Settings::DaemonSocketPath, AutoCloseFD>> sockets;
+    std::list<std::pair<daemon::Protocol, AutoCloseFD>> sockets;
     for (auto & socket : settings.nixDaemonSockets()) {
         createDirs(dirOf(socket.path));
         sockets.emplace_back(socket, createUnixDomainSocket(socket.path, 0666));

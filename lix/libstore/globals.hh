@@ -10,6 +10,13 @@
 
 namespace nix {
 
+namespace daemon {
+struct Protocol
+{
+    Path path;
+};
+}
+
 typedef enum { smEnabled, smRelaxed, smDisabled } SandboxMode;
 
 void to_json(JSON & j, const SandboxMode & e);
@@ -63,14 +70,7 @@ const uint32_t maxIdsPerBuild =
 
 class Settings : public Config
 {
-public:
-    struct DaemonSocketPath
-    {
-        Path path;
-    };
-
-private:
-    std::list<DaemonSocketPath> nixDaemonSockets_;
+    std::list<daemon::Protocol> nixDaemonSockets_;
 
     unsigned int getDefaultCores();
 
@@ -128,7 +128,7 @@ public:
     /**
      * Socket paths a client should connect to, in order of decreasing preference.
      */
-    const std::list<DaemonSocketPath> & nixDaemonSockets() const
+    const std::list<daemon::Protocol> & nixDaemonSockets() const
     {
         return nixDaemonSockets_;
     }
