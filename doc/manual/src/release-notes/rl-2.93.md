@@ -1,4 +1,87 @@
 # Lix 2.93 "Bici Bici" (2025-05-09)
+# Lix 2.93.4 (2026-05-04)
+## Fixes
+
+- `build-dir` no longer defaults to `temp-dir` [cl/3453](https://gerrit.lix.systems/c/lix/+/3453)
+
+  The directory in which temporary build directories are created no longer defaults
+  to the value of the `temp-dir` setting to avoid builders making their directories
+  world-accessible. This behavior has been used to escape the build sandbox and can
+  cause build impurities even when not used maliciously. We now default to `builds`
+  in `NIX_STATE_DIR` (which is `/nix/var/nix/b` in the default configuration).
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae) for this.
+
+- Fix develop shells for derivations with escape codes [fj#991](https://git.lix.systems/lix-project/lix/issues/991) [cl/4154](https://gerrit.lix.systems/c/lix/+/4154) [cl/4155](https://gerrit.lix.systems/c/lix/+/4155)
+
+  ASCII control characters (including `\e`, used for ANSI escape codes) in derivation variables are now correctly escaped for `nix develop` and `nix print-dev-env`, instead of erroring.
+
+  Many thanks to [Qyriad](https://git.lix.systems/Qyriad) for this.
+
+- Fix nix develop for derivations that rejects dependencies with structured attrs [fj#997](https://git.lix.systems/lix-project/lix/issues/997) [cl/4182](https://gerrit.lix.systems/c/lix/+/4182) [cl/4214](https://gerrit.lix.systems/c/lix/+/4214)
+
+  For the sake of concision, we refer to `disallowedReferences` in what follows,
+  but all output checks were equally fixed:
+  `{dis,}allowed{References,Requisites}`.
+
+  Derivations can define *output checks* to reject unwanted dependencies, such as
+  interpreters like `bash` or compilers like `gcc`. This can be done in two ways:
+
+  * **Legacy style**: `disallowedReferences = [ ... ]` in the environment.
+  * **Structured attrs**: `outputChecks.<output>.disallowedReferences = [ ... ]`,
+    typically used in `__json`.
+
+  Only the structured form supports derivations with multiple outputs.
+
+  `nix develop` internally rewrites derivations to create development shells. It
+  relied on the legacy `disallowedReferences`, and failed to honor the structured
+  variant. This led to broken shells in cases where `bashInteractive` was
+  explicitly disallowed using structured output checks, e.g. `nix develop
+  nixpkgs#systemd` after the "bash-less NixOS" changes.
+
+  This fix teaches `nix develop` to respect structured output checks, restoring
+  support for such derivations.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) for this.
+
+- `nix-shell` default shell directory is not `/tmp` anymore for `$NIX_BUILD_TOP` [fj#940](https://git.lix.systems/lix-project/lix/issues/940)
+
+  Previously, Lix `nix-shell`s could exit non-zero status when `stdenv`'s `dumpVars` phase failed to write to `$NIX_BUILD_TOP/env-vars`, despite `dumpVars` being intended as a debugging aid.
+
+  This happens when `TMPDIR` is not set and defaults therefore to `/tmp`, resulting in a `/tmp/env-vars` global file that every `nix-shell` wants to write.
+
+  We fix this issue by reusing a pre-created, unique, and writable location, as the build top directory, avoiding shell exiting from write failures silently.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) for this.
+
+- Fix unsigned overflow leading to out-of-band write in the NAR parser [cl/5537](https://gerrit.lix.systems/c/lix/+/5537)
+
+  The NAR parser contained an unsigned integer overflow that could be used by an
+  attacker to write arbitrary data to an unknown memory location and possibly
+  achieve code execution. A successful attack on the system-wide Lix daemon
+  could lead to privilege escalation to root. Any process that involves NAR
+  serialization could trigger this issue, including (but not limited to)
+
+    - local user interaction, whether the users are trusted or untrusted
+    - malicious substituters sending malformed NARs
+    - remote builders sending malformed build results
+    - remote daemons sending malformed inputs when requesting remote builds
+
+  Successful attacks using this bug require ASLR weakening of some sort, whether
+  by architecture constraints (e.g. on 32 bit systems, where little randomization
+  is possible) or system configuration (e.g. low ASLR entropy when loading
+  libraries), and millions of attempts. Local attacks can be mounted in less than
+  an hour. Remote builds typically require a fresh SSH connection for each build
+  and are thus less susceptible. Only one attempt can be made by substituters for
+  every build using substituters, they are thus not a likely vector for attacks.
+
+  At the time of writing, MITRE has not assigned this a CVE yet.
+
+  Many thanks to [eldritch horrors](https://git.lix.systems/pennae), [Raito Bezarius](https://git.lix.systems/raito), [edef](https://github.com/edef1c), and [sandydoo](https://github.com/sandydoo) for this.
+
+
+
+
 # Lix 2.93.3 (2025-07-22)
 ## Improvements
 
