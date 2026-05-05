@@ -643,7 +643,7 @@ stdenv.mkDerivation (finalAttrs: {
   strictDeps = true;
 
   # strictoverflow is disabled because we trap on signed overflow instead
-  hardeningDisable = [ "strictoverflow" ] ++ lib.optional hostPlatform.isStatic "pie";
+  hardeningDisable = [ "strictoverflow" ];
 
   meta = {
     mainProgram = "nix";
