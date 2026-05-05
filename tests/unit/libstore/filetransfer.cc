@@ -14,7 +14,7 @@
 #include <netinet/in.h>
 #include <string>
 #include <string_view>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>

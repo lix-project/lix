@@ -8,7 +8,7 @@
 
 #include <cerrno>
 #include <fcntl.h>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <unistd.h>

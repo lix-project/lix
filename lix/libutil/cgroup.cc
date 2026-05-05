@@ -5,7 +5,7 @@
 #include <deque>
 #include <fcntl.h>
 #include <filesystem>
-#include <sys/poll.h>
+#include <poll.h>
 #if __linux__
 
 #include "regex.hh"
