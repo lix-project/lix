@@ -611,12 +611,30 @@
           in
           (makeShells "native" nixpkgsFor.${system}.native)
           // (makeShells "static" nixpkgsFor.${system}.static)
-          // (forAllCrossSystems (
-            crossSystem:
-            let
-              pkgs = nixpkgsFor.${system}.cross.${crossSystem};
-            in
-            makeShell pkgs pkgs.clangStdenv
+          // (lib.listToAttrs (
+            # Provide e.g., both '.#native-aarch64-linux` and `.#static-aarch64-linux`,
+            # for each cross-system.
+            # "native" feels like a misnomer here since it's literally cross compiling,
+            # but at least it's consistent with the native/static dichotomy we've set up.
+            lib.concatMap (
+              crossSystem:
+              let
+                pkgs = nixpkgsFor.${system}.cross.${crossSystem};
+                inherit (pkgs) pkgsStatic;
+                native = makeShell pkgs pkgs.clangStdenv;
+                static = makeShell pkgsStatic pkgsStatic.clangStdenv;
+              in
+              [
+                {
+                  name = "native-${crossSystem}";
+                  value = native;
+                }
+                {
+                  name = "static-${crossSystem}";
+                  value = static;
+                }
+              ]
+            ) crossSystems
           ))
           // {
             default = self.devShells.${system}.native-clangStdenvPackages;
