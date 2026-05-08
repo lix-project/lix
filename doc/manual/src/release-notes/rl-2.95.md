@@ -1,4 +1,16 @@
 # Lix 2.95 "Kakigōri" (2026-03-13)
+# Lix 2.95.3 (2026-05-08)
+## Fixes
+
+- Fix upgrade-nix breaking its own access to the daemon [lix#1189](https://git.lix.systems/lix-project/lix/issues/1189) [lix#1207](https://git.lix.systems/lix-project/lix/issues/1207) [cl/5504](https://gerrit.lix.systems/c/lix/+/5504) [cl/5567](https://gerrit.lix.systems/c/lix/+/5567)
+
+  `nix upgrade-nix`, and the helper script `misc/upgrade-lix.sh` now pass `--store local` to all Nix commands, so the upgrade process can make changes to the daemon without breaking further steps in the upgrade.
+
+  Many thanks to [Qyriad](https://git.lix.systems/Qyriad) for this.
+
+
+
+
 # Lix 2.95.2 (2026-05-04)
 ## Fixes
 
