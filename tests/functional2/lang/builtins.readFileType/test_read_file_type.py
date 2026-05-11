@@ -6,6 +6,10 @@ from testlib.fixtures.file_helper import with_files, CopyFile, Symlink, AssetSym
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.snapshot import Snapshot
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files(
     {

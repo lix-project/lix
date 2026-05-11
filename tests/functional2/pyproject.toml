@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
 
-markers = ["full_sandbox: test requires a fully isolated sandbox"]
+markers = ["full_sandbox: test requires a fully isolated sandbox", "no_daemon: only use the local store for this test and do not test the daemon protocol implementations"]
 
 # xfail tests should fail when not failing as described
 xfail_strict = true

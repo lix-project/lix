@@ -11,6 +11,8 @@ from lang.lang_util import LangTest, fetch_all_lang_tests, LangTestRunner
 from testlib.fixtures.nix import Nix, with_diverted_store
 from testlib.fixtures.snapshot import Snapshot
 
+pytestmark = pytest.mark.no_daemon
+
 
 def pytest_generate_tests(metafunc: Metafunc):
     """

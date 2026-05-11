@@ -1,5 +1,9 @@
 from testlib.fixtures.nix import Nix
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 def test_err_context(nix: Nix):
     # the lang test framework doesn't check this folder, as there is a custom test in here

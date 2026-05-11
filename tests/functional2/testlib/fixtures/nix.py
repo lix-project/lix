@@ -2,7 +2,7 @@ import contextlib
 import copy
 import dataclasses
 import sys
-from functools import partialmethod
+from functools import partialmethod, partial
 from pathlib import Path
 from typing import Any, Literal, get_args
 from collections.abc import Callable, Generator
@@ -319,25 +319,10 @@ _fully_sandboxed = (
 )
 
 
-def pytest_runtest_setup(item: Any):
+def pytest_runtest_setup(item: pytest.Item):
     for mark in item.iter_markers(name="full_sandbox"):
         if not _fully_sandboxed:
             pytest.skip(f"{sys.platform} does not support full sandboxing")
-
-
-@pytest.fixture
-def nix(tmp_path: Path, env: ManagedEnv, logger: logging.Logger) -> Generator[Nix, Any, None]:
-    """
-    Provides a rich way of calling `nix`.
-    For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
-    After configuring the command, use `.run()` to run it
-    """
-    yield Nix(env, logger)
-    # when things are done using the nix store, the permissions for the store are read only
-    # after the test was executed, we set the permissions to rwx (write being the important part)
-    # for pytest to be able to delete the files during cleanup
-    cmd = Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], _env=env)
-    cmd.run().ok()
 
 
 type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
@@ -351,70 +336,115 @@ daemon_protocols: list[NixDaemonProtocol] = get_args(NixDaemonProtocol.__value__
 _daemon_protocol_xp_features: dict[NixDaemon, list[str]] = {"lix-xp-1": ["rpc-sockets"]}
 
 
-# paramterize every daemon tests to run using all supported nix protocols
+@contextlib.contextmanager
+def _daemon_wrapper(
+    default_protocol: NixDaemonProtocol,
+    nix: Nix,
+    args: list[str] | None = None,
+    settings: dict[str, _NixSettingValue] | None = None,
+    protocol: NixDaemonProtocol | None = None,
+    **kwargs,
+) -> contextlib.AbstractAsyncContextManager[Nix]:
+    protocol = protocol or default_protocol
+
+    daemon = copy.deepcopy(nix)
+    daemon.logger = nix.logger.getChild("daemon")
+    daemon.settings["allowed-users"] = ["*"]
+    daemon.settings["trusted-users"] = []
+    daemon.settings.store = f"local?root={nix.env.dirs.test_root}"
+    daemon.settings.update(settings)
+    if requires_features := _daemon_protocol_xp_features.get(protocol):
+        daemon.settings.add_xp_feature(*requires_features)
+
+    sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
+    sockets = [sockets_dir / "socket", sockets_dir / "lix-xp-1/socket"]
+    for p in sockets:
+        p.unlink(missing_ok=True)
+
+    proc = daemon.nix(args or [], nix_exe="nix-daemon", **kwargs).start()
+
+    def log_daemon_result(result: CommandResult | None, level: int):
+        if result:
+            daemon.logger.log(level, "daemon exited with code %i", result.rc)
+            daemon.logger.log(level, "stdout: %s", result.stdout_s)
+            daemon.logger.log(level, "stderr: %s", result.stderr_s)
+        else:
+            daemon.logger.error("daemon exited unexpectedly")
+
+    # wait for daemon to come up. this may take a while under load.
+    # we wait only for the first socket in the list, expecting that
+    # it'll be the last one opened by the daemon. this is to ensure
+    # that we always return correctly regardless of rpc xp settings
+    while not sockets[0].exists():
+        if status := proc.wait(0.01):
+            log_daemon_result(status, logging.ERROR)
+            raise RuntimeError("daemon exited during startup")
+
+    inner = copy.deepcopy(nix)
+    socket_path = sockets_dir / "socket" if protocol == "legacy-combined" else sockets_dir
+    inner.settings.store = f"unix://{socket_path}?protocol={protocol}"
+
+    try:
+        timeout, level = 1, logging.ERROR
+        yield inner
+        # 5 seconds should be enough to wait for a *graceful* exit.
+        timeout, level = 5, logging.DEBUG
+    finally:
+        result = proc.terminate(timeout)
+        if not result:
+            result = proc.kill()
+        log_daemon_result(result, level)
+
+
+def _nix_plain_impl(
+    tmp_path: Path, env: ManagedEnv, logger: logging.Logger
+) -> Generator[Nix, Any, None]:
+    yield Nix(env, logger)
+    # when things are done using the nix store, the permissions for the store are read only
+    # after the test was executed, we set the permissions to rwx (write being the important part)
+    # for pytest to be able to delete the files during cleanup
+    cmd = Command(argv=["chmod", "-R", "+w", str(tmp_path.absolute())], _env=env)
+    cmd.run().ok()
+
+
+@pytest.fixture
+def nix(
+    tmp_path: Path, env: ManagedEnv, logger: logging.Logger, request: pytest.FixtureRequest
+) -> Generator[Nix, Any, None]:
+    """
+    Provides a rich way of calling `nix`.
+    For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
+    After configuring the command, use `.run()` to run it
+    """
+    for nix in _nix_plain_impl(tmp_path, env, logger):
+        if getattr(request, "param", None) is None:
+            yield nix
+        else:
+            with _daemon_wrapper(request.param, nix) as inner:
+                yield inner
+
+
 @pytest.fixture(params=daemon_protocols)
 def daemon(request: pytest.FixtureRequest) -> NixDaemon:
-    default_protocol = request.param
+    """
+    paramterize every daemon tests to run using all supported nix protocols
+    """
+    return partial(_daemon_wrapper, request.param)
 
-    @contextlib.contextmanager
-    def wrapper(
-        nix: Nix,
-        args: list[str] | None = None,
-        settings: dict[str, _NixSettingValue] | None = None,
-        protocol: NixDaemonProtocol | None = None,
-        **kwargs,
-    ) -> contextlib.AbstractAsyncContextManager[Nix]:
-        protocol = protocol or default_protocol
 
-        daemon = copy.deepcopy(nix)
-        daemon.logger = nix.logger.getChild("daemon")
-        daemon.settings["allowed-users"] = ["*"]
-        daemon.settings["trusted-users"] = []
-        daemon.settings.store = f"local?root={nix.env.dirs.test_root}"
-        daemon.settings.update(settings)
-        if requires_features := _daemon_protocol_xp_features.get(protocol):
-            daemon.settings.add_xp_feature(*requires_features)
-
-        sockets_dir = Path(daemon.env.dirs.nix_state_dir) / "daemon-socket"
-        sockets = [sockets_dir / "socket", sockets_dir / "lix-xp-1/socket"]
-        for p in sockets:
-            p.unlink(missing_ok=True)
-
-        proc = daemon.nix(args or [], nix_exe="nix-daemon", **kwargs).start()
-
-        def log_daemon_result(result: CommandResult | None, level: int):
-            if result:
-                daemon.logger.log(level, "daemon exited with code %i", result.rc)
-                daemon.logger.log(level, "stdout: %s", result.stdout_s)
-                daemon.logger.log(level, "stderr: %s", result.stderr_s)
-            else:
-                daemon.logger.error("daemon exited unexpectedly")
-
-        # wait for daemon to come up. this may take a while under load.
-        # we wait only for the first socket in the list, expecting that
-        # it'll be the last one opened by the daemon. this is to ensure
-        # that we always return correctly regardless of rpc xp settings
-        while not sockets[0].exists():
-            if status := proc.wait(0.01):
-                log_daemon_result(status, logging.ERROR)
-                raise RuntimeError("daemon exited during startup")
-
-        inner = copy.deepcopy(nix)
-        socket_path = sockets_dir / "socket" if protocol == "legacy-combined" else sockets_dir
-        inner.settings.store = f"unix://{socket_path}?protocol={protocol}"
-
-        try:
-            timeout, level = 1, logging.ERROR
-            yield inner
-            # 5 seconds should be enough to wait for a *graceful* exit.
-            timeout, level = 5, logging.DEBUG
-        finally:
-            result = proc.terminate(timeout)
-            if not result:
-                result = proc.kill()
-            log_daemon_result(result, level)
-
-    return wrapper
+def pytest_generate_tests(metafunc: pytest.Metafunc):
+    """
+    Generate parametrized tests from all tests that use the Nix fixture to test
+    nix with all available daemon protocols, *unless* those tests are marked with `no_daemon`
+    """
+    if "nix" not in metafunc.fixturenames or "daemon" in metafunc.fixturenames:
+        return
+    if not list(metafunc.definition.iter_markers("no_daemon")):
+        protocols = [None]
+        # do not enable them the protocols for now
+        # protocols += daemon_protocols # noqa ERA001
+        ids = protocols
+        metafunc.parametrize("nix", protocols, indirect=True, ids=ids)
 
 
 @pytest.fixture

@@ -10,6 +10,8 @@ from testlib.fixtures.file_helper import with_files
 import pytest
 from testlib.fixtures.command import Command
 
+pytestmark = pytest.mark.no_daemon
+
 
 def get_functional2_repl_files(files: FileDeclaration | None = None) -> FileDeclaration:
     repl_base = functional2_base_folder / "repl_characterization"
@@ -50,7 +52,7 @@ def get_functional2_repl_files(files: FileDeclaration | None = None) -> FileDecl
 )
 def test_trivial_succeeds(pytest_command: Command):
     res = pytest_command.run().ok()
-    assert "repl_basics:nya.md] PASSED" in res.stdout_s
+    assert "repl_basics:nya.md-None] PASSED" in res.stdout_s
 
 
 @pytest.mark.parametrize("pytest_command", [(["-k", "repl_char"], False)], indirect=True)
@@ -76,7 +78,7 @@ def test_trivial_succeeds(pytest_command: Command):
 def test_trivial_fails(pytest_command: Command):
     res = pytest_command.run().expect(1)
     assert (
-        "FAILED repl_characterization/test_repl.py::test_repl_char[repl_basics:nya.md]"
+        "FAILED repl_characterization/test_repl.py::test_repl_char[repl_basics:nya.md-None]"
         in res.stdout_s
     )
 

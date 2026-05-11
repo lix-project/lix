@@ -7,6 +7,8 @@ from testlib.fixtures.nix import Nix
 from testlib.fixtures.snapshot import Snapshot
 from testlib.utils import functional2_base_folder
 
+pytestmark = pytest.mark.no_daemon
+
 
 @pytest.mark.parametrize(
     ("expr", "exit_code", "exit_code_depr"),
