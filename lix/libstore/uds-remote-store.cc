@@ -259,6 +259,7 @@ try {
         .proxySock = make_box_ptr<AsyncFdIoStream>(std::move(proxyAsync)),
         .client = std::move(client),
         .loggerActivity = logger->startActivity(lvlDebug, actUnknown, "daemon connection"),
+        .legacyProtocol = nullptr,
         .requestStream = nullptr,
         .forwarder = nullptr,
     });
@@ -281,6 +282,7 @@ try {
     con.daemonVersion = PROTOCOL_VERSION;
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
     con.store = this;
+    rpc->legacyProtocol = initResult.getProtocol();
     rpc->requestStream = initResult.getRequestStream();
     rpc->forwarder = rpc->forwardRequests();
 
@@ -347,4 +349,13 @@ void registerUDSRemoteStore() {
     StoreImplementations::add<UDSRemoteStore, UDSRemoteStoreConfig>({"unix"});
 }
 
+/* Overrides for RPC-aware versions of RemoteStore commands */
+
+kj::Promise<Result<void>> RpcRemoteStore::optimiseStore()
+try {
+    TRY_AWAIT_RPC(rpc->legacyProtocol.optimiseStoreRequest().send());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
 }

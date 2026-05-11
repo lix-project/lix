@@ -36,6 +36,8 @@ class RemoteStore : public virtual Store,
     public virtual LogStore
 {
 protected:
+    struct ConnectionHandle;
+
     RemoteStore(MustCallInit &, const RemoteStoreConfig & config);
 
 public:
@@ -179,8 +181,6 @@ protected:
     virtual kj::Promise<Result<void>> setOptions(Connection & conn);
 
     kj::Promise<Result<void>> setOptions() override;
-
-    struct ConnectionHandle;
 
     kj::Promise<Result<ConnectionHandle>> getConnection();
 

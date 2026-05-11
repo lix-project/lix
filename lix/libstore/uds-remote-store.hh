@@ -145,6 +145,10 @@ class RpcRemoteStore : public UDSRemoteStore
 public:
     RpcRemoteStore(MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
 
+    /* Overrides for RPC-aware versions of RemoteStore commands */
+
+    kj::Promise<Result<void>> optimiseStore() override;
+
 private:
     struct RpcState
     {
@@ -152,6 +156,7 @@ private:
         box_ptr<AsyncFdIoStream> proxySock;
         box_ptr<capnp::TwoPartyClient> client;
         Activity loggerActivity;
+        rpc::daemon::LegacyProtocol::Client legacyProtocol;
         rpc::daemon::LegacyStream::Client requestStream;
 
         kj::Promise<void> forwarder;

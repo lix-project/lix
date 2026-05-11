@@ -2,6 +2,7 @@
 #include "filetransfer.hh"
 #include "libutil/async.hh"
 #include "libutil/logging-rpc.hh"
+#include "libutil/result.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -1069,6 +1070,18 @@ struct RequestStreamImpl final : LegacyStream::Server
     }
 };
 
+struct LegacyProtocolImpl final : LegacyProtocol::Server
+{
+    ref<LegacyState> state;
+
+    LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
+
+    kj::Promise<void> optimiseStore(OptimiseStoreContext context) override
+    {
+        return RPC_IMPL({ TRY_AWAIT(state->store->optimiseStore()); });
+    }
+};
+
 struct LegacyBootImpl final : LegacyBoot::Server
 {
     ref<LegacyState> state;
@@ -1159,6 +1172,7 @@ struct LegacyBootImpl final : LegacyBoot::Server
             )
                 .attach(std::move(legacyThread))
         );
+        result.setProtocol(kj::heap<LegacyProtocolImpl>(state));
         used = true;
     } catch (...) {
         rpc::rethrow_as_rpc_error();
