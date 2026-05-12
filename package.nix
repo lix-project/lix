@@ -228,6 +228,14 @@ let
         substitute $inputPath $out --replace-fail @deps@ "$(cat ${deps})"
       '';
 
+  # Remove once https://github.com/NixOS/nixpkgs/pull/476848 lands here.
+  pyxattrForPython =
+    p:
+    p.pyxattr.overrideAttrs (old: {
+      buildInputs = lib.filter (lib.meta.availableOn stdenv.hostPlatform) old.buildInputs;
+      meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
+    });
+
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
   maybePropagatedInputs = lib.optional enableGC boehmgc-nix ++ [ nlohmann_json ];
@@ -283,12 +291,7 @@ stdenv.mkDerivation (finalAttrs: {
       p.tappy
       p.ruff
       p.aiohttp
-
-      # Remove once https://github.com/NixOS/nixpkgs/pull/476848 lands here.
-      (p.pyxattr.overrideAttrs (old: {
-        buildInputs = lib.filter (lib.meta.availableOn stdenv.hostPlatform) old.buildInputs;
-        meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
-      }))
+      (pyxattrForPython p)
     ])
   );
 
@@ -718,11 +721,7 @@ stdenv.mkDerivation (finalAttrs: {
             p.packaging
             p.xonsh
 
-            # Remove once https://github.com/NixOS/nixpkgs/pull/476848 lands here.
-            (p.pyxattr.overrideAttrs (old: {
-              buildInputs = lib.filter (lib.meta.availableOn stdenv.hostPlatform) old.buildInputs;
-              meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
-            }))
+            (pyxattrForPython p)
           ]
         );
         pythonEnv = python3.pythonOnBuildForHost.withPackages pythonPackages;
