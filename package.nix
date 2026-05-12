@@ -236,6 +236,29 @@ let
       meta.platforms = old.meta.platforms ++ lib.platforms.darwin;
     });
 
+  inputsForPython = p: [
+    p.python-frontmatter
+    p.pycapnp
+  ];
+
+  checkInputsForPython = p: [
+    (dontWrapPython p.pytest)
+    p.pytest-xdist
+    p.pytest-timeout
+    p.tappy
+    p.ruff
+    p.aiohttp
+    (pyxattrForPython p)
+  ];
+
+  devShellInputsForPython = p: [
+    p.yapf
+    p.requests
+    p.xdg-base-dirs
+    p.packaging
+    p.xonsh
+  ];
+
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
   maybePropagatedInputs = lib.optional enableGC boehmgc-nix ++ [ nlohmann_json ];
@@ -280,19 +303,10 @@ stdenv.mkDerivation (finalAttrs: {
   # python3.withPackages does not splice properly, see https://github.com/NixOS/nixpkgs/issues/305858
   lixPythonForBuild = python3.pythonOnBuildForHost.withPackages (
     p:
-    [
-      p.python-frontmatter
-      p.pycapnp
+    lib.concatLists [
+      (inputsForPython p)
+      (lib.optionals finalAttrs.doCheck (checkInputsForPython p))
     ]
-    ++ lib.optionals finalAttrs.doCheck ([
-      (dontWrapPython p.pytest)
-      p.pytest-xdist
-      p.pytest-timeout
-      p.tappy
-      p.ruff
-      p.aiohttp
-      (pyxattrForPython p)
-    ])
   );
 
   buildTestShell =
@@ -702,29 +716,16 @@ stdenv.mkDerivation (finalAttrs: {
           LOCALE_ARCHIVE = "${lib.getLib pkgsBuildHost.glibcLocales}/lib/locale/locale-archive";
         };
 
-        pythonPackages = (
-          p: [
-            # FIXME: these have to be added twice due to the nix shell using a
-            # wrapped python instead of build inputs for its python inputs
-            (dontWrapPython p.pytest)
-            p.pytest-xdist
-            p.pytest-timeout
-            p.tappy
-            p.ruff
-            p.aiohttp
-            p.python-frontmatter
-            p.pycapnp
-
-            p.yapf
-            p.requests
-            p.xdg-base-dirs
-            p.packaging
-            p.xonsh
-
-            (pyxattrForPython p)
+        # FIXME: these have to be added twice due to the nix shell using a
+        # wrapped python instead of build inputs for its python inputs
+        pythonEnv = python3.pythonOnBuildForHost.withPackages (
+          p:
+          lib.concatLists [
+            (inputsForPython p)
+            (checkInputsForPython p)
+            (devShellInputsForPython p)
           ]
         );
-        pythonEnv = python3.pythonOnBuildForHost.withPackages pythonPackages;
 
         # pkgs.mkShell uses pkgs.stdenv by default, regardless of inputsFrom.
         actualMkShell = mkShell.override { inherit stdenv; };
