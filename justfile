@@ -10,9 +10,9 @@ builddir := "build"
 list:
     just --list
 
-# Clean build artifacts
+# Clean build artifacts and outputs.
 clean:
-    rm -rf {{ builddir }}
+    rm -rf {{ quote(builddir) }}/* {{ quote(builddir) }}/.* {{ quote(outdir) }}/* {{ quote(outdir) }}/.*
 
 # Prepare meson for building.
 setup *OPTIONS:
