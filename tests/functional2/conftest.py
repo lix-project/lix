@@ -1,3 +1,5 @@
+import pytest
+
 pytest_plugins = (
     "testlib.fixtures.env",
     "testlib.fixtures.formatter",
@@ -9,6 +11,28 @@ pytest_plugins = (
     "testlib.fixtures.snapshot",
     "testlib.fixtures.pytest_command",
 )
+
+
+def pytest_assertrepr_compare(config: pytest.Config, op: str, left: object, right: object) -> list[str] | None:
+    if not isinstance(left, str) or not isinstance(right, str) or op != "in":
+        return None
+    left: str
+    right: str
+
+    expl = [
+        f"{left} in {right}.",
+    ]
+
+    if config.get_verbosity():
+        expl.append("left:")
+        expl.extend([
+                        f"   {line}" for line in left.splitlines()
+                    ])
+        expl.append("right:")
+        expl.extend([
+                            f"    {line}" for line in right.splitlines()
+                        ])
+    return expl
 
 # the rest of this file is also a fork of pytest-tap v3.5 adjusted for lix use casess.
 # ideally this would be its own module, but xdist causes failures if it is. dunno why.
