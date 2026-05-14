@@ -105,6 +105,9 @@ class NixSettings:
     def __setitem__(self, attr: str, value: str):
         self._settings[attr] = value
 
+    def pop(self, attr: str, default: str | None = None):
+        self._settings.pop(attr, default)
+
     def add_xp_feature(self, *names: str):
         self["extra-experimental-features"] += names
 
@@ -162,6 +165,7 @@ class Nix:
     env: ManagedEnv
     logger: logging.Logger
     _settings: NixSettings | None = dataclasses.field(init=False, default=None)
+    uses_daemon: bool = False
 
     @property
     def _nix_executable(self) -> Path:
@@ -381,6 +385,7 @@ def _daemon_wrapper(
             raise RuntimeError("daemon exited during startup")
 
     inner = copy.deepcopy(nix)
+    inner.uses_daemon = True
     socket_path = sockets_dir / "socket" if protocol == "legacy-combined" else sockets_dir
     inner.settings.store = f"unix://{socket_path}?protocol={protocol}"
 
