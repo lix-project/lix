@@ -51,18 +51,21 @@ def test_substitution_fallback_good_first(nix: Nix, caches: Caches):
     build(nix, "--substituters", f"{caches.good} {caches.bad}").ok()
 
 
+@pytest.mark.no_daemon
 def test_substitution_fallback_bad_first(nix: Nix, caches: Caches):
     # we expect three warnings for the single nar: two from querying, one from the substitution itself
     result = build(nix, "--substituters", f"{caches.bad} {caches.good}").ok()
     assert len(re.findall(r"warning.*narinfo", result.stderr_s)) == 3
 
 
+@pytest.mark.no_daemon
 def test_substitution_fallback_may_build(nix: Nix, caches: Caches):
     # we expect two errors for the single nar: one from querying, one from the substitution itself
     result = build(nix, "--substituters", f"{caches.bad}", "--fallback").ok()
     assert len(re.findall(r"error.*narinfo", result.stderr_s)) == 2
 
 
+@pytest.mark.no_daemon
 def test_substitution_fallback_no_build(nix: Nix, caches: Caches):
     # we expect one error, and it's fatal
     result = build(nix, "--substituters", f"{caches.bad}").expect(1)

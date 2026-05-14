@@ -5,6 +5,8 @@ from testlib.fixtures.file_helper import with_files
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset
 
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files({"trivial.nix": get_global_asset("trivial.nix")})
 @pytest.mark.parametrize("prefix", ["by-absolute-path", "by-relative-path"])

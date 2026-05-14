@@ -6,6 +6,10 @@ from testlib.utils import get_global_asset_pack
 from pathlib import Path
 from .common import simple_flake
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files({"flake-container": get_global_asset_pack(".git") | {"flake-dir": simple_flake()}})
 def test_subdir_flake(nix: Nix, files: Path, git: Git):

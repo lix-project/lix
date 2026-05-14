@@ -15,7 +15,11 @@ _build_args = ["build", "-f", "fod-failing.nix", "-L"]
 
 @with_files(_fod_files)
 def test_url_mismatch(nix: Nix):
-    res = nix.nix_build(["fod-failing.nix", "-A", "x1"]).run().expect(102)
+    res = (
+        nix.nix_build(["fod-failing.nix", "-A", "x1"])
+        .run()
+        .expect(102 if not nix.uses_daemon else 1)
+    )
     err = res.stderr_plain
     assert len(re.findall(r"hash mismatch in fixed-output derivation '.*-x1\.drv'", err)) == 1
     assert "likely URL: https://meow.puppy.forge/puppy.tar.gz" in err

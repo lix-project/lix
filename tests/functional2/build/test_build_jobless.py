@@ -38,6 +38,7 @@ def test_j0_without_remotes_fails(nix: Nix):
     )
 
 
+@pytest.mark.no_daemon
 def test_j0_with_mismatched_remotes_fails(nix: Nix):
     remote = f"ssh://localhost?remote-store={nix.env.dirs.home}/machine1"
     result = nix.nix_build(["-j0", "--expr", drv, "--builders", remote]).run().expect(1)
@@ -47,6 +48,7 @@ def test_j0_with_mismatched_remotes_fails(nix: Nix):
     )
 
 
+@pytest.mark.no_daemon
 @with_files({"config.nix": get_global_asset("config.nix"), "default.nix": File(local_drv)})
 def test_j0_without_local_jobs(nix: Nix):
     result = nix.nix_build(["-j0", "--extra-local-jobs", "0"]).run().expect(1)

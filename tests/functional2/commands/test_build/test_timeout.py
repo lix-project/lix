@@ -1,6 +1,7 @@
 from testlib.fixtures.file_helper import with_files, CopyFile
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset
+import pytest
 
 _files = {
     "timeout.nix": CopyFile("assets/test_timeout/timeout.nix"),
@@ -13,11 +14,12 @@ def test_timeout_timeout(nix: Nix):
     res = (
         nix.nix_build(["-Q", "timeout.nix", "-A", "infiniteLoop", "--timeout", "2"])
         .run()
-        .expect(101)
+        .expect(101 if not nix.uses_daemon else 1)
     )
     assert "timed out" in res.stderr_plain
 
 
+@pytest.mark.no_daemon
 @with_files(_files)
 def test_timeout_max_log(nix: Nix):
     res = (
@@ -30,13 +32,21 @@ def test_timeout_max_log(nix: Nix):
 
 @with_files(_files)
 def test_timeout_silent(nix: Nix):
-    res = nix.nix_build(["timeout.nix", "-A", "silent", "--max-silent-time", "2"]).run().expect(101)
+    res = (
+        nix.nix_build(["timeout.nix", "-A", "silent", "--max-silent-time", "2"])
+        .run()
+        .expect(101 if not nix.uses_daemon else 1)
+    )
     assert "file timed out after 2 seconds of silence" in res.stderr_plain
 
 
 @with_files(_files)
 def test_timeout_close_log(nix: Nix):
-    res = nix.nix_build(["timeout.nix", "-A", "closeLog"]).run().expect(100)
+    res = (
+        nix.nix_build(["timeout.nix", "-A", "closeLog"])
+        .run()
+        .expect(100 if not nix.uses_daemon else 1)
+    )
     assert "failed due to signal 9 (Killed" in res.stderr_plain
 
 

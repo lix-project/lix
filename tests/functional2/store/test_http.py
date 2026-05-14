@@ -8,6 +8,8 @@ from testlib.fixtures.file_helper import File, with_files
 from testlib.fixtures.http_server import http_server
 from testlib.fixtures.nix import Nix, with_diverted_store
 
+pytestmark = pytest.mark.no_daemon
+
 
 class HTTPStore:
     def __init__(self):

@@ -12,6 +12,9 @@ from typing import Literal
 
 from dataclasses import dataclass
 
+# FIXME: might be fixable by passing cert options to the daemon
+pytestmark = pytest.mark.no_daemon
+
 
 @dataclass
 class CertAssessment:

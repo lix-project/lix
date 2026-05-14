@@ -82,6 +82,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 #   TID251: ban certain APIs
 # TD: enforce TODO comment style
 #   disabled TD001: allow FIXME and XXX comments
+#   disabled TD002: author names on todos may be good, but simple fixmes dont need them
 #   disabled TD003: todos don't require an explicit issue link for us
 # ARG: disallow unused arguments
 # PTH: use pathlib instead of os calls
@@ -141,7 +142,7 @@ task-tags = ["TODO", "FIXME", "XXX"]
 # TRY: try and raise related things, not helpful as we only do testing
 # T20: Scripts usually output to stdout as either they are directly cli or passed into files
 select = ["E4", "E7", "E9", "F", "ERA", "ASYNC", "ANN0", "ANN2", "A", "C4", "ISC", "INP", "LOG", "G", "PIE", "PT", "Q", "RSE", "RET", "SIM", "TID251", "TD", "ARG", "PTH", "N", "PERF", "PLC", "PLE", "UP", "RUF"]
-ignore = ["ANN002", "ANN003", "TD001", "TD003", "PLE1", "RUF005", "RUF003"]
+ignore = ["ANN002", "ANN003", "TD001", "TD002", "TD003", "PLE1", "RUF005", "RUF003"]
 
 [tool.ruff.format]
 indent-style = "space"

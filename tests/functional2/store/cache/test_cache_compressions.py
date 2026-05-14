@@ -5,6 +5,8 @@ from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset_pack
 
 
+# FIXME: clear_store breaks daemons
+@pytest.mark.no_daemon
 @with_files(get_global_asset_pack("dependencies"))
 @pytest.mark.parametrize("algorithm", ["br", "zstd", "xz"])
 def test_cache_compressions(nix: Nix, algorithm: str):

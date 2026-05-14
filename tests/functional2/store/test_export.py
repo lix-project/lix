@@ -3,6 +3,10 @@ from testlib.fixtures.command import Command
 from testlib.fixtures.file_helper import with_files
 from testlib.utils import get_global_asset_pack
 from testlib.fixtures.nix import Nix
+import pytest
+
+# FIXME: clear_store breaks daemons
+pytestmark = pytest.mark.no_daemon
 
 
 @with_files(get_global_asset_pack("dependencies"))

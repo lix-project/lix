@@ -6,6 +6,8 @@ from pathlib import Path
 from textwrap import dedent
 import pytest
 
+pytestmark = pytest.mark.no_daemon
+
 system = environ.get("system")
 
 files = get_global_asset_pack("simple-drv") | {

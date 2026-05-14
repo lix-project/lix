@@ -9,6 +9,8 @@ from .common import simple_flake, dependent_flake
 from collections.abc import Callable
 import glob
 
+pytestmark = pytest.mark.no_daemon
+
 system = environ.get("system")
 
 files = {"flake-hg1": simple_flake(), "flake-hg2": dependent_flake()}

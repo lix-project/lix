@@ -13,9 +13,10 @@ from testlib.fixtures.command import Command
 
 
 @pytest.fixture(autouse=True)
-def common_init(nix: Nix):
+def common_init(nix: Nix, env: ManagedEnv):
     nix.settings.add_xp_feature("nix-command")
     nix.env.path.add_program("hg")
+    env.path.add_program("hg")
 
 
 @dataclass

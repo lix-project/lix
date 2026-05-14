@@ -15,6 +15,8 @@ from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _ini
 from testlib.environ import environ
 from .common import simple_flake, dependent_flake
 
+pytestmark = pytest.mark.no_daemon
+
 system = environ.get("system")
 
 

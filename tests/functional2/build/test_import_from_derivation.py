@@ -8,11 +8,16 @@ from testlib.utils import get_global_asset
 import re
 
 
-def filter_paths(nix: Nix, output: str) -> str:
+def filter_output(nix: Nix, output: str) -> str:
+    # Replace store hashes with something fixed, and also strip all daemon warnings about untrusted user settings
     return re.sub(
-        r"/nix/store/[0-9a-z]{32}",
-        "/nix/store/hashfilteredforrepeatableoutputs",
-        output.replace(nix.env.dirs.test_root.as_posix(), ""),
+        r"(?m)^warning:.*trusted user.*\n?",
+        "",
+        re.sub(
+            r"/nix/store/[0-9a-z]{32}",
+            "/nix/store/hashfilteredforrepeatableoutputs",
+            output.replace(nix.env.dirs.test_root.as_posix(), ""),
+        ),
     )
 
 
@@ -39,7 +44,7 @@ def test_warn_ifd(nix: Nix, snapshot: Callable[[str], Snapshot]):
         .stderr_plain
     )
 
-    assert snapshot("error") == filter_paths(nix, error)
+    assert snapshot("error") == filter_output(nix, error)
 
 
 @with_files(
@@ -64,7 +69,7 @@ def test_deny_ifd(nix: Nix, snapshot: Callable[[str], Snapshot]):
         .expect(1)
         .stderr_plain
     )
-    assert snapshot("error") == filter_paths(nix, error)
+    assert snapshot("error") == filter_output(nix, error)
 
 
 @with_files(
@@ -82,7 +87,7 @@ def test_allow_ifd(nix: Nix, snapshot: Callable[[str], Snapshot]):
     out_path = build.stdout_plain
 
     assert nix.physical_store_path_for(out_path).read_text() == "FOO579"
-    assert snapshot("error") == filter_paths(nix, error)
+    assert snapshot("error") == filter_output(nix, error)
 
 
 @with_files(
@@ -103,4 +108,4 @@ def test_instantiate_ifd_readonly_fail(nix: Nix, snapshot: Callable[[str], Snaps
         .expect(1)
         .stderr_plain
     )
-    assert snapshot("error") == filter_paths(nix, error)
+    assert snapshot("error") == filter_output(nix, error)

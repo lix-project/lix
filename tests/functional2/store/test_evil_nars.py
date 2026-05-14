@@ -16,6 +16,8 @@ from testlib.nar import (
     write_with_export_header,
 )
 
+pytestmark = pytest.mark.no_daemon
+
 meow_orig = "méow"
 meow_nfc_ = unicodedata.normalize("NFC", meow_orig)
 meow_nfd_ = unicodedata.normalize("NFD", meow_orig)

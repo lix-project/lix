@@ -1,8 +1,11 @@
 from textwrap import dedent
 
 from testlib.fixtures.nix import Nix
+import pytest
 
 
+# FIXME: clear_store breaks daemons
+@pytest.mark.no_daemon
 def test_substitute_truncated_nar(nix: Nix):
     drv = dedent("""
         derivation {

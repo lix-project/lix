@@ -4,6 +4,10 @@ from testlib.fixtures.file_helper import with_files
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset_pack
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files(get_global_asset_pack("dependencies"))
 def test_dump_db(nix: Nix):

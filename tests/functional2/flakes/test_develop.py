@@ -6,6 +6,8 @@ from testlib.utils import get_global_asset, get_global_asset_pack
 from pathlib import Path
 import pytest
 
+pytestmark = pytest.mark.no_daemon
+
 system = environ.get("system")
 
 flake = {

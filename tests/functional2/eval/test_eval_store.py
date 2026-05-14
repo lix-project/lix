@@ -5,6 +5,7 @@ from pathlib import Path
 from testlib.fixtures.file_helper import with_files
 from testlib.utils import get_global_asset_pack
 from testlib.fixtures.nix import Nix
+import pytest
 
 
 def assert_only_scratch_drvs(env: ManagedEnv):
@@ -12,6 +13,7 @@ def assert_only_scratch_drvs(env: ManagedEnv):
     assert list((env.dirs.home / "eval_store" / "nix" / "store").glob("*.drv"))
 
 
+@pytest.mark.no_daemon
 @with_files(get_global_asset_pack("dependencies"))
 def test_nix3_build(nix: Nix, files: Path):
     eval_store = files / "eval_store"
@@ -31,6 +33,7 @@ def test_nix_instantiate(nix: Nix, files: Path):
     assert_only_scratch_drvs(nix.env)
 
 
+@pytest.mark.no_daemon
 @with_files(get_global_asset_pack("dependencies"))
 def test_nix_build(nix: Nix, files: Path):
     res_link = files / "result"

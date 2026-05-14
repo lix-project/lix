@@ -28,7 +28,11 @@ def test_bad(nix: Nix):
 
     # Building with the bad hash should produce the "good" output path as
     # a sideeffect.
-    res = nix.nix_build(["fixed.nix", "-A", "bad", "--no-out-link"]).run().expect(102)
+    res = (
+        nix.nix_build(["fixed.nix", "-A", "bad", "--no-out-link"])
+        .run()
+        .expect(102 if not nix.uses_daemon else 1)
+    )
     assert "hash mismatch in fixed-output derivation" in res.stderr_plain
     assert path.exists()
 
@@ -80,7 +84,11 @@ def test_illegal_references(nix: Nix):
     - *-darwin has a different store location on the top of this in the sandbox (/private/tmp/...) causing further changes.
     Regex matching is the best we can afford.
     """
-    res = nix.nix_build(["fixed.nix", "-A", "illegalReferences"]).run().expect(102)
+    res = (
+        nix.nix_build(["fixed.nix", "-A", "illegalReferences"])
+        .run()
+        .expect(102 if not nix.uses_daemon else 1)
+    )
     assert re.findall(
         r"the fixed-output derivation '.*?/nix/store/[a-z0-9]*-illegal-reference.drv' must not reference store paths but 1 such references were found:.*/nix/store/[a-z0-9]*-fixed",
         res.stderr_plain,

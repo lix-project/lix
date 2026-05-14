@@ -7,6 +7,8 @@ from pathlib import Path
 from .common import simple_flake
 import pytest
 
+pytestmark = pytest.mark.no_daemon
+
 system = environ.get("system")
 files = simple_flake() | {
     "b-low": simple_flake()

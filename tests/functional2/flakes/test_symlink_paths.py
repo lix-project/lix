@@ -5,6 +5,10 @@ from testlib.fixtures.file_helper import CopyFile, Symlink, with_files, File
 from testlib.utils import get_global_asset_pack
 from testlib.fixtures.git import Git
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files(
     {"flake1": {"flake.nix": CopyFile("assets/flake1.nix")}, "flake1_sym": Symlink("flake1")}

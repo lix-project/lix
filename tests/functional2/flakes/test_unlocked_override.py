@@ -4,6 +4,10 @@ from testlib.fixtures.file_helper import with_files, File
 from testlib.utils import get_global_asset_pack
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.no_daemon
+
 
 @with_files(
     {

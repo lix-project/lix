@@ -1,6 +1,8 @@
 import pytest
 from testlib.fixtures.nix import Nix, NixDaemon
 
+pytestmark = pytest.mark.no_daemon
+
 
 @pytest.fixture(autouse=True)
 def setup(nix: Nix):

@@ -215,6 +215,8 @@ class ManagedEnv:
             # when writing things to the terminal (esp with man pages) use cat, to print the full output to stdout
             "PAGER": "cat",
             "BUILD_TEST_SHELL": self.shell_dir,
+            # asan can't print to stdio because that breaks snapshot tests
+            "ASAN_OPTIONS": f"log_path={self._tmp_path}/asan.log:{environ.get('ASAN_OPTIONS', '')}",
         }
         if self.build_env:
             self._env["BUILD_TEST_ENV"] = self.build_env

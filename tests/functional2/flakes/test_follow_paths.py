@@ -7,6 +7,8 @@ import pytest
 import fnmatch
 import json
 
+pytestmark = pytest.mark.no_daemon
+
 
 @pytest.fixture(autouse=True)
 def add_xp_features(nix: Nix):

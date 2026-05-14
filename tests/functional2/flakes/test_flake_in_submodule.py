@@ -16,10 +16,12 @@ from testlib.fixtures.git import Git
 from testlib.fixtures.file_helper import with_files, File, EnvTemplate
 from testlib.utils import get_global_asset_pack
 from pathlib import Path
-import pytest
 import re
 import json
 import shutil
+import pytest
+
+pytestmark = pytest.mark.no_daemon
 
 root_without_self = get_global_asset_pack(".git") | {"root.nix": File('"expression in root repo"')}
 

@@ -131,6 +131,7 @@ def test_env_to_env(tmp_path: Path):
         "BUILD_TEST_SHELL",
         "TMPDIR",
         "BUILD_TEST_ENV",
+        "ASAN_OPTIONS",
     } | ({"_NIX_TEST_NO_SANDBOX"} if sys.platform == "darwin" else set())
 
 
