@@ -898,6 +898,7 @@ static void processLegacyRequests(
         debug("performing daemon worker op: %d", op);
 
         try {
+            KJ_DEFER(aio.blockOn(logger->flush()));
             performOp(aio, tunnelLogger, store, trusted, clientVersion, from, to, op);
         } catch (Error & e) {
             /* If we're not in a state where we can send replies, then

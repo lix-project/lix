@@ -12,6 +12,7 @@ def test_legacy_sockets_always_appear(nix: Nix, daemon: NixDaemon):
         assert (sockets_dir / "socket").is_socket()
 
 
+@pytest.mark.no_daemon  # We do the daemon config ourselves here
 @pytest.mark.parametrize("daemon", ["legacy"], indirect=True)
 def test_xp_sockets_dont_always_appear(nix: Nix, daemon: NixDaemon):
     sockets_dir = nix.env.dirs.nix_state_dir / "daemon-socket"
