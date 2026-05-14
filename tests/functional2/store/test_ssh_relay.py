@@ -13,7 +13,7 @@ def test_ssh_relay(nix: Nix):
 
     nix.settings.add_xp_feature("nix-command")
 
-    ssh_localhost = "ssh://localhost"
+    ssh_localhost = "ssh://localhost?remote-store=local"
     store = ssh_localhost + 3 * f"?remote-store={ssh_localhost}"
 
     out = nix.nix(["store", "add-path", "--store", store, "hello"]).run().ok().stdout_plain

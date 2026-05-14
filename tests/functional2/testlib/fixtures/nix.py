@@ -445,7 +445,7 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
     if "nix" not in metafunc.fixturenames or "daemon" in metafunc.fixturenames:
         return
     if not list(metafunc.definition.iter_markers("no_daemon")):
-        protocols = [None, "legacy-combined"]
+        protocols = [None, "legacy-combined", "legacy"]
         # do not enable them the protocols for now
         # protocols += daemon_protocols # noqa ERA001
         ids = protocols
