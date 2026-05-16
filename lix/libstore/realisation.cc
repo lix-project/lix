@@ -91,14 +91,15 @@ StorePath RealisedPath::path() const {
 kj::Promise<Result<void>> RealisedPath::closure(
     Store& store,
     const RealisedPath::Set& startPaths,
-    RealisedPath::Set& ret)
+    RealisedPath::Set& ret,
+    bool includeOutputs)
 try {
     // FIXME: This only builds the store-path closure, not the real realisation
     // closure
     StorePathSet initialStorePaths, pathsClosure;
     for (auto& path : startPaths)
         initialStorePaths.insert(path.path());
-    TRY_AWAIT(store.computeFSClosure(initialStorePaths, pathsClosure));
+    TRY_AWAIT(store.computeFSClosure(initialStorePaths, pathsClosure, false, includeOutputs));
     ret.insert(startPaths.begin(), startPaths.end());
     ret.insert(pathsClosure.begin(), pathsClosure.end());
     co_return result::success();

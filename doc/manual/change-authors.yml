@@ -248,6 +248,11 @@ raito:
   forgejo: raito
   github: RaitoBezarius
 
+rkjnsn:
+  display_name: Erik Jensen
+  forgejo: rkjnsn
+  github: rkjnsn
+
 roberth:
   display_name: Robert Hensing
   github: roberth

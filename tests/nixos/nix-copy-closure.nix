@@ -9,6 +9,7 @@ let
   pkgB = pkgs.wget;
   pkgC = pkgs.hello;
   pkgD = pkgs.tmux;
+  pkgE = pkgs.tree;
 
 in {
   name = "nix-copy-closure";
@@ -17,7 +18,7 @@ in {
     { client =
         { config, lib, pkgs, ... }:
         { virtualisation.writableStore = true;
-          virtualisation.additionalPaths = [ pkgA pkgD.drvPath ];
+          virtualisation.additionalPaths = [ pkgA pkgD.drvPath pkgE.drvPath ];
           nix.settings.substituters = lib.mkForce [ ];
         };
 
@@ -25,7 +26,10 @@ in {
         { config, pkgs, ... }:
         { services.openssh.enable = true;
           virtualisation.writableStore = true;
-          virtualisation.additionalPaths = [ pkgB pkgC ];
+          # Including pkgsC.drvPath (versus just pkgsC) so common build deps
+          # are already in the store, limiting what the --include-outputs test
+          # needs to copy.
+          virtualisation.additionalPaths = [ pkgB pkgC.drvPath ];
         };
     };
 
@@ -68,10 +72,16 @@ in {
     # Copy the closure of package C via the SSH substituter.
     client.fail("nix-store -r ${pkgC}")
 
-    # Copy the derivation of package D's derivation from the client to the server.
+    # Copy the derivation of package D from the client to the server.
     server.fail("nix-store --check-validity ${pkgD.drvPath}")
     client.succeed("nix-copy-closure --to server --gzip ${pkgD.drvPath} >&2")
     server.succeed("nix-store --check-validity ${pkgD.drvPath}")
+    server.fail("nix-store --check-validity ${pkgD}")
+
+    # Copy the derivation and outputs of package E from client to server.
+    server.fail("nix-store --check-validity ${pkgE}")
+    client.succeed("nix-copy-closure --to server --gzip --include-outputs ${pkgE.drvPath} >&2")
+    server.succeed("nix-store --check-validity ${pkgE}")
 
     # FIXME
     # client.succeed(

@@ -987,14 +987,16 @@ kj::Promise<Result<void>> copyClosure(
     const RealisedPath::Set & paths,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
-    SubstituteFlag substitute = NoSubstitute);
+    SubstituteFlag substitute = NoSubstitute,
+    bool includeOutputs = false);
 
 kj::Promise<Result<void>> copyClosure(
     Store & srcStore, Store & dstStore,
     const StorePathSet & paths,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
-    SubstituteFlag substitute = NoSubstitute);
+    SubstituteFlag substitute = NoSubstitute,
+    bool includeOutputs = false);
 
 /**
  * Remove the temporary roots file for this process.  Any temporary
