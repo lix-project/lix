@@ -43,7 +43,7 @@ let
       cmake
       capnproto
     ]
-    ++ (lib.optional stdenv.cc.isClang [ clang-tools ]);
+    ++ (lib.optionals stdenv.cc.isClang [ clang-tools ]);
 
     passthru = {
       inherit nix;
