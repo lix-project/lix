@@ -226,7 +226,7 @@ The `Code-Review+2` from before will stick around through trivial rebases so no 
 We use Buildkite for our CI, usually you will not have to interact directly with it other than reviewing any errors it produces, which are linked from Gerrit.
 
 However in certain cases a CI run will fail due to transient issues not related to your code and you will need to rerun it by hand.
-You can log in to the CI via [SSO](https://buildkite.com/sso/lix-project). On your job you can then hit the "Retry failed" button to rerun it, normally you will not have a repeat of the transient issue.
+You can log in to the CI via [SSO](https://buildkite.com/sso/afnix). On your job you can then hit the "Retry failed" button to rerun it, normally you will not have a repeat of the transient issue.
 If the build still fails on CI issues or all builds are failing this should be reported via [Zulip on #T-infra](https://zulip.lix.systems/#narrow/channel/7-T-infra) or [Matrix on #dev](https://matrix.to/#/%23dev%3Alix.systems?via=lix.systems).
 
 ## Building Lix with `nix`
