@@ -3,6 +3,14 @@
 # Take a look at ./doc/manual/src/contributing/hacking.md for a detailed
 # explanation on how to use this file!
 
+# Pin the shell to bash (anything sufficiently POSIX-y would do)
+# HACK: We use https://github.com/casey/just#positional-arguments
+# and `"@$"` to forward arguments to the inner commands.
+# The reason we require this is that `{{ OPTIONS }}` does not escape any values,
+# and thus requires one additional level of escaping when running `just` commands with e.g. spaces in them.
+# just provides no good solution to this problem, so we have to rely on its forwarding of arguments and shell semantics.
+set shell := ["bash", "-uc"]
+
 outdir := x"${out:-$PWD/outputs/out}"
 builddir := "build"
 
@@ -15,23 +23,27 @@ clean:
     rm -rf {{ quote(builddir) }}/* {{ quote(builddir) }}/.* {{ quote(outdir) }}/* {{ quote(outdir) }}/.*
 
 # Prepare meson for building.
+[positional-arguments]
 setup *OPTIONS:
-    meson setup {{ builddir }} --reconfigure --prefix="{{outdir}}" $mesonFlags {{ OPTIONS }}
+    meson setup {{ builddir }} --reconfigure --prefix="{{outdir}}" $mesonFlags "$@"
 
 # Build lix with extra options
+[positional-arguments]
 build *OPTIONS:
-    meson compile -C {{ builddir }} {{ OPTIONS }}
+    meson compile -C {{ builddir }} "$@"
 
 alias compile := build
 
 # `meson install` will automatically build anything that needs to be built to install it.
 [doc("Install Lix for local development")]
+[positional-arguments]
 install *OPTIONS:
-    meson install --quiet -C {{ builddir }} {{ OPTIONS }}
+    meson install --quiet -C {{ builddir }} "$@"
 
 # Run all tests tests (installs first).
+[positional-arguments]
 test *OPTIONS: (install)
-    meson test -C {{ builddir }} --print-errorlogs --max-lines 10000 {{ OPTIONS }}
+    meson test -C {{ builddir }} --print-errorlogs --max-lines 10000 "$@"
 
 # Run unit tests only
 test-unit *OPTIONS: (test "--suite" "check")
@@ -40,10 +52,9 @@ test-unit *OPTIONS: (test "--suite" "check")
 test-integration *OPTIONS: (test "--suite" "installcheck" OPTIONS)
 
 # Run functional2 tests using pytest directly, allowing for additional arguments to be passed to pytest e.g. for more granular test selection
+[positional-arguments]
 test-functional2 *OPTIONS:
-    cd tests/functional2 && python -m pytest -v {{ OPTIONS }}
-
-alias clang-tidy := lint
+    cd tests/functional2 && python -m pytest -v "$@"
 
 # Lint with `clang-tidy`
 lint:
