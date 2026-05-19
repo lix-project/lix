@@ -17,6 +17,7 @@
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libstore/types-rpc.hh"
 #include "lix/libutil/serialise.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/args.hh"
@@ -1075,6 +1076,14 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     ref<LegacyState> state;
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
+
+    kj::Promise<void> ensurePath(EnsurePathContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            TRY_AWAIT(state->store->ensurePath(path));
+        });
+    }
 
     kj::Promise<void> optimiseStore(OptimiseStoreContext context) override
     {

@@ -8,9 +8,23 @@
 #include <string_view>
 
 namespace nix::rpc {
+
+namespace detail {
+template<typename Arg, typename... Args>
+Store & storeOf(Arg && s, Args &&... args)
+{
+    if constexpr (requires { static_cast<Store &>(s); }) {
+        static_assert(!(requires { static_cast<Store &>(args); } || ...), "only one store parameter allowed");
+        return s;
+    } else {
+        return storeOf(args...);
+    }
+}
+}
+
 inline nix::StorePath from(const StorePath::Reader & sp, auto &&... args)
 {
-    Store & store = std::get<Store &>(std::tie(args...));
+    Store & store = detail::storeOf(args...);
     return store.parseStorePath(to<std::string_view>(sp.getRaw()));
 }
 
@@ -19,7 +33,7 @@ struct Fill<StorePath, nix::StorePath>
 {
     static void fill(StorePath::Builder spb, const nix::StorePath & sp, auto &&... args)
     {
-        Store & store = std::get<Store &>(std::tie(args...));
+        Store & store = detail::storeOf(args...);
         LIX_RPC_FILL(spb, setRaw, store.printStorePath(sp));
     }
 };

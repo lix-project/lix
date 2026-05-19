@@ -147,6 +147,8 @@ public:
 
     /* Overrides for RPC-aware versions of RemoteStore commands */
 
+    kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
+
     kj::Promise<Result<void>> optimiseStore() override;
 
 private:

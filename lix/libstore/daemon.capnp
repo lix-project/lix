@@ -10,6 +10,7 @@ $Cxx.allowCancellation;
 
 using T = import "/lix/libutil/types.capnp";
 using Log = import "/lix/libutil/logging.capnp";
+using Libstore = import "/lix/libstore/types.capnp";
 
 struct ProtocolDescription {
   id @0 :Text;
@@ -51,6 +52,7 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol $T.throws(T.v1Errors) {
+  ensurePath @1 (path :Libstore.StorePath);
   optimiseStore @0 ();
 }
 
