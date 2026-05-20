@@ -21,7 +21,7 @@ class CommandResult:
     """Command arguments which were run"""
     rc: int
     """Return code"""
-    stderr: bytes
+    stderr: bytes | None
     """Outputted stderr"""
     stdout: bytes
     """Outputted stdout"""
@@ -58,7 +58,7 @@ class CommandResult:
     @property
     def stderr_s(self) -> str:
         """Command stderr as str"""
-        return self.stderr.decode("utf-8", errors="replace")
+        return self.stderr.decode("utf-8", errors="replace") if self.stderr is not None else ""
 
     @property
     def stdout_plain(self) -> str:
@@ -132,6 +132,7 @@ class Command:
     _env: ManagedEnv
     exe: Path | None = None
     stdin: bytes | None = None
+    err_to_out: bool = False
     cwd: Path = dataclasses.field(default=None)
     _logger: logging.Logger = dataclasses.field(default=logger, init=False)
     _run: bool = dataclasses.field(default=False, init=False)
@@ -172,12 +173,12 @@ class Command:
         :return: Handle to the running command for interaction or waiting
         """
         self._run = True
-        self._logger.debug("Running Command with args: %s", self.argv)
+        self._logger.debug("Running Command with args: %s; stdin: %s", self.argv, self.stdin)
         proc = subprocess.Popen(
             self.argv,
             executable=self.exe,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT if self.err_to_out else subprocess.PIPE,
             stdin=subprocess.PIPE if self.stdin else subprocess.DEVNULL,
             cwd=self.cwd,
             env=self._env.to_env(),
