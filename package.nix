@@ -248,6 +248,7 @@ let
     p.tappy
     p.ruff
     p.aiohttp
+    p.mistletoe
     (pyxattrForPython p)
   ];
 

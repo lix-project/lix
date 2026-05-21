@@ -1,0 +1,2 @@
+per-file *.md=*
+per-file *.nix=*

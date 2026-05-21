@@ -10,6 +10,7 @@ pytest_plugins = (
     "testlib.fixtures.nix",
     "testlib.fixtures.snapshot",
     "testlib.fixtures.pytest_command",
+    "testlib.repl_util",
 )
 
 
