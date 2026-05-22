@@ -7,7 +7,7 @@ void builtinUnpackChannel(const Path & out, const std::string & channelName, con
 {
     createDirs(out);
 
-    unpackTarfile(src, out);
+    unpackTarfile(fmt("channel:%s", channelName), src, out);
 
     auto entries = readDirectory(out);
     if (entries.size() != 1)

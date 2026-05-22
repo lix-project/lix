@@ -14,8 +14,19 @@ namespace nix {
 
 enum ActivityType : uint8_t {
     actUnknown = 0,
+
+    /** Fields:
+     * 0: string: store path being copied
+     * 1: string: URI of source store
+     * 2: string: URI of destination store
+     */
     actCopyPath = 100,
+
+    /** Fields:
+     * 0: string: URI of the file being transfered
+     */
     actFileTransfer = 101,
+
     actRealise = 102,
     actCopyPaths = 103,
     actBuilds = 104,
@@ -27,6 +38,7 @@ enum ActivityType : uint8_t {
      * 3: int: nrRounds, not used anymore always 1?
      */
     actBuild = 105,
+
     actOptimiseStore = 106,
     actVerifyPaths = 107,
 
@@ -46,6 +58,7 @@ enum ActivityType : uint8_t {
      * 0: string: store path
      */
     actPostBuildHook = 110,
+
     actBuildWaiting = 111,
 };
 

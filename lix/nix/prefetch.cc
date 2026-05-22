@@ -108,10 +108,9 @@ std::tuple<StorePath, Hash> prefetchFile(
 
         /* Optionally unpack the file. */
         if (unpack) {
-            auto act = logger->startActivity(lvlChatty, actUnknown, fmt("unpacking '%s'", url));
             Path unpacked = (Path) tmpDir + "/unpacked";
             createDirs(unpacked);
-            unpackTarfile(tmpFile, unpacked);
+            unpackTarfile(url, tmpFile, unpacked);
 
             /* If the archive unpacks to a single file/directory, then use
                that as the top-level. */

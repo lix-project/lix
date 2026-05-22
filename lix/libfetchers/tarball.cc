@@ -195,7 +195,7 @@ try {
     } else {
         Path tmpDir = createTempDir();
         AutoDelete autoDelete(tmpDir, true);
-        unpackTarfile(store->toRealPath(res.storePath), tmpDir);
+        unpackTarfile(url, store->toRealPath(res.storePath), tmpDir);
         auto members = readDirectory(tmpDir);
         if (members.size() != 1)
             throw nix::Error("tarball '%s' contains an unexpected number of top-level files", url);

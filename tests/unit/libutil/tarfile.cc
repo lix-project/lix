@@ -177,7 +177,7 @@ FileChecker TarFixture::extract()
     AsyncIoRoot aio;
     auto stream = AsyncStringInputStream{sink.s};
 
-    aio.blockOn(unpackTarfile(stream, tmpDir));
+    aio.blockOn(unpackTarfile("test", stream, tmpDir));
 
     return FileChecker{tmpDir};
 }

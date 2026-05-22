@@ -974,7 +974,7 @@ struct GitInputScheme : InputScheme
             });
             Finally const _wait([&] { proc.waitAndCheck(); });
 
-            TRY_AWAIT(unpackTarfile(*proc.getStdout(), tmpDir));
+            TRY_AWAIT(unpackTarfile(_input.toURLString(), *proc.getStdout(), tmpDir));
         }
 
         auto storePath = TRY_AWAIT(

@@ -61,7 +61,8 @@ struct ArchiveDecompressionSource : Source
     size_t read(char * data, size_t len) override {
         struct archive_entry * ae;
         if (!archive) {
-            archive = std::make_unique<TarArchive>(*src, true);
+            // note: this name is not actually used for anything, and we have no way of guessing it
+            archive = std::make_unique<TarArchive>("", *src, true);
             this->archive->check(
                 archive_read_next_header(this->archive->archive.get(), &ae),
                 "failed to read header (%s)"

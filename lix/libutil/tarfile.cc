@@ -4,6 +4,7 @@
 
 #include "async-io.hh"
 #include "file-descriptor.hh"
+#include "libutil/error.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/file-system.hh"
@@ -49,10 +50,11 @@ void TarArchive::check(int err, const std::string & reason)
     }
 }
 
-TarArchive::TarArchive(Source & source, bool raw)
+TarArchive::TarArchive(std::string name, Source & source, bool raw)
     : archive{archive_read_new()}
     , source(&source)
     , buffer(65536)
+    , name(name)
 {
     if (!raw) {
         archive_read_support_filter_all(archive.get());
@@ -71,7 +73,9 @@ TarArchive::TarArchive(Source & source, bool raw)
     );
 }
 
-TarArchive::TarArchive(const Path & path) : archive{archive_read_new()}
+TarArchive::TarArchive(const Path & path, std::optional<std::string> name)
+    : archive{archive_read_new()}
+    , name(name.value_or(path))
 {
     archive_read_support_filter_all(archive.get());
     archive_read_support_format_all(archive.get());
@@ -90,6 +94,8 @@ void TarArchive::close()
 static void extract_archive(TarArchive & archive, const Path & destDir)
 {
     requireCString(destDir);
+
+    logger->startActivity(lvlTalkative, actUnknown, fmt("unpacking tarball '%s'", archive.name));
 
     int flags =
         ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_SECURE_SYMLINKS | ARCHIVE_EXTRACT_SECURE_NODOTDOT;
@@ -134,7 +140,7 @@ static void extract_archive(TarArchive & archive, const Path & destDir)
     archive.close();
 }
 
-kj::Promise<Result<void>> unpackTarfile(AsyncInputStream & source, const Path & destDir)
+kj::Promise<Result<void>> unpackTarfile(std::string name, AsyncInputStream & source, const Path & destDir)
 try {
     Pipe pipe;
     pipe.create();
@@ -143,7 +149,7 @@ try {
         std::launch::async,
         [&](AutoCloseFD fd) {
             FdSource source(fd.get());
-            auto archive = TarArchive(source);
+            auto archive = TarArchive(name, source);
 
             createDirs(destDir);
             extract_archive(archive, destDir);
@@ -159,9 +165,9 @@ try {
     co_return result::current_exception();
 }
 
-void unpackTarfile(const Path & tarFile, const Path & destDir)
+void unpackTarfile(std::string name, const Path & tarFile, const Path & destDir)
 {
-    auto archive = TarArchive(tarFile);
+    auto archive = TarArchive(tarFile, name);
 
     createDirs(destDir);
     extract_archive(archive, destDir);
