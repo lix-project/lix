@@ -153,6 +153,9 @@ public:
 
     kj::Promise<Result<void>> optimiseStore() override;
 
+    kj::Promise<Result<StorePathSet>>
+    queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute) override;
+
 private:
     struct RpcState
     {

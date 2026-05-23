@@ -20,3 +20,9 @@ def test_correct_xml(nix: Nix):
     # Should parse without raising.
     parsed = ElementTree.fromstring(query_output)
     assert parsed.tag == "items"
+
+
+@with_files(get_global_asset_pack("dependencies"))
+def test_status(nix: Nix):
+    """Test that ought to cover `Store::querySubstitutablePaths`"""
+    nix.nix_env(["--query", "--available", "--status", "--file", "./dependencies.nix"]).run().ok()

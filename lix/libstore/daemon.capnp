@@ -55,6 +55,12 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ensurePath @1 (path :Libstore.StorePath);
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   optimiseStore @0 ();
+  queryValidPaths @3 (
+    paths :List(Libstore.StorePath),
+    substitute :Bool
+  ) -> (
+    result :List(Libstore.StorePath)
+  );
 }
 
 # Tunnel the un-RPC'd wire protocol over an RPC-style bytestream
