@@ -53,6 +53,7 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol $T.throws(T.v1Errors) {
   ensurePath @1 (path :Libstore.StorePath);
+  isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   optimiseStore @0 ();
 }
 

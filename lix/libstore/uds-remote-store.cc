@@ -363,6 +363,16 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<bool>>
+RpcRemoteStore::isValidPathUncached(const StorePath & path, const Activity * context)
+try {
+    auto req = rpc->legacyProtocol.isValidPathRequest();
+    RPC_FILL(req, initPath, path, *this);
+    co_return TRY_AWAIT_RPC(req.send()).getResult();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> RpcRemoteStore::optimiseStore()
 try {
     TRY_AWAIT_RPC(rpc->legacyProtocol.optimiseStoreRequest().send());

@@ -1085,6 +1085,15 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> isValidPath(IsValidPathContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            auto result = TRY_AWAIT(state->store->isValidPath(path));
+            context.initResults().setResult(result);
+        });
+    }
+
     kj::Promise<void> optimiseStore(OptimiseStoreContext context) override
     {
         return RPC_IMPL({ TRY_AWAIT(state->store->optimiseStore()); });
