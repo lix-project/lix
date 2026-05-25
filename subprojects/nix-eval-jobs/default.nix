@@ -21,7 +21,7 @@ let
   sourceBase = if srcDir == null then ./. else srcDir;
   package = stdenv.mkDerivation (finalAttrs: {
     pname = "nix-eval-jobs";
-    version = "2.93.0-dev";
+    version = (builtins.fromJSON (builtins.readFile ../../version.json)).version;
     src = lib.fileset.toSource {
       root = sourceBase;
       fileset = lib.fileset.unions [
