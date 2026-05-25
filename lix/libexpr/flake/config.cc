@@ -4,6 +4,7 @@
 #include "lix/libutil/json.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libfetchers/fetch-settings.hh"
+#include <cctype>
 
 namespace nix::flake {
 
@@ -30,6 +31,64 @@ static void writeTrustedList(const TrustedList & trustedList)
     writeFile(path, JSON(trustedList).dump());
 }
 
+static bool
+askForEachSetting(TrustedList & trustedList, std::map<std::string, std::string> & untrustedSettings)
+{
+    // clang-format off
+    constexpr auto prompt =
+        "[" ANSI_BOLD "y" ANSI_NORMAL "]es for now/"
+        "[" ANSI_BOLD "N" ANSI_NORMAL "]o for now/"
+        "[" ANSI_BOLD "a" ANSI_NORMAL "]lways allow";
+    // clang-format on
+
+    auto didTrustedListChange = false;
+    int acceptedCount = 0;
+    for (const auto & [name, valueS] : untrustedSettings) {
+        auto reply =
+            logger
+                ->ask(
+                    fmt("Do you want to allow setting '" ANSI_MAGENTA "%s = %s" ANSI_NORMAL "'? (%s) ",
+                        name,
+                        valueS,
+                        prompt)
+                )
+                .value_or("n");
+
+        reply = toLower(reply);
+
+        static const std::string yes = "yes for now";
+        static const std::string no = "no for now";
+        static const std::string always = "always allow";
+
+        while (true) {
+            if (no.starts_with(reply)) {
+                break;
+            }
+
+            if (yes.starts_with(reply) || always.starts_with(reply)) {
+                if (reply[0] == 'a') {
+                    trustedList[name][valueS] = true;
+                    didTrustedListChange = true;
+                }
+
+                globalConfig.set(name, valueS);
+                acceptedCount++;
+                break;
+            }
+
+            // if the reply wasn't a prefix of any answer, ask the user again
+            reply = logger->ask(fmt("Couldn't understand reply.\n%s: ", prompt)).value_or("n");
+        }
+    }
+
+    if (didTrustedListChange) {
+        writeTrustedList(trustedList);
+    }
+
+    // return false if *none* of the settings were accepted
+    return acceptedCount > 0;
+}
+
 static bool batchAskForSetting(
     bool & negativeTrustOverride,
     TrustedList & trustedList,
@@ -43,77 +102,74 @@ static bool batchAskForSetting(
 
     printWarning("%s", warning);
 
-    auto reply = logger
-                     ->ask(
-                         fmt("Do you want to allow configuration settings to be applied?\nThis may allow the "
-                             "flake to gain root, see the nix.conf manual page (" ANSI_BOLD "y" ANSI_NORMAL
-                             "es for now/" ANSI_BOLD "A" ANSI_NORMAL "llow always/" ANSI_BOLD "n" ANSI_NORMAL
-                             "o/" ANSI_BOLD "N" ANSI_NORMAL "o to all) ")
-                     )
-                     .value_or('n');
+    // clang-format off
+    constexpr auto globalPrompt =
+        "[" ANSI_BOLD "y" ANSI_NORMAL "]es for now/"
+        "[" ANSI_BOLD "n" ANSI_NORMAL "]o for now/"
+        "[" ANSI_BOLD "a" ANSI_NORMAL "]lways allow/"
+        "[" ANSI_BOLD "I" ANSI_NORMAL "]ndividually review";
+    // clang-format on
 
-    if (reply == 'N') {
-        printWarning("Rejecting all untrusted nix.conf entries");
-        printTaggedWarning(
-            "you can set '%s' to '%b' to automatically reject configuration options supplied by "
-            "flakes",
-            "accept-flake-config",
-            false
-        );
-        negativeTrustOverride = true;
-        return false;
-    }
+    auto reply =
+        logger
+            ->ask(
+                fmt("Do you want to allow these configuration settings to be applied?\n" ANSI_BOLD
+                    "This may allow the flake to gain root" ANSI_NORMAL ", see the nix.conf manual page.\n"
+                    "(%s) ",
+                    globalPrompt)
+            )
+            .value_or("I"); // if the answer is empty (or there is no interactive prompt),
+                            // just default to reviewing each individually
 
-    if (reply == 'y' || reply == 'A') {
-        auto alwaysAllow = reply == 'A';
-        for (const auto & [name, valueS] : untrustedSettings) {
+    reply = toLower(reply);
+
+    static const std::string yes = "yes for now";
+    static const std::string no = "no for now";
+    static const std::string always = "always allow";
+    static const std::string review = "individually review";
+
+    // when interactive, loops and reprompts until the reply is one of y/n/a/i (or any prefix of the answers)
+    while (true) {
+        if (no.starts_with(reply)) {
+            printWarning("Rejecting all untrusted nix.conf entries");
+            printTaggedWarning(
+                "you can set '%s' to '%b' to automatically reject configuration options supplied by "
+                "flakes",
+                "accept-flake-config",
+                false
+            );
+            negativeTrustOverride = true;
+            return false;
+        }
+
+        if (yes.starts_with(reply) || always.starts_with(reply)) {
+            auto alwaysAllow = reply[0] == 'a';
+            for (const auto & [name, valueS] : untrustedSettings) {
+                if (alwaysAllow) {
+                    trustedList[name][valueS] = true;
+                }
+                globalConfig.set(name, valueS);
+            }
+
             if (alwaysAllow) {
-                trustedList[name][valueS] = true;
-            }
-            globalConfig.set(name, valueS);
-        }
-
-        if (alwaysAllow) {
-            writeTrustedList(trustedList);
-        }
-
-        return true;
-    } else {
-        printTaggedWarning(
-            "you can set '%s' to '%b' to automatically reject configuration options supplied "
-            "by flakes",
-            "accept-flake-config",
-            false
-        );
-    }
-
-    auto didTrustedListChange = false;
-    for (const auto & [name, valueS] : untrustedSettings) {
-        auto individualReply = logger
-                                   ->ask(
-                                       fmt("Do you want to allow setting '%s = %s'? (" ANSI_BOLD
-                                           "y" ANSI_NORMAL "es for now/" ANSI_BOLD "A" ANSI_NORMAL
-                                           "llow always/" ANSI_BOLD "n" ANSI_NORMAL "o for now) ",
-                                           name,
-                                           valueS)
-                                   )
-                                   .value_or('n');
-
-        if (individualReply == 'y' || individualReply == 'A') {
-            if (individualReply == 'A') {
-                trustedList[name][valueS] = true;
-                didTrustedListChange = true;
+                printTaggedWarning(
+                    "adding these configuration settings to the trusted list at %s, "
+                    "edit it if you want to remove them in the future",
+                    trustedListPath()
+                );
+                writeTrustedList(trustedList);
             }
 
-            globalConfig.set(name, valueS);
+            return true;
         }
-    }
 
-    if (didTrustedListChange) {
-        writeTrustedList(trustedList);
-    }
+        if (review.starts_with(reply)) {
+            return askForEachSetting(trustedList, untrustedSettings);
+        }
 
-    return false;
+        // if the reply wasn't a prefix of any, ask the user again
+        reply = logger->ask(fmt("Couldn't understand reply.\n%s: ", globalPrompt)).value_or("n");
+    }
 }
 
 void ConfigFile::apply()

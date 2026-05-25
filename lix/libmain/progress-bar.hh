@@ -103,7 +103,7 @@ struct ProgressBar : public Logger
 
     void writeToStdout(std::string_view s) override;
 
-    std::optional<char> ask(std::string_view msg) override;
+    std::optional<std::string> ask(std::string_view msg) override;
 
     void setPrintBuildLogs(bool printBuildLogs) override;
 

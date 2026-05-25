@@ -215,7 +215,11 @@ public:
         writeToStdout(fmt(args...));
     }
 
-    virtual std::optional<char> ask(std::string_view s)
+    /**
+     * Try to interactively ask the given question to the user.
+     * If not interactive, or if the answer is an empty string, return std::optional{}
+     */
+    virtual std::optional<std::string> ask(std::string_view s)
     { return {}; }
 
     virtual void setPrintBuildLogs(bool printBuildLogs)

@@ -562,7 +562,7 @@ void ProgressBar::writeToStdout(std::string_view s)
     restoreProgressDisplay(*state);
 }
 
-std::optional<char> ProgressBar::ask(std::string_view msg)
+std::optional<std::string> ProgressBar::ask(std::string_view msg)
 {
     auto state(state_.lock());
     if (state->paused > 0 || !isatty(STDIN_FILENO)) return {};
@@ -571,9 +571,9 @@ std::optional<char> ProgressBar::ask(std::string_view msg)
     std::cerr << msg;
     auto s = trim(readLine(STDIN_FILENO));
     writeLogsToStderr("\e[?2026h"); // begin synchronized update
-    if (s.size() != 1) return {};
     restoreProgressDisplay(*state);
-    return s[0];
+    // only return the string if it's not empty
+    return s.size() != 0 ? s : std::optional<std::string>{};
 }
 
 void ProgressBar::setPrintBuildLogs(bool printBuildLogs)
