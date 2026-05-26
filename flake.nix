@@ -405,7 +405,6 @@
         tests =
           import ./tests/nixos {
             inherit
-              self
               lib
               nixpkgs
               nixpkgsFor

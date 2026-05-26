@@ -1,6 +1,4 @@
 {
-  self,
-  system,
   pkgs,
   ...
 }:
@@ -11,7 +9,7 @@ let
     inherit (pkgs.writers) writePython3Bin;
   };
 
-  build = self.release-jobs.all.build.${system}.doc;
+  build = pkgs.nix.doc;
 
   pythonPackages = (
     p: [

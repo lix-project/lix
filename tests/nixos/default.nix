@@ -1,5 +1,4 @@
 {
-  self,
   lib,
   nixpkgs,
   nixpkgsFor,
@@ -40,7 +39,6 @@ let
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;
-      _module.args.self = self;
     })
     // {
       # allow running tests against older nix versions via `nix eval --apply`
