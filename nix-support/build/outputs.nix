@@ -9,6 +9,9 @@
   nixpkgs,
   nonDarwinSystems,
   nixpkgs-regression,
+  versionSuffix,
+  officialRelease,
+  buildUnreleasedNotes,
 }:
 
 lib.fix (self: {
@@ -131,4 +134,79 @@ lib.fix (self: {
         }
       );
     };
+
+  ciArtifacts = {
+    # Binary package for various platforms.
+    build = forAllSystems (system: self.packages.${system}.nix);
+
+    # Ensure support for lowdown < 3.0 doesn't regress for NixOS 25.11
+    build-lowdown_2_0 = lib.genAttrs [ "aarch64-linux" ] (
+      system:
+      assert lib.versionOlder nixpkgsFor.${system}.native.lowdown.version "3.0.0";
+      self.packages.${system}.nix.override {
+        lowdown = nixpkgsFor.${system}.native.lowdown;
+        lowdown-unsandboxed = nixpkgsFor.${system}.native.lowdown-unsandboxed;
+      }
+    );
+
+    buildStatic = lib.genAttrs linux64BitSystems (system: self.packages.${system}.nix-static);
+
+    rl-next = forAllSystems (
+      system:
+      let
+        rl-next-check =
+          name: dir:
+          let
+            pkgs = nixpkgsFor.${system}.native;
+          in
+          pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
+            LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} --change-authors ${../../doc/manual/change-authors.yml} ${dir} >$out
+          '';
+      in
+      {
+        user = rl-next-check "rl-next" ../../doc/manual/rl-next;
+      }
+    );
+
+    # Completion tests for the Nix REPL.
+    repl-completion = forAllSystems (
+      system: nixpkgsFor.${system}.native.callPackage ../../tests/repl-completion.nix { }
+    );
+
+    # Perl bindings for various platforms.
+    perlBindings = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.perl-bindings);
+
+    # nix-eval-jobs can be built against this Lix.
+    nix-eval-jobs = forAllSystems (system: nixpkgsFor.${system}.native.nix-eval-jobs);
+
+    # Binary tarball for various platforms, containing a Nix store
+    # with the closure of 'nix' package.
+    binaryTarball = forAllSystems (system: nixpkgsFor.${system}.native.nix.passthru.binaryTarball);
+
+    # docker image with Lix inside
+    dockerImage = lib.genAttrs linux64BitSystems (system: self.packages.${system}.dockerImage);
+
+    # API docs for Nix's unstable internal C++ interfaces.
+    internal-api-docs =
+      let
+        nixpkgs = nixpkgsFor.x86_64-linux.native;
+        inherit (nixpkgs) pkgs;
+
+        nix = pkgs.callPackage ../../package.nix {
+          inherit versionSuffix officialRelease buildUnreleasedNotes;
+          inherit (pkgs) build-release-notes;
+          # Required since we don't support gcc stdenv
+          stdenv = pkgs.clangStdenv;
+          internalApiDocs = true;
+          busybox-sandbox-shell = pkgs.busybox-sandbox-shell;
+        };
+      in
+      nix.overrideAttrs (prev: {
+        # This Hydra job is just for the internal API docs.
+        # We don't need the build artifacts here.
+        dontBuild = true;
+        doCheck = false;
+        doInstallCheck = false;
+      });
+  };
 })
