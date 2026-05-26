@@ -155,6 +155,10 @@ public:
 
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 
+    kj::Promise<Result<void>> queryReferrers(const StorePath & path, StorePathSet & referrers) override;
+
+    kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
+
     kj::Promise<Result<StorePathSet>>
     queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute) override;
 
