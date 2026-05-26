@@ -664,6 +664,22 @@ struct CurlMulti
             for (auto & [_, item] : items) {
                 item->finish(CURLE_ABORTED_BY_CALLBACK);
             }
+
+            // make a note that we're dying and acknowledge all pending cancel
+            // requests by individual transfers. not doing this can cause bugs
+            // like #1218 in which the process deadlocks waiting for transfers
+            // to cancel with no download thread to make this happen; this was
+            // likely caused by a transfer requesting a cancellation *exactly*
+            // before a signal was received, causing the curl thread to die in
+            // a hurry without processing cancellations. the transfer is stuck
+            // from that point on, and since this happened in a destructor the
+            // entire process locked up solid. curl exceptions could have also
+            // caused this; we set the `quit` flag just in case to avoid this.
+            auto lock = state_.lock();
+            lock->quit = true;
+            for (auto & [item, promise] : lock->cancel) {
+                promise.set_value();
+            }
         });
 
         bool quit = false;
