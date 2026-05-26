@@ -153,6 +153,8 @@ public:
 
     kj::Promise<Result<void>> optimiseStore() override;
 
+    kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
+
     kj::Promise<Result<StorePathSet>>
     queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute) override;
 

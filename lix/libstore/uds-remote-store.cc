@@ -393,4 +393,15 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
+
+kj::Promise<Result<StorePathSet>> RpcRemoteStore::querySubstitutablePaths(const StorePathSet & paths)
+try {
+    auto req = rpc->legacyProtocol.querySubstitutablePathsRequest();
+    RPC_FILL(req, initPaths, paths, *this);
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<StorePathSet>(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
 }

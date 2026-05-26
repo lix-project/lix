@@ -1114,6 +1114,16 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             RPC_FILL_LIST(context.initResults(), initResult, validPaths, *state->store);
         });
     }
+
+    kj::Promise<void> querySubstitutablePaths(QuerySubstitutablePathsContext context) override
+    {
+        return RPC_IMPL({
+            StorePathSet paths = rpc::to<StorePathSet>(context.getParams().getPaths(), *state->store);
+
+            auto validPaths = TRY_AWAIT(state->store->querySubstitutablePaths(paths));
+            RPC_FILL_LIST(context.initResults(), initResult, validPaths, *state->store);
+        });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server
