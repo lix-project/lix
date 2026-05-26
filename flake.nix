@@ -42,6 +42,7 @@
 
     let
       inherit (nixpkgs) lib;
+      lixSrc = self;
 
       # This notice gets echoed as a dev shell hook, and can be turned off with
       # `touch .nocontribmsg`
@@ -87,8 +88,8 @@
           ""
         else
           "pre${
-            builtins.substring 0 8 (self.lastModifiedDate or self.lastModified or "19700101")
-          }-dev_${self.shortRev or "dirty"}";
+            builtins.substring 0 8 (lixSrc.lastModifiedDate or lixSrc.lastModified or "19700101")
+          }-dev_${lixSrc.shortRev or "dirty"}";
 
       linux32BitSystems = [ "i686-linux" ];
       linux64BitSystems = [
