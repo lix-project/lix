@@ -4,6 +4,7 @@
   nixpkgs,
   nix_2_18,
   nix2container,
+  nixpkgs-regression,
 }:
 
 let
@@ -211,7 +212,7 @@ let
         });
       };
 
-    inherit nix2container nixpkgs;
+    inherit nix2container nixpkgs nixpkgs-regression;
   });
 in
 sc
