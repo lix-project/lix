@@ -8,12 +8,15 @@
 #include "rpc.hh"
 #include <capnp/any.h>
 #include <capnp/common.h>
+#include <concepts>
 #include <cstdint>
 #include <exception>
+#include <optional>
 #include <ranges>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace nix::rpc {
 
@@ -92,6 +95,62 @@ struct Convert<Settings, std::map<std::string, std::string>>
         return result;
     }
 };
+
+namespace detail {
+template<typename>
+struct OptionArgT;
+template<typename T>
+struct OptionArgT<Option<T>>
+{
+    using type = T;
+};
+template<>
+struct OptionArgT<OptionInt64>
+{
+    using type = int64_t;
+};
+
+template<typename T>
+using OptionArg = typename OptionArgT<T>::type;
+
+template<typename T>
+concept OptionT = requires { OptionArgT<T>{}; };
+template<typename T>
+concept OptionReaderT = OptionT<typename T::Reads>;
+}
+
+template<detail::OptionT From, typename To>
+struct Convert<From, std::optional<To>>
+{
+    template<typename... Args>
+        requires requires(From::Reader r, Args... args) { to<To>(r.getSome(), args...); }
+    static std::optional<To> convert(const typename From::Reader & r, Args &&... args)
+    {
+        return r.isSome() ? std::optional<To>{std::in_place, to<To>(r.getSome(), args...)} : std::nullopt;
+    }
+};
+
+template<detail::OptionT O, typename T>
+struct Fill<O, std::optional<T>>
+{
+    template<typename... Args>
+    static void fill(O::Builder builder, const std::optional<T> & from, Args &&... args)
+    {
+        if (from.has_value()) {
+            LIX_RPC_FILL_GENERIC_DEPENDENT(builder, Some, from.value(), args...);
+        } else {
+            builder.setNone();
+        }
+    }
+};
+
+template<detail::OptionReaderT O, typename... Args>
+    requires requires(O o, Args... args) { from(o.getSome(), args...); }
+inline auto from(const O & r, Args &&... args)
+{
+    using To = decltype(from(r.getSome(), args...));
+    return r.isSome() ? std::optional<To>{std::in_place, from(r.getSome(), args...)} : std::nullopt;
+}
 
 namespace error::v1 {
 std::string encodeLossy(const ::nix::ErrorInfo & e);

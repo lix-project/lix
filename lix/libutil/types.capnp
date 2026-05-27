@@ -46,6 +46,21 @@ struct Error {
   traces @2 :List(Data);
 }
 
+struct Option(T) {
+  union {
+    # make sure uninitialized options deserialize to none for some added safety
+    none @0 :Void;
+    some @1 :T;
+  }
+}
+
+struct OptionInt64 {
+  union {
+    none @0 :Void;
+    some @1 :Int64;
+  }
+}
+
 struct Settings {
   struct Setting {
     name @0 :Data;
