@@ -1153,6 +1153,15 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             RPC_FILL_STRUCT(context.initResults(), initResult, outputs, *state->store);
         });
     }
+
+    kj::Promise<void> queryPathFromHashPart(QueryPathFromHashPartContext context) override
+    {
+        return RPC_IMPL({
+            auto hashPart = rpc::to<std::string>(context.getParams().getHashPart());
+            auto path = TRY_AWAIT(state->store->queryPathFromHashPart(hashPart));
+            RPC_FILL_STRUCT(context.initResults(), initResult, path, *state->store);
+        });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server

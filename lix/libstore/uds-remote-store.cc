@@ -439,4 +439,16 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
+
+kj::Promise<Result<std::optional<StorePath>>>
+RpcRemoteStore::queryPathFromHashPart(const std::string & hashPart)
+try {
+    auto req = rpc->legacyProtocol.queryPathFromHashPartRequest();
+    RPC_FILL(req, setHashPart, hashPart);
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::from(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
 }
