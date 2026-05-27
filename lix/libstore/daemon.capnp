@@ -64,6 +64,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   querySubstitutablePaths @4 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
   queryReferrers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryValidDerivers @6 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
+  queryDerivationOutputMap @7 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
 }
 
 # Tunnel the un-RPC'd wire protocol over an RPC-style bytestream

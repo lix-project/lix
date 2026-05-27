@@ -427,4 +427,16 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
+
+kj::Promise<Result<std::map<std::string, StorePath>>>
+RpcRemoteStore::queryDerivationOutputMap(const StorePath & path)
+try {
+    auto req = rpc->legacyProtocol.queryDerivationOutputMapRequest();
+    RPC_FILL(req, initPath, path, *this);
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<std::map<std::string, StorePath>>(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
 }

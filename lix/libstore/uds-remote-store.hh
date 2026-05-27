@@ -153,6 +153,10 @@ public:
 
     kj::Promise<Result<void>> optimiseStore() override;
 
+    kj::Promise<Result<std::map<std::string, StorePath>>>
+    queryDerivationOutputMap(const StorePath & path) override;
+    using RemoteStore::queryDerivationOutputMap;
+
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 
     kj::Promise<Result<void>> queryReferrers(const StorePath & path, StorePathSet & referrers) override;

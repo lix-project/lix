@@ -1144,6 +1144,15 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             RPC_FILL_LIST(context.initResults(), initResult, paths, *state->store);
         });
     }
+
+    kj::Promise<void> queryDerivationOutputMap(QueryDerivationOutputMapContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            auto outputs = TRY_AWAIT(state->store->queryDerivationOutputMap(path));
+            RPC_FILL_STRUCT(context.initResults(), initResult, outputs, *state->store);
+        });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server

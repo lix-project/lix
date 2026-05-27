@@ -293,20 +293,7 @@ kj ::Promise<Result<std::map<std::string, StorePath>>>
 RemoteStore::queryDerivationOutputMap(const StorePath & path, Store * evalStore_)
 try {
     if (!evalStore_) {
-        auto conn(TRY_AWAIT(getConnection()));
-        auto tmp = TRY_AWAIT(conn.sendCommand<std::map<std::string, std::optional<StorePath>>>(
-            WorkerProto::Op::QueryDerivationOutputMap, printStorePath(path)
-        ));
-        std::map<std::string, StorePath> result;
-        for (auto & [name, outPath] : tmp) {
-            if (!outPath) {
-                throw Error(
-                    "remote responded with unknown outpath for %s^%s", path.to_string(), name
-                );
-            }
-            result.emplace(std::move(name), std::move(*outPath));
-        }
-        co_return result;
+        co_return TRY_AWAIT(queryDerivationOutputMap(path));
     } else {
         auto & evalStore = *evalStore_;
         auto outputs = TRY_AWAIT(evalStore.queryStaticDerivationOutputMap(path));
@@ -319,6 +306,25 @@ try {
         }
         co_return outputs;
     }
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj ::Promise<Result<std::map<std::string, StorePath>>>
+RemoteStore::queryDerivationOutputMap(const StorePath & path)
+try {
+    auto conn(TRY_AWAIT(getConnection()));
+    auto tmp = TRY_AWAIT(conn.sendCommand<std::map<std::string, std::optional<StorePath>>>(
+        WorkerProto::Op::QueryDerivationOutputMap, printStorePath(path)
+    ));
+    std::map<std::string, StorePath> result;
+    for (auto & [name, outPath] : tmp) {
+        if (!outPath) {
+            throw Error("remote responded with unknown outpath for %s^%s", path.to_string(), name);
+        }
+        result.emplace(std::move(name), std::move(*outPath));
+    }
+    co_return result;
 } catch (...) {
     co_return result::current_exception();
 }
