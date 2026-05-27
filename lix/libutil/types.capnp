@@ -61,6 +61,16 @@ struct OptionInt64 {
   }
 }
 
+struct Map(Key, Value) {
+  # if this list contains multiple entries with the same key the *first* entry of each
+  # such subsequence must be used. all other entries MUST still be read and validated.
+  entries @0 :List(Entry);
+  struct Entry {
+    key @0 :Key;
+    value @1 :Value;
+  }
+}
+
 struct Settings {
   struct Setting {
     name @0 :Data;

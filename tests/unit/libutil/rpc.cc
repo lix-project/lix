@@ -53,6 +53,60 @@ TEST(RpcConverters, DISABLED_optionConvertersCompile)
     );
 }
 
+TEST(RpcConverters, DISABLED_mapConvertersCompile)
+{
+    using namespace rpc;
+
+    // primitive args
+    RPC_FILL_STRUCT(
+        (Option<Map<OptionInt64, OptionInt64>>::Builder{nullptr}),
+        initSome,
+        (std::map<std::optional<int64_t>, std::optional<int64_t>>{})
+    );
+    static_assert(std::same_as<
+                  decltype(from(Map<OptionInt64, OptionInt64>::Reader{})),
+                  std::map<std::optional<int64_t>, std::optional<int64_t>>>);
+
+    // string args
+    RPC_FILL_STRUCT(
+        (Option<Map<capnp::Data, capnp::Data>>::Builder{nullptr}),
+        initSome,
+        (std::map<std::string, std::string>{})
+    );
+    static_assert(std::same_as<
+                  decltype(to<std::map<std::string, std::string>>(Map<capnp::Data, capnp::Data>::Reader{})),
+                  std::map<std::string, std::string>>);
+    static_assert(std::same_as<
+                  decltype(to<std::map<std::string_view, std::string_view>>(
+                      Map<capnp::Data, capnp::Data>::Reader{}
+                  )),
+                  std::map<std::string_view, std::string_view>>);
+
+    // struct args
+    RPC_FILL_STRUCT(
+        (Option<Map<Option<OptionInt64>, Option<OptionInt64>>>::Builder{nullptr}),
+        initSome,
+        (std::map<std::optional<std::optional<int64_t>>, std::optional<std::optional<int64_t>>>{})
+    );
+    static_assert(std::same_as<
+                  decltype(from(Map<Option<OptionInt64>, Option<rpc::Error>>::Reader{})),
+                  std::map<std::optional<std::optional<int64_t>>, std::optional<ErrorInfo>>>);
+
+    // nested args
+    RPC_FILL_STRUCT(
+        (Option<Map<Map<OptionInt64, OptionInt64>, Map<OptionInt64, OptionInt64>>>::Builder{nullptr}),
+        initSome,
+        (std::map<
+            std::map<std::optional<int64_t>, std::optional<int64_t>>,
+            std::map<std::optional<int64_t>, std::optional<int64_t>>>{})
+    );
+    static_assert(std::same_as<
+                  decltype(from(Map<Map<OptionInt64, OptionInt64>, Map<OptionInt64, OptionInt64>>::Reader{})),
+                  std::map<
+                      std::map<std::optional<int64_t>, std::optional<int64_t>>,
+                      std::map<std::optional<int64_t>, std::optional<int64_t>>>>);
+}
+
 TEST(RpcErrorV1, shortMessage)
 {
     Error e{ErrorInfo{lvlWarn, HintFmt("test message %s", "data")}};

@@ -152,6 +152,91 @@ inline auto from(const O & r, Args &&... args)
     return r.isSome() ? std::optional<To>{std::in_place, from(r.getSome(), args...)} : std::nullopt;
 }
 
+namespace detail {
+template<typename>
+struct MapArgsT;
+template<typename Key, typename Value>
+struct MapArgsT<Map<Key, Value>>
+{
+    using key = Key;
+    using value = Value;
+};
+
+template<typename T>
+using MapKey = typename MapArgsT<T>::key;
+template<typename T>
+using MapValue = typename MapArgsT<T>::value;
+
+template<typename T>
+concept MapT = requires { MapArgsT<T>{}; };
+template<typename T>
+concept MapReaderT = MapT<typename T::Reads>;
+
+template<typename T>
+concept CxxMapT = requires(T map) {
+    typename T::key_type;
+    typename T::mapped_type;
+    // disallow multimaps
+    {
+        map.emplace(std::declval<typename T::key_type>(), std::declval<typename T::mapped_type>())
+    } -> std::same_as<std::pair<typename T::iterator, bool>>;
+};
+}
+
+template<detail::MapT RpcMap, detail::CxxMapT CxxMap>
+struct Convert<RpcMap, CxxMap>
+{
+    using NixKey = typename CxxMap::key_type;
+    using NixValue = typename CxxMap::mapped_type;
+
+    template<typename... Args>
+        requires requires(RpcMap::Entry::Reader r, Args... args) {
+            to<NixKey>(r.getKey(), args...);
+            to<NixValue>(r.getValue(), args...);
+        }
+    static CxxMap convert(const RpcMap::Reader & m, Args &&... args)
+    {
+        CxxMap result;
+        for (auto && e : m.getEntries()) {
+            result.emplace(to<NixKey>(e.getKey(), args...), to<NixValue>(e.getValue(), args...));
+        }
+        return result;
+    }
+};
+
+template<detail::MapT RpcMap, detail::CxxMapT CxxMap>
+struct Fill<RpcMap, CxxMap>
+{
+    template<typename... Args>
+    static void fill(RpcMap::Builder builder, const CxxMap & from, Args &&... args)
+    {
+        auto entries = builder.initEntries(from.size());
+        size_t i = 0;
+        for (auto & [k, v] : from) {
+            LIX_RPC_FILL_GENERIC_DEPENDENT(entries[i], Key, k, args...);
+            LIX_RPC_FILL_GENERIC_DEPENDENT(entries[i], Value, v, args...);
+            ++i;
+        }
+    }
+};
+
+template<detail::MapReaderT Map, typename... Args>
+    requires requires(Map::Reads::Entry::Reader r, Args... args) {
+        from(r.getKey(), args...);
+        from(r.getValue(), args...);
+    }
+auto from(const Map & m, Args &&... args)
+{
+    std::map<
+        decltype(from(m.getEntries().begin()->getKey(), args...)),
+        decltype(from(m.getEntries().begin()->getValue(), args...))>
+        result;
+    for (auto && e : m.getEntries()) {
+        result.emplace(from(e.getKey(), args...), from(e.getValue(), args...));
+    }
+    return result;
+}
+
 namespace error::v1 {
 std::string encodeLossy(const ::nix::ErrorInfo & e);
 std::optional<::nix::ErrorInfo> tryDecode(std::string_view source);
