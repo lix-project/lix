@@ -100,6 +100,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     repair :Bool
   ) -> (result :AddToStoreStream);
   ensurePath @1 (path :Libstore.StorePath);
+  findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   optimiseStore @0 ();
   queryValidPaths @3 (

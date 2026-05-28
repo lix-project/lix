@@ -386,6 +386,15 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<Roots>> RpcRemoteStore::findRoots(bool censor)
+try {
+    auto res = TRY_AWAIT_RPC(rpc->legacyProtocol.findRootsRequest().send());
+
+    co_return rpc::to<Roots>(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<bool>>
 RpcRemoteStore::isValidPathUncached(const StorePath & path, const Activity * context)
 try {

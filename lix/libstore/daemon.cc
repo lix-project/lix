@@ -1192,6 +1192,16 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> findRoots(FindRootsContext context) override
+    {
+        return RPC_IMPL({
+            auto & gcStore = require<GcStore>(*state->store);
+            Roots roots = TRY_AWAIT(gcStore.findRoots(!state->trusted));
+
+            RPC_FILL(context.initResults(), initResult, roots, *state->store);
+        });
+    }
+
     kj::Promise<void> isValidPath(IsValidPathContext context) override
     {
         return RPC_IMPL({
