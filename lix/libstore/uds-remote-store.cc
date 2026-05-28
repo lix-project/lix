@@ -353,6 +353,17 @@ void registerUDSRemoteStore() {
 
 /* Overrides for RPC-aware versions of RemoteStore commands */
 
+kj::Promise<Result<void>> RpcRemoteStore::addIndirectRoot(const Path & path)
+try {
+    auto req = rpc->legacyProtocol.addIndirectRootRequest();
+    RPC_FILL(req, setPath, path);
+    TRY_AWAIT_RPC(req.send());
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> RpcRemoteStore::addTempRoot(const StorePath & path)
 try {
     auto req = rpc->legacyProtocol.addTempRootRequest();

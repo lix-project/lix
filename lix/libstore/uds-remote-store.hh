@@ -156,6 +156,8 @@ public:
         RepairFlag repair
     ) override;
 
+    kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
+
     kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
     kj::Promise<Result<void>> ensurePath(const StorePath & path) override;

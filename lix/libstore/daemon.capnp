@@ -91,6 +91,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     finalize @1 () -> (result :ValidPathInfo);
   }
 
+  addIndirectRoot @11 (path :T.String);
   addTempRoot @10 (path :Libstore.StorePath);
   addToStore @9 (
     name :T.String,

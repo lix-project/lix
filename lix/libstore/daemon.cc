@@ -1081,6 +1081,16 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
 
+    kj::Promise<void> addIndirectRoot(AddIndirectRootContext context) override
+    {
+        return RPC_IMPL({
+            Path path = absPath(rpc::to<std::string>(context.getParams().getPath()));
+
+            auto & indirectRootStore = require<IndirectRootStore>(*state->store);
+            TRY_AWAIT(indirectRootStore.addIndirectRoot(path));
+        });
+    }
+
     kj::Promise<void> addTempRoot(AddTempRootContext context) override
     {
         return RPC_IMPL({
