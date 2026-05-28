@@ -1081,6 +1081,14 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
 
+    kj::Promise<void> addTempRoot(AddTempRootContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            TRY_AWAIT(state->store->addTempRoot(path));
+        });
+    }
+
     // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
     struct AddToStoreStream final : LegacyProtocol::AddToStoreStream::Server
     {
