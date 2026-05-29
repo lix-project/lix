@@ -1184,6 +1184,33 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> collectGarbage(CollectGarbageContext context) override
+    {
+        return RPC_IMPL({
+            auto args = context.getParams();
+            GCOptions options;
+            options.action = from(args.getAction());
+            options.pathsToDelete = rpc::to<StorePathSet>(args.getPathsToDelete(), *state->store);
+            options.ignoreLiveness = args.getIgnoreLiveness();
+            options.maxFreed = args.getMaxFreed();
+
+            GCResults results;
+
+            if (options.ignoreLiveness) {
+                throw Error(
+                    "ignore-liveness is not supported via the Lix daemon; try running the command again with "
+                    "`--store local` and as the user that owns the Nix store (usually root)"
+                );
+            }
+            auto & gcStore = require<GcStore>(*state->store);
+            TRY_AWAIT(gcStore.collectGarbage(options, results));
+
+            auto res = context.initResults();
+            RPC_FILL(res, initPaths, results.paths, *state->store);
+            RPC_FILL(res, setBytesFreed, results.bytesFreed);
+        });
+    }
+
     kj::Promise<void> ensurePath(EnsurePathContext context) override
     {
         return RPC_IMPL({

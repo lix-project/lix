@@ -85,6 +85,13 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     unkeyedValidPathInfo @0 :UnkeyedValidPathInfo;
     path @1 :Libstore.StorePath;
   }
+  enum GCAction {
+    returnLive @0;
+    returnDead @1;
+    deleteDead @2;
+    deleteSpecific @3;
+    tryDeleteSpecific @4;
+  }
 
   interface AddToStoreStream {
     feed @0 (raw :Data) -> stream;
@@ -99,6 +106,15 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);
+  collectGarbage @13 (
+    action :GCAction,
+    pathsToDelete :List(Libstore.StorePath),
+    ignoreLiveness :Bool,
+    maxFreed :UInt64
+  ) -> (
+    paths :List(T.String),
+    bytesFreed :UInt64
+  );
   ensurePath @1 (path :Libstore.StorePath);
   findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);

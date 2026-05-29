@@ -169,4 +169,40 @@ struct Fill<daemon::LegacyProtocol::ValidPathInfo, nix::ValidPathInfo>
         LIX_RPC_FILL_STRUCT(b, initPath, info.path, args...);
     }
 };
+
+namespace daemon {
+inline GCOptions::GCAction from(LegacyProtocol::GCAction ht, auto &&...)
+{
+    switch (ht) {
+    case LegacyProtocol::GCAction::RETURN_LIVE:
+        return GCOptions::GCAction::gcReturnLive;
+    case LegacyProtocol::GCAction::RETURN_DEAD:
+        return GCOptions::GCAction::gcReturnDead;
+    case LegacyProtocol::GCAction::DELETE_DEAD:
+        return GCOptions::GCAction::gcDeleteDead;
+    case LegacyProtocol::GCAction::DELETE_SPECIFIC:
+        return GCOptions::GCAction::gcDeleteSpecific;
+    case LegacyProtocol::GCAction::TRY_DELETE_SPECIFIC:
+        return GCOptions::GCAction::gcTryDeleteSpecific;
+    }
+    throw nix::Error("invalid GCAction received over RPC: %d", uint16_t(ht));
+}
+}
+
+inline daemon::LegacyProtocol::GCAction from(GCOptions::GCAction ht, auto &&...)
+{
+    switch (ht) {
+    case GCOptions::GCAction::gcReturnLive:
+        return daemon::LegacyProtocol::GCAction::RETURN_LIVE;
+    case GCOptions::GCAction::gcReturnDead:
+        return daemon::LegacyProtocol::GCAction::RETURN_DEAD;
+    case GCOptions::GCAction::gcDeleteDead:
+        return daemon::LegacyProtocol::GCAction::DELETE_DEAD;
+    case GCOptions::GCAction::gcDeleteSpecific:
+        return daemon::LegacyProtocol::GCAction::DELETE_SPECIFIC;
+    case GCOptions::GCAction::gcTryDeleteSpecific:
+        return daemon::LegacyProtocol::GCAction::TRY_DELETE_SPECIFIC;
+    }
+    abort(); // unreachable
+}
 }

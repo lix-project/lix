@@ -395,6 +395,24 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>>
+RpcRemoteStore::collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results)
+try {
+    auto req = rpc->legacyProtocol.collectGarbageRequest();
+    req.setAction(rpc::from(options.action));
+    RPC_FILL(req, initPathsToDelete, options.pathsToDelete, *this);
+    RPC_FILL(req, setIgnoreLiveness, options.ignoreLiveness);
+    RPC_FILL(req, setMaxFreed, options.maxFreed);
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    results.paths = rpc::to<PathSet>(res.getPaths());
+    results.bytesFreed = res.getBytesFreed();
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<bool>>
 RpcRemoteStore::isValidPathUncached(const StorePath & path, const Activity * context)
 try {

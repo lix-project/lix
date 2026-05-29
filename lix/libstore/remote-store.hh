@@ -142,6 +142,8 @@ public:
 
     kj::Promise<Result<void>>
     collectGarbage(const GCOptions & options, GCResults & results) override;
+    virtual kj::Promise<Result<void>>
+    collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results);
 
     kj::Promise<Result<void>> optimiseStore() override;
 

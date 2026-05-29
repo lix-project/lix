@@ -577,7 +577,19 @@ kj::Promise<Result<void>>
 RemoteStore::collectGarbage(const GCOptions & options, GCResults & results)
 try {
     auto conn(TRY_AWAIT(getConnection()));
+    TRY_AWAIT(collectGarbageImpl(conn, options, results));
 
+    auto state_(co_await Store::state.lock());
+    state_->pathInfoCache.clear();
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>>
+RemoteStore::collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results)
+try {
     using ResultT = std::tuple<PathSet, uint64_t, uint64_t>;
 
     std::tie(results.paths, results.bytesFreed, std::ignore) = TRY_AWAIT(conn.sendCommand<ResultT>(
@@ -590,10 +602,6 @@ try {
         0, 0, 0
     ));
 
-    {
-        auto state_(co_await Store::state.lock());
-        state_->pathInfoCache.clear();
-    }
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
