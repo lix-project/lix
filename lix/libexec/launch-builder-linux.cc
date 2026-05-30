@@ -59,7 +59,7 @@ static void setPersonality(std::string_view system)
 
 bool pathExists(const fs::path & path)
 {
-    return fs::exists(fs::symlink_status(path));
+    return fs::exists(fs::symlink_status(path)); // NOLINT(lix-foreign-exceptions): caught by main
 }
 
 void bindPath(const fs::path & source, const fs::path & target, bool optional = false)
@@ -72,7 +72,7 @@ void bindPath(const fs::path & source, const fs::path & target, bool optional = 
         }
     };
 
-    auto st = fs::symlink_status(source);
+    auto st = fs::symlink_status(source); // NOLINT(lix-foreign-exceptions): caught by main
     if (st.type() == fs::file_type::not_found) {
         if (optional) {
             return;
@@ -82,14 +82,14 @@ void bindPath(const fs::path & source, const fs::path & target, bool optional = 
     }
 
     if (st.type() == fs::file_type::directory) {
-        fs::create_directories(target);
+        fs::create_directories(target); // NOLINT(lix-foreign-exceptions): caught by main
         bindMount();
     } else if (st.type() == fs::file_type::symlink) {
         // Symlinks can (apparently) not be bind-mounted, so just copy it
-        fs::create_directories(target.parent_path());
-        fs::copy_symlink(source, target);
+        fs::create_directories(target.parent_path()); // NOLINT(lix-foreign-exceptions): caught by main
+        fs::copy_symlink(source, target); // NOLINT(lix-foreign-exceptions): caught by main
     } else {
-        fs::create_directories(target.parent_path());
+        fs::create_directories(target.parent_path()); // NOLINT(lix-foreign-exceptions): caught by main
         if (kj::AutoCloseFd file{open(target.c_str(), O_RDWR | O_CREAT, 0644)}; file == nullptr) {
             throw SysError("could not create %s", target);
         }

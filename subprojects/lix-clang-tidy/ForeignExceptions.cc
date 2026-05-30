@@ -1,11 +1,13 @@
 #include "ForeignExceptions.hh"
 #include <clang/AST/ASTTypeTraits.h>
 #include <clang/AST/Decl.h>
+#include <clang/AST/Expr.h>
 #include <clang/AST/ExprCXX.h>
 #include <clang/AST/StmtCXX.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 #include <clang/ASTMatchers/ASTMatchersMacros.h>
+#include <clang/Basic/ExceptionSpecificationType.h>
 #include <llvm/Support/ErrorHandling.h>
 
 namespace nix::clang_tidy {
@@ -53,6 +55,47 @@ void ForeignExceptions::registerMatchers(ast_matchers::MatchFinder *Finder) {
                   unless(anyOf(isDefaultConstructor(), isCopyConstructor(), isMoveConstructor())))))
               .bind("bad-ctor")),
       this);
+
+  auto std_path = cxxRecordDecl(hasName("std::filesystem::path"));
+  auto fs_error = cxxRecordDecl(hasName("std::filesystem::filesystem_error"));
+  auto std_exception = cxxRecordDecl(hasName("std::exception"));
+  Finder->addMatcher(
+      traverse(
+          clang::TK_AsIs,
+          callExpr(
+              forFunction(functionDecl().bind("fn")),
+              callee(functionDecl(
+                  hasAncestor(namespaceDecl(hasName("std::filesystem"))),
+                  unless(anyOf(
+                      // noexcept functions are obviously fine
+                      isNoThrow(),
+                      // this wants to match ostream << path. templates!
+                      allOf(
+                          hasOverloadedOperatorName("<<"),
+                          hasParameter(0, hasType(references(cxxRecordDecl(
+                                              hasName("std::basic_ostream"))))),
+                          hasParameter(1, hasType(references(std_path)))),
+                      // path / path is fine too, obviously
+                      allOf(hasOverloadedOperatorName("/"),
+                            hasParameter(0, hasType(references(std_path))),
+                            hasParameter(1, hasType(references(std_path)))))))),
+              // we just allow fs::path because it is allowed to throw some
+              // implementation-defined exceptions, none of which we can in
+              // any reasonable way handle in generic code. c++ is *great*.
+              unless(callee(cxxMethodDecl(ofClass(std_path)))),
+              // allow calls if they're wrapped in a proper try/catch. this
+              // doesn't look through immediate-call lambdas by choice; the
+              // check would be incomprehensible if we checked lambdas too.
+              unless(hasAncestor(cxxTryStmt(
+                  forFunction(functionDecl(equalsBoundNode("fn"))),
+                  has(cxxCatchStmt(anyOf(
+                      isCatchAll(),
+                      // allow foreign catches to silence the call site. we
+                      // will still warn for the *catch* site later though.
+                      has(varDecl(hasType(references(fs_error)))),
+                      has(varDecl(hasType(references(std_exception)))))))))))
+              .bind("bad-call")),
+      this);
 }
 
 void ForeignExceptions::check(
@@ -81,6 +124,10 @@ void ForeignExceptions::check(
         "%0 throws non-Lix exceptions. Ensure that they are caught and wrapped "
         "properly, ideally by wrapping the constructor invocation itself.")
         << ctor->getConstructor()->getNameAsString();
+  } else if (const auto *call = Result.Nodes.getNodeAs<CallExpr>("bad-call")) {
+    diag(call->getExprLoc(), "throws non-Lix exceptions. Ensure that they are "
+                             "caught and wrapped properly.")
+        << call->getSourceRange();
   } else {
     llvm_unreachable("bad match");
   }

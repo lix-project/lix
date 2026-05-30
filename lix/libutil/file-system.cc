@@ -833,7 +833,9 @@ void moveFile(const Path & oldName, const Path & newName)
             // For the move to be as atomic as possible, copy to a temporary
             // directory
             fs::path temp = createTempSubdir(newPath.parent_path(), "rename-tmp");
-            Finally removeTemp = [&]() { fs::remove(temp); };
+            Finally removeTemp = [&]() {
+                fs::remove(temp); // NOLINT(lix-foreign-exceptions): lint doesn't see the outer try
+            };
             auto tempCopyTarget = temp / "copy-target";
             fs::remove(newPath);
             printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
