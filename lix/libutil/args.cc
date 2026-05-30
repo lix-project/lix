@@ -9,6 +9,7 @@
 
 #include "lix/libutil/logging.hh"
 
+#include <filesystem>
 #include <glob.h>
 
 namespace nix {
@@ -395,8 +396,19 @@ static bool isAcceptableLixSubcommandExe(const std::filesystem::path & exe_path)
 {
     namespace fs = std::filesystem;
 
-    return fs::is_regular_file(exe_path) &&
-        (fs::status(exe_path).permissions() & (fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec)) != fs::perms::none;
+    try {
+        return fs::is_regular_file(exe_path)
+            && (fs::status(exe_path).permissions()
+                & (fs::perms::owner_exec | fs::perms::group_exec | fs::perms::others_exec))
+            != fs::perms::none;
+    } catch (fs::filesystem_error & fs_exc) { // NOLINT(lix-foreign-exceptions)
+        if (fs_exc.code() != std::errc::no_such_file_or_directory
+            && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied)
+        {
+            throw Error("%s", Uncolored(fs_exc.what()));
+        }
+        return false;
+    }
 }
 
 std::optional<ref<Command>> searchForCustomSubcommand(AsyncIoRoot & aio, const std::string_view & command, const std::string_view & prefix, const Strings & searchPaths)
@@ -412,10 +424,10 @@ std::optional<ref<Command>> searchForCustomSubcommand(AsyncIoRoot & aio, const s
                 debug("Found requested external subcommand '%s' in '%s'", command, path);
                 return make_ref<ExternalCommand>(aio, path);
             }
-        } catch (fs::filesystem_error & fs_exc) { // NOLINT(lix-foreign-exceptions)
-            if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
-                throw SysError("while searching for the subcommand '%1%' in search path '%2%': '%3%'", command, searchPath, fs_exc.what());
-            }
+        } catch (Error & exc) {
+            exc.addTrace(
+                {}, "while searching for the subcommand '%1%' in search path '%2%'", command, searchPath
+            );
         }
     }
 
@@ -430,33 +442,42 @@ Strings searchForAllAvailableCustomSubcommands(const std::string_view & prefix, 
     for (auto searchPath : searchPaths) {
         if (searchPath.empty()) continue;
 
-        if (!fs::exists(searchPath) || !fs::is_directory(searchPath)) {
-            // TODO(Raito): this will break all the time our functional tests
-            // for people with garbage in their $PATH which is my personal case.
+        try {
+            if (!fs::exists(searchPath) || !fs::is_directory(searchPath)) {
+                // TODO(Raito): this will break all the time our functional tests
+                // for people with garbage in their $PATH which is my personal case.
 
-            // warn("The search path '%s' for custom subcommands does not exist or is not a directory, ignoring...", searchPath);
-            continue;
-        }
+                // warn("The search path '%s' for custom subcommands does not exist or is not a directory,
+                // ignoring...", searchPath);
+                continue;
+            }
 
-        // Browse per prefix.
-        for (const auto& entry : fs::directory_iterator(searchPath)) {
-            try {
-                if (isAcceptableLixSubcommandExe(entry.path())) {
-                    auto filename = entry.path().filename().string();
+            // Browse per prefix.
+            for (const auto & entry : fs::directory_iterator(searchPath)) {
+                try {
+                    if (isAcceptableLixSubcommandExe(entry.path())) {
+                        auto filename = entry.path().filename().string();
 
-                    if (filename.starts_with(prefix)) {
-                        auto suffix = filename.substr(prefix.size());
+                        if (filename.starts_with(prefix)) {
+                            auto suffix = filename.substr(prefix.size());
 
-                        debug("Found custom subcommand ('%s') '%s'", filename, suffix);
+                            debug("Found custom subcommand ('%s') '%s'", filename, suffix);
 
-                        commandNames.push_back(suffix);
+                            commandNames.push_back(suffix);
+                        }
                     }
-                }
-            } catch (fs::filesystem_error & fs_exc) { // NOLINT(lix-foreign-exceptions)
-                if (fs_exc.code() != std::errc::no_such_file_or_directory && fs_exc.code() != std::errc::not_a_directory && fs_exc.code() != std::errc::permission_denied) {
-                    throw SysError("while searching for all available commands in search path '%1%', while analyzing '%2%': %3%'", searchPath, entry.path(), fs_exc.what());
+                } catch (Error & exc) {
+                    exc.addTrace(
+                        {},
+                        "while searching for all available commands in search path '%1%', while analyzing "
+                        "'%2%'",
+                        searchPath,
+                        entry.path()
+                    );
                 }
             }
+        } catch (fs::filesystem_error & exc) { // NOLINT(lix-foreign-exceptions)
+            throw Error("failed to look up available subcommands in %s: %s", searchPath, exc.what());
         }
     }
 

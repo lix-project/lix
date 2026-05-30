@@ -767,7 +767,7 @@ void setWriteTime(const fs::path & p, const struct stat & st)
 }
 
 void copy(const fs::directory_entry & from, const fs::path & to, CopyFileFlags flags)
-{
+try {
     // TODO: Rewrite the `is_*` to use `symlink_status()`
     auto statOfFrom = lstat(from.path());
     auto fromStatus = from.symlink_status();
@@ -801,8 +801,9 @@ void copy(const fs::directory_entry & from, const fs::path & to, CopyFileFlags f
             fs::permissions(from.path(), fs::perms::owner_write, fs::perm_options::add | fs::perm_options::nofollow);
         fs::remove(from.path());
     }
+} catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
+    throw Error("failed to copy %s to %s: %s", from.path(), to, e.what());
 }
-
 
 void copyFile(const Path & oldPath, const Path & newPath, CopyFileFlags flags)
 {
@@ -811,28 +812,35 @@ void copyFile(const Path & oldPath, const Path & newPath, CopyFileFlags flags)
 
 void renameFile(const Path & oldName, const Path & newName)
 {
-    fs::rename(oldName, newName);
+    try {
+        fs::rename(oldName, newName);
+    } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
+        throw Error("failed to rename %s to %s: %s", oldName, newName, e.what());
+    }
 }
 
 void moveFile(const Path & oldName, const Path & newName)
 {
     try {
-        renameFile(oldName, newName);
+        fs::rename(oldName, newName);
     } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
         auto oldPath = fs::path(oldName);
         auto newPath = fs::path(newName);
         // For the move to be as atomic as possible, copy to a temporary
         // directory
-        fs::path temp = createTempSubdir(newPath.parent_path(), "rename-tmp");
-        Finally removeTemp = [&]() { fs::remove(temp); };
-        auto tempCopyTarget = temp / "copy-target";
-        if (e.code().value() == EXDEV) {
-            fs::remove(newPath);
-            printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
-            copy(fs::directory_entry(oldPath), tempCopyTarget, { .deleteAfter = true });
-            renameFile(tempCopyTarget, newPath);
+        try {
+            fs::path temp = createTempSubdir(newPath.parent_path(), "rename-tmp");
+            Finally removeTemp = [&]() { fs::remove(temp); };
+            auto tempCopyTarget = temp / "copy-target";
+            if (e.code().value() == EXDEV) {
+                fs::remove(newPath);
+                printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
+                copy(fs::directory_entry(oldPath), tempCopyTarget, {.deleteAfter = true});
+                fs::rename(tempCopyTarget, newPath);
+            }
+        } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
+            throw Error("failed to move %s to %s: %s", oldName, newName, e.what());
         }
     }
 }
-
 }
