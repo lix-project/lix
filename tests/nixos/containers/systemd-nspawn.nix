@@ -49,7 +49,7 @@ runCommand "test"
   }
   ''
     root=$(pwd)/root
-    mkdir -p $root $root/etc
+    mkdir -p $root $root/etc $root/usr/bin
 
     export > $root/.env
 
