@@ -824,22 +824,23 @@ void moveFile(const Path & oldName, const Path & newName)
     try {
         fs::rename(oldName, newName);
     } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
-        auto oldPath = fs::path(oldName);
-        auto newPath = fs::path(newName);
-        // For the move to be as atomic as possible, copy to a temporary
-        // directory
         try {
+            if (e.code().value() != EXDEV) {
+                throw SysError(e.code().value(), "failed to move %s to %s", oldName, newName);
+            }
+            auto oldPath = fs::path(oldName);
+            auto newPath = fs::path(newName);
+            // For the move to be as atomic as possible, copy to a temporary
+            // directory
             fs::path temp = createTempSubdir(newPath.parent_path(), "rename-tmp");
             Finally removeTemp = [&]() { fs::remove(temp); };
             auto tempCopyTarget = temp / "copy-target";
-            if (e.code().value() == EXDEV) {
-                fs::remove(newPath);
-                printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
-                copy(fs::directory_entry(oldPath), tempCopyTarget, {.deleteAfter = true});
-                fs::rename(tempCopyTarget, newPath);
-            }
+            fs::remove(newPath);
+            printTaggedWarning("Can’t rename %s as %s, copying instead", oldName, newName);
+            copy(fs::directory_entry(oldPath), tempCopyTarget, {.deleteAfter = true});
+            fs::rename(tempCopyTarget, newPath);
         } catch (fs::filesystem_error & e) { // NOLINT(lix-foreign-exceptions)
-            throw Error("failed to move %s to %s: %s", oldName, newName, e.what());
+            throw SysError(e.code().value(), "failed to move %s to %s", oldName, newName);
         }
     }
 }

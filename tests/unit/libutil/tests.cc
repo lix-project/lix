@@ -1,3 +1,4 @@
+#include "lix/libstore/temporary-dir.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/processes.hh"
@@ -208,6 +209,31 @@ namespace nix {
 
     TEST(pathExists, bogusPathDoesNotExist) {
         ASSERT_FALSE(pathExists("/schnitzel/darmstadt/pommes"));
+    }
+
+    /* ----------------------------------------------------------------------------
+     * moveFile
+     * --------------------------------------------------------------------------*/
+
+    TEST(moveFile, handlesErrors)
+    {
+        auto tmpDir = createTempDir();
+        AutoDelete _delete(tmpDir);
+
+        auto source = tmpDir + "/source";
+        auto target = tmpDir + "/target";
+
+        // xdev should cause copies, everything else must throw. this is a small selection.
+        ASSERT_THROW(moveFile(source, target), Error); // ENOENT
+        createDirs(source);
+        createSymlink(target, target);
+        ASSERT_THROW(moveFile(source, target), Error); // ENOTDIR
+        ASSERT_THROW(moveFile(target, source), Error); // EISDIR
+        ASSERT_THROW(moveFile(target + "/foo", source), Error); // ELOOP
+
+        deletePath(target);
+        createDirs(target + "/snafu");
+        ASSERT_THROW(moveFile(source, target), Error); // ENOTEMPTY or EEXIST
     }
 
     /* ----------------------------------------------------------------------------
