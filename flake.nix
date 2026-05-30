@@ -180,7 +180,7 @@
           nixVersions = prev.nixVersions // {
             # Nix 2.18 has been removed from Nixpkgs ≥ 25.05, so we need to reintroduce it ourselves for our tests.
             nix_2_18 =
-              nix_2_18.outputs.packages.${currentStdenv.hostPlatform.system}.default.overrideAttrs
+              (import nix_2_18).packages.${currentStdenv.hostPlatform.system}.default.overrideAttrs
                 (_: {
                   pname = "nix";
                 });
