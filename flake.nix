@@ -2,7 +2,7 @@
   description = "Lix: A modern, delicious implementation of the Nix package manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11-small";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05-small";
     nixpkgs-regression.url = "github:NixOS/nixpkgs/215d4d0fd80ca5163643b03a33fde804a29cc1e2";
 
     # Required because Nix 2.18 is not in Nixpkgs ≥ 25.05 anymore.

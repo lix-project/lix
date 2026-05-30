@@ -196,15 +196,5 @@ lib.fix (self: {
         doCheck = false;
         doInstallCheck = false;
       });
-  }
-  // lib.optionalAttrs (nixpkgsFor ? aarch64-linux) {
-    build-lowdown_2_0 = lib.genAttrs [ "aarch64-linux" ] (
-      system:
-      assert lib.versionOlder nixpkgsFor.${system}.native.lowdown.version "3.0.0";
-      self.packages.${system}.nix.override {
-        lowdown = nixpkgsFor.${system}.native.lowdown;
-        lowdown-unsandboxed = nixpkgsFor.${system}.native.lowdown-unsandboxed;
-      }
-    );
   };
 })

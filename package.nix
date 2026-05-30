@@ -691,7 +691,7 @@ stdenv.mkDerivation (finalAttrs: {
         doxygen,
         glibcLocales,
         just,
-        nixfmt-rfc-style,
+        nixfmt,
         skopeo,
         tree,
 
@@ -765,7 +765,7 @@ stdenv.mkDerivation (finalAttrs: {
               # docker image tool
               skopeo
               just
-              nixfmt-rfc-style
+              nixfmt
               # Included above when internalApiDocs is true, but we set that to
               # false intentionally to save dev build time.
               # To build them in a dev shell, you can set -Dinternal-api-docs=enabled when configuring.

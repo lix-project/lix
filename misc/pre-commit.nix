@@ -140,7 +140,7 @@ pre-commit-run {
     treefmt = {
       enable = true;
       settings.formatters = [
-        pkgs.nixfmt-rfc-style
+        pkgs.nixfmt
         pkgs.ruff
       ];
     };
