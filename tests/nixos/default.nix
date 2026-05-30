@@ -8,6 +8,8 @@ let
 
   nixos-lib = import (nixpkgs + "/nixos/lib") { };
 
+  filterPlatforms = lib.filter (p: nixpkgsFor?${p});
+
   # https://nixos.org/manual/nixos/unstable/index.html#sec-calling-nixos-tests
   runNixOSTestFor =
     system: test:
@@ -186,7 +188,7 @@ in
 
   cgroups = runNixOSTestFor "x86_64-linux" ./cgroups;
 
-  setuid = lib.genAttrs [ "i686-linux" "x86_64-linux" ] (
+  setuid = lib.genAttrs (filterPlatforms [ "i686-linux" "x86_64-linux" ]) (
     system: runNixOSTestFor system ./setuid/setuid.nix
   );
 
