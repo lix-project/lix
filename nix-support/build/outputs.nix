@@ -153,9 +153,7 @@ lib.fix (self: {
             LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} --change-authors ${../../doc/manual/change-authors.yml} ${dir} >$out
           '';
       in
-      {
-        user = rl-next-check "rl-next" ../../doc/manual/rl-next;
-      }
+      rl-next-check "rl-next" ../../doc/manual/rl-next
     );
 
     # Completion tests for the Nix REPL.
