@@ -1,9 +1,11 @@
 #include "lix/libstore/uds-remote-store.hh"
 #include "daemon.capnp.h"
+#include "filetransfer.hh"
 #include "globals.hh"
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
 #include "libutil/logging-rpc.hh"
+#include "libutil/logging.hh"
 #include "libutil/rpc.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
@@ -226,7 +228,7 @@ try {
     if (!TRY_AWAIT(prepareRpcConnection(*conn))) {
         throw ProtocolUnavailable("");
     }
-    TRY_AWAIT(setOptions(*conn));
+    TRY_AWAIT(setOptions());
     *(co_await connection.lock()) = conn;
     co_return result::success();
 } catch (...) {
@@ -529,6 +531,42 @@ try {
 
     auto res = TRY_AWAIT_RPC(stream.finalizeRequest().send());
     co_return make_ref<ValidPathInfo>(from(res.getResult(), *this));
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> RpcRemoteStore::setOptions()
+try {
+    auto req = rpc->legacyProtocol.setOptionsRequest();
+    req.setKeepFailed(settings.keepFailed);
+    req.setKeepGoing(settings.keepGoing);
+    req.setTryFallback(settings.tryFallback);
+    req.setVerbosity(static_cast<rpc::Verbosity>(getVerbosity()));
+    req.setMaxBuildJobs(settings.maxBuildJobs);
+    req.setMaxSilentTime(settings.maxSilentTime);
+    req.setVerboseBuild(settings.verboseBuild);
+    req.setBuildCores(settings.buildCores);
+    req.setUseSubstitutes(settings.useSubstitutes);
+
+    std::map<std::string, Config::SettingInfo> overrides;
+    settings.getSettings(overrides, true); // libstore settings
+    fileTransferSettings.getSettings(overrides, true);
+    overrides.erase(settings.keepFailed.name);
+    overrides.erase(settings.keepGoing.name);
+    overrides.erase(settings.tryFallback.name);
+    overrides.erase(settings.maxBuildJobs.name);
+    overrides.erase(settings.maxSilentTime.name);
+    overrides.erase(settings.buildCores.name);
+    overrides.erase(settings.useSubstitutes.name);
+    overrides.erase(loggerSettings.showTrace.name);
+    overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
+    overrides.erase(settings.pluginFiles.name);
+    overrides.erase(settings.storeUri.name); // the daemon *is* the store
+    overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
+    RPC_FILL(req, initSettingsOverrides, overrides);
+    TRY_AWAIT_RPC(req.send());
+
+    co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }

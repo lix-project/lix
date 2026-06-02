@@ -171,6 +171,8 @@ public:
 
     kj::Promise<Result<void>> optimiseStore() override;
 
+    kj::Promise<Result<void>> setOptions() override;
+
     kj::Promise<Result<std::map<std::string, StorePath>>>
     queryDerivationOutputMap(const StorePath & path) override;
     using RemoteStore::queryDerivationOutputMap;

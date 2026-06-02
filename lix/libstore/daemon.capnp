@@ -130,6 +130,18 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   queryValidDerivers @6 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryDerivationOutputMap @7 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
   queryPathFromHashPart @8 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
+  setOptions @14 (
+    keepFailed :Bool,
+    keepGoing :Bool,
+    tryFallback :Bool,
+    verbosity :T.Verbosity,
+    maxBuildJobs :UInt32,
+    maxSilentTime :UInt64,
+    verboseBuild :Bool,
+    buildCores :UInt32,
+    useSubstitutes :Bool,
+    settingsOverrides :T.Settings
+  );
 }
 
 # Tunnel the un-RPC'd wire protocol over an RPC-style bytestream

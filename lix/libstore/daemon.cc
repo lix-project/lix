@@ -1306,6 +1306,32 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             RPC_FILL_STRUCT(context.initResults(), initResult, path, *state->store);
         });
     }
+
+    kj::Promise<void> setOptions(SetOptionsContext context) override
+    {
+        return RPC_IMPL({
+            auto args = context.getParams();
+
+            ClientSettings clientSettings;
+            clientSettings.keepFailed = args.getKeepFailed();
+            clientSettings.keepGoing = args.getKeepGoing();
+            clientSettings.tryFallback = args.getTryFallback();
+            clientSettings.verbosity = static_cast<Verbosity>(args.getVerbosity());
+            clientSettings.maxBuildJobs = args.getMaxBuildJobs();
+            clientSettings.maxSilentTime = args.getMaxSilentTime();
+            clientSettings.verboseBuild = args.getVerboseBuild();
+            clientSettings.buildCores = args.getBuildCores();
+            clientSettings.useSubstitutes = args.getUseSubstitutes();
+
+            for (auto entry : args.getSettingsOverrides().getMap()) {
+                auto name = rpc::to<std::string>(entry.getName());
+                auto value = rpc::to<std::string>(entry.getValue());
+                clientSettings.overrides.emplace(name, value);
+            }
+
+            clientSettings.apply(state->trusted);
+        });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server
