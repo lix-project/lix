@@ -124,6 +124,45 @@ def test_eval_error() -> None:
         assert "this is an evaluation error" in attr["error"]
 
 
+def test_apply() -> None:
+    with TemporaryDirectory() as tempdir:
+        applyExpr = """drv: {
+            the-name = drv.name;
+            version = drv.version or null;
+        }"""
+
+        results, _ = evaluate(
+            tempdir,
+            0,
+            ["--workers", "1", "--apply", applyExpr, "--flake", ".#hydraJobs"],
+        )
+
+        assert len(results) == 4  # sanity check that we assert against all jobs
+
+        # Check that nix-eval-jobs applied the expression correctly,
+        # exposing the result under the `extraValue` key, and extracted
+        # 'version' as 'version' and 'name' as 'the-name'
+        dotted_job = results[0]
+        assert dotted_job["attr"] == '"dotted.attr"'
+        assert dotted_job["extraValue"]["the-name"].startswith("hello-")
+        assert dotted_job["extraValue"]["version"] is not None
+
+        built_job = results[1]
+        assert built_job["attr"] == "builtJob"
+        assert built_job["extraValue"]["the-name"] == "job1"
+        assert built_job["extraValue"]["version"] is None
+
+        recurse_drv = results[2]
+        assert recurse_drv["attr"] == "recurse.drvB"
+        assert recurse_drv["extraValue"]["the-name"] == "drvB"
+        assert recurse_drv["extraValue"]["version"] is None
+
+        substituted_job = results[3]
+        assert substituted_job["attr"] == "substitutedJob"
+        assert substituted_job["extraValue"]["the-name"].startswith("hello-")
+        assert substituted_job["extraValue"]["version"] is not None
+
+
 @pytest.mark.infiniterecursion
 def test_recursion_error() -> None:
     with TemporaryDirectory() as tempdir:

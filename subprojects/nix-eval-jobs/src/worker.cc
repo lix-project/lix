@@ -28,6 +28,7 @@
 #include <lix/libexpr/symbol-table.hh>
 #include <lix/libutil/types.hh>
 #include <lix/libexpr/value.hh>
+#include <lix/libexpr/value-to-json.hh>
 #include <lix/libutil/terminal.hh>
 #include <exception>
 #include <numeric>
@@ -200,6 +201,21 @@ try {
                     if (args.constituents) {
                         maybeConstituents =
                             readConstituents(&v, state, evaluator);
+                    }
+                    if (args.applyExpr != "") {
+                        nix::Expr &applyExpr = state->ctx.parseExprFromString(
+                            args.applyExpr, nix::CanonPath::fromCwd());
+
+                        nix::Value vApply = state->eval(applyExpr);
+                        nix::Value vRes =
+                            state->callFunction(vApply, v, nix::noPos);
+                        state->forceAttrs(
+                            vRes, nix::noPos,
+                            "apply needs to evaluate to an attrset");
+
+                        nix::NixStringContext context;
+                        reply["extraValue"] = nix::printValueAsJSON(
+                            *state, true, vRes, nix::noPos, context);
                     }
                     auto drv = Drv(attrPathS, *state, *drvInfo, args,
                                    maybeConstituents);
