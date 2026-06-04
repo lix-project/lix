@@ -20,6 +20,7 @@ class MyArgs : virtual public nix::MixEvalArgs,
     nix::AsyncIoRoot & aio() override { return aio_; }
   public:
     std::string releaseExpr;
+    std::string applyExpr;
     nix::Path gcRootsDir;
     bool flake = false;
     bool fromArgs = false;

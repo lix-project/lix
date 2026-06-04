@@ -12,7 +12,8 @@
 
 #include "eval-args.hh"
 
-MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(aio) {
+MyArgs::MyArgs(nix::AsyncIoRoot &aio)
+    : MixCommonArgs("nix-eval-jobs"), aio_(aio) {
     addFlag({
         .longName = "help",
         .description = "show usage information",
@@ -22,7 +23,8 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
                 if (flag->hidden || hiddenCategories.count(flag->category)) {
                     continue;
                 }
-                std::cout << nix::fmt("  --%-20s %s\n", name, flag->description);
+                std::cout << nix::fmt("  --%-20s %s\n", name,
+                                      flag->description);
             }
             ::exit(0);
         }},
@@ -98,6 +100,14 @@ MyArgs::MyArgs(nix::AsyncIoRoot & aio) : MixCommonArgs("nix-eval-jobs"), aio_(ai
              .shortName = 'E',
              .description = "treat the argument as a Nix expression",
              .handler = {&fromArgs, true}});
+
+    addFlag({.longName = "apply",
+             .description =
+                 "Apply provided Nix function to each derivation. The result "
+                 "of this function will be serialized as a JSON value and "
+                 "stored inside `\"extraValue\"` key of the json line output.",
+             .labels = {"expr"},
+             .handler = {&applyExpr}});
 
     // usually in MixFlakeOptions
     addFlag({

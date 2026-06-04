@@ -46,6 +46,7 @@ executable.
 $ nix-eval-jobs --help
 USAGE: nix-eval-jobs [options] expr
 
+  --apply                Apply provided Nix function to each derivation. The result of this function will be serialized as a JSON value and stored inside `"extraValue"` key of the json line output.
   --arg                  Pass the value *expr* as the argument *name* to Nix functions.
   --argstr               Pass the string *string* as the argument *name* to Nix functions.
   --check-cache-status   Check if the derivations are present locally or in any configured substituters (i.e. binary cache). The information will be exposed in the `isCached` field of the JSON output.
