@@ -42,6 +42,7 @@
   cacert,
   mercurial,
   meson,
+  mimalloc,
   ninja,
   openssl,
   passt,
@@ -75,6 +76,9 @@
 
   # Support garbage collection in the evaluator.
   enableGC ? sanitize == null || !builtins.elem "address" sanitize,
+  # Whether to use mimalloc over the default `malloc`
+  # Significantly improves evaluation performance on allocation-heavy workloads
+  useMimalloc ? true,
   # List of Meson sanitize options. Accepts values of b_sanitize, e.g.
   # "address", "undefined", "thread".
   # Enabling the "address" sanitizer will disable garbage collection in the evaluator.
@@ -467,6 +471,7 @@ stdenv.mkDerivation (finalAttrs: {
       # so we must explicitly enable or disable features that we are not passing
       # dependencies for.
       (lib.mesonEnable "gc" enableGC)
+      (lib.mesonEnable "mimalloc" useMimalloc)
       (lib.mesonEnable "internal-api-docs" internalApiDocs)
       (lib.mesonEnable "dtrace-probes" withDtrace)
       (lib.mesonBool "enable-tests" (finalAttrs.finalPackage.doCheck || lintInsteadOfBuild))
@@ -574,7 +579,8 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals (finalAttrs.dontBuild) maybePropagatedInputs
   # I am so sorry. This is because checkInputs are required to pass
   # configure, but we don't actually want to *run* the checks here.
-  ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs;
+  ++ lib.optionals lintInsteadOfBuild finalAttrs.checkInputs
+  ++ lib.optional useMimalloc mimalloc;
 
   checkInputs = [
     gtest

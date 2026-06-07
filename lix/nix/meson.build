@@ -172,6 +172,7 @@ nix = executable(
   dependencies : [
     liblix,
     boehm,
+    mimalloc,
     capnp_rpc,
     nlohmann_json,
     kj,

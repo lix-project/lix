@@ -352,6 +352,8 @@ gc_opt = get_option('gc').disable_if(
 boehm = dependency('bdw-gc', required : gc_opt, version : '>=8.2.6', include_type : 'system')
 configdata.set('HAVE_BOEHMGC', boehm.found().to_int())
 
+mimalloc = dependency('mimalloc', required: get_option('mimalloc'))
+
 boost = dependency('boost', required : true, include_type : 'system')
 kj = dependency('kj-async', required : true, include_type : 'system')
 capnp = dependency('capnp', required : true, include_type : 'system')
