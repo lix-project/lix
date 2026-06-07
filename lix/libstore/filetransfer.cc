@@ -23,6 +23,7 @@
 #include <kj/encoding.h>
 #include <kj/time.h>
 #include <memory>
+#include <mutex>
 
 #if ENABLE_DTRACE
 #include "trace-probes.gen.hh"
@@ -196,6 +197,12 @@ struct TransferItem
         );
         curl_easy_setopt(req.get(), CURLOPT_PIPEWAIT, 1);
         if (fileTransferSettings.enableHttp3) {
+            if (!fileTransferSettings.enableHttp2) {
+                static std::once_flag warningPrinted;
+                std::call_once(warningPrinted, [] {
+                    printTaggedWarning("http3 implies http2; ignoring explicit http2 setting.");
+                });
+            }
             curl_easy_setopt(req.get(), CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_3);
         } else if (fileTransferSettings.enableHttp2) {
             curl_easy_setopt(req.get(), CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
