@@ -180,6 +180,9 @@ public:
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;
 
+    kj::Promise<Result<void>>
+    querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos) override;
+
     kj::Promise<Result<StorePathSet>> querySubstitutablePaths(const StorePathSet & paths) override;
 
     kj::Promise<Result<void>> queryReferrers(const StorePath & path, StorePathSet & referrers) override;

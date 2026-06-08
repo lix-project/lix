@@ -504,6 +504,14 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>>
+RpcRemoteStore::querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos)
+try {
+    throw UnimplementedError("querySubstitutablePathInfos is not supported on rpc stores");
+} catch (...) {
+    return {result::current_exception()};
+}
+
 kj::Promise<Result<ref<const ValidPathInfo>>> RpcRemoteStore::addCAToStore(
     AsyncInputStream & dump,
     std::string_view name,
