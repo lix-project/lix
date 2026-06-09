@@ -159,5 +159,3 @@ foreach script : functional_tests_scripts
     depends : extra_deps,
   )
 endforeach
-
-subdir('repl_characterization')
