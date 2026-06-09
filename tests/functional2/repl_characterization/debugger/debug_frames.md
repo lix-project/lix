@@ -1,0 +1,162 @@
+---
+args: ['--debugger']
+---
+
+:c at the root repl is not allowed since no debugger is running yet
+```nix
+:c
+```
+```output
+error: command 'c' can only be used when the debugger is active
+
+```
+
+
+:c and other commands become available once a debugger starts
+```nix
+with {}; a
+```
+```output
+error: undefined variable 'a'
+       at «string»:1:10:
+            1| with {}; a
+             |          ^
+
+```
+
+```nix
+:?
+```
+```output
+The following commands are available:
+
+  <expr>                             Evaluate and print expression
+  <x> = <expr>                       Bind expression to variable
+  :?, :help                          Print help about all commands (this content)
+  :a, :add <expr>                    Add attributes from resulting set to scope
+  :b, :build <expr>                  Build a derivation
+  :bl, :build-with-gc-roots <expr>   Build a derivation, creating GC roots in the working directory
+  :doc <expr>                        Show documentation for the provided function (experimental lambda support)
+  :e, :edit <expr>                   Open package or function in $EDITOR
+  :env                               Show environment stack
+  :i, :build-and-install <expr>      Build derivation, then install result into current profile
+  :l, :load <path>                   Load Nix expression and add it to scope
+  :log <expr | .drv path>            Show logs for a derivation
+  :p, :print <expr>                  Evaluate and print expression recursively
+                                     Strings are printed directly, without escaping.
+  :q, :quit                          Exit the REPL
+  :r, :reload                        Reload all files successfully loaded
+  :sh, :shell <expr>                 Build dependencies of derivation, then start nix-shell
+  :t, :type <expr>                   Describe result of evaluation
+  :te, :trace-enable [bool]          Enable, disable, or toggle showing traces for errors
+  :u, :use <expr>                    Build derivation, then start nix-shell
+
+    Debug mode commands
+
+  :bt, :backtrace                    Show trace stack
+  :c, :continue                      Go until end of program, exception or builtins.break
+  :s, :step                          Go one step
+  :st, :show-trace [integer index]   Show current trace. If an integer is provided, this switches to that stack beforehand. If the integer has an explicit + or - sign, it is treated as relative to the current stack index.
+
+    Flakes commands
+
+  :lf, :load-flake <flakeref>        Load Nix flake and add it to the scope
+
+```
+
+
+
+we can now inspect state
+```nix
+:bt
+```
+```output
+
+1: error: Fake frame for debugging purposes
+«string»:1:10
+
+     1| with {}; a
+      |          ^
+
+0: error: undefined variable 'a'
+«string»:1:10
+
+     1| with {}; a
+      |          ^
+
+```
+
+
+and resume execution
+```nix
+:c
+```
+```output
+error: undefined variable 'a'
+       at «string»:1:10:
+            1| with {}; a
+             |          ^
+
+```
+
+
+the debugger is once again disabled
+```nix
+:c
+```
+```output
+error: command 'c' can only be used when the debugger is active
+
+```
+
+
+leaving the debugger from a toplevel error and entering it again doesn't leave old frames visible
+```nix
+with {}; a
+:s
+with {}; b
+:bt
+```
+```output
+error: undefined variable 'a'
+       at «string»:1:10:
+            1| with {}; a
+             |          ^
+
+error: undefined variable 'a'
+       at «string»:1:10:
+            1| with {}; a
+             |          ^
+
+error: undefined variable 'b'
+       at «string»:1:10:
+            1| with {}; b
+             |          ^
+
+
+1: error: Fake frame for debugging purposes
+«string»:1:10
+
+     1| with {}; b
+      |          ^
+
+0: error: undefined variable 'b'
+«string»:1:10
+
+     1| with {}; b
+      |          ^
+
+```
+
+
+exiting from here prints the error
+```nix
+:q
+```
+```output
+error: undefined variable 'b'
+       at «string»:1:10:
+            1| with {}; b
+             |          ^
+
+```
