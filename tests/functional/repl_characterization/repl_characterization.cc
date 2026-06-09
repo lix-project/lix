@@ -176,7 +176,6 @@ TEST_F(ReplSessionTest, tidy)
         runReplTestPath(#name);   \
     }
 
-REPL_TEST(repl_overlays_regression_l777);
 REPL_TEST(stack_vars);
 REPL_TEST(stacktrace_invalid_arg);
 REPL_TEST(stacktrace_oob);

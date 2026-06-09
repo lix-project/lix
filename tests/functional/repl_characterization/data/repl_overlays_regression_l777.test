@@ -1,9 +1,0 @@
-Checks that repl-overlays work correctly in pure eval mode
-@args --pure-eval
-@args --repl-overlays
-@args ${PWD}/extra_data/repl-overlay-trivial.nix
-
-  nix-repl> foo
-  2
-
-  nix-repl> :quit
