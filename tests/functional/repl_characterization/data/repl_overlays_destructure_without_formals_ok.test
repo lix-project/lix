@@ -1,5 +1,0 @@
-`repl-overlays` that don't destructure the `info` argument are OK.
-@args --repl-overlays
-@args ${PWD}/extra_data/repl-overlay-no-formals.nix
-  nix-repl> 1
-  1

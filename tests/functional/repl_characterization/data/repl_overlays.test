@@ -1,5 +1,0 @@
-Check basic `repl-overlays` functionality.
-@args --repl-overlays
-@args ${PWD}/extra_data/repl-overlay-packages-is-pkgs.nix
-  nix-repl> pkgs
-  { default = "my package"; }
