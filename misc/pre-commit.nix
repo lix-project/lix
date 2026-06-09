@@ -133,6 +133,7 @@ pre-commit-run {
         "^tests/functional/lang/"
         "^tests/functional2/.+\\.exp"
         "^tests/functional2/.+\\.nix"
+        "^tests/functional2/repl_characterization/.+/.+\\.md"
         ''\.patch$''
       ];
     };
