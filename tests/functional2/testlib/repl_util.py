@@ -132,11 +132,16 @@ class ReplTest:
                 # HACK(rootile, 2026-05): The \n is required due to the renderer seeming to have an off-by-one error resulting in the deletion of the last character :melt:
                 appendix = "" if actual.endswith("\n") else "\n"
                 expected.children[0].content = actual + appendix
+                delimiter = expected.delimiter[0]
                 delimiter_length = (
-                    max(len(line) for line in actual.splitlines() if all(c == "`" for c in line))
+                    max(
+                        len(line)
+                        for line in actual.splitlines()
+                        if all(c == delimiter for c in line)
+                    )
                     + 1
                 )
-                expected.delimiter = "`" * max(delimiter_length, 3)
+                expected.delimiter = delimiter * max(delimiter_length, 3)
         return updated
 
     def _output_to_blocks(self, output: str) -> list[tuple[str, ReplTestBlock]]:
