@@ -176,8 +176,6 @@ class ReplTest:
     def _output_to_blocks(self, output: str) -> tuple[str, list[tuple[str, ReplTestBlock]]]:
         output = output.split("\x05")
         start, *output = output
-        if self.metadata.should_fail:
-            return (start, [])
 
         blocks = []
         for block in self.blocks:
