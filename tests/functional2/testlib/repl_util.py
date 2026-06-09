@@ -1,3 +1,4 @@
+from textwrap import dedent
 from mistletoe.markdown_renderer import BlankLine
 from typing import Any
 from _pytest.config import Config
@@ -22,6 +23,33 @@ def _add_output_codefence(input_elem: CodeFence) -> CodeFence:
     parent.children.insert(pos + 1, output_block)
     parent.children.insert(pos + 2, BlankLine("\n"))
     return output_block
+
+
+def _create_startup_block() -> CodeFence:
+    """
+    Creates a codefence whose content is the default startup message of a repl
+    """
+    match = (
+        dedent("""
+            Lix VERSION
+            Type :? for help.
+        """),
+        (0, "```", "output", "output"),
+    )
+    return ReplTestBlock("\n", CodeFence(match))
+
+
+def _update_codefence(expected: CodeFence, actual: str):
+    expected = expected.output
+    # HACK(rootile, 2026-05): The \n is required due to the renderer seeming to have an off-by-one error resulting in the deletion of the last character :melt:
+    appendix = "" if actual.endswith("\n") else "\n"
+    expected.children[0].content = actual + appendix
+    delimiter = expected.delimiter[0]
+    delimiter_length = (
+        max(len(line) for line in actual.splitlines() + [""] if all(c == delimiter for c in line))
+        + 1
+    )
+    expected.delimiter = delimiter * max(delimiter_length, 3)
 
 
 @dataclasses.dataclass
@@ -55,6 +83,7 @@ class ReplTestMetadata:
                 )
             )
 
+        startup_block: ReplTestBlock | None = None
         blocks = []
         doc = mistletoe.Document(self.content)
         current_input: CodeFence | None = None
@@ -76,8 +105,8 @@ class ReplTestMetadata:
                     if current_input:
                         blocks.append(ReplTestBlock(current_input.content, elem))
                         current_input = None
-                    elif self.should_fail:
-                        blocks.append(ReplTestBlock("", elem))
+                    elif not blocks and startup_block is None:
+                        startup_block = ReplTestBlock("\n", elem)
                     else:
                         exceptions.append(
                             ValueError(
@@ -90,12 +119,12 @@ class ReplTestMetadata:
                 ReplTestBlock(current_input.content, _add_output_codefence(current_input))
             )
 
-        if not blocks:
+        if not blocks and startup_block is None:
             exceptions.append(ValueError("not test input (or output) found"))
 
         if exceptions:
             raise ExceptionGroup("Invalid Test configuration:", exceptions)
-        return ReplTest(blocks, self, doc)
+        return ReplTest(startup_block, blocks, self, doc)
 
 
 @dataclass
@@ -111,6 +140,7 @@ class ReplTestBlock:
 
 @dataclass
 class ReplTest:
+    startup_block: ReplTestBlock | None
     blocks: list[ReplTestBlock]
     metadata: ReplTestMetadata
     doc: mistletoe.Document
@@ -121,35 +151,35 @@ class ReplTest:
 
     def check_and_update(self, output: str, do_update: bool) -> bool:
         updated = False
-        for actual, expected in self._output_to_blocks(output):
+        actual, blocks = self._output_to_blocks(output)
+        always_start_block = self.startup_block or _create_startup_block()
+
+        if not do_update:
+            assert always_start_block == actual
+        else:
+            if always_start_block != actual:
+                if self.startup_block is None:
+                    self.doc.children.insert(0, always_start_block.output)
+                _update_codefence(always_start_block, actual)
+                updated = True
+
+        for actual, expected in blocks:
             if not do_update:
                 assert expected == actual
             else:
                 if expected == actual:
                     continue
                 updated = True
-                expected = expected.output
-                # HACK(rootile, 2026-05): The \n is required due to the renderer seeming to have an off-by-one error resulting in the deletion of the last character :melt:
-                appendix = "" if actual.endswith("\n") else "\n"
-                expected.children[0].content = actual + appendix
-                delimiter = expected.delimiter[0]
-                delimiter_length = (
-                    max(
-                        len(line)
-                        for line in actual.splitlines()
-                        if all(c == delimiter for c in line)
-                    )
-                    + 1
-                )
-                expected.delimiter = delimiter * max(delimiter_length, 3)
+                _update_codefence(expected, actual)
         return updated
 
-    def _output_to_blocks(self, output: str) -> list[tuple[str, ReplTestBlock]]:
+    def _output_to_blocks(self, output: str) -> tuple[str, list[tuple[str, ReplTestBlock]]]:
+        output = output.split("\x05")
+        start, *output = output
         if self.metadata.should_fail:
-            return [(output, self.blocks[0])]
+            return (start, [])
+
         blocks = []
-        # Remove the First output, as this will always be the lix version
-        output = output.split("\x05")[1:]
         for block in self.blocks:
             tasks = block.input.count("\n")
             test_output, output = output[:tasks], output[tasks:]
@@ -157,7 +187,7 @@ class ReplTest:
             test_output = re.sub(r"^\s+$", "\n", test_output, flags=re.MULTILINE)
             blocks.append(("".join(test_output), block))
 
-        return blocks
+        return (start, blocks)
 
 
 def _collect_repl_tests() -> list[Path]:
