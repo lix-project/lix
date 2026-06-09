@@ -15,10 +15,10 @@ tests are grouped by their general subject into Python packages, e.g. `commands`
 When additional files are required for a test, they are placed within a folder `assets/test_file_name/` inside the test's directory.
 
 The `lang` test package which contains all parser and evaluator tests is somewhat special,
-as it automatically discovers file-based tests from within subdirectories (see ["Writing lang tests"](#writing-lang-tests)).
+as it automatically discovers file-based tests from within subdirectories (see ["Writing lang tests"](./lang/README.md#writing-lang-tests)).
 
 The `repl_characterization` test package which contains interactive repl tests and is, similar to `lang`, somewhat special.
-see ["Writing repl tests"](#writing-repl-tests) for further information.
+see ["Writing repl tests"](./repl_characterization/README.md#writing-repl-tests) for further information.
 
 Tests for the test suite itself are located in the `testlib` package.
 
@@ -155,7 +155,7 @@ For a full intro on what exactly fixtures are, see the Pytest documentation ["Ab
 For an exhaustive documentation on how fixtures work and how to use them check the Pytest documentation ["How-to use fixtures"](https://docs.pytest.org/en/stable/how-to/fixtures.html).
 For a complete list of fixtures and their documentation, run ```just test-functional2 --fixtures```.
 
-#### [`env`](./testlib/fixtures/command.py)
+#### [`env`](./testlib/fixtures/env.py)
 
 Declarative Environment used by `Command` to execute sub commands (often `nix`)
 without leaking any global configuration.
@@ -265,191 +265,3 @@ The base function of is `nix.nix(args)`.
 
 Provides a logger scoped for the current test.
 Calls to the logger are captured separately by pytest and results in more beautiful test results and failure prints and don't interfere with stdout or stderr captures from [nix](#nix) or similar sub-processes.
-
-## Writing lang tests
-
-The `lang` tests are special in that in addition to the usual Python tests, it also has a framework for automatically creating tests purely from resource files.
-
-Each folder in `lang` is a test, although it may contain multiple subtests.
-If a folder is a Python module (i.e. has an `__init__.py`), it will be treated as a Python test instead.
-
-There are two different ways of creating Lang tests.
-The "simple" way with no `test.toml`, which does more automagic and requires less setup but also is less powerful,
-and the "complex" way, which allows full control over the test runners via a `test.toml`.
-
-### Lang test runners
-
-All lang tests focus on testing either the parsing or evaluation of Nix code, which yields for available runners:
-
-- `eval-okay`: run eval, expecting an exit code of 0
-- `eval-fail`: run eval, expecting an exit code of 1
-- `parse-okay`: run parser, expecting an exit code of 0, stdout will be converted from json to yaml
-- `parse-fail`: run parser, expecting an exit code of 1
-
-The runners will test a given input file, and assert that the Nix stdout and stderr match the golden files.
-Typical names for these are `eval-fail.err.exp` or `parse-okay.out.exp`, indicating which runner they are referring to and whether they contain stdout or stderr.
-If an `*.out.exp` or `*.err.exp` is not present for a test, the Nix output will be *expected* to be empty (i.e. no file is equivalent to empty file).
-
-### Without `test.toml`
-
-A test without `test.toml` simply contains the following files:
-
-- `in.nix`: The input Nix code
-- `RUNNER_NAME.out.exp` and/or `RUNNER_NAME.err.exp`: Contain the expected output for stdout and stderr respectively
-  - The output of multiple runners may be provided, in which all of them will be run against the input file individually.
-
-When creating a test, simply `touch` the desired `exp` files and use `--accept-tests` to fill them.
-
-It is possible to use different `in`-files within the same folder:
-to do so, suffix them with `-number-or-descriptive-string` resulting in `in-number-or-descriptive-string.nix`.
-Add the same suffix to the expected output file, e.g. `eval-okay-number-or-descriptive-string.out.exp`
-The tests will be discovered by searching the expected output files for the corresponding in files.
-
-### With `test.toml`
-
-A `test.toml` allows for the following additional test configuration features:
-
-- Specifying additional CLI arguments to Nix
-- Running the same runner (e.g. `eval-okay`) with different CLI flags
-- Providing additional Nix files, e.g. for `import` tests
-
-The `test.toml` has the following structure:
-
-```toml
-[[test]]
-runner = "RUNNER_NAME"
-
-[[test]]
-name = "another-test"
-runner = "eval-fail"
-flags = ["-some", "-new", "flag"]
-
-[[test]]
-name = "third-runner"
-runner = "eval-okay"
-extra-files = ["./other_nix_file.nix"]
-```
-- The top-level element is a list called `test`. One can add a new element by labeling a section `[[test]]`
-- `runner` must be one of `"eval-okay"`, `"eval-fail"`, `"parse-okay"`, `"parse-fail"`
-- `name` defaults to `runner` plus the suffix of the given in file. Must be set manually if multiple test use the same runner and files.
-- `matrix` optional boolean, which indicates if the test will be run on a single file or multiple. defaults to `False` (single file)
-- `in` optional argument to specify on what files to run.
-  - For non-matrix tests, it must be a single file name and defaults to `"in.nix"`
-  - For matrix tests, it must be a list of file names and defaults to all available in files.
-- `flags` optionally specifies a list of additional CLI arguments to be passed to Nix
-- `extra-files` optionally describes a list of (relative) file paths for additional files to be copied into the test directory before execution.
-- `global-assets` optionally describes a list of global assets like `config.nix` to be copied into the test directory before execution.
-
-As before, the test folder contains an `in.nix` together with the expected output files.
-For these, the naming scheme is
-`CUSTOM_NAME.out.exp`/`CUSTOM_NAME.err.exp`, where `CUSTOM_NAME` stands for the name given in the `test.toml`.
-
-**Example:**
-
-```toml
-[[test]]
-runner = "parse-okay"
-flags = ["--no-warning"]
-
-[[test]]
-# We must set this name manually to avoid collision
-name = "parse-okay-with-warning"
-runner = "parse-okay"
-
-[[test]]
-runner = "eval-fail"
-```
-
-Which implies the following files to exist:
-
-```
-in.nix
-test.toml
-parse-okay.out.exp
-parse-okay-with-warning.out.exp
-parse-okay-with-warning.err.exp
-eval-fail.err.exp
-```
-
-When creating a test, simply writing the `in.nix` and `test.toml` is sufficient, all `.exp` files can be automatically generated with `--accept-tests`.
-
-
-Here too, it is possible to work with multiple input files, though it works slightly differently to without a test toml:
-- for non-matrix tests, set the `in` parameter to the name of the according in file, equivalent to tests without a toml.
-- for matrix tests, either not set the `in` parameter (this will test the runner on *all* present in files) or set it to a list of in file names.
-
-### Additional Notes
-- The file [`lib.nix`](./lang/lib.nix) is a general library file available to all test, and for that copied into each lang test's directory automatically.
-  - There is no need to declare and copy it for each individual test that needs it, `import ./lib.nix` will always work out of the box.
-- In the `test.toml`, it is currently not supported to pass paths with subdirectories into the `extra-files` attribute. If that functionality is required, use a [pytest tests](#writing-python-tests) instead.
-  - It is possible to call the according test runner function directly to avoid boilerplate
-- If additional functionalities are required, placing a `.py` file in the directory tells the framework to ignore it. One can then write [pytest tests](#writing-python-tests) as usual
-- The test suit will fail, if any files are unused. This is done to avoid unrecognized tests due to bad naming.
-
-## Writing Repl test
-The `repl_characterization` tests work similar to the `lang` tests in the sense that tests aren't written directly in python, but in `.md` files instead and are auto-discovered by its framework.
-
-Similar to `lang`, each folder represents a test-group and can contain one or more files, which are separate tests. The files and folders can be named arbitrarily, as long as the files' extensions are `.md`
-
-Each `.md` file represents a single repl session. If you need to test things in multiple sessions, create multiple files.
-
-Expected outputs can be updated by running the tests with the `--accept-tests` flag enabled.
-
-### Input and output blocks
-In order to pass input to a repl session, create a (fenced) codeblock using `nix` as its language. Paste in whatever commands or nix code you want to send to the repl.
-Optionally, you may create another codeblock beneath, using `output` as its language to indicate its expected output. This block will otherwise be auto-generated upon running the test-suite with `--accept-tests` immediately below the input block.
-
-> Warning:
-> Due to how the REPL is implemented, multiline code is **not** supported. The real command-line repl implemented it in a very sketcy way which is not replicatable with automation.
-
-For example:
-`repl_characterization/my_test/example.md`
-``````md
-# This is an example for writing a repl test:
-
-Here we have some documenation.
-
-Below this we can see the input
-```nix
-1 + 1
-```
-The output will go below here:
-```output
-2
-```
-
-# Another section, this is irrelevant for the test itself, just provides more doc
-you can also use `~` for codeblocks BTW
-~~~nix
-f = a: a + "";
-~~~
-Mix and match all you want (input style = output style for auto-generation of output blocks)
-````output
-Added f.
-````
-``````
-
-### Repl options
-If needed, one can change the following options using frontmatter:
-- args: a list of strings added as cli arguments when the session is initialized. `{PWD}` will be replaced with the working directory.
-- should_fail: boolean, if True indicates that the repl session should fail to initialize. When True, only a single `output` block is expected in the file.
-- files: a list of relative paths for files to be accessible to the session
-
-These options are defined in the `ReplTestMetadata` class of `repl_util.py`
-
-For example:
-````md
----
-args: ['--repl-overlays', '{PWD}/repl-overlay-fail.nix']
-should_fail: True
-files: ['repl-overlay-fail.nix']
----
-
-```output
-[error output omitted here]
-```
-
-## Additional notes:
-Check `repl_basics/repl_basics.md` and `repl_overlay_errors/repl_overlay_errors.md` for more examples.
-Everything which isn't frontmatter or a code-block with either `nix` or `output` as its language, will be considered a comment and ignored.
-The current lix version will be replaced with `VERSION` auto-magically to ensure compatibility with newer versions/commits.
