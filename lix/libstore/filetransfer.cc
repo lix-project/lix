@@ -1,4 +1,5 @@
 #include "lix/libstore/filetransfer.hh"
+#include "libutil/file-system.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
@@ -249,6 +250,11 @@ struct TransferItem
         }
 
         if (settings.caFile != "") {
+            /* check if the caFile that has been specified actually exists
+               NOTE: since nixpkgs sets this to "/no-cert-file.crt" by default this needs to be ignored too */
+            if (settings.caFile.get() != "/no-cert-file.crt" && !pathExists(settings.caFile.get())) {
+                throw Error("ca file does not exist at specified location '%s'", settings.caFile.get());
+            }
             curl_easy_setopt(req.get(), CURLOPT_CAINFO, settings.caFile.get().c_str());
         }
 
@@ -259,10 +265,17 @@ struct TransferItem
             req.get(), CURLOPT_LOW_SPEED_TIME, fileTransferSettings.stalledDownloadTimeout.get()
         );
 
-        /* If no file exist in the specified path, curl continues to work
-           anyway as if netrc support was disabled. */
+        /* If the netrc path has been changed from its default value
+           set it to required otherwise keep it optional and throw an error if it is missing */
+        if (settings.netrcFile.isChanged() && !pathExists(settings.netrcFile.get())) {
+            throw Error("netrc file does not exist at specified location '%s'", settings.netrcFile.get());
+        }
         curl_easy_setopt(req.get(), CURLOPT_NETRC_FILE, settings.netrcFile.get().c_str());
-        curl_easy_setopt(req.get(), CURLOPT_NETRC, CURL_NETRC_OPTIONAL);
+        curl_easy_setopt(
+            req.get(),
+            CURLOPT_NETRC,
+            settings.netrcFile.isChanged() ? CURL_NETRC_OPTIONAL : CURL_NETRC_OPTIONAL
+        );
 
         if (writtenToSink) {
             curl_easy_setopt(req.get(), CURLOPT_RESUME_FROM_LARGE, writtenToSink);

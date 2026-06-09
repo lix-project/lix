@@ -48,6 +48,11 @@ artemist:
   display_name: Artemis Tosini
   forgejo: artemist
 
+astreaprtcl:
+  display_name: Astreaprtcl
+  forgejo: astreaprtcl
+  github: astreaprtcl
+
 bb010g:
   display_name: Dusk Banks
   forgejo: bb010g

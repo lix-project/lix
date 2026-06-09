@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import dataclasses
 import logging
+import ssl
 import time
 import socket
 import threading
@@ -53,7 +54,12 @@ def _make_localhost_socket(port: int = 0) -> tuple[socket.socket, int]:
     return (sock, port)
 
 
-def _server_thread(app: web.Application, sock: socket.socket, shutdown_ev_q: Queue):
+def _server_thread(
+    app: web.Application,
+    sock: socket.socket,
+    shutdown_ev_q: Queue,
+    ssl_context: ssl.SSLContext | None = None,
+):
     async def async_main():
         nonlocal app, sock
         # Due to Reasons(tm) of event loop lifecycles and stuff of the sort,
@@ -64,7 +70,7 @@ def _server_thread(app: web.Application, sock: socket.socket, shutdown_ev_q: Que
 
         runner = web.AppRunner(app, handle_signals=False)
         await runner.setup()
-        site = web.SockSite(runner, sock)
+        site = web.SockSite(runner, sock, ssl_context=ssl_context)
         await site.start()
         await shutdown_ev.wait()
         await runner.cleanup()
@@ -73,7 +79,7 @@ def _server_thread(app: web.Application, sock: socket.socket, shutdown_ev_q: Que
 
 
 @contextlib.contextmanager
-def http_server(app: web.Application, port: int = 0):
+def http_server(app: web.Application, port: int = 0, ssl_context: ssl.SSLContext | None = None):
     """
     Creates an http server on an automatically chosen port (if not given) on
     the host running the given web.Application, gives you the port for it.
@@ -92,7 +98,7 @@ def http_server(app: web.Application, port: int = 0):
         sock, port = _make_localhost_socket(port=port)
         thr = threading.Thread(
             target=_server_thread,
-            args=(app, sock, shutdown_ev_q),
+            args=(app, sock, shutdown_ev_q, ssl_context),
             name=f"functional2 httpd [::1]:{port}",
         )
         thr.start()
