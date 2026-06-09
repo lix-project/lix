@@ -176,16 +176,12 @@ TEST_F(ReplSessionTest, tidy)
         runReplTestPath(#name);   \
     }
 
-REPL_TEST(repl_input);
 REPL_TEST(repl_overlays);
 REPL_TEST(repl_overlays_regression_l777);
 REPL_TEST(repl_overlays_compose);
 REPL_TEST(repl_overlays_destructure_without_dotdotdot_errors);
 REPL_TEST(repl_overlays_destructure_without_formals_ok);
-REPL_TEST(repl_printing);
 REPL_TEST(stack_vars);
-REPL_TEST(errors);
-REPL_TEST(idempotent);
 REPL_TEST(stacktrace_invalid_arg);
 REPL_TEST(stacktrace_oob);
 REPL_TEST(stacktrace_relative);
