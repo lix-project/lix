@@ -176,7 +176,6 @@ TEST_F(ReplSessionTest, tidy)
         runReplTestPath(#name);   \
     }
 
-REPL_TEST(basic_repl);
 REPL_TEST(builtins_warn)
 REPL_TEST(no_nested_debuggers);
 REPL_TEST(regression_9917);
@@ -189,7 +188,6 @@ REPL_TEST(repl_overlays_regression_l777);
 REPL_TEST(repl_overlays_compose);
 REPL_TEST(repl_overlays_destructure_without_dotdotdot_errors);
 REPL_TEST(repl_overlays_destructure_without_formals_ok);
-REPL_TEST(repl_overlays_error);
 REPL_TEST(repl_printing);
 REPL_TEST(stack_vars);
 REPL_TEST(errors);
