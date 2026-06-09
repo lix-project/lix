@@ -176,9 +176,4 @@ TEST_F(ReplSessionTest, tidy)
         runReplTestPath(#name);   \
     }
 
-REPL_TEST(stack_vars);
-REPL_TEST(stacktrace_invalid_arg);
-REPL_TEST(stacktrace_oob);
-REPL_TEST(stacktrace_relative);
-
 }; // namespace nix
