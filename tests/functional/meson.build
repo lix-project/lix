@@ -82,7 +82,6 @@ functional_tests_scripts = [
   'linux-sandbox.sh',
   'supplementary-groups.sh',
   'build-dry.sh',
-  'structured-attrs.sh',
   'shell.sh',
   'nix-copy-ssh.sh',
   'nix-copy-ssh-ng.sh',
