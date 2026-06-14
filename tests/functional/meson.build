@@ -48,7 +48,6 @@ functional_tests_scripts = [
   'repair.sh',
   'repair-chroot.sh',
   'fixed.sh',
-  'export-graph.sh',
   'fetchGitRefs.sh',
   'gc-runtime.sh',
   'fetchers.sh',
