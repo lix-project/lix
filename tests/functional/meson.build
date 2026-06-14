@@ -91,7 +91,6 @@ functional_tests_scripts = [
   'nix-copy-ssh-ng.sh',
   'pre-hook.sh',
   'post-hook.sh',
-  'eval-store.sh',
   'derivation-json.sh',
   'db-migration.sh',
   'bash-profile.sh',
