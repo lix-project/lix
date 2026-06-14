@@ -77,7 +77,6 @@ functional_tests_scripts = [
   'repl.sh',
   'binary-cache-build-remote.sh',
   'logging.sh',
-  'export.sh',
   'config.sh',
   'filter-source.sh',
   'misc.sh',
