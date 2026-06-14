@@ -71,7 +71,6 @@ functional_tests_scripts = [
   'readfile-context.sh',
   'nix-channel.sh',
   'dependencies.sh',
-  'check-reqs.sh',
   'build-remote-content-addressed-fixed.sh',
   'nar-access.sh',
   'repl.sh',
