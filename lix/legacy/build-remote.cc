@@ -96,7 +96,7 @@ static std::tuple<bool, Machine *, AutoCloseFD> selectBestMachine(
     uint64_t bestLoad = 0;
 
     for (auto & m : machines) {
-        debug("considering building on remote machine '%s'", m.storeUri);
+        debug("considering building on remote machine '%s'", m.name);
 
         if (m.enabled && m.systemSupported(neededSystem) && m.allSupported(requiredFeatures)
             && m.mandatoryMet(requiredFeatures))
@@ -329,9 +329,8 @@ try {
         Pipe logPipe;
 
         try {
-            auto act = logger->startActivity(
-                lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->storeUri)
-            );
+            auto act =
+                logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->name));
 
             std::tie(sshStore, logPipe) = TRY_AWAIT(bestMachine->openStore());
             TRY_AWAIT(sshStore->connect());
@@ -341,10 +340,7 @@ try {
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             std::string msg = logPipe.readSide ? chomp(drainFD(logPipe.readSide.get(), false)) : "";
             printError(
-                "cannot build on '%s': %s%s",
-                bestMachine->storeUri,
-                e.what(),
-                msg.empty() ? "" : ": " + msg
+                "cannot build on '%s': %s%s", bestMachine->name, e.what(), msg.empty() ? "" : ": " + msg
             );
             bestMachine->enabled = false;
         }

@@ -1,3 +1,7 @@
+from testlib.fixtures.file_helper import CopyFile
+from testlib.fixtures.file_helper import File
+from pathlib import Path
+from textwrap import dedent
 import pytest
 import re
 import textwrap
@@ -150,3 +154,35 @@ def test_remote_trustless_ca(
 
     out_path = (env.dirs.home / "result").readlink()
     assert nix.physical_store_path_for(out_path).read_text() == "FOO BAR BAZ\n"
+
+
+@with_files(
+    {
+        "check-reqs.nix": CopyFile("assets/check-reqs.nix"),
+        "config.nix": get_global_asset("config.nix"),
+        "builders.toml": File(
+            dedent("""
+                    [machines.fox]
+                    uri = "file://test-home/fox-store"
+                    supported-features = ["kvm", "big", "benchmark"]
+
+                    [machines.dragon]
+                    uri = "file:///dev/null/"
+                    supported-features = ["kvm", "big", "benchmark"]
+
+                    [machines.plushie]
+                    uri = "ssh-ng://plushie@example.com"
+
+                """)
+        ),
+    }
+)
+def test_logging_uses_machine_name(nix: Nix, files: Path):
+    nix.settings["builders"] = f"@{files}/builders.toml"
+    nix.settings["max-jobs"] = 0
+
+    res = nix.nix_build(["check-reqs.nix", "-vvvvv"]).run().expect(1)
+    for builder in ["fox", "dragon", "plushie"]:
+        assert f"considering building on remote machine '{builder}'" in res.stderr_plain
+        assert f"cannot build on '{builder}': error: " in res.stderr_plain
+        assert f"connecting to '{builder}'..." in res.stderr_plain
