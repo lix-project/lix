@@ -906,6 +906,12 @@ stdenv.mkDerivation (finalAttrs: {
             ++ finalAttrs.checkInputs;
 
           shellHook = ''
+            # Make `nix-shell` use a PWD-relative dir for `out`, emulating `nix develop`.
+            # The original `out` path is never going to be relevant, and breaks assumptions for the justfile.
+            if [[ "$out" =~ ^${builtins.storeDir}/ ]]; then
+              export out="$PWD/outputs/out"
+            fi
+
             # don't re-run the hook in (other) nested nix-shells
             function lixShellHook() {
               # n.b. how the heck does this become -env-env? well, `nix develop` does it:
