@@ -458,11 +458,11 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
         return 0;
     }
 
-    initNix();
-    initLibExpr();
-
     GlobalConfig::registerGlobalConfig(daemonAuthorizationSettings);
     GlobalConfig::registerGlobalConfig(nixDevelopSettings);
+
+    initNix();
+    initLibExpr();
 
 #if __linux__
     if (getuid() == 0) {
