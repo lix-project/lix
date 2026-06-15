@@ -56,3 +56,10 @@ exp_features=$(nix config show | grep '^experimental-features' | cut -d '=' -f 2
 val=$(nix config show | grep '^warn-dirty' | cut -d '=' -f  2 | xargs)
 val2=$(nix config show warn-dirty)
 [[ $val == $val2 ]]
+
+# Regression test for `[extra-]trusted-users` (daemonAuthorizationSettings) being ignored.
+# https://git.lix.systems/lix-project/lix/issues/1183
+val="$(NIX_CONFIG=$'trusted-users = as-configured' nix config show trusted-users)"
+[[ "$val" == "as-configured" ]]
+val="$(NIX_CONFIG=$'trusted-users = as-configured\nextra-trusted-users = extra' nix config show trusted-users)"
+[[ "$val" == "as-configured extra" ]]
