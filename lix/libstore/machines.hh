@@ -14,6 +14,7 @@ class Store;
 
 struct Machine {
 
+    const std::string name;
     const std::string storeUri;
     const std::set<std::string> systemTypes;
     const std::string sshKey;

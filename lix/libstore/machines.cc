@@ -168,6 +168,7 @@ static Machine parseBuilderLine(const std::string & line)
 
     return {
         storeUri,
+        storeUri,
         systemTypes,
         sshKey,
         maxJobs,
@@ -262,7 +263,8 @@ static toml::result<float, std::string> getSpeedFactor(const toml::value & data)
     return toml::success(1.0f);
 }
 
-static toml::result<Machine, std::vector<std::string>> parseMachine(const toml::value & data)
+static toml::result<Machine, std::vector<std::string>>
+parseMachine(const std::string name, const toml::value & data)
 {
     std::vector<std::string> errs;
 
@@ -339,6 +341,7 @@ static toml::result<Machine, std::vector<std::string>> parseMachine(const toml::
         return toml::failure(errs);
     }
     return toml::success<Machine>({
+        name,
         storeUri.unwrap(),
         std::set(systemTypes.unwrap().begin(), systemTypes.unwrap().end()),
         sshKey.unwrap(),
@@ -404,7 +407,7 @@ static toml::result<Machines, std::vector<std::string>> parseToml(const toml::va
     }
 
     for (const auto & [name, machine] : data.at(array_name).as_table()) {
-        auto const res = parseMachine(machine);
+        auto const res = parseMachine(name, machine);
         if (res.is_err()) {
             auto err = res.as_err();
             parserErrors.push_back(fmt("for machine %s:", name));
