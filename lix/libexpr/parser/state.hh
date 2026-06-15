@@ -133,14 +133,24 @@ inline void State::badEscapeFound(const PosIdx pos, char found, bool isIndented)
 {
     auto escape = std::string(isIndented ? "''\\" : "\\");
     auto interpolEscape = std::string(isIndented ? "''${" : "\\${");
+    auto backslashChar = std::string("\\") + found;
+
+    HintFmt dedicatedInsert = isIndented
+        ? HintFmt("you can simply write it as %s in the string", backslashChar)
+        : HintFmt("you need to escape the %s itself: %s", escape, escape + escape + found);
+
     HintFmt msg = HintFmt(
-        "%s is an ill-defined escape. You can drop the %s and simply write %s instead. "
+        "%s is an ill-defined escape sequence. In Nix, it simply means %s, therefore the %s is redundant and "
+        "should be removed. If the intent of the string was to mean %s instead (e.g. in a regex), %s. "
         "Use %s to silence this warning.",
         escape + found,
-        escape,
         found,
+        escape,
+        backslashChar,
+        Uncolored(dedicatedInsert.str()),
         "--extra-deprecated-features broken-string-escape"
     );
+
     /* Special case some common escapes to provide better messages */
     if (found == '$' || found == '{') {
         /* Someone possibly tried to escape an interpolation but used the wrong sequence.

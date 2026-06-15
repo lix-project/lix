@@ -1,10 +1,10 @@
-warning: ''\a is an ill-defined escape. You can drop the ''\ and simply write a instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: ''\a is an ill-defined escape sequence. In Nix, it simply means a, therefore the ''\ is redundant and should be removed. If the intent of the string was to mean \a instead (e.g. in a regex), you can simply write it as \a in the string. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:2:4:
               1| ''
               2| ''\a''\n
                |    ^
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
-warning: ''\f is an ill-defined escape. You can drop the ''\ and simply write f instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: ''\f is an ill-defined escape sequence. In Nix, it simply means f, therefore the ''\ is redundant and should be removed. If the intent of the string was to mean \f instead (e.g. in a regex), you can simply write it as \f in the string. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:3:4:
               2| ''\a''\n
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
@@ -22,19 +22,19 @@ warning: ''\$ is an ill-defined escape. You can drop the ''\ and simply write $ 
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
                |            ^
               4| ''\'''${"x"}
-warning: ''\" is an ill-defined escape. You can drop the ''\ and simply write " instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: ''\" is an ill-defined escape sequence. In Nix, it simply means ", therefore the ''\ is redundant and should be removed. If the intent of the string was to mean \" instead (e.g. in a regex), you can simply write it as \" in the string. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:3:16:
               2| ''\a''\n
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
                |                ^
               4| ''\'''${"x"}
-warning: ''\v is an ill-defined escape. You can drop the ''\ and simply write v instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: ''\v is an ill-defined escape sequence. In Nix, it simply means v, therefore the ''\ is redundant and should be removed. If the intent of the string was to mean \v instead (e.g. in a regex), you can simply write it as \v in the string. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:3:28:
               2| ''\a''\n
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t
                |                            ^
               4| ''\'''${"x"}
-warning: ''\\ is an ill-defined escape. You can drop the ''\ and simply write \ instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: ''\\ is an ill-defined escape sequence. In Nix, it simply means \, therefore the ''\ is redundant and should be removed. If the intent of the string was to mean \\ instead (e.g. in a regex), you can simply write it as \\ in the string. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:3:32:
               2| ''\a''\n
               3| ''\f''\{''\$''\"''\'''\r''\v''\\''\t

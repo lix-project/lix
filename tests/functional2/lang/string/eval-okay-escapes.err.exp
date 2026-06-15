@@ -1,4 +1,4 @@
-warning: \a is an ill-defined escape. You can drop the \ and simply write a instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: \a is an ill-defined escape sequence. In Nix, it simply means a, therefore the \ is redundant and should be removed. If the intent of the string was to mean \a instead (e.g. in a regex), you need to escape the \ itself: \\a. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:1:3:
               1| "\a\n\{\$\"\'\r\v\\\t
                |   ^
@@ -8,17 +8,17 @@ warning: \{ is an ill-defined escape. You can drop the \ and simply write { inst
               1| "\a\n\{\$\"\'\r\v\\\t
                |       ^
               2| \f"
-warning: \' is an ill-defined escape. You can drop the \ and simply write ' instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: \' is an ill-defined escape sequence. In Nix, it simply means ', therefore the \ is redundant and should be removed. If the intent of the string was to mean \' instead (e.g. in a regex), you need to escape the \ itself: \\'. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:1:13:
               1| "\a\n\{\$\"\'\r\v\\\t
                |             ^
               2| \f"
-warning: \v is an ill-defined escape. You can drop the \ and simply write v instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: \v is an ill-defined escape sequence. In Nix, it simply means v, therefore the \ is redundant and should be removed. If the intent of the string was to mean \v instead (e.g. in a regex), you need to escape the \ itself: \\v. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:1:17:
               1| "\a\n\{\$\"\'\r\v\\\t
                |                 ^
               2| \f"
-warning: \f is an ill-defined escape. You can drop the \ and simply write f instead. Use --extra-deprecated-features broken-string-escape to silence this warning.
+warning: \f is an ill-defined escape sequence. In Nix, it simply means f, therefore the \ is redundant and should be removed. If the intent of the string was to mean \f instead (e.g. in a regex), you need to escape the \ itself: \\f. Use --extra-deprecated-features broken-string-escape to silence this warning.
          at /pwd/in.nix:2:2:
               1| "\a\n\{\$\"\'\r\v\\\t
               2| \f"
