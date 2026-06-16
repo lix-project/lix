@@ -75,7 +75,6 @@ functional_tests_scripts = [
   'nar-access.sh',
   'repl.sh',
   'logging.sh',
-  'config.sh',
   'filter-source.sh',
   'linux-sandbox.sh',
   'supplementary-groups.sh',

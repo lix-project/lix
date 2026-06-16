@@ -87,14 +87,19 @@ class NixSettings:
             "extra-experimental-features": [],
             "extra-deprecated-features": [],
         }
+        self.disabled = False
+        """
+        This is *not* a nix specific setting, but disables the application of the configured settings.
+        Use this, if you need to test config file discovery or similar.
+        """
 
     def __getattr__(self, attr: str) -> _NixSettingValue:
-        if attr.startswith("__"):
+        if attr.startswith("__") or attr == "disabled":
             return super().__getattr__(attr)
         return self._settings[attr.replace("_", "-")]
 
     def __setattr__(self, attr: str, value: _NixSettingValue):
-        if attr == "_settings":
+        if attr in ("_settings", "disabled"):
             super().__setattr__(attr, value)
         else:
             self._settings[attr.replace("_", "-")] = value
@@ -136,6 +141,7 @@ class NixSettings:
         """
         new_settings = NixSettings()
         new_settings._settings = copy.deepcopy(self._settings)
+        new_settings.disabled = self.disabled
         new_settings.update(args, **kwargs)
         return new_settings
 
@@ -155,6 +161,8 @@ class NixSettings:
         return config
 
     def to_env_overlay(self, env: ManagedEnv) -> None:
+        if self.disabled:
+            return
         cfg = self.to_config(env)
         (env.dirs.nix_conf_dir / "nix.conf").write_text(cfg)
         env.set_env("NIX_CONFIG", cfg)
