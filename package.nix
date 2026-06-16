@@ -54,8 +54,8 @@
   rapidcheck,
   removeReferencesTo,
   rustPlatform,
-  rust-cbindgen,
   rustc,
+  cargo,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
   toml11,
@@ -289,6 +289,8 @@ let
     ./subprojects/aws_sdk
     # Required for meson to generate Cargo wraps
     ./Cargo.lock
+    ./Cargo.toml
+    ./.cargo/config.toml
   ]);
 
   functionalTestFiles = fileset.unions [
@@ -302,6 +304,23 @@ let
   # but we can just make one ourselves.
   lldBintools = wrapBintoolsWith {
     bintools = llvmPackages.bintools;
+  };
+
+  # Rustc will use `cc` as the linker by default, but we need to link the C++ standard library.
+  # However the C++ compiler is not unprefixed `c++` in Nixpkgs when cross compiling.
+  # This is a fair amount of logic to encode in a Cargo config.toml, so the most reasonable
+  # options are to have meson `configure_file()` a config.toml,
+  # or just use these environment variables.
+  cxxLinkerFor = stdenv: lib.getExe' stdenv.cc "${stdenv.cc.targetPrefix}c++";
+  hostCargoEnvVar = hostPlatform.rust.cargoEnvVarTarget;
+  buildCargoEnvVar = buildPlatform.rust.cargoEnvVarTarget;
+
+  # Environment variables that set Cargo config values.
+  cargoConfigEnv = {
+    "CARGO_TARGET_${hostCargoEnvVar}_LINKER" = cxxLinkerFor stdenv;
+  }
+  // lib.optionalAttrs (hostCargoEnvVar != buildCargoEnvVar) {
+    "CARGO_TARGET_${buildCargoEnvVar}_LINKER" = cxxLinkerFor buildPackages.clangStdenv;
   };
 in
 assert (lintInsteadOfBuild -> lix-clang-tidy != null);
@@ -427,13 +446,23 @@ stdenv.mkDerivation (finalAttrs: {
   # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
   dontUseCmakeConfigure = true;
 
+  # depsBuildBuild is put in PATH before nativeBuildInputs, but clangStdenv.cc's version
+  # of clang-tidy doesn't seem to work. Thankfully, if we're linting, we don't need to
+  # compile things for the build platform either.
+  depsBuildBuild = lib.optionals (!lintInsteadOfBuild) [
+    # clangStdenv is spliced but clangStdenv.cc is not:
+    # https://github.com/NixOS/nixpkgs/issues/211340
+    buildPackages.clangStdenv.cc
+  ];
+
   nativeBuildInputs = [
+    rustPlatform.cargoSetupHook
     finalAttrs.lixPythonForBuild
     meson
     ninja
     cmake
-    rust-cbindgen
     rustc
+    cargo
     capnproto
     # Required for libstd++ assertions that leaks inside of the final binary.
     removeReferencesTo
@@ -572,6 +601,8 @@ stdenv.mkDerivation (finalAttrs: {
 
     VERSION_SUFFIX = versionSuffix;
   }
+  # Putting these here means they'll also work in the dev shell.
+  // cargoConfigEnv
   // lib.optionalAttrs (finalAttrs.buildTestEnv != null) {
     BUILD_TEST_ENV = finalAttrs.buildTestEnv;
   }
@@ -590,7 +621,7 @@ stdenv.mkDerivation (finalAttrs: {
     # what the correct `wrapCCWith`/`stdenv.cc.override` incantation is.
     # But just putting that libstdc++ in `-L` seems to make the driver find
     # the right things.
-    NIX_CFLAGS_LINK = "-L${lib.makeLibraryPath [ pkgsStatic.gcc.cc ]}";
+    NIX_CFLAGS_LINK = "-L${lib.getLib pkgsStatic.gcc.cc}/lib";
   };
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
@@ -773,6 +804,21 @@ stdenv.mkDerivation (finalAttrs: {
             # we make precompiled C++ stdlib conditional on using Clang.
             # https://git.lix.systems/lix-project/lix/issues/374
             ++ [ (lib.mesonBool "enable-pch-std" stdenv.cc.isClang) ];
+          depsBuildBuild = [
+            # From a strict deps point-of-view, I'm pretty sure this is literally incorrect.
+            # The clang-tidy from clang-tools is for checking source files that are compiled
+            # for the host machine.
+            # However, we need a clang-tools version of clang-tidy in PATH before
+            # clangStdenv.cc, and it seems like all depsBuildBuild things come before
+            # "packages" things.
+            # I also tried just putting these in `packages` with the correct ordering,
+            # but that did not work.
+            # I guess the platform offsets really do matter here, even in the devshell.
+            buildPackages.llvmPackages.clang-tools
+
+            # This *has* clang-tidy, but it doesn't (seem to?) work.
+            buildPackages.clangStdenv.cc
+          ];
 
           packages =
             lib.optional (stdenv.cc.isClang && hostPlatform == buildPlatform) llvmPackages.clang-tools

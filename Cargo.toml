@@ -1,6 +1,17 @@
 [workspace]
 resolver = "2"
-members = ["lix/lix-doc"]
+members = [
+	"lix/lix-doc",
+	"lix/lix-rs",
+]
 
 [workspace.package]
 edition = "2021"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+debug = "full"
+debug-assertions = true
+overflow-checks = true

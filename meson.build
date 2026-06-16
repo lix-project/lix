@@ -102,6 +102,7 @@ enable_internal_api_docs = get_option('internal-api-docs')
 
 doxygen = find_program('doxygen', required : enable_internal_api_docs, native : true)
 bash = find_program('bash', native : true)
+cargo = find_program('cargo')
 
 rapidcheck_meson = dependency('rapidcheck', required : enable_internal_api_docs)
 
@@ -128,8 +129,99 @@ if get_option('tests-brief')
   tests_args += '--gtest_brief=1'
 endif
 
+cargo_jobs = get_option('cargo-jobs')
+cargo_jobs_args = cargo_jobs != 0 ? [ f'-j@cargo_jobs@' ] : []
 
 cxx = meson.get_compiler('cpp')
+rustc = meson.get_compiler('rust')
+rustc_for_build = meson.get_compiler('rust', native : true)
+
+# NOT the same thing as is_static.
+# The default library can be static and this still be true.
+# But on musl, linking a shared library that uses C++ RTTI gives:
+# `relocation R_X86_64_32S against symbol `_ZTVN10__cxxabiv117__class_type_infoE'
+# can not be used when making a shared object; recompile with -fPIC`
+# We don't control Nixpkgs' Musl's position-independent-ness, so instead we just
+# disable shared libraries that use RTTI (like liblix) when this is the case.
+can_dylib_rtti = cxx.links('''
+  #include <print>
+  void foo() {
+    std::println("");
+  }
+  ''',
+  args : '-shared',
+)
+require_dylib_rtti = declare_dependency(
+  #'dylib-rtti-disabler',
+  dependencies : can_dylib_rtti ? [] : disabler(),
+)
+summary('C++ RTTI in dylibs:', can_dylib_rtti, bool_yn : true)
+
+
+# HACK: Meson really does not tell us the build and host machine triples...
+# But we need these to provide Cargo configuration (lix/lix-rs/meson.build).
+# We can't even infer them from host_machine/build_machine.foo() methods!
+# Look! https://mesonbuild.com/Reference-manual_builtin_host_machine.html
+# In `<arch>-<vendor>-<os>-<abi>`, we can query Arch and OS, and vendor is w/e,
+# but we can't differentiate `-gnu` and `-musl`!
+# Okay okay, so we just ask our compilers. Meson does tell us those, and surely
+# the compilers know their own triples right?
+# Well...
+#
+# We can't use `cc -dumpmachine`, because that will also give us things like
+# `arm64-apple-darwin24.6.0`, which rustc won't accept for --target. Clang
+# does have `-print-effective-triple`, but that does exactly the same thing.
+# There aren't compiler builtin `#define`s that we can extract this information
+# from either, and there's also no `__MUSL__` macro:
+# https://wiki.musl-libc.org/faq#Q:-Why-is-there-no-%3Ccode%3E__MUSL__%3C/code%3E-macro?
+#
+# Okay...
+# rustc has `--print=host-tuple`, but that only prints the the triple for the
+# build machine.
+#
+# NOTE: Yes! Remember! Rust has only "host" and "target", which are what
+# everyone else (including Meson and Nixpkgs) calls the "build" and "host"
+# machines respectively.
+#
+# Anyway. There's no way to print the value of `--target`, since, well,
+# supposedly if you're passing it you already know it:
+# https://github.com/rust-lang/rust/issues/105588#issuecomment-1500285344
+#
+# So! Either we use `RUSTC_BOOTSTRAP=1` and use `--print=target-spec-json`:
+# https://github.com/rust-lang/rust/issues/38338
+#
+# ...or we string-parse the parse the arguments from `rustc.cmd_array()`.
+# That seems the least error-prone to me.
+#
+# FIXME: we can get rid of this whole thing when we have Meson 1.11:
+# https://mesonbuild.com/Rust-module.html#compiler_target
+host_triple = ''
+foreach i : range(rustc.cmd_array().length())
+  arg = rustc.cmd_array()[i]
+  if arg == '--target'
+    host_triple = rustc.cmd_array()[i + 1]
+    break
+  endif
+  if arg.startswith('--target=')
+    host_triple = arg.split('=')[1]
+    break
+  endif
+  unset_variable('arg')
+endforeach
+
+# Thank GODS we can at least get this one reasonably.
+build_triple = run_command(
+  # See the above comment about Rustc vs Meson/Nixpkgs terminology on host/build/target.
+  rustc_for_build.cmd_array(), '--print=host-tuple',
+  capture : true,
+  check : true,
+).stdout().strip()
+# If there was no `--target` argument, assume it's the same as the "host tuple", ig.
+if host_triple == ''
+  host_triple = build_triple
+endif
+summary('TRIPLE', host_triple)
+summary('TRIPLE_FOR_BUILD', build_triple)
 
 # tag define to tell us we are compiling lix itself and can thus make
 # non-namespaced aliases of a utility defines visible. this spares us
@@ -228,14 +320,6 @@ is_darwin = host_machine.system() == 'darwin'
 is_freebsd = host_machine.system() == 'freebsd'
 is_x64 = host_machine.cpu_family() == 'x86_64'
 
-# Meson knows these, but won't tell us. We need them to hack around some linker shenanigans.
-# See the 'Rust Support' section below.
-if is_darwin
-  dylib_suffix = 'dylib'
-elif is_linux
-  dylib_suffix = 'so'
-endif
-
 # Per-platform arguments that you should probably pass to shared_module() invocations.
 # Something like add_project_arguments() can't be scoped on only shared modules, so this
 # variable is here instead.
@@ -253,30 +337,6 @@ elif is_linux
   plugin_link_args += ['-Wl,-z,undefs']
 endif
 configdata = configuration_data()
-
-#
-# Rust Support
-#
-
-if is_static
-  rust_dynamic_args = []
-else
-  rust_dynamic_args = ['-C', 'prefer-dynamic']
-endif
-
-# This hack is required by the wombo combo of meson bugs:
-# Meson does not set the soname for us: https://github.com/mesonbuild/meson/issues/13537
-# Meson ignores link_args for Rust targets: https://github.com/mesonbuild/meson/issues/13538
-# Thus we have to, when the build is dynamic, pass these in rust_args to make it link properly.
-if cxx.get_linker_id().startswith('ld64')
-  # Rust actually sets the -install_name if you pass -C rpath=yes on macOS targets (?!):
-  # https://github.com/rust-lang/rust/blob/2a8af4f7c8262a90b886bc063fe0c271d2b51a45/compiler/rustc_codegen_ssa/src/back/linker.rs#L441-L445
-  # https://rust-lang.zulipchat.com/#narrow/channel/182449-t-compiler.2Fhelp/topic/libstd.2C.20rpath.2C.20dylibs.20and.20packaging
-  # This seems like a bug, so let's keep passing it deliberately.
-  soname_arg = '-install_name'
-elif cxx.get_linker_id().startswith('ld')
-  soname_arg = '-soname'
-endif
 
 #
 # Dependencies
@@ -435,7 +495,6 @@ endif
 # Build-time tools
 #
 dot = find_program('dot', required : false, native : true)
-cbindgen = find_program('cbindgen', native : true)
 pymod = import('python')
 python = pymod.find_installation('python3')
 
@@ -658,6 +717,17 @@ add_project_link_arguments('-pthread', language : 'cpp')
 if cxx.get_linker_id() in ['ld.bfd', 'ld.gold']
   add_project_link_arguments('-Wl,--no-copy-dt-needed-entries', language : 'cpp')
 endif
+
+# musl + GNU ld has a complaint: "warning: arch_x86_64_setcontext.S.o:
+# missing .note.GNU-stack section implies executable stack. This behaviour
+# is deprecated and will be removed in a future version of the linker".
+# lld defaults to `-z noexecstack` in the first place:
+# https://github.com/llvm/llvm-project/issues/57009
+# So we can just add that to normalize the behavior.
+add_project_link_arguments(
+  cxx.get_supported_link_arguments('-Wl,-z,noexecstack'),
+  language : 'cpp',
+)
 
 if is_freebsd
   # FreeBSD's `environ` is defined in `crt1.o`, not `libc.so`,

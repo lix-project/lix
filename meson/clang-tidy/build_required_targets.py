@@ -26,6 +26,11 @@ def main():
         [t for t in get_targets_of_rule(args.build_root, "CUSTOM_COMMAND") if t.endswith(".gen.hh")]
         + [
             t
+            for t in get_targets_of_rule(args.build_root, "CUSTOM_COMMAND")
+            if t.endswith(".gen.cc")
+        ]
+        + [
+            t
             for t in get_targets_of_rule(args.build_root, "CUSTOM_COMMAND_DEP")
             if t.endswith(".capnp.h")
         ]

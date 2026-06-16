@@ -1,0 +1,14 @@
+[target.'cfg(true)']
+rustflags = [
+	# rustc will pass `-nodefaultlibs` without this, but we need the C++ standard library.
+	'-Cdefault-linker-libraries=yes',
+]
+
+[target.'cfg(target_env = "musl")']
+rustflags = [
+	'-Cdefault-linker-libraries=yes',
+	# musl, at least in Nixpkgs, is not compiled with -fPIE.
+	# XXX: nevermind? as of Nixpkgs 26.05??
+	# Oh gods do we need to gate this??
+	#'-Crelocation-model=static',
+]

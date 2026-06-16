@@ -89,14 +89,14 @@ config_h = configure_file(
 
 install_headers(config_h, subdir : 'lix')
 
+lix_rs_files = files(
+  '../Cargo.toml',
+  '../Cargo.lock',
+)
+subdir('lix-rs')
+
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
-
-subdir('rust-monocrate')
-
-liblixutil_rs = declare_dependency(
-  link_with : rust_monocrate,
-)
 
 # we only collect sources and generated headers here. real headers are collected and
 # installed by each subdir due to how meson generates paths for headers it installs.
@@ -150,35 +150,108 @@ dependencies = [
   seccomp,
   sqlite,
   toml11,
-  # NOTE: this is secretly rust-monocrate in a trenchcoat.
-  # See that directory's README for more details.
-  liblixutil_rs,
 ]
 
 if host_machine.system() == 'freebsd'
   dependencies += [ libprocstat ]
 endif
 
-liblix_all = library(
-  'lix',
-  liblix_sources,
-  liblix_generated_headers,
-  dependencies : dependencies,
-  # `..` makes the `lix/` subtree of the repo available for includes,
-  # mirroring our header directory structure once they are installed.
-  include_directories : [ '..' ],
-  cpp_args : cpp_args,
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
+lixrs = custom_target(
+  'liblixrs',
+  input : lix_rs_files,
+  output : 'liblixrs.a',
+  command : [
+    cargo,
+    '-Z', 'unstable-options',
+    'build',
+    '--artifact-dir=@0@'.format(meson.current_build_dir()),
+    '-p',
+    'lix',
+    f'--target=@host_triple@',
+    cargo_jobs_args,
+  ],
+  console : true,
+  env : {
+    'MESON_BUILD_DIR': meson.project_build_root(),
+  },
 )
 
-liblix = declare_dependency(
-  include_directories : include_directories('..'),
-  dependencies : dependencies,
-  link_with : liblix_all,
+if meson.can_run_host_binaries()
+  test(
+    'lix-rs-tests',
+    cargo,
+    args : [
+      'test',
+      '--all', '--all-targets',
+      '--no-fail-fast',
+      cargo_jobs_args,
+    ],
+    suite : 'check',
+  )
+endif
+
+liblix_cpp_static = static_library(
+  'lix_cpp_static',
+  liblix_sources,
+  liblix_generated_headers,
+  dependencies : [
+    dependencies,
+  ],
+  include_directories : '..',
+  cpp_args : cpp_args,
+  cpp_pch : cpp_pch,
 )
+
+if is_darwin
+  lixrs_link_args = [ '-Wl,-force_load,lix/liblixrs.a' ]
+else
+  lixrs_link_args = [ '-Wl,-L,lix,--whole-archive,-l,lixrs,--no-whole-archive' ]
+endif
+
+if is_static
+  liblix = declare_dependency(
+    include_directories : include_directories('..'),
+    dependencies : dependencies,
+    link_whole : [ liblix_cpp_static ],
+    link_args : lixrs_link_args,
+    sources : [
+      custom_target(
+        input : [ lixrs ],
+        output : 'lixrs-dep-propagator.gen.hh',
+        command : [ 'bash', '-c', 'touch "$1"', 'touch', '@OUTPUT@' ],
+      ),
+    ],
+  )
+else
+  liblix_all_shared = shared_library(
+    'lix',
+    custom_target(
+      input : [ lixrs ],
+      output : 'lixrs-dep-propagator.gen.cc',
+      command : [ 'bash', '-c', 'touch "$1"', 'touch', '@OUTPUT@' ],
+    ),
+    dependencies : [
+      dependencies,
+      require_dylib_rtti,
+    ],
+    link_whole : [ liblix_cpp_static ],
+    link_args : lixrs_link_args,
+    # `..` makes the `lix/` subtree of the repo available for includes,
+    # mirroring our header directory structure once they are installed.
+    include_directories : [ '..' ],
+    cpp_args : cpp_args,
+    cpp_pch : cpp_pch,
+    install : true,
+    # FIXME(Qyriad): is this right?
+    install_rpath : libdir,
+  )
+
+  liblix = declare_dependency(
+    include_directories : include_directories('..'),
+    dependencies : dependencies,
+    link_with : [ liblix_all_shared ],
+  )
+endif
 
 meson.override_dependency('lix', liblix)
 

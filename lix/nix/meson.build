@@ -155,9 +155,9 @@ nix_headers = files(
   # keep-sorted end
 )
 
-# You know. The thing you link against with `-liblix`.
-iblix = library(
-  'iblix',
+nix = executable(
+  'nix',
+  files('main.cc'),
   nix_sources,
   legacy_sources,
   nix_settings_headers,
@@ -166,6 +166,9 @@ iblix = library(
   legacy_headers,
   legacy_generated_headers,
   include_directories : legacy_include_directories,
+  cpp_pch : cpp_pch,
+  install : true,
+  install_rpath : libdir,
   dependencies : [
     liblix,
     boehm,
@@ -173,41 +176,9 @@ iblix = library(
     nlohmann_json,
     kj,
     libatomic,
-  ],
-  cpp_pch : cpp_pch,
-  install : true,
-  # FIXME(Qyriad): is this right?
-  install_rpath : libdir,
-)
-
-libiblix = declare_dependency(
-  link_with : [iblix],
-  dependencies : [
-    liblix,
-  ],
-  include_directories : [
-    include_directories('.'),
-    legacy_include_directories
-  ],
-  sources : [
-    nix_settings_headers,
-    nix_generated_headers,
-    nix_headers,
-    legacy_headers,
-    legacy_generated_headers,
-  ],
-)
-
-nix = executable(
-  'nix',
-  'main.cc',
-  cpp_pch : cpp_pch,
-  install : true,
-  install_rpath : libdir,
-  dependencies : [
-    libiblix,
     libasanoptions,
   ],
+  cpp_pch : cpp_pch,
 )
 
 nix_symlinks = [

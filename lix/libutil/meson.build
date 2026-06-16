@@ -261,6 +261,7 @@ archive_setting_definitions = files(
   'archive-settings/use-case-hack.md',
 )
 liblix_generated_headers += custom_target(
+  'archive-settings.gen.inc',
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -278,6 +279,7 @@ feature_setting_definitions = files(
   'feature-settings/experimental-features.md',
 )
 liblix_generated_headers += custom_target(
+  'feature-settings.gen.inc',
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
@@ -299,6 +301,7 @@ logging_setting_definitions = files(
   # keep-sorted end
 )
 liblix_generated_headers += custom_target(
+  'logging-settings.gen.inc',
   command : [
     python.full_path(),
     '@SOURCE_ROOT@/lix/code-generation/build_settings.py',
