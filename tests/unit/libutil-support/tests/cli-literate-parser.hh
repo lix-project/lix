@@ -2,7 +2,10 @@
 ///@file
 
 #include "lix/libutil/error.hh"
+#include <compare>
+#include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
@@ -163,7 +166,13 @@ struct Config {
  * comments.
  *
  * Syntax:
- * See tests/functional/repl_characterization/README.md.
+ * ```
+ * ( COMMENTARY
+ * | INDENT PROMPT COMMAND
+ * | INDENT OUTPUT
+ * | @args ARGS
+ * | @should-start ( true | false )) *
+ * ```
  *
  * e.g.
  * ```
