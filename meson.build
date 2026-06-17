@@ -675,21 +675,6 @@ if get_option('profile-build').require(cxx.get_id() == 'clang').enabled()
   add_project_arguments('-ftime-trace', language: 'cpp')
 endif
 
-if cxx.get_id() in ['clang', 'gcc']
-  add_project_arguments([
-      # Meson uses out of source builds, conventionally usually in a subdirectory
-      # of the source tree (e.g. meson setup ./build). This means that unlike in
-      # the previous Make buildsystem, all compilation sources are passed as a relative
-      # parent, e.g. `cc -o lix/libexpr/nixexpr.cc.o ../lix/libexpr/nixexpr.cc`.
-      # These paths show up when debugging, and in asserts, which look both look strange
-      # and confuse debuggers.
-      # So let's just tell GCC and Clang that ../lix really means lix.
-      '-ffile-prefix-map=../lix=lix',
-    ],
-    language : 'cpp',
-  )
-endif
-
 if is_darwin
   fs.copyfile(
     'misc/launchd/org.nixos.nix-daemon.plist.in',
