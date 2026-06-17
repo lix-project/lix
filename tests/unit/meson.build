@@ -20,7 +20,6 @@ default_test_env = {
 }
 
 libutil_test_support_sources = files(
-  'libutil-support/tests/cli-literate-parser.cc',
   'libutil-support/tests/hash.cc',
   'libutil-support/tests/terminal-code-eater.cc',
   'libutil-support/tests/test-data.cc',
