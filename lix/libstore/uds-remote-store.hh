@@ -172,6 +172,9 @@ public:
         const Activity * context
     ) override;
 
+    kj::Promise<Result<BuildResult>>
+    buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode) override;
+
     kj::Promise<Result<void>> buildPathsImpl(
         ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
     ) override;

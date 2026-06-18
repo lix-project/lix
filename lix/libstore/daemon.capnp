@@ -190,6 +190,13 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ) -> (
     result :AddToStoreNarStream
   );
+  buildDerivation @24 (
+    path :Libstore.StorePath,
+    drv :Data,
+    mode :BuildMode,
+  ) -> (
+    result :BuildResult
+  );
   buildPaths @22 (mode :BuildMode, paths :List(DerivedPath));
   buildPathsWithResult @23 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
   collectGarbage @13 (

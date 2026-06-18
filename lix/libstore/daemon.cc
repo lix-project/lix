@@ -38,6 +38,7 @@
 #include <kj/exception.h>
 #include <kj/memory.h>
 #include <sstream>
+#include <string_view>
 
 const std::string nix::rpc::daemon::UNSTABLE_LEGACY_TUNNELED = "lix/legacy/" PACKAGE_VERSION;
 
@@ -1290,6 +1291,85 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     {
         return RPC_IMPL({
             context.initResults().setResult(kj::heap<AddToStoreNarStream>(state, context.getParams()));
+        });
+    }
+
+    kj::Promise<void> buildDerivation(BuildDerivationContext context) override
+    {
+        return RPC_IMPL({
+            auto drvPath = from(context.getParams().getPath(), *state->store);
+            BasicDerivation drv;
+            /*
+             * Note: unlike wopEnsurePath, this operation reads a
+             * derivation-to-be-realized from the client with
+             * readDerivation(Source,Store) rather than reading it from
+             * the local store with Store::readDerivation().  Since the
+             * derivation-to-be-realized is not registered in the store
+             * it cannot be trusted that its outPath was calculated
+             * correctly.
+             */
+            StringSource rawDrv{rpc::to<std::string_view>(context.getParams().getDrv())};
+            readDerivation(rawDrv, *state->store, drv, Derivation::nameFromPath(drvPath));
+            BuildMode buildMode = from(context.getParams().getMode());
+
+            auto drvType = drv.type();
+
+            /* Content-addressed derivations are trustless because their output paths
+               are verified by their content alone, so any derivation is free to
+               try to produce such a path.
+
+               Input-addressed derivation output paths, however, are calculated
+               from the derivation closure that produced them---even knowing the
+               root derivation is not enough. That the output data actually came
+               from those derivations is fundamentally unverifiable, but the daemon
+               trusts itself on that matter. The question instead is whether the
+               submitted plan has rights to the output paths it wants to fill, and
+               at least the derivation closure proves that.
+
+               It would have been nice if input-address algorithm merely depended
+               on the build time closure, rather than depending on the derivation
+               closure. That would mean input-addressed paths used at build time
+               would just be trusted and not need their own evidence. This is in
+               fact fine as the same guarantees would hold *inductively*: either
+               the remote builder has those paths and already trusts them, or it
+               needs to build them too and thus their evidence must be provided in
+               turn.  The advantage of this variant algorithm is that the evidence
+               for input-addressed paths which the remote builder already has
+               doesn't need to be sent again.
+
+               That said, now that we have floating CA derivations, it is better
+               that people just migrate to those which also solve this problem, and
+               others. It's the same migration difficulty with strictly more
+               benefit.
+
+               Lastly, do note that when we parse fixed-output content-addressed
+               derivations, we throw out the precomputed output paths and just
+               store the hashes, so there aren't two competing sources of truth an
+               attacker could exploit. */
+            if (!(drvType.isCA() || state->trusted)) {
+                throw Error("you are not privileged to build input-addressed derivations");
+            }
+
+            /* Make sure that the non-input-addressed derivations that got this far
+               are in fact content-addressed if we don't trust them. */
+            assert(drvType.isCA() || state->trusted);
+
+            /* Recompute the derivation path when we cannot trust the original. */
+            if (!state->trusted) {
+                /* Recomputing the derivation path for input-address derivations
+                   makes it harder to audit them after the fact, since we need the
+                   original not-necessarily-resolved derivation to verify the drv
+                   derivation as adequate claim to the input-addressed output
+                   paths. */
+                assert(drvType.isCA());
+
+                Derivation drv2;
+                static_cast<BasicDerivation &>(drv2) = drv;
+                drvPath = TRY_AWAIT(writeDerivation(*state->store, Derivation{drv2}));
+            }
+
+            auto res = TRY_AWAIT(state->store->buildDerivation(drvPath, drv, buildMode));
+            RPC_FILL(context.initResults(), initResult, res, *state->store);
         });
     }
 

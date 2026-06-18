@@ -5,10 +5,12 @@
 #include "libstore/build-result.hh"
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
+#include "libstore/derivations.hh"
 #include "libutil/async-io.hh"
 #include "libutil/logging-rpc.hh"
 #include "libutil/logging.hh"
 #include "libutil/rpc.hh"
+#include "libutil/serialise.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
@@ -476,6 +478,20 @@ try {
     results.bytesFreed = res.getBytesFreed();
 
     co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<BuildResult>>
+RpcRemoteStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode)
+try {
+    auto req = rpc->legacyProtocol.buildDerivationRequest();
+    RPC_FILL(req, initPath, drvPath, *this);
+    RPC_FILL(req, setDrv, GeneratorSource{serializeDerivation(*this, drv)}.drain());
+    req.setMode(rpc::from(buildMode));
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<nix::BuildResult>(res.getResult(), *this);
 } catch (...) {
     co_return result::current_exception();
 }

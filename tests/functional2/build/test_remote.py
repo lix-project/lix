@@ -8,7 +8,7 @@ import textwrap
 from urllib.parse import urlencode, quote
 import sys
 
-from testlib.fixtures.nix import Nix
+from testlib.fixtures.nix import Nix, NixDaemon
 from testlib.fixtures.file_helper import with_files
 from testlib.utils import get_global_asset
 from testlib.fixtures.env import ManagedEnv
@@ -147,6 +147,35 @@ def test_remote_trustless_ca(
 
     out_path = (env.dirs.home / "result").readlink()
     assert nix.physical_store_path_for(out_path).read_text() == "FOO BAR BAZ\n"
+
+
+@pytest.mark.full_sandbox
+@with_files(
+    {
+        "build-hook-ca-fixed.nix": get_global_asset("build-hook-ca-fixed.nix"),
+        "config.nix": get_global_asset("config.nix"),
+    }
+)
+def test_remote_trustless_ca_daemon(
+    nix: Nix, daemon: NixDaemon, env: ManagedEnv, busybox_args: list[str]
+):
+    """
+    Tests Store::buildDerivation
+    """
+    with daemon(nix, settings={"trusted-users": "*", "system-features": "foo bar baz"}) as inner:
+        result = nix.nix_build(
+            [
+                *["--store", f"{nix.env.dirs.home}/store"],
+                "build-hook-ca-fixed.nix",
+                *["--max-jobs", "0"],
+                *busybox_args,
+                *["--builders", f"daemon?protocol={inner.daemon_protocol} - - - - foo,bar,baz"],
+            ]
+        ).run()
+        result.ok()
+
+        out_path = (env.dirs.home / "result").readlink()
+        assert nix.physical_store_path_for(out_path).read_text() == "FOO BAR BAZ\n"
 
 
 @with_files(
