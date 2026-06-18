@@ -512,6 +512,21 @@ try {
     return {result::current_exception()};
 }
 
+kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+RpcRemoteStore::queryPathInfoUncached(const StorePath & path, const Activity * context)
+try {
+    auto req = rpc->legacyProtocol.queryPathInfoRequest();
+    RPC_FILL(req, initPath, path, *this);
+
+    auto resp = TRY_AWAIT_RPC(req.send());
+    if (auto res = from(resp.getResult(), *this)) {
+        co_return std::make_shared<ValidPathInfo>(std::move(*res));
+    }
+    co_return result::success(nullptr);
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<ref<const ValidPathInfo>>> RpcRemoteStore::addCAToStore(
     AsyncInputStream & dump,
     std::string_view name,

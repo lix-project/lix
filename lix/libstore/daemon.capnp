@@ -130,6 +130,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   queryValidDerivers @6 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryDerivationOutputMap @7 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
   queryPathFromHashPart @8 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
+  queryPathInfo @15 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
   setOptions @14 (
     keepFailed :Bool,
     keepGoing :Bool,

@@ -180,6 +180,9 @@ public:
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;
 
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoUncached(const StorePath & path, const Activity * context) override;
+
     kj::Promise<Result<void>>
     querySubstitutablePathInfos(const StorePathCAMap & paths, SubstitutablePathInfos & infos) override;
 

@@ -1307,6 +1307,25 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> queryPathInfo(QueryPathInfoContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            std::shared_ptr<const ValidPathInfo> info;
+            try {
+                info = TRY_AWAIT(state->store->queryPathInfo(path));
+            } catch (InvalidPath &) {
+                // The path being invalid isn't fatal here since it will just be
+                // sent as not present.
+            }
+            if (info) {
+                RPC_FILL_STRUCT(context.initResults().initResult(), initSome, *info, *state->store);
+            } else {
+                context.initResults().initResult().setNone();
+            }
+        });
+    }
+
     kj::Promise<void> setOptions(SetOptionsContext context) override
     {
         return RPC_IMPL({
