@@ -99,6 +99,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   }
 
   addIndirectRoot @11 (path :T.String);
+  addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
   addTempRoot @10 (path :Libstore.StorePath);
   addToStore @9 (
     name :T.String,

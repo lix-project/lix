@@ -366,6 +366,18 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>> RpcRemoteStore::addSignatures(const StorePath & storePath, const StringSet & sigs)
+try {
+    auto req = rpc->legacyProtocol.addSignaturesRequest();
+    RPC_FILL(req, initPath, storePath, *this);
+    RPC_FILL(req, initSignatures, sigs);
+    TRY_AWAIT_RPC(req.send());
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> RpcRemoteStore::addTempRoot(const StorePath & path)
 try {
     auto req = rpc->legacyProtocol.addTempRootRequest();

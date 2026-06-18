@@ -1091,6 +1091,15 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> addSignatures(AddSignaturesContext context) override
+    {
+        return RPC_IMPL({
+            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
+            StringSet sigs = rpc::to<StringSet>(context.getParams().getSignatures());
+            TRY_AWAIT(state->store->addSignatures(path, sigs));
+        });
+    }
+
     kj::Promise<void> addTempRoot(AddTempRootContext context) override
     {
         return RPC_IMPL({
