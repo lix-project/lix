@@ -97,6 +97,10 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     feed @0 (raw :Data) -> stream;
     finalize @1 () -> (result :ValidPathInfo);
   }
+  interface AddToStoreNarStream {
+    feed @0 (raw :Data) -> stream;
+    finalize @1 ();
+  }
 
   addIndirectRoot @11 (path :T.String);
   addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
@@ -107,6 +111,13 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);
+  addToStoreNar @18 (
+    info: ValidPathInfo,
+    repair :Bool,
+    dontCheckSigs :Bool
+  ) -> (
+    result :AddToStoreNarStream
+  );
   collectGarbage @13 (
     action :GCAction,
     pathsToDelete :List(Libstore.StorePath),

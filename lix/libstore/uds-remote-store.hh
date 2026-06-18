@@ -162,6 +162,14 @@ public:
 
     kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
+    kj::Promise<Result<void>> addToStore(
+        const ValidPathInfo & info,
+        AsyncInputStream & nar,
+        RepairFlag repair,
+        CheckSigsFlag checkSigs,
+        const Activity * context
+    ) override;
+
     kj::Promise<Result<void>>
     collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results) override;
 

@@ -409,6 +409,36 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>> RpcRemoteStore::addToStore(
+    const ValidPathInfo & info,
+    AsyncInputStream & nar,
+    RepairFlag repair,
+    CheckSigsFlag checkSigs,
+    const Activity * context
+)
+try {
+    auto req = rpc->legacyProtocol.addToStoreNarRequest();
+    RPC_FILL(req, initInfo, info, *this);
+    RPC_FILL(req, setRepair, repair);
+    RPC_FILL(req, setDontCheckSigs, !checkSigs);
+
+    auto stream = TRY_AWAIT_RPC(req.send()).getResult();
+
+    auto copier = copyNAR(nar);
+    constexpr size_t BUF_SIZE = 65536;
+    auto buf = std::make_unique<char[]>(BUF_SIZE);
+    while (auto r = TRY_AWAIT(copier->read(buf.get(), BUF_SIZE))) {
+        auto feedReq = stream.feedRequest();
+        RPC_FILL(feedReq, setRaw, std::string_view(buf.get(), *r));
+        TRY_AWAIT_RPC(feedReq.send());
+    }
+
+    TRY_AWAIT_RPC(stream.finalizeRequest().send());
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>>
 RpcRemoteStore::collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results)
 try {

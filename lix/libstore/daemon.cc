@@ -1193,6 +1193,66 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    struct AddToStoreNarStream final : LegacyProtocol::AddToStoreNarStream::Server
+    {
+        ref<LegacyState> state;
+        ValidPathInfo info;
+        RepairFlag repair;
+        bool dontCheckSigs;
+
+        std::unique_ptr<AsyncOutputStream> writer;
+        kj::Function<kj::Promise<Result<void>>()> finish;
+
+        AddToStoreNarStream(ref<LegacyState> state, AddToStoreNarParams::Reader args)
+            : state(state)
+            , info(from(args.getInfo(), *state->store))
+            , repair{args.getRepair()}
+            , dontCheckSigs(args.getDontCheckSigs())
+        {
+            if (!state->trusted && dontCheckSigs) {
+                dontCheckSigs = false;
+            }
+            if (!state->trusted) {
+                info.ultimate = false;
+            }
+
+            std::tie(writer, finish) = wrapInAsyncPipe([&](auto & reader) { return consume(reader); });
+        }
+
+        kj::Promise<Result<void>> consume(AsyncInputStream & reader)
+        try {
+            TRY_AWAIT(
+                state->store->addToStore(info, reader, repair, dontCheckSigs ? NoCheckSigs : CheckSigs)
+            );
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+
+        kj::Promise<void> feed(FeedContext context) override
+        {
+            return RPC_IMPL({
+                auto bytes = context.getParams().getRaw();
+                TRY_AWAIT(writer->writeFull(bytes.begin(), bytes.size()));
+            });
+        }
+
+        kj::Promise<void> finalize(FinalizeContext context) override
+        {
+            return RPC_IMPL({
+                writer = nullptr;
+                TRY_AWAIT(finish());
+            });
+        }
+    };
+
+    kj::Promise<void> addToStoreNar(AddToStoreNarContext context) override
+    {
+        return RPC_IMPL({
+            context.initResults().setResult(kj::heap<AddToStoreNarStream>(state, context.getParams()));
+        });
+    }
+
     kj::Promise<void> collectGarbage(CollectGarbageContext context) override
     {
         return RPC_IMPL({
