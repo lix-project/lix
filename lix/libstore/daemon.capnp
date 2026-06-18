@@ -154,6 +154,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ensurePath @1 (path :Libstore.StorePath);
   findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
+  narFromPath @21 (path :Libstore.StorePath, into :LegacyStream);
   optimiseStore @0 ();
   queryValidPaths @3 (
     paths :List(Libstore.StorePath),

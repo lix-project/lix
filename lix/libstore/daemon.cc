@@ -1347,6 +1347,28 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> narFromPath(NarFromPathContext context) override
+    {
+        return RPC_IMPL({
+            auto nar =
+                TRY_AWAIT(state->store->narFromPath(rpc::from(context.getParams().getPath(), *state->store)));
+            auto into = context.getParams().getInto();
+            std::array<char, 65536> buf;
+            while (true) {
+                auto got = TRY_AWAIT(nar->read(buf.data(), buf.size()));
+                if (!got) {
+                    break;
+                }
+
+                auto req = into.feedRequest();
+                RPC_FILL(req, setRaw, std::string_view(buf.data(), *got));
+                TRY_AWAIT_RPC(req.send());
+            }
+
+            TRY_AWAIT_RPC(into.syncRequest().send());
+        });
+    }
+
     kj::Promise<void> optimiseStore(OptimiseStoreContext context) override
     {
         return RPC_IMPL({ TRY_AWAIT(state->store->optimiseStore()); });

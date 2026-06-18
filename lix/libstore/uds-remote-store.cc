@@ -4,6 +4,7 @@
 #include "globals.hh"
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
+#include "libutil/async-io.hh"
 #include "libutil/logging-rpc.hh"
 #include "libutil/logging.hh"
 #include "libutil/rpc.hh"
@@ -24,6 +25,7 @@
 #include <exception>
 #include <kj/async.h>
 #include <kj/encoding.h>
+#include <memory>
 #include <string_view>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -483,6 +485,66 @@ try {
     auto req = rpc->legacyProtocol.isValidPathRequest();
     RPC_FILL(req, initPath, path, *this);
     co_return TRY_AWAIT_RPC(req.send()).getResult();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<box_ptr<AsyncInputStream>>>
+RpcRemoteStore::narFromPath(const StorePath & path, const Activity * context)
+try {
+    struct FeedStream final : rpc::daemon::LegacyStream::Server
+    {
+        std::unique_ptr<AsyncOutputStream> out;
+
+        FeedStream(std::unique_ptr<AsyncOutputStream> out) : out(std::move(out)) {}
+
+        kj::Promise<void> feed(FeedContext context) override
+        {
+            return RPC_IMPL({
+                auto bytes = context.getParams().getRaw().asChars();
+                TRY_AWAIT(out->writeFull(bytes.begin(), bytes.size()));
+            });
+        }
+
+        kj::Promise<void> sync(SyncContext context) override
+        {
+            return RPC_IMPL({ out = nullptr; });
+        }
+    };
+
+    struct ReturnStream : AsyncInputStream
+    {
+        std::unique_ptr<AsyncInputStream> in;
+        capnp::RemotePromise<rpc::daemon::LegacyProtocol::NarFromPathResults> source;
+
+        ReturnStream(
+            std::unique_ptr<AsyncInputStream> in,
+            capnp::RemotePromise<rpc::daemon::LegacyProtocol::NarFromPathResults> source
+        )
+            : in(std::move(in))
+            , source(std::move(source))
+        {
+        }
+
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
+        try {
+            auto got = TRY_AWAIT(in->read(buffer, size));
+            if (!got) {
+                TRY_AWAIT_RPC(std::move(source));
+            }
+            co_return got;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+
+    auto pipe = newZeroCopyPipe();
+
+    auto req = rpc->legacyProtocol.narFromPathRequest();
+    RPC_FILL(req, initPath, path, *this);
+    req.setInto(kj::heap<FeedStream>(std::move(pipe.writer)));
+
+    co_return make_box_ptr<ReturnStream>(std::move(pipe.reader), req.send());
 } catch (...) {
     co_return result::current_exception();
 }

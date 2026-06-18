@@ -181,6 +181,9 @@ public:
 
     kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path, const Activity * context) override;
 
+    kj::Promise<Result<box_ptr<AsyncInputStream>>>
+    narFromPath(const StorePath & path, const Activity * context) override;
+
     kj::Promise<Result<void>> optimiseStore() override;
 
     kj::Promise<Result<void>> setOptions() override;
