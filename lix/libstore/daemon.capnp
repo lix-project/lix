@@ -143,6 +143,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     useSubstitutes :Bool,
     settingsOverrides :T.Settings
   );
+  verifyStore @16 (checkContents :Bool, repair :Bool) -> (result :Bool);
 }
 
 # Tunnel the un-RPC'd wire protocol over an RPC-style bytestream

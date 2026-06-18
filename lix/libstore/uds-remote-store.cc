@@ -593,4 +593,15 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
+
+kj::Promise<Result<bool>> RpcRemoteStore::verifyStore(bool checkContents, RepairFlag repair)
+try {
+    auto req = rpc->legacyProtocol.verifyStoreRequest();
+    RPC_FILL(req, setCheckContents, checkContents);
+    RPC_FILL(req, setRepair, repair);
+
+    co_return TRY_AWAIT_RPC(req.send()).getResult();
+} catch (...) {
+    co_return result::current_exception();
+}
 }

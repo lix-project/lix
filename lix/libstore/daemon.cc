@@ -1351,6 +1351,19 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             clientSettings.apply(state->trusted);
         });
     }
+
+    kj::Promise<void> verifyStore(VerifyStoreContext context) override
+    {
+        return RPC_IMPL({
+            bool checkContents = context.getParams().getCheckContents();
+            bool repair = context.getParams().getRepair();
+            if (repair && !state->trusted) {
+                throw Error("you are not privileged to repair paths");
+            }
+            bool errors = TRY_AWAIT(state->store->verifyStore(checkContents, (RepairFlag) repair));
+            context.initResults().setResult(errors);
+        });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server

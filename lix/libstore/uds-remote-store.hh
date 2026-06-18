@@ -195,6 +195,8 @@ public:
     kj::Promise<Result<StorePathSet>>
     queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute) override;
 
+    kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
+
 private:
     struct RpcState
     {
