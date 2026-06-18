@@ -1081,6 +1081,46 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
 
+    struct AddBuildLogStream final : LegacyStream::Server
+    {
+        ref<LegacyState> state;
+        StorePath path;
+        std::string data;
+
+        AddBuildLogStream(ref<LegacyState> state, StorePath path)
+            : state(state), path(std::move(path))
+        {
+        }
+
+        kj::Promise<void> feed(FeedContext context) override
+        {
+            return RPC_IMPL({
+                auto bytes = context.getParams().getRaw().asChars();
+                data += std::string_view{bytes.begin(), bytes.size()};
+            });
+        }
+
+        kj::Promise<void> sync(SyncContext context) override
+        {
+            return RPC_IMPL({
+                auto & logStore = require<LogStore>(*state->store);
+                TRY_AWAIT(logStore.addBuildLog(path, data));
+            });
+        }
+    };
+
+    kj::Promise<void> addBuildLog(AddBuildLogContext context) override
+    {
+        return RPC_IMPL({
+            if (!state->trusted) {
+                throw Error("you are not privileged to add logs");
+            }
+            context.initResults().setStream(
+                kj::heap<AddBuildLogStream>(state, rpc::from(context.getParams().getPath(), *state->store))
+            );
+        });
+    }
+
     kj::Promise<void> addIndirectRoot(AddIndirectRootContext context) override
     {
         return RPC_IMPL({

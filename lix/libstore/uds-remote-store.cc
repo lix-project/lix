@@ -355,6 +355,26 @@ void registerUDSRemoteStore() {
 
 /* Overrides for RPC-aware versions of RemoteStore commands */
 
+kj::Promise<Result<void>> RpcRemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
+try {
+    auto req = rpc->legacyProtocol.addBuildLogRequest();
+    RPC_FILL(req, initPath, drvPath, *this);
+    auto stream = TRY_AWAIT_RPC(req.send()).getStream();
+
+    while (!log.empty()) {
+        auto feedReq = stream.feedRequest();
+        RPC_FILL(feedReq, setRaw, log.substr(0, 65536));
+        log.remove_prefix(feedReq.getRaw().size());
+        TRY_AWAIT_RPC(feedReq.send());
+    }
+
+    TRY_AWAIT_RPC(stream.syncRequest().send());
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> RpcRemoteStore::addIndirectRoot(const Path & path)
 try {
     auto req = rpc->legacyProtocol.addIndirectRootRequest();

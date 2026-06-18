@@ -147,6 +147,8 @@ public:
 
     /* Overrides for RPC-aware versions of RemoteStore commands */
 
+    kj::Promise<Result<void>> addBuildLog(const StorePath & drvPath, std::string_view log) override;
+
     kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
         AsyncInputStream & dump,
         std::string_view name,

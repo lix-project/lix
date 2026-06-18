@@ -125,6 +125,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     finalize @1 ();
   }
 
+  addBuildLog @20 (path :Libstore.StorePath) -> (stream :LegacyStream);
   addIndirectRoot @11 (path :T.String);
   addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
   addTempRoot @10 (path :Libstore.StorePath);
