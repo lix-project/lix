@@ -205,4 +205,90 @@ inline daemon::LegacyProtocol::GCAction from(GCOptions::GCAction ht, auto &&...)
     }
     abort(); // unreachable
 }
+
+namespace daemon {
+inline nix::DerivedPathOpaque from(const LegacyProtocol::DerivedPathOpaque::Reader & r, auto &&... args)
+{
+    return nix::DerivedPathOpaque{from(r.getPath(), args...)};
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::DerivedPathOpaque, nix::DerivedPathOpaque>
+{
+    static void fill(
+        daemon::LegacyProtocol::DerivedPathOpaque::Builder b,
+        const nix::DerivedPathOpaque & p,
+        auto &&... args
+    )
+    {
+        LIX_RPC_FILL_STRUCT(b, initPath, p.path, args...);
+    }
+};
+
+namespace daemon {
+inline nix::DerivedPathBuilt from(const LegacyProtocol::DerivedPathBuilt::Reader & r, auto &&... args)
+{
+    auto outputs = r.getOutputs();
+    return nix::DerivedPathBuilt{
+        from(r.getDrvPath(), args...),
+        outputs.isAll() ? nix::OutputsSpec{nix::OutputsSpec::All{}}
+                        : nix::OutputsSpec{
+                              nix::OutputsSpec::Names{rpc::to<std::set<nix::OutputName>>(outputs.getNames())}
+                          },
+    };
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::DerivedPathBuilt, nix::DerivedPathBuilt>
+{
+    static void fill(
+        daemon::LegacyProtocol::DerivedPathBuilt::Builder b, const nix::DerivedPathBuilt & p, auto &&... args
+    )
+    {
+        LIX_RPC_FILL_STRUCT(b, initDrvPath, p.drvPath, args...);
+        auto outputs = b.getOutputs();
+        std::visit(
+            overloaded{
+                [&](const nix::OutputsSpec::All &) { outputs.setAll(); },
+                [&](const nix::OutputsSpec::Names & names) {
+                    LIX_RPC_FILL_LIST(outputs, initNames, names, args...);
+                },
+            },
+            p.outputs.raw
+        );
+    }
+};
+
+namespace daemon {
+inline nix::DerivedPath from(const LegacyProtocol::DerivedPath::Reader & r, auto &&... args)
+{
+    auto raw = r.getRaw();
+    if (raw.isOpaque()) {
+        return nix::DerivedPath{from(raw.getOpaque(), args...)};
+    } else {
+        return nix::DerivedPath{from(raw.getBuilt(), args...)};
+    }
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::DerivedPath, nix::DerivedPath>
+{
+    static void
+    fill(daemon::LegacyProtocol::DerivedPath::Builder b, const nix::DerivedPath & p, auto &&... args)
+    {
+        auto raw = b.getRaw();
+        std::visit(
+            overloaded{
+                [&](const nix::DerivedPathOpaque & o) { LIX_RPC_FILL_STRUCT(raw, initOpaque, o, args...); },
+                [&](const nix::DerivedPathBuilt & built) {
+                    LIX_RPC_FILL_STRUCT(raw, initBuilt, built, args...);
+                },
+            },
+            p.raw()
+        );
+    }
+};
 }

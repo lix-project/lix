@@ -1367,6 +1367,24 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> queryMissing(QueryMissingContext context) override
+    {
+        return RPC_IMPL({
+            DerivedPaths targets = rpc::to<DerivedPaths>(context.getParams().getTargets(), *state->store);
+            StorePathSet willBuild, willSubstitute, unknown;
+            uint64_t downloadSize, narSize;
+            TRY_AWAIT(
+                state->store->queryMissing(targets, willBuild, willSubstitute, unknown, downloadSize, narSize)
+            );
+            auto res = context.initResults().initResult();
+            RPC_FILL_LIST(res, initWillBuild, willBuild, *state->store);
+            RPC_FILL_LIST(res, initWillSubstitute, willSubstitute, *state->store);
+            RPC_FILL_LIST(res, initUnknown, unknown, *state->store);
+            res.setDownloadSize(downloadSize);
+            res.setNarSize(narSize);
+        });
+    }
+
     kj::Promise<void> queryPathFromHashPart(QueryPathFromHashPartContext context) override
     {
         return RPC_IMPL({

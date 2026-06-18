@@ -534,6 +534,30 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>> RpcRemoteStore::queryMissing(
+    const std::vector<DerivedPath> & targets,
+    StorePathSet & willBuild,
+    StorePathSet & willSubstitute,
+    StorePathSet & unknown,
+    uint64_t & downloadSize,
+    uint64_t & narSize
+)
+try {
+    auto req = rpc->legacyProtocol.queryMissingRequest();
+    RPC_FILL(req, initTargets, targets, static_cast<Store &>(*this));
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    willBuild = rpc::to<StorePathSet>(res.getResult().getWillBuild(), static_cast<Store &>(*this));
+    willSubstitute = rpc::to<StorePathSet>(res.getResult().getWillSubstitute(), static_cast<Store &>(*this));
+    unknown = rpc::to<StorePathSet>(res.getResult().getUnknown(), static_cast<Store &>(*this));
+    downloadSize = res.getResult().getDownloadSize();
+    narSize = res.getResult().getNarSize();
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<std::optional<StorePath>>>
 RpcRemoteStore::queryPathFromHashPart(const std::string & hashPart)
 try {

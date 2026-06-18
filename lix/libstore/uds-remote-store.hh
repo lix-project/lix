@@ -187,6 +187,15 @@ public:
     queryDerivationOutputMap(const StorePath & path) override;
     using RemoteStore::queryDerivationOutputMap;
 
+    kj::Promise<Result<void>> queryMissing(
+        const std::vector<DerivedPath> & targets,
+        StorePathSet & willBuild,
+        StorePathSet & willSubstitute,
+        StorePathSet & unknown,
+        uint64_t & downloadSize,
+        uint64_t & narSize
+    ) override;
+
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override;
 

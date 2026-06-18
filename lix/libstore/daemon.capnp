@@ -92,6 +92,29 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     deleteSpecific @3;
     tryDeleteSpecific @4;
   }
+  struct QueryMissingResult {
+    willBuild @0 :List(Libstore.StorePath);
+    willSubstitute @1 :List(Libstore.StorePath);
+    unknown @2 :List(Libstore.StorePath);
+    downloadSize @3 :UInt64;
+    narSize @4 :UInt64;
+  }
+  struct DerivedPathOpaque {
+    path @0 :Libstore.StorePath;
+  }
+  struct DerivedPathBuilt {
+    drvPath @0 :DerivedPathOpaque;
+    outputs :union {
+      all @1 :Void;
+      names @2 :List(T.String);
+    }
+  }
+  struct DerivedPath {
+    raw :union {
+      opaque @0 :DerivedPathOpaque;
+      built @1 :DerivedPathBuilt;
+    }
+  }
 
   interface AddToStoreStream {
     feed @0 (raw :Data) -> stream;
@@ -141,6 +164,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   queryReferrers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryValidDerivers @6 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryDerivationOutputMap @7 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
+  queryMissing @19 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
   queryPathFromHashPart @8 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
   queryPathInfo @15 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
   setOptions @14 (
