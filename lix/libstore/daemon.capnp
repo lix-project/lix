@@ -115,6 +115,11 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
       built @1 :DerivedPathBuilt;
     }
   }
+  enum BuildMode {
+    bmNormal @0;
+    bmRepair @1;
+    bmCheck @2;
+  }
 
   interface AddToStoreStream {
     feed @0 (raw :Data) -> stream;
@@ -142,6 +147,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ) -> (
     result :AddToStoreNarStream
   );
+  buildPaths @22 (mode :BuildMode, paths :List(DerivedPath));
   collectGarbage @13 (
     action :GCAction,
     pathsToDelete :List(Libstore.StorePath),

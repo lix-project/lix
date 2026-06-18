@@ -479,6 +479,22 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<void>> RpcRemoteStore::buildPathsImpl(
+    ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
+)
+try {
+    (void) auto(std::move(conn));
+
+    auto req = rpc->legacyProtocol.buildPathsRequest();
+    req.setMode(rpc::from(buildMode));
+    RPC_FILL(req, initPaths, paths, *this);
+    TRY_AWAIT_RPC(req.send());
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<bool>>
 RpcRemoteStore::isValidPathUncached(const StorePath & path, const Activity * context)
 try {

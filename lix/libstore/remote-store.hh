@@ -124,6 +124,8 @@ public:
         BuildMode buildMode,
         std::shared_ptr<Store> evalStore
     ) override;
+    virtual kj::Promise<Result<void>>
+    buildPathsImpl(ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode);
 
     kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResults(
         const std::vector<DerivedPath> & paths,

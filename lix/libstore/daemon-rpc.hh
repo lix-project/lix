@@ -291,4 +291,32 @@ struct Fill<daemon::LegacyProtocol::DerivedPath, nix::DerivedPath>
         );
     }
 };
+
+namespace daemon {
+inline nix::BuildMode from(LegacyProtocol::BuildMode bm, auto &&...)
+{
+    switch (bm) {
+    case LegacyProtocol::BuildMode::BM_NORMAL:
+        return bmNormal;
+    case LegacyProtocol::BuildMode::BM_REPAIR:
+        return bmRepair;
+    case LegacyProtocol::BuildMode::BM_CHECK:
+        return bmCheck;
+    }
+    throw nix::Error("invalid BuildMode received over RPC: %d", uint16_t(bm));
+}
+}
+
+inline daemon::LegacyProtocol::BuildMode from(nix::BuildMode bm, auto &&...)
+{
+    switch (bm) {
+    case bmNormal:
+        return daemon::LegacyProtocol::BuildMode::BM_NORMAL;
+    case bmRepair:
+        return daemon::LegacyProtocol::BuildMode::BM_REPAIR;
+    case bmCheck:
+        return daemon::LegacyProtocol::BuildMode::BM_CHECK;
+    }
+    abort(); // unreachable
+}
 }

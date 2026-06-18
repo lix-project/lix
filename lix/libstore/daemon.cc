@@ -1293,6 +1293,27 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> buildPaths(BuildPathsContext context) override
+    {
+        return RPC_IMPL({
+            DerivedPaths paths = rpc::to<DerivedPaths>(context.getParams().getPaths(), *state->store);
+            BuildMode mode = from(context.getParams().getMode());
+            /* Repairing is not atomic, so disallowed for "untrusted"
+               clients.
+
+               FIXME: layer violation in this message: the daemon code (i.e.
+               this file) knows whether a client/connection is trusted, but it
+               does not how the client was authenticated. The mechanism
+               need not be getting the UID of the other end of a Unix Domain
+               Socket.
+              */
+            if (mode == bmRepair && !state->trusted) {
+                throw Error("repairing is not allowed because you are not in 'trusted-users'");
+            }
+            TRY_AWAIT(state->store->buildPaths(paths, mode));
+        });
+    }
+
     kj::Promise<void> collectGarbage(CollectGarbageContext context) override
     {
         return RPC_IMPL({

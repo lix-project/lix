@@ -172,6 +172,10 @@ public:
         const Activity * context
     ) override;
 
+    kj::Promise<Result<void>> buildPathsImpl(
+        ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
+    ) override;
+
     kj::Promise<Result<void>>
     collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results) override;
 
