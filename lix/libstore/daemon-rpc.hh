@@ -1,6 +1,8 @@
 #pragma once
 ///@file RPC helper functions for the daemon protocol
 
+#include "libstore/build-result.hh"
+#include "libstore/derived-path.hh"
 #include "lix/libstore/content-address.hh"
 #include "lix/libstore/daemon.capnp.h"
 #include "lix/libstore/path-info.hh"
@@ -319,4 +321,191 @@ inline daemon::LegacyProtocol::BuildMode from(nix::BuildMode bm, auto &&...)
     }
     abort(); // unreachable
 }
+
+inline daemon::LegacyProtocol::BuildResult::Status from(nix::BuildResult::Status s, auto &&...)
+{
+    using Status = daemon::LegacyProtocol::BuildResult::Status;
+    switch (s) {
+    case nix::BuildResult::Built:
+        return Status::BUILT;
+    case nix::BuildResult::Substituted:
+        return Status::SUBSTITUTED;
+    case nix::BuildResult::AlreadyValid:
+        return Status::ALREADY_VALID;
+    case nix::BuildResult::PermanentFailure:
+        return Status::PERMANENT_FAILURE;
+    case nix::BuildResult::InputRejected:
+        return Status::INPUT_REJECTED;
+    case nix::BuildResult::OutputRejected:
+        return Status::OUTPUT_REJECTED;
+    case nix::BuildResult::TransientFailure:
+        return Status::TRANSIENT_FAILURE;
+    case nix::BuildResult::CachedFailure:
+        return Status::CACHED_FAILURE;
+    case nix::BuildResult::TimedOut:
+        return Status::TIMED_OUT;
+    case nix::BuildResult::MiscFailure:
+        return Status::MISC_FAILURE;
+    case nix::BuildResult::DependencyFailed:
+        return Status::DEPENDENCY_FAILED;
+    case nix::BuildResult::LogLimitExceeded:
+        return Status::LOG_LIMIT_EXCEEDED;
+    case nix::BuildResult::NotDeterministic:
+        return Status::NOT_DETERMINISTIC;
+    case nix::BuildResult::ResolvesToAlreadyValid:
+        return Status::RESOLVES_TO_ALREADY_VALID;
+    case nix::BuildResult::NoSubstituters:
+        return Status::NO_SUBSTITUTERS;
+    }
+    abort(); // unreachable
+}
+
+namespace daemon {
+inline nix::BuildResult::Status from(LegacyProtocol::BuildResult::Status s, auto &&...)
+{
+    using Status = LegacyProtocol::BuildResult::Status;
+    switch (s) {
+    case Status::BUILT:
+        return nix::BuildResult::Built;
+    case Status::SUBSTITUTED:
+        return nix::BuildResult::Substituted;
+    case Status::ALREADY_VALID:
+        return nix::BuildResult::AlreadyValid;
+    case Status::PERMANENT_FAILURE:
+        return nix::BuildResult::PermanentFailure;
+    case Status::INPUT_REJECTED:
+        return nix::BuildResult::InputRejected;
+    case Status::OUTPUT_REJECTED:
+        return nix::BuildResult::OutputRejected;
+    case Status::TRANSIENT_FAILURE:
+        return nix::BuildResult::TransientFailure;
+    case Status::CACHED_FAILURE:
+        return nix::BuildResult::CachedFailure;
+    case Status::TIMED_OUT:
+        return nix::BuildResult::TimedOut;
+    case Status::MISC_FAILURE:
+        return nix::BuildResult::MiscFailure;
+    case Status::DEPENDENCY_FAILED:
+        return nix::BuildResult::DependencyFailed;
+    case Status::LOG_LIMIT_EXCEEDED:
+        return nix::BuildResult::LogLimitExceeded;
+    case Status::NOT_DETERMINISTIC:
+        return nix::BuildResult::NotDeterministic;
+    case Status::RESOLVES_TO_ALREADY_VALID:
+        return nix::BuildResult::ResolvesToAlreadyValid;
+    case Status::NO_SUBSTITUTERS:
+        return nix::BuildResult::NoSubstituters;
+    }
+    throw nix::Error("invalid BuildResult::Status received over RPC: %d", uint16_t(s));
+}
+}
+
+namespace daemon {
+inline nix::DrvOutput from(const LegacyProtocol::DrvOutput::Reader & r, auto &&... args)
+{
+    return nix::DrvOutput{
+        .drvHash = from(r.getDrvHash(), args...),
+        .outputName = rpc::to<std::string>(r.getOutputName()),
+    };
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::DrvOutput, nix::DrvOutput>
+{
+    static void fill(daemon::LegacyProtocol::DrvOutput::Builder b, const nix::DrvOutput & o, auto &&... args)
+    {
+        LIX_RPC_FILL_STRUCT(b, initDrvHash, o.drvHash, args...);
+        LIX_RPC_FILL(b, setOutputName, o.outputName);
+    }
+};
+
+namespace daemon {
+inline nix::Realisation from(const LegacyProtocol::Realisation::Reader & r, auto &&... args)
+{
+    return nix::Realisation{
+        .id = from(r.getId(), args...),
+        .outPath = from(r.getOutPath(), args...),
+        .signatures = rpc::to<StringSet>(r.getSignatures()),
+        .dependentRealisations =
+            rpc::to<std::map<nix::DrvOutput, nix::StorePath>>(r.getDependentRealisations(), args...),
+    };
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::Realisation, nix::Realisation>
+{
+    static void
+    fill(daemon::LegacyProtocol::Realisation::Builder b, const nix::Realisation & real, auto &&... args)
+    {
+        LIX_RPC_FILL_STRUCT(b, initId, real.id, args...);
+        LIX_RPC_FILL_STRUCT(b, initOutPath, real.outPath, args...);
+        LIX_RPC_FILL_LIST(b, initSignatures, real.signatures, args...);
+        LIX_RPC_FILL_STRUCT(b, initDependentRealisations, real.dependentRealisations, args...);
+    }
+};
+
+namespace daemon {
+inline nix::BuildResult from(const LegacyProtocol::BuildResult::Reader & r, auto &&... args)
+{
+    return nix::BuildResult{
+        .status = from(r.getStatus()),
+        .errorMsg = rpc::to<std::string>(r.getErrorMsg()),
+        .timesBuilt = r.getTimesBuilt(),
+        .isNonDeterministic = r.getIsNonDeterministic(),
+        .builtOutputs = rpc::to<std::map<std::string, nix::Realisation>>(r.getBuildOutputs(), args...),
+        .startTime = r.getStartTime(),
+        .stopTime = r.getStopTime(),
+        .cpuUser =
+            rpc::from(r.getCpuUser()).transform([](int64_t v) { return std::chrono::microseconds(v); }),
+        .cpuSystem =
+            rpc::from(r.getCpuSystem()).transform([](int64_t v) { return std::chrono::microseconds(v); }),
+    };
+}
+
+inline nix::KeyedBuildResult from(const LegacyProtocol::KeyedBuildResult::Reader & r, auto &&... args)
+{
+    return nix::KeyedBuildResult{
+        from(r.getResult(), args...),
+        from(r.getPath(), args...),
+    };
+}
+}
+
+template<>
+struct Fill<daemon::LegacyProtocol::BuildResult, nix::BuildResult>
+{
+    static void
+    fill(daemon::LegacyProtocol::BuildResult::Builder b, const nix::BuildResult & res, auto &&... args)
+    {
+        b.setStatus(from(res.status));
+        LIX_RPC_FILL(b, setErrorMsg, res.errorMsg);
+        b.setTimesBuilt(res.timesBuilt);
+        b.setIsNonDeterministic(res.isNonDeterministic);
+        LIX_RPC_FILL_STRUCT(b, initBuildOutputs, res.builtOutputs, args...);
+        b.setStartTime(res.startTime);
+        b.setStopTime(res.stopTime);
+        LIX_RPC_FILL_STRUCT(
+            b, initCpuUser, res.cpuUser.transform([](auto d) { return int64_t(d.count()); }), args...
+        );
+        LIX_RPC_FILL_STRUCT(
+            b, initCpuSystem, res.cpuSystem.transform([](auto d) { return int64_t(d.count()); }), args...
+        );
+    }
+};
+
+template<>
+struct Fill<daemon::LegacyProtocol::KeyedBuildResult, nix::KeyedBuildResult>
+{
+    static void fill(
+        daemon::LegacyProtocol::KeyedBuildResult::Builder b,
+        const nix::KeyedBuildResult & res,
+        auto &&... args
+    )
+    {
+        LIX_RPC_FILL_STRUCT(b, initResult, static_cast<const nix::BuildResult &>(res), args...);
+        LIX_RPC_FILL_STRUCT(b, initPath, res.path, args...);
+    }
+};
 }

@@ -2,6 +2,7 @@
 #include "daemon.capnp.h"
 #include "filetransfer.hh"
 #include "globals.hh"
+#include "libstore/build-result.hh"
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
 #include "libutil/async-io.hh"
@@ -491,6 +492,22 @@ try {
     TRY_AWAIT_RPC(req.send());
 
     co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::vector<KeyedBuildResult>>> RpcRemoteStore::buildPathsWithResultsImpl(
+    ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
+)
+try {
+    (void) auto(std::move(conn));
+
+    auto req = rpc->legacyProtocol.buildPathsWithResultRequest();
+    req.setMode(rpc::from(buildMode));
+    RPC_FILL(req, initPaths, paths, *this);
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<std::vector<KeyedBuildResult>>(res.getResult(), *this);
 } catch (...) {
     co_return result::current_exception();
 }

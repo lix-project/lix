@@ -1314,6 +1314,23 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> buildPathsWithResult(BuildPathsWithResultContext context) override
+    {
+        return RPC_IMPL({
+            DerivedPaths paths = rpc::to<DerivedPaths>(context.getParams().getPaths(), *state->store);
+            BuildMode mode = from(context.getParams().getMode());
+            /* Repairing is not atomic, so disallowed for "untrusted"
+               clients.
+
+               FIXME: layer violation; see above. */
+            if (mode == bmRepair && !state->trusted) {
+                throw Error("repairing is not allowed because you are not in 'trusted-users'");
+            }
+            auto results = TRY_AWAIT(state->store->buildPathsWithResults(paths, mode));
+            RPC_FILL_LIST(context.initResults(), initResult, results, *state->store);
+        });
+    }
+
     kj::Promise<void> collectGarbage(CollectGarbageContext context) override
     {
         return RPC_IMPL({

@@ -120,6 +120,49 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     bmRepair @1;
     bmCheck @2;
   }
+  struct DrvOutput {
+    drvHash @0 :Hash;
+    outputName @1 :T.String;
+  }
+  struct Realisation {
+    id @0 :DrvOutput;
+    outPath @1 :Libstore.StorePath;
+    signatures @2 :List(T.String);
+    dependentRealisations @3 :T.Map(DrvOutput, Libstore.StorePath);
+  }
+  struct BuildResult {
+    enum Status {
+        built @0;
+        substituted @1;
+        alreadyValid @2;
+        permanentFailure @3;
+        inputRejected @4;
+        outputRejected @5;
+        transientFailure @6; # possibly transient
+        cachedFailure @7; # no longer used
+        timedOut @8;
+        miscFailure @9;
+        dependencyFailed @10;
+        logLimitExceeded @11;
+        notDeterministic @12;
+        resolvesToAlreadyValid @13;
+        noSubstituters @14;
+    }
+
+    status @0 :Status;
+    errorMsg @1 :T.String;
+    timesBuilt @2 :UInt32;
+    isNonDeterministic @3 :Bool;
+    buildOutputs @4 :T.Map(T.String, Realisation);
+    startTime @5 :Int64;
+    stopTime @6 :Int64;
+    cpuUser @7 :T.OptionInt64;
+    cpuSystem @8 :T.OptionInt64;
+  }
+  struct KeyedBuildResult {
+    result @0 :BuildResult;
+    path @1 :DerivedPath;
+  }
 
   interface AddToStoreStream {
     feed @0 (raw :Data) -> stream;
@@ -148,6 +191,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     result :AddToStoreNarStream
   );
   buildPaths @22 (mode :BuildMode, paths :List(DerivedPath));
+  buildPathsWithResult @23 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
   collectGarbage @13 (
     action :GCAction,
     pathsToDelete :List(Libstore.StorePath),

@@ -522,7 +522,15 @@ try {
     TRY_AWAIT(copyDrvsFromEvalStore(paths, evalStore));
 
     auto conn(TRY_AWAIT(getConnection()));
+    co_return TRY_AWAIT(buildPathsWithResultsImpl(std::move(conn), paths, buildMode));
+} catch (...) {
+    co_return result::current_exception();
+}
 
+kj::Promise<Result<std::vector<KeyedBuildResult>>> RemoteStore::buildPathsWithResultsImpl(
+    ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
+)
+try {
     co_return TRY_AWAIT(conn.sendCommand<std::vector<KeyedBuildResult>>(
         WorkerProto::Op::BuildPathsWithResults, WorkerProto::write(*conn, paths), buildMode
     ));

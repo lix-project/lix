@@ -131,6 +131,9 @@ public:
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode,
         std::shared_ptr<Store> evalStore) override;
+    virtual kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResultsImpl(
+        ConnectionHandle conn, const std::vector<DerivedPath> & paths, BuildMode buildMode
+    );
 
     kj ::Promise<Result<BuildResult>> buildDerivation(
         const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
