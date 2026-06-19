@@ -571,6 +571,17 @@ stdenv.mkDerivation (finalAttrs: {
   }
   // lib.optionalAttrs hostPlatform.isStatic {
     NIX_CFLAGS_COMPILE = " -static";
+  }
+  // lib.optionalAttrs (hostPlatform.isStatic && stdenv.cc.libcxx == null) {
+    # pkgsStatic.clangStdenv.cc does not have the correct libstdc++.
+    # It's using pkgsStatic.buildPackages.gcc.cc, whose libstdc++ appears
+    # to have object files that were compiled with -fno-pic,
+    # (R_X86_64_32, R_X86_64_32S, and R_X86_64_TPOFF32 relocations).
+    # pkgsStatic.gcc.cc's libstdc++ has the correct relocations, but idk
+    # what the correct `wrapCCWith`/`stdenv.cc.override` incantation is.
+    # But just putting that libstdc++ in `-L` seems to make the driver find
+    # the right things.
+    NIX_CFLAGS_LINK = "-L${lib.makeLibraryPath [ pkgsStatic.gcc.cc ]}";
   };
 
   cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
