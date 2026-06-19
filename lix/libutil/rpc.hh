@@ -290,7 +290,9 @@ rewrapV1(kj::Promise<T> && promise, std::source_location loc = std::source_locat
 #define LIX_WRAP_RPC_PROMISE_NOEXCEPT(...) (::nix::rpc::detail::rewrapNoexcept(__VA_ARGS__))
 #define LIX_WRAP_RPC_PROMISE_V1(...) (::nix::rpc::detail::rewrapV1(__VA_ARGS__))
 
+// IMPORTANT! Keep the result of this in a variable, or readers will dereference dangling pointers!
 #define LIX_TRY_AWAIT_RPC_NOEXCEPT(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_NOEXCEPT(__VA_ARGS__)))
+// IMPORTANT! Keep the result of this in a variable, or readers will dereference dangling pointers!
 #define LIX_TRY_AWAIT_RPC_V1(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_V1(__VA_ARGS__)))
 
 [[noreturn]]
