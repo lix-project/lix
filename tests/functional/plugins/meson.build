@@ -2,10 +2,10 @@ libplugintest = shared_module(
   'plugintest',
   'plugintest.cc',
   dependencies : [
-    liblix,
+    liblix.partial_dependency(includes : true, compile_args : true),
   ],
   build_by_default : false,
-  link_args : shared_module_link_args,
+  link_args : plugin_link_args,
 )
 
 libplugintestfail_link_args = []
@@ -17,9 +17,9 @@ libplugintestfail = shared_module(
   'plugintestfail',
   'plugintestfail.cc',
   dependencies : [
-    liblix,
+    liblix.partial_dependency(includes : true, compile_args : true),
   ],
   cpp_args : ['-DMISSING_REFERENCE'],
-  link_args : shared_module_link_args + libplugintestfail_link_args,
+  link_args : plugin_link_args + libplugintestfail_link_args,
   build_by_default : false,
 )

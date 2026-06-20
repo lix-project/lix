@@ -246,13 +246,11 @@ endif
 # allows unresolved symbols to be resolved from the host process at runtime, avoiding the
 # symbol binding issues that occur with -flat_namespace (where plugin curl_* calls could
 # resolve to /usr/lib/libcurl instead of the Nix-store libcurl used by the host).
-shared_module_link_args = []
-# This is a stricter additional set of link flags (for non-plugin shared modules).
-strict_shared_module_link_args = []
+plugin_link_args = []
 if is_darwin
-  shared_module_link_args += ['-Wl,-undefined,dynamic_lookup']
+  plugin_link_args += ['-Wl,-undefined,dynamic_lookup']
 elif is_linux
-  strict_shared_module_link_args += ['-Wl,-z,defs']
+  plugin_link_args += ['-Wl,-z,undefs']
 endif
 configdata = configuration_data()
 
