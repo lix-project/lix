@@ -10,4 +10,3 @@
 //!
 //! It re-exports all the symbols that should be exported to C++.
 pub use lix_doc::*;
-pub use lixutil_rs::*;
