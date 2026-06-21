@@ -3,6 +3,7 @@ store_xs_cpp = custom_target(
   output : 'Store.cc',
   command : [
     xsubpp,
+    '-noversioncheck',
     '@INPUT@',
     '-output',
     '@OUTPUT@',

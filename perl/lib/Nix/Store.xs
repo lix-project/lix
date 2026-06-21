@@ -9,6 +9,19 @@
 #include "perl.h"
 #include "XSUB.h"
 
+// HACK, XXX(Qyriad): I do not know why the Perl version compatability check on macOS
+// is raising, but as far as I can tell it is wrong.
+// So instead we will replace the "check calling convention and get args" macro with
+// the "unchecked get args" macro.
+// If someone knows why when this file is compiled with Nixpkgs Perl 5.42.0,
+// and then loaded with Nixpkgs Perl 5.42.0, it raises:
+// lib/Nix/Store.cc: loadable library and perl binaries are mismatched (got first handshake key 0x10200080, needed 0xff80080
+// please let me know.
+#if defined(__APPLE__) && __APPLE__
+#undef dXSBOOTARGSAPIVERCHK
+#define dXSBOOTARGSAPIVERCHK dXSARGS
+#endif
+
 #undef NDEBUG
 
 /* Prevent a clash between some Perl and libstdc++ macros. */
