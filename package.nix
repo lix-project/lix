@@ -792,7 +792,7 @@ stdenv.mkDerivation (finalAttrs: {
               llvmPackages.llvm
               llvmPackages.clang-unwrapped.dev
             ]
-            ++ lib.optional (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
+            ++ lib.optionals (pre-commit-checks ? enabledPackages) pre-commit-checks.enabledPackages
             ++ lib.optional (lib.meta.availableOn buildPlatform clangbuildanalyzer) clangbuildanalyzer
             ++ lib.optional (!stdenv.isDarwin) gdb
             ++ lib.optional (lib.meta.availableOn buildPlatform rr && hostPlatform == buildPlatform) rr
