@@ -21,6 +21,7 @@
   callPackage,
   capnproto,
   cmake,
+  curl-lix ? __forDefaults.curl-lix,
   curl,
   doxygen,
   editline-lix ? __forDefaults.editline-lix,
@@ -121,6 +122,14 @@
         stack`, and `Grew mark stack to ... frames`.
       */
       NIX_CFLAGS_COMPILE = (oldAttrs.NIX_CFLAGS_COMPILE or "") + " -DINITIAL_MARK_STACK_SIZE=1048576";
+    });
+
+    # Nixpkgs backported a Curl patch that breaks our unit tests, somehow.
+    # https://github.com/NixOS/nixpkgs/issues/534713#event-27130052199
+    curl-lix = curl.overrideAttrs (prev: {
+      patches = lib.filter (patch: !lib.strings.hasSuffix "fix-wakeup-consumption.patch" patch) (
+        prev.patches or [ ]
+      );
     });
 
     editline-lix = editline.overrideAttrs (prev: {
@@ -455,7 +464,7 @@ stdenv.mkDerivation (finalAttrs: {
     lsof
     zstd
     # For mTLS tests
-    curl
+    curl-lix
   ]
   ++ lib.optional useLld lldBintools
   ++ lib.optional hostPlatform.isLinux util-linuxMinimal
@@ -474,7 +483,7 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   buildInputs = [
-    curl
+    curl-lix
     bzip2
     xz
     brotli
@@ -684,6 +693,7 @@ stdenv.mkDerivation (finalAttrs: {
   passthru = {
     inherit (__forDefaults)
       boehmgc-nix
+      curl-lix
       editline-lix
       build-release-notes
       pegtl
