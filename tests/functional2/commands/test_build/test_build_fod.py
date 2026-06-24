@@ -29,7 +29,7 @@ def test_url_keep_going_1(nix: Nix):
     assert re.findall(r"hash mismatch in fixed-output derivation '.*-x.\.drv'", err)
     assert "likely URL: " in err
     assert re.findall(
-        r"error: build of '.*-x[1-8]\.drv\^out'(, '.*-x[1-7]\.drv\^out'){6} failed", err
+        r"error: build of '.*-x[1-8]\.drv\^out'(, '.*-x[1-8]\.drv\^out'){6} failed", err
     )
 
 
