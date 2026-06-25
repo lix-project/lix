@@ -50,7 +50,6 @@ functional_tests_scripts = [
   'fixed.sh',
   'fetchGitRefs.sh',
   'gc-runtime.sh',
-  'fetchers.sh',
   'fetchGit.sh',
   'fetchGitLocked.sh',
   'fetchurl.sh',
