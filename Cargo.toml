@@ -3,10 +3,16 @@ resolver = "2"
 members = [
 	"lix/lix-doc",
 	"lix/lix-rs",
+	"tools/licxxbridge",
 ]
 
 [workspace.package]
 edition = "2021"
+
+[workspace.dependencies]
+clap = "4"
+syn = "2.0"
+zngur = "0.10"
 
 [profile.dev]
 opt-level = 1

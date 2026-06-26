@@ -46,6 +46,10 @@ def go(
         str(jobs),
         "-header-filter",
         r"lix/[^/]+/.*\.hh",
+        "-exclude-header-filter",
+        r"\.gen\.hh$",
+        "-source-filter",
+        r"(?!.*\.gen\.cc$).*",
     ]
     if werror:
         args += ["-warnings-as-errors", "*"]

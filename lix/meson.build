@@ -89,6 +89,11 @@ config_h = configure_file(
 
 install_headers(config_h, subdir : 'lix')
 
+# we only collect sources and generated headers here. real headers are collected and
+# installed by each subdir due to how meson generates paths for headers it installs.
+liblix_sources = []
+liblix_generated_headers = embedded_sandbox_headers
+
 lix_rs_files = files(
   '../Cargo.toml',
   '../Cargo.lock',
@@ -97,11 +102,6 @@ subdir('lix-rs')
 
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
-
-# we only collect sources and generated headers here. real headers are collected and
-# installed by each subdir due to how meson generates paths for headers it installs.
-liblix_sources = []
-liblix_generated_headers = embedded_sandbox_headers
 
 subdir('libutil')
 subdir('libstore')
@@ -156,6 +156,10 @@ if host_machine.system() == 'freebsd'
   dependencies += [ libprocstat ]
 endif
 
+lixrs_cargo_env = {
+  'MESON_BUILD_DIR': meson.project_build_root(),
+}
+
 lixrs = custom_target(
   'liblixrs',
   input : lix_rs_files,
@@ -171,9 +175,7 @@ lixrs = custom_target(
     cargo_jobs_args,
   ],
   console : true,
-  env : {
-    'MESON_BUILD_DIR': meson.project_build_root(),
-  },
+  env : lixrs_cargo_env,
 )
 
 if meson.can_run_host_binaries()
@@ -187,6 +189,8 @@ if meson.can_run_host_binaries()
       cargo_jobs_args,
     ],
     suite : 'check',
+    env : lixrs_cargo_env,
+    timeout : 300,
   )
 endif
 

@@ -1,0 +1,27 @@
+use ::std::error::Error as Error;
+use ::std::option::Option as Option;
+use ::std::result::Result as Result;
+use ::std::string::String as String;
+use ::std::vec::Vec as Vec;
+
+mod crate::ffi_test {
+    type TestMultiplyAddLenArgs {
+        #layout_conservative(size = 16, align = 8);
+        wellknown_traits(Copy);
+
+        field a (offset = auto, type = u64);
+        field b (offset = auto, type = u64);
+
+        fn new(u64, u64) -> TestMultiplyAddLenArgs;
+        fn set_b(&mut self, u64) use SetB;
+    }
+
+    fn test_multiply_add_len(TestMultiplyAddLenArgs, &Vec<String>) -> (String, u64);
+
+    fn test_result() -> Result<(), Box<dyn Error>>;
+
+    fn test_option_some() -> Option<u64>;
+    fn test_option_none() -> Option<u64>;
+
+    fn test_exceptions(Box<dyn Fn() -> Result<(), crate::ffi::Error>>) -> String;
+}

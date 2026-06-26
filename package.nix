@@ -287,6 +287,7 @@ let
     ./scripts/meson.build
     (fileset.fileFilter (f: lib.strings.hasSuffix ".wrap" f.name) ./subprojects)
     ./subprojects/aws_sdk
+    ./tools
     # Required for meson to generate Cargo wraps
     ./Cargo.lock
     ./Cargo.toml
@@ -337,6 +338,36 @@ stdenv.mkDerivation (finalAttrs: {
       (lib.optionals finalAttrs.doCheck (checkInputsForPython p))
     ]
   );
+
+  # precompile the bridge generator since the zngur parser takes so long to build. this way we can
+  # cache the generator in ci and for devshells, both of which decrease cycle times by quite a bit
+  licxxbridge = rustPlatform.buildRustPackage {
+    pname = "licxxbridge";
+    version = "0.0.0";
+    src = fileset.toSource {
+      root = ./.;
+      fileset = fileset.unions [
+        ./Cargo.toml
+        ./Cargo.lock
+        ./tools/licxxbridge
+        # these are only needed to let cargo parse the manifests at all, they're not used elsewise
+        ./lix/lix-doc/Cargo.toml
+        ./lix/lix-doc/src/lib.rs
+        ./lix/lix-rs/Cargo.toml
+        ./lix/lix-rs/src/lib.rs
+      ];
+    };
+    cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
+    cargoBuildFlags = [
+      "-p"
+      "licxxbridge"
+    ];
+    cargoTestFlags = [
+      "-p"
+      "licxxbridge"
+    ];
+    meta.mainProgram = "licxxbridge";
+  };
 
   buildTestShell =
     if hostPlatform.isLinux then
@@ -419,6 +450,7 @@ stdenv.mkDerivation (finalAttrs: {
     # musl doesn't support fibers, and we can't detect this with meson alone.
     ++ lib.optional hostPlatform.isMusl "-Ddisable-fibers=true"
     ++ lib.optional (finalAttrs.dontBuild && !lintInsteadOfBuild) "-Denable-build=false"
+    ++ lib.optional (!finalAttrs.dontBuild) "-Dlicxxbridge=${lib.getExe finalAttrs.licxxbridge}"
     ++ lib.optional lintInsteadOfBuild "-Dlix-clang-tidy-checks-path=${lix-clang-tidy}/lib/liblix-clang-tidy.${
       if hostPlatform.isDarwin then "dylib" else "so"
     }"
@@ -878,6 +910,9 @@ stdenv.mkDerivation (finalAttrs: {
               PATH=$prefix/bin''${PATH:+:''${PATH}}
               unset PYTHONPATH
               export MANPATH=$out/share/man:''${MANPATH:-}
+
+              # default build dir. lets rust-analyzer find generated code
+              export MESON_BUILD_DIR="$PWD/build"
 
               # Make bash completion work.
               XDG_DATA_DIRS+=:$out/share

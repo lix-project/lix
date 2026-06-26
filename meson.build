@@ -502,6 +502,8 @@ if enable_docs
   mdbook = find_program('mdbook', native : true)
 endif
 
+subdir('tools/licxxbridge')
+
 # Used to workaround https://github.com/mesonbuild/meson/issues/2320 in lix/nix/meson.build.
 installcmd = find_program('install', native : true)
 

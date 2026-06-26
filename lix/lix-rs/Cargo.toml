@@ -12,3 +12,6 @@ default = []
 
 [dependencies]
 lix-doc.path = "../lix-doc"
+
+[build-dependencies]
+zngur.workspace = true

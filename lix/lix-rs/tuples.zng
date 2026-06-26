@@ -1,0 +1,11 @@
+// tuple types of exclusively stdlib types go here. seems like a good place for them anyway.
+
+use ::std::option::Option as Option;
+use ::std::string::String as String;
+
+type (String, u64) {
+    #layout_conservative(size = 32, align = 8);
+
+    field 0 (offset = 0, type = String);
+    field 1 (offset = auto, type = u64);
+}

@@ -112,3 +112,7 @@ option('builtin-dep-closure', type : 'array',
 option('cargo-jobs', type : 'integer', value : 0,
   description : 'Value to pass for Cargo -j. Use 0 to omit',
 )
+
+option('licxxbridge', type : 'string', value : '',
+  description : 'optional path to an existing licxxbridge executable. must be built from the current source tree, beware when setting this',
+)

@@ -1,0 +1,73 @@
+// common rust stdlib types go here.
+
+use ::std::string::String as String;
+use ::std::vec::Vec as Vec;
+
+mod ::std::borrow {
+    type Cow<str> {
+        #layout_conservative(size = 24, align = 8);
+
+        fn into_owned(self) -> String;
+    }
+}
+
+mod ::std::error {
+    type Box<dyn Error> {
+        #layout_conservative(size = 16, align = 8);
+        wellknown_traits(Debug);
+
+        fn to_string(&self) -> String;
+    }
+}
+
+mod ::std::io {
+    type Error {
+        #layout_conservative(size = 16, align = 8);
+    }
+}
+
+mod ::std::option {
+    type Option<u64> {
+        #layout_conservative(size = 16, align = 8);
+
+        constructor Some(u64);
+        constructor None;
+
+        fn unwrap(self) -> u64;
+    }
+}
+
+mod ::std::result {
+    use ::std::error::Error as Error;
+
+    type Result<(), Box<dyn Error>> {
+        #layout_conservative(size = 16, align = 8);
+
+        constructor Ok(());
+        constructor Err(Box<dyn Error>);
+
+        fn unwrap(self) -> ();
+        fn unwrap_err(self) -> Box<dyn Error>;
+    }
+}
+
+mod ::std::string {
+    type String {
+        #layout_conservative(size = 24, align = 8);
+
+        fn as_bytes(&self) -> &[u8];
+        fn as_str(&self) -> &str;
+        fn from(&str) -> String;
+        fn from_utf8_lossy(&[u8]) -> ::std::borrow::Cow<str>;
+    }
+}
+
+mod ::std::vec {
+    type Vec<String> {
+        #layout_conservative(size = 24, align = 8);
+
+        fn new() -> Vec<String>;
+        fn push(&mut self, String);
+        fn len(&self) -> usize;
+    }
+}

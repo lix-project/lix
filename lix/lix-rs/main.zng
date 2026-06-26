@@ -1,0 +1,19 @@
+// always use conservative layouts, and use auto offset for anything that isn't critical for
+// system performance. field offsets are kind of fucky anyway unless repr(C) is used, and we
+// rarely have such types to expose. we *should* try to avoid exposing fields except for any
+// tuple types, and even then it'd probably be better to find safer ways to do things. doing
+// it anyway is not unsafe as such since zngur does have compile-time layout checks to avoid
+// nasty surprises, but field offsets are still dependent on platform and compiler versions.
+//
+// types are generally sorted by category for builtin types or parent module for the others.
+// type definitions should live as close to their least stdlib component as possible: result
+// types generally live with their Ok variant types, error types generally live in dedicated
+// module files, collection types live with the most reasonable parameter type. these aren't
+// hard and fast rules though, just use some judgement. we just want to keep the definitions
+// in a readable and maintainable state without scattering bits of types all over the place.
+
+merge "./primitives.zng";
+merge "./std-common.zng";
+merge "./tuples.zng";
+
+merge "./src/lib.zng";

@@ -1,0 +1,12 @@
+[package]
+name = "licxxbridge"
+edition = "2021"
+description = "small cxxbridge alternative that lets us use cxx versions nixpkgs doesn't have"
+
+[[bin]]
+name = "licxxbridge"
+path = "main.rs"
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+zngur.workspace = true

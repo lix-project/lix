@@ -1,0 +1,30 @@
+merge "./ffi_test.zng";
+
+mod crate::ffi {
+    use ::std::result::Result as Result;
+    use ::std::string::String as String;
+
+    fn from_raw_parts_u8(*const u8, usize) -> &[u8];
+
+    type Error {
+        #layout_conservative(size = 16, align = 8);
+        #cpp_value "0" "::std::exception_ptr";
+    }
+
+    extern "C++" {
+        impl Error {
+            safe fn to_string(&self) -> String;
+        }
+    }
+
+    type Result<(), Error> {
+        #layout_conservative(size = 16, align = 8);
+
+        constructor Ok(());
+        constructor Err(Error);
+    }
+
+    type Box<dyn Fn() -> Result<(), Error>> {
+        #layout_conservative(size = 16, align = 8);
+    }
+}

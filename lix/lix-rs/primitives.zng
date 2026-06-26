@@ -1,0 +1,22 @@
+// primitives go here. other modules *may* extend primitive declarations, and if a primitive
+// operation is used only very rare that may help readability. in general we want to collect
+// anything that's used a lot here to not clutter the remainder of our ffi definition files.
+
+type bool {
+    #layout(size = 1, align = 1);
+}
+
+type [u8] {
+    wellknown_traits(?Sized);
+
+    fn as_ptr(&self) -> *const u8;
+    fn len(&self) -> usize;
+}
+
+type str {
+    wellknown_traits(?Sized);
+
+    fn as_bytes(&self) -> &[u8];
+    fn as_ptr(&self) -> *const u8;
+    fn len(&self) -> usize;
+}
