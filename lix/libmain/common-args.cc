@@ -16,21 +16,21 @@ MixCommonArgs::MixCommonArgs(const std::string & programName)
         .shortName = 'v',
         .description = "Increase the logging verbosity level.",
         .category = loggingCategory,
-        .handler = {[]() { verbosity = verbosityFromIntClamped(int(verbosity) + 1); }},
+        .handler = {[]() { setVerbosity(verbosityFromIntClamped(int(getVerbosity()) + 1)); }},
     });
 
     addFlag({
         .longName = "quiet",
         .description = "Decrease the logging verbosity level.",
         .category = loggingCategory,
-        .handler = {[]() { verbosity = verbosityFromIntClamped(int(verbosity) - 1); }},
+        .handler = {[]() { setVerbosity(verbosityFromIntClamped(int(getVerbosity()) - 1)); }},
     });
 
     addFlag({
         .longName = "debug",
         .description = "Set the logging verbosity level to 'debug'.",
         .category = loggingCategory,
-        .handler = {[]() { verbosity = lvlDebug; }},
+        .handler = {[]() { setVerbosity(lvlDebug); }},
     });
 
     addFlag({

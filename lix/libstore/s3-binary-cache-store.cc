@@ -97,7 +97,10 @@ class AwsLogger : public Aws::Utils::Logging::FormattedLogSystem
     void ProcessFormattedStatement(Aws::String && statement) override
     {
         // FIXME: workaround for truly excessive log spam in debug level: https://github.com/aws/aws-sdk-cpp/pull/3003
-        if ((statement.find("(SSLDataIn)") != std::string::npos || statement.find("(SSLDataOut)") != std::string::npos) && verbosity <= lvlDebug) {
+        if ((statement.find("(SSLDataIn)") != std::string::npos
+             || statement.find("(SSLDataOut)") != std::string::npos)
+            && getVerbosity() <= lvlDebug)
+        {
             return;
         }
         debug("AWS: %s", chomp(statement));
@@ -116,9 +119,8 @@ static void initAWS()
            shared.cc), so don't let aws-sdk-cpp override it. */
         options.cryptoOptions.initAndCleanupOpenSSL = false;
 
-        if (verbosity >= lvlDebug) {
-            options.loggingOptions.logLevel =
-                verbosity == lvlDebug
+        if (getVerbosity() >= lvlDebug) {
+            options.loggingOptions.logLevel = getVerbosity() == lvlDebug
                 ? Aws::Utils::Logging::LogLevel::Debug
                 : Aws::Utils::Logging::LogLevel::Trace;
             options.loggingOptions.logger_create_fn = [options]() {

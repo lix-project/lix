@@ -95,7 +95,7 @@ struct TunnelLogger : public Logger
 
     BufferState log(Verbosity lvl, std::string_view s) override
     {
-        if (lvl > verbosity) {
+        if (lvl > getVerbosity()) {
             return BufferState::HasSpace;
         }
 
@@ -106,7 +106,7 @@ struct TunnelLogger : public Logger
 
     BufferState logEI(const ErrorInfo & ei) override
     {
-        if (ei.level > verbosity) {
+        if (ei.level > getVerbosity()) {
             return BufferState::HasSpace;
         }
 
@@ -195,7 +195,7 @@ struct ClientSettings
         settings.keepFailed.override(keepFailed);
         settings.keepGoing.override(keepGoing);
         settings.tryFallback.override(tryFallback);
-        nix::verbosity = verbosity;
+        setVerbosity(verbosity);
         settings.maxBuildJobs.override(maxBuildJobs);
         settings.maxSilentTime.override(maxSilentTime);
         settings.verboseBuild = verboseBuild;

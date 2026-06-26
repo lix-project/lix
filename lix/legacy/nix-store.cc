@@ -948,7 +948,7 @@ opServe(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
     auto getBuildSettings = [&]() {
         // FIXME: changing options here doesn't work if we're
         // building through the daemon.
-        verbosity = lvlError;
+        setVerbosity(lvlError);
         settings.keepLog.override(false);
         settings.useSubstitutes.override(false);
         settings.maxSilentTime.override(readNum<unsigned>(in));

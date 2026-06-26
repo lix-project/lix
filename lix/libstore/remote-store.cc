@@ -127,11 +127,12 @@ kj::Promise<Result<void>> RemoteStore::setOptions(Connection & conn)
 try {
     StringSink command;
 
+    // clang-format off
     command << WorkerProto::Op::SetOptions
        << settings.keepFailed
        << settings.keepGoing
        << settings.tryFallback
-       << verbosity
+       << getVerbosity()
        << settings.maxBuildJobs
        << settings.maxSilentTime
        << true
@@ -140,6 +141,7 @@ try {
        << 0 /* obsolete print build trace */
        << settings.buildCores
        << settings.useSubstitutes;
+    // clang-format on
 
     std::map<std::string, Config::SettingInfo> overrides;
     settings.getSettings(overrides, true); // libstore settings

@@ -362,7 +362,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
         if (argv.size() != 1)
             throw UsageError("called without required arguments");
 
-        verbosity = (Verbosity) std::stoll(argv.front());
+        setVerbosity((Verbosity) std::stoll(argv.front()));
 
         auto conn = aio.kj.lowLevelProvider->wrapUnixSocketFd(1);
         capnp::TwoPartyServer srv(kj::heap<Instance>());

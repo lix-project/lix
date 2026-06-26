@@ -505,9 +505,9 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     // FIXME: stop messing about with log verbosity depending on if it is interactive use
     if (isatty(STDERR_FILENO)) {
-        verbosity = lvlNotice;
+        setVerbosity(lvlNotice);
     } else {
-        verbosity = lvlInfo;
+        setVerbosity(lvlInfo);
     }
 
     registerCommands();

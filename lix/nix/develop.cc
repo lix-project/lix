@@ -599,8 +599,9 @@ struct CmdDevelop : Common, MixEnvironment
 
         auto script = makeRcScript(*state, store, buildEnvironment, (Path) tmpDir);
 
-        if (verbosity >= lvlDebug)
+        if (getVerbosity() >= lvlDebug) {
             script += "set -x\n";
+        }
 
         script += fmt("command rm -f '%s'\n", rcFilePath);
 

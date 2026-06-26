@@ -35,7 +35,7 @@ static int main_builtin_builder(AsyncIoRoot & aio, std::string programName, Stri
     };
 
     if (auto val = string2Int<int>(getArg("verbosity"))) {
-        verbosity = verbosityFromIntClamped(*val);
+        setVerbosity(verbosityFromIntClamped(*val));
     } else {
         throw Error("expected a verbosity argument");
     }

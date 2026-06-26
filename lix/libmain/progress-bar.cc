@@ -106,7 +106,7 @@ bool ProgressBar::isVerbose()
 
 Logger::BufferState ProgressBar::log(Verbosity lvl, std::string_view s)
 {
-    if (lvl > verbosity) {
+    if (lvl > getVerbosity()) {
         return BufferState::HasSpace;
     }
     auto state(state_.lock());
@@ -142,8 +142,9 @@ Logger::BufferState ProgressBar::startActivityImpl(
 {
     auto state(state_.lock());
 
-    if (lvl <= verbosity && !s.empty() && type != actBuildWaiting)
+    if (lvl <= getVerbosity() && !s.empty() && type != actBuildWaiting) {
         (void) log(*state, lvl, s + "...");
+    }
 
     state->activities.emplace_back(ActInfo {
         .s = s,

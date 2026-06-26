@@ -100,7 +100,7 @@ void RootArgs::parseCmdline(const Strings & _cmdline)
             throw UsageError("Invalid word number to get completion for: %zu\n. Your autocompletions might be misconfigured", n);
         *std::next(cmdline.begin(), n - 1) += completionMarker;
         completions = std::make_shared<Completions>();
-        verbosity = lvlError;
+        setVerbosity(lvlError);
     }
 
     for (auto pos = cmdline.begin(); pos != cmdline.end(); ) {

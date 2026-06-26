@@ -102,7 +102,7 @@ namespace nix {
     }
 
     TEST(logEI, loggingErrorOnTalkativeLevel) {
-        verbosity = lvlTalkative;
+        setVerbosity(lvlTalkative);
 
         testing::internal::CaptureStderr();
 
@@ -115,7 +115,7 @@ namespace nix {
     }
 
     TEST(logEI, loggingErrorOnChattyLevel) {
-        verbosity = lvlChatty;
+        setVerbosity(lvlChatty);
 
         testing::internal::CaptureStderr();
 
@@ -128,7 +128,7 @@ namespace nix {
     }
 
     TEST(logEI, loggingErrorOnDebugLevel) {
-        verbosity = lvlDebug;
+        setVerbosity(lvlDebug);
 
         testing::internal::CaptureStderr();
 
@@ -141,7 +141,7 @@ namespace nix {
     }
 
     TEST(logEI, loggingErrorOnVomitLevel) {
-        verbosity = lvlVomit;
+        setVerbosity(lvlVomit);
 
         testing::internal::CaptureStderr();
 

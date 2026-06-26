@@ -445,7 +445,7 @@ TEST(FileTransfer, DISABLED_interrupt)
         }
     };
 
-    verbosity = lvlDebug;
+    setVerbosity(lvlDebug);
     logger = new InterruptingLogger;
 
     AsyncIoRoot aio;

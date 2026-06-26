@@ -75,7 +75,7 @@ try {
 
     auto buildHook = canonPath(buildHookArgs.front());
     buildHookArgs.emplace(std::next(buildHookArgs.begin()), baseNameOf(buildHook));
-    buildHookArgs.push_back(std::to_string(verbosity));
+    buildHookArgs.push_back(std::to_string(getVerbosity()));
 
     /* Create the communication pipes. */
     auto [selfRPC, hookRPC] = SocketPair::stream();

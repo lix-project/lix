@@ -78,7 +78,7 @@ void init()
 
 void setVerbosity(int level)
     CODE:
-        verbosity = (Verbosity) level;
+        setVerbosity((Verbosity) level);
 
 
 int isValidPath(char * path)

@@ -76,7 +76,7 @@ public:
 
     BufferState log(Verbosity lvl, std::string_view s) override
     {
-        if (lvl > verbosity) {
+        if (lvl > getVerbosity()) {
             return BufferState::HasSpace;
         }
 
@@ -116,7 +116,7 @@ public:
         ActivityId parent
     ) override
     {
-        if (lvl <= verbosity && !s.empty()) {
+        if (lvl <= getVerbosity() && !s.empty()) {
             return log(lvl, s + "...");
         }
         return BufferState::HasSpace;
@@ -136,7 +136,12 @@ public:
     }
 };
 
-Verbosity verbosity = lvlInfo;
+Verbosity detail::verbosity = lvlInfo;
+
+void setVerbosity(Verbosity v)
+{
+    detail::verbosity = v;
+}
 
 Verbosity verbosityFromIntClamped(int val)
 {

@@ -897,7 +897,7 @@ try {
 
     if (drv->isBuiltin()) {
         args.push_back("builtin-builder");
-        args.push_back(std::to_string(verbosity));
+        args.push_back(std::to_string(getVerbosity()));
 
         std::map<std::string, AbstractConfig::SettingInfo> changedSettings;
         globalConfig.getChangedSettings(changedSettings);
@@ -984,7 +984,7 @@ try {
         auto groups = buildUser->getSupplementaryGIDs();
         creds.setSupplementaryGroups({groups.data(), groups.size()});
     }
-    request.setDebug(verbosity >= lvlDebug);
+    request.setDebug(getVerbosity() >= lvlDebug);
 
     fillBuilderConfig(request);
 

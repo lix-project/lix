@@ -393,7 +393,7 @@ try {
                         "--for",
                         peer.pid ? fmt("%1%", *peer.pid) : "unknown",
                         "--log-level",
-                        fmt("%1%", int(verbosity)),
+                        fmt("%1%", int(getVerbosity())),
                         "--protocol",
                         std::string(socket.id()),
                     },
@@ -687,7 +687,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
         }).parseCmdline(argv);
 
         if (isInstance) {
-            verbosity = Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit));
+            setVerbosity(Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit)));
             daemonInstance(daemon::getProtocol(protocol), aio, isTrustedOpt, peerPidArg);
         } else {
             runDaemon(aio, stdio, isTrustedOpt);

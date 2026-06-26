@@ -319,10 +319,19 @@ Logger * makeSimpleLogger(bool printBuildLogs = true);
 
 Logger * makeJSONLogger(Logger & prevLogger);
 
+namespace detail {
+extern Verbosity verbosity;
+}
+
+inline Verbosity getVerbosity()
+{
+    return detail::verbosity;
+}
+
 /**
  * suppress msgs > this
  */
-extern Verbosity verbosity;
+void setVerbosity(Verbosity v);
 
 extern LoggerSettings loggerSettings;
 
@@ -388,7 +397,7 @@ extern LoggerSettings loggerSettings;
  */
 #define logErrorInfo(level, errorInfo...)                    \
     do {                                                     \
-        if ((level) <= ::nix::verbosity) {                   \
+        if ((level) <= ::nix::detail::verbosity) {           \
             (void) ::nix::logger->logEI((level), errorInfo); \
         }                                                    \
     } while (0)
@@ -401,14 +410,13 @@ extern LoggerSettings loggerSettings;
  * level. Note that this has to be implemented as a macro to ensure that the
  * arguments are evaluated lazily. The format string *must* be a literal.
  */
-#define printMsgUsing(loggerParam, level, fs, args...)                                            \
-    do {                                                                                          \
-        auto _lix_logger_print_lvl = level;                                                       \
-        const char * _lix_format = []<size_t N>(const char(&_lix_fs)[N]) { return _lix_fs; }(fs); \
-        if (_lix_logger_print_lvl <= ::nix::verbosity) {                                          \
-            (void                                                                                 \
-            ) loggerParam->log(_lix_logger_print_lvl, ::nix::HintFmt(_lix_format, ##args).str()); \
-        }                                                                                         \
+#define printMsgUsing(loggerParam, level, fs, args...)                                                 \
+    do {                                                                                               \
+        auto _lix_logger_print_lvl = level;                                                            \
+        const char * _lix_format = []<size_t N>(const char (&_lix_fs)[N]) { return _lix_fs; }(fs);     \
+        if (_lix_logger_print_lvl <= ::nix::detail::verbosity) {                                       \
+            (void) loggerParam->log(_lix_logger_print_lvl, ::nix::HintFmt(_lix_format, ##args).str()); \
+        }                                                                                              \
     } while (0)
 #define printMsg(level, fs, args...) printMsgUsing(::nix::logger, level, fs, ##args)
 

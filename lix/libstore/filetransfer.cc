@@ -177,7 +177,7 @@ struct TransferItem
             }
         }
 
-        if (verbosity >= lvlVomit) {
+        if (getVerbosity() >= lvlVomit) {
             curl_easy_setopt(req.get(), CURLOPT_VERBOSE, 1);
             curl_easy_setopt(req.get(), CURLOPT_DEBUGFUNCTION, TransferItem::debugCallback);
         }
