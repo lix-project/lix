@@ -1,4 +1,6 @@
 #include "c-calls.hh"
+#include "libutil/error.hh"
+#include "lix-rs/utils.hh"
 #include "lix/libutil/config-impl.hh"
 #include "lix/libutil/environment-variables.hh"
 #include "lix/libutil/file-descriptor.hh"
@@ -7,6 +9,7 @@
 #include "lix/libutil/json.hh"
 #include "lix/libutil/position.hh"
 #include "lix/libutil/terminal.hh"
+#include "main.gen.hh"
 #include "manually-drop.hh"
 
 #include <algorithm>
@@ -138,9 +141,21 @@ public:
 
 Verbosity detail::verbosity = lvlInfo;
 
+namespace {
+struct InitRustVerbosity
+{
+    InitRustVerbosity(Verbosity v)
+    {
+        rust::lix::log::ffi::set_verbosity(v);
+    }
+};
+static InitRustVerbosity _initRustVerbosity{detail::verbosity};
+}
+
 void setVerbosity(Verbosity v)
 {
     detail::verbosity = v;
+    log::ffi::set_verbosity(v);
 }
 
 Verbosity verbosityFromIntClamped(int val)
@@ -457,5 +472,13 @@ std::string LogLineSplitter::finish()
 {
     pos = 0;
     return std::move(line);
+}
+}
+
+namespace rust::exported_functions {
+Unit log_message(int lvl, Ref<Str> str)
+{
+    printMsg(nix::Verbosity(lvl), "%s", nix::Uncolored(to_std_string_view(str)));
+    return {};
 }
 }

@@ -28,3 +28,11 @@ mod crate::ffi {
         #layout_conservative(size = 16, align = 8);
     }
 }
+
+mod crate::log::ffi {
+    fn set_verbosity(i32);
+
+    extern "C++" {
+        safe fn log_message(i32, &str);
+    }
+}
