@@ -50,10 +50,6 @@ The most current alternative to this section is to read `package.nix` and see wh
   - The `boost` library of version 1.66.0 or higher. It can be obtained
     from the official web site <https://www.boost.org/>.
 
-  - The `editline` library of version 1.14.0 or higher. It can be
-    obtained from the its repository
-    <https://github.com/troglobit/editline>.
-
   - Recent versions of Bison and Flex to build the parser. (This is
     because Nix needs GLR support in Bison and reentrancy support in
     Flex.) For Bison, you need version 2.6, which can be obtained from

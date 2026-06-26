@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstdio>
-#include <editline.h>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
@@ -380,7 +379,7 @@ ReplExitStatus NixRepl::mainLoop()
     std::list<ReplLoadable> loadables = std::exchange(loaded, {});
     loadFiles(loadables);
 
-    auto _guard = interacter->init(static_cast<detail::ReplCompleterMixin *>(this));
+    interacter->init(static_cast<detail::ReplCompleterMixin *>(this));
 
     /* Stop the progress bar because it interferes with the display of
        the repl. */
@@ -441,15 +440,10 @@ StringSet NixRepl::completePrefix(const std::string &prefix)
 {
     StringSet completions;
 
-    // We should only complete colon commands if there's a colon at the beginning,
-    // but editline (for... whatever reason) doesn't *give* us the colon in the
-    // completion callback. If the user types :rel<TAB>, `prefix` will only be `rel`.
-    // Luckily, editline provides a global variable for its current buffer, so we can
-    // check for the presence of a colon there.
-    if (rl_line_buffer != nullptr && rl_line_buffer[0] == ':') {
+    if (prefix.starts_with(':')) {
         for (auto const & [colonCmd, cmd] : registeredCommands) {
-            if ((!cmd->attributes.debugModeOnly || inDebugger()) && colonCmd.starts_with(prefix)) {
-                completions.insert(std::string(colonCmd));
+            if ((!cmd->attributes.debugModeOnly || inDebugger()) && colonCmd.starts_with(prefix.substr(1))) {
+                completions.insert(":" + colonCmd);
             }
         }
 

@@ -3,6 +3,7 @@ lix_rs_files += files(
   # keep-sorted start
   'src/ffi_test.rs',
   'src/lib.rs',
+  'src/repl.rs',
   # keep-sorted end
 )
 

@@ -12,6 +12,8 @@ default = []
 
 [dependencies]
 lix-doc.path = "../lix-doc"
+rustyline.workspace = true
+rustyline-derive.workspace = true
 
 [build-dependencies]
 zngur.workspace = true

@@ -1,10 +1,13 @@
 #pragma once
 /// @file
 
-#include "lix/libutil/finally.hh"
 #include "lix/libutil/types.hh"
-#include <functional>
+#include <memory>
 #include <string>
+
+namespace rust::lix::repl {
+struct Rustyline;
+}
 
 namespace nix {
 
@@ -24,9 +27,7 @@ enum class ReplPromptType {
 class ReplInteracter
 {
 public:
-    using Guard = Finally<std::function<void()>>;
-
-    virtual Guard init(detail::ReplCompleterMixin * repl) = 0;
+    virtual void init(detail::ReplCompleterMixin * repl) {}
     /** Returns a boolean of whether the interacter got EOF */
     virtual bool getLine(std::string & input, ReplPromptType promptType) = 0;
     virtual ~ReplInteracter(){};
@@ -35,12 +36,12 @@ public:
 class ReadlineLikeInteracter final : public ReplInteracter
 {
     std::string historyFile;
+    std::unique_ptr<rust::lix::repl::Rustyline> rl;
+
 public:
-    ReadlineLikeInteracter(std::string historyFile)
-        : historyFile(historyFile)
-    {
-    }
-    virtual Guard init(detail::ReplCompleterMixin * repl) override;
+    ReadlineLikeInteracter(std::string historyFile);
+
+    virtual void init(detail::ReplCompleterMixin * repl) override;
     virtual bool getLine(std::string & input, ReplPromptType promptType) override;
     /** Writes the current history to the history file.
      *
@@ -54,7 +55,6 @@ class AutomationInteracter final : public ReplInteracter
 {
 public:
     AutomationInteracter() = default;
-    virtual Guard init(detail::ReplCompleterMixin * repl) override;
     virtual bool getLine(std::string & input, ReplPromptType promptType) override;
     virtual ~AutomationInteracter() override = default;
 };

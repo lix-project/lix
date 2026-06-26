@@ -1,0 +1,61 @@
+mod crate::repl {
+    use ::std::string::String as String;
+    use ::std::vec::Vec as Vec;
+    use ::std::error::Error as Error;
+    use ::std::result::Result as Result;
+    use ::rustyline::error::ReadlineError as ReadlineError;
+
+    #cpp_additional_includes "
+        namespace nix::detail {
+            struct ReplCompleterMixin;
+        }
+    "
+
+    type CxxCompleter {
+        #cpp_ref "::nix::detail::ReplCompleterMixin";
+    }
+
+    extern "C++" {
+        impl ReplCompleter for CxxCompleter {
+            safe fn complete(&self, &str) -> Vec<String>;
+        }
+    }
+
+    type ReadlineError {
+        #layout_conservative(size = 16, align = 8);
+
+        constructor Eof;
+        constructor Interrupted;
+        constructor Io(::std::io::Error);
+
+        fn into(self) -> Box<dyn Error>;
+    }
+
+    type Rustyline {
+        #heap_allocated;
+
+        fn new(&str, &CxxCompleter) -> Result<Rustyline, Box<dyn Error>>;
+        fn ask(&mut self, &str) -> Result<String, ReadlineError>;
+        fn write_history(&mut self);
+    }
+
+    type Result<Rustyline, Box<dyn Error>> {
+        #heap_allocated;
+
+        constructor Ok(Rustyline);
+        constructor Err(Box<dyn Error>);
+
+        fn unwrap(self) -> Rustyline;
+        fn unwrap_err(self) -> Box<dyn Error>;
+    }
+
+    type Result<String, ReadlineError> {
+        #layout_conservative(size = 24, align = 8);
+
+        constructor Ok(String);
+        constructor Err(ReadlineError);
+
+        fn unwrap(self) -> String;
+        fn unwrap_err(self) -> ReadlineError;
+    }
+}

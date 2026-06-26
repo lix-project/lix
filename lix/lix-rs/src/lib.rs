@@ -146,3 +146,4 @@ pub(crate) mod log {
 }
 
 mod ffi_test;
+mod repl;

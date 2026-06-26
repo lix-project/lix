@@ -24,8 +24,6 @@
   curl-lix ? __forDefaults.curl-lix,
   curl,
   doxygen,
-  editline-lix ? __forDefaults.editline-lix,
-  editline,
   git,
   gtest,
   jq,
@@ -45,7 +43,6 @@
   mercurial,
   meson,
   ninja,
-  ncurses,
   openssl,
   passt,
   pegtl,
@@ -130,19 +127,6 @@
       patches = lib.filter (patch: !lib.strings.hasSuffix "fix-wakeup-consumption.patch" patch) (
         prev.patches or [ ]
       );
-    });
-
-    editline-lix = editline.overrideAttrs (prev: {
-      configureFlags = (prev.configureFlags or [ ]) ++ [
-        # Enable SIGSTOP (Ctrl-Z) behavior.
-        (lib.enableFeature true "sigstop")
-        # Enable ANSI arrow keys.
-        (lib.enableFeature true "arrow-keys")
-        # Use termcap library to query terminal size.
-        (lib.enableFeature true "termcap")
-      ];
-
-      propagatedBuildInputs = (prev.propagatedBuildInputs or [ ]) ++ [ ncurses ];
     });
 
     # Avoid a bunch of build closure of the tracer, we just need the dtrace
@@ -548,7 +532,6 @@ stdenv.mkDerivation (finalAttrs: {
     bzip2
     xz
     brotli
-    editline-lix
     openssl
     sqlite
     libarchive
@@ -757,7 +740,6 @@ stdenv.mkDerivation (finalAttrs: {
     inherit (__forDefaults)
       boehmgc-nix
       curl-lix
-      editline-lix
       build-release-notes
       pegtl
       ;

@@ -4,7 +4,6 @@ libstoreconsumer_tester = executable(
   dependencies : [
     libasanoptions,
     liblix,
-    editline,
     boost,
     lowdown,
     kj,
