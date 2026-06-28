@@ -22,6 +22,7 @@
   capnproto,
   cmake,
   curl-lix ? __forDefaults.curl-lix,
+  fetchpatch2,
   curl,
   doxygen,
   git,
@@ -121,13 +122,36 @@
       NIX_CFLAGS_COMPILE = (oldAttrs.NIX_CFLAGS_COMPILE or "") + " -DINITIAL_MARK_STACK_SIZE=1048576";
     });
 
-    # Nixpkgs backported a Curl patch that breaks our unit tests, somehow.
-    # https://github.com/NixOS/nixpkgs/issues/534713#event-27130052199
-    curl-lix = curl.overrideAttrs (prev: {
-      patches = lib.filter (patch: !lib.strings.hasSuffix "fix-wakeup-consumption.patch" patch) (
-        prev.patches or [ ]
-      );
-    });
+    curl-lix =
+      # curl 8.21.0 /somehow/ breaks Lix unit tests.
+      # See https://github.com/NixOS/nixpkgs/issues/534713
+      # FIXME remove once fixed
+      if lib.versionAtLeast curl.version "8.21" then
+        curl.overrideAttrs (
+          {
+            patches ? [ ],
+            ...
+          }:
+          {
+            patches = patches ++ [
+              # See https://github.com/curl/curl/commit/2a2104f3cff44bb28bb570a093be52bbeeed8f23
+              (fetchpatch2 {
+                name = "fix-wakeup-consumption-revert.patch";
+                url = "https://github.com/curl/curl/commit/2a2104f3cff44bb28bb570a093be52bbeeed8f23.patch";
+                hash = "sha256-dkwr1ZaR7XB408JxeIKhuHxJrlwf3J01jL6lnOLXo1I=";
+                revert = true;
+              })
+            ];
+          }
+        )
+      else
+        # Filter out the version backported in Nixpkgs
+        # https://github.com/NixOS/nixpkgs/issues/534713#event-27130052199
+        curl.overrideAttrs (prev: {
+          patches = lib.filter (patch: !lib.strings.hasSuffix "fix-wakeup-consumption.patch" patch) (
+            prev.patches or [ ]
+          );
+        });
 
     # Avoid a bunch of build closure of the tracer, we just need the dtrace
     # generator.
