@@ -237,6 +237,7 @@ liblix_sources += files(
   'ssh.cc',
   'store-api.cc',
   'temporary-dir.cc',
+  'transferitem.cc',
   'uds-remote-store.cc',
   'worker-protocol.cc',
   # keep-sorted end
@@ -307,6 +308,7 @@ libstore_headers = files(
   'store-api.hh',
   'store-cast.hh',
   'temporary-dir.hh',
+  'transferitem.hh',
   'types-rpc.hh',
   'uds-remote-store.hh',
   'worker-protocol-impl.hh',
