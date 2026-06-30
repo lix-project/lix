@@ -169,10 +169,14 @@ inline void doFill(auto && builder, Inner (Builder::*field)(), From && f, auto &
 
 // lists and other primitives. lists must be distinguished by having builders.
 template<typename Builder, typename From, typename Inner, typename Init>
+    requires requires {
+        requires std::same_as<Init, capnp::uint>;
+        typename Inner::Builds;
+    } || std::convertible_to<From, Init>
 inline void doFill(auto && builder, Inner (Builder::*field)(Init), From && f, auto &&... args)
 {
     if constexpr (requires {
-                      std::same_as<Init, capnp::uint>;
+                      requires std::same_as<Init, capnp::uint>;
                       typename Inner::Builds;
                   })
     {
@@ -183,10 +187,57 @@ inline void doFill(auto && builder, Inner (Builder::*field)(Init), From && f, au
         (builder.*field)(std::forward<From>(f));
     }
 }
+
+template<typename T>
+inline constexpr bool IsRpcListV = false;
+template<typename T, capnp::Kind K>
+inline constexpr bool IsRpcListV<capnp::List<T, K>> = true;
+
+template<typename T>
+concept RpcList = IsRpcListV<T>;
 }
 
 #define LIX_RPC_FILL(fobj, ffield, fsource, ...) \
-    [&] { ::nix::rpc::detail::doFill(fobj, &decltype(fobj)::ffield, (fsource), ##__VA_ARGS__); }()
+    (::nix::rpc::detail::doFill(fobj, &decltype(fobj)::ffield, (fsource), ##__VA_ARGS__))
+
+#define LIX_RPC_FILL_LIST(fobj, ffield, fsource, ...)                                         \
+    (::nix::rpc::detail::doFill(                                                              \
+        fobj,                                                                                 \
+        ([]<typename Builder, typename Inner, typename Init>(Inner (Builder::*field)(Init)) { \
+            return field;                                                                     \
+        })(&decltype(fobj)::ffield),                                                          \
+        (fsource),                                                                            \
+        ##__VA_ARGS__                                                                         \
+    ))
+
+#define LIX_RPC_FILL_STRUCT(fobj, ffield, fsource, ...)                    \
+    (::nix::rpc::detail::doFill(                                           \
+        fobj,                                                              \
+        ([]<typename Builder, typename Inner>(Inner (Builder::*field)()) { \
+            return field;                                                  \
+        })(&decltype(fobj)::ffield),                                       \
+        (fsource),                                                         \
+        ##__VA_ARGS__                                                      \
+    ))
+
+// set a value regardless of its kind. *only* use this in templates or it'll fail to compile.
+#define LIX_RPC_FILL_GENERIC_DEPENDENT(fobj, ffield, fsource, ...)                              \
+    ({                                                                                          \
+        if constexpr (requires {                                                                \
+                          requires ::nix::rpc::detail::RpcList<                                 \
+                              typename decltype(fobj.get##ffield())::Builds>;                   \
+                      })                                                                        \
+        {                                                                                       \
+            LIX_RPC_FILL_LIST(fobj, init##ffield, (fsource), ##__VA_ARGS__);                    \
+        } else if constexpr (requires {                                                         \
+                                 { LIX_RPC_FILL(fobj, set##ffield, (fsource), ##__VA_ARGS__) }; \
+                             })                                                                 \
+        {                                                                                       \
+            LIX_RPC_FILL(fobj, set##ffield, (fsource), ##__VA_ARGS__);                          \
+        } else {                                                                                \
+            LIX_RPC_FILL_STRUCT(fobj, init##ffield, (fsource), ##__VA_ARGS__);                  \
+        }                                                                                       \
+    })
 
 namespace detail {
 std::exception_ptr unwrapErrorRaw(kj::Exception & e, std::source_location loc);
@@ -250,6 +301,8 @@ inline void rethrow_as_rpc_error()
 
 #ifdef LIX_UR_COMPILER_UWU
 #define RPC_FILL LIX_RPC_FILL
+#define RPC_FILL_LIST LIX_RPC_FILL_LIST
+#define RPC_FILL_STRUCT LIX_RPC_FILL_STRUCT
 #define TRY_AWAIT_RPC_NOEXCEPT LIX_TRY_AWAIT_RPC_NOEXCEPT
 #define TRY_AWAIT_RPC_V1 LIX_TRY_AWAIT_RPC_V1
 #define TRY_AWAIT_RPC LIX_TRY_AWAIT_RPC_V1
