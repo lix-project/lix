@@ -4,6 +4,7 @@
 #include "lix/libutil/error.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/signals.hh"
+#include <exception>
 #include <future>
 #include <kj/async-io.h>
 #include <kj/async.h>
@@ -109,30 +110,58 @@ T runAsyncUnwrap(Result<T> t)
 {
     return std::move(t).value();
 }
+
+[[noreturn]]
+inline void rethrow_async_exception_as_lix(
+    std::optional<std::string> context, std::source_location loc = std::source_location::current()
+)
+{
+    try {
+        throw; // NOLINT(lix-foreign-exceptions)
+    } catch (BaseException & e) {
+        e.addAsyncTrace(loc, context);
+        throw;
+    } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
+        Error fe{e.getDescription().cStr()};
+        fe.addAsyncTrace(loc, context);
+        throw fe;
+    } catch (...) {
+        auto fe = ForeignException::wrapCurrent();
+        fe.addAsyncTrace(loc, context);
+        throw fe;
+    }
+}
+
+inline ErrorInfo wrap_exception_as_lix(
+    std::exception_ptr ex,
+    std::optional<std::string> context = std::nullopt,
+    std::source_location loc = std::source_location::current()
+)
+{
+    try {
+        std::rethrow_exception(ex);
+    } catch (BaseError & e) {
+        return e.info();
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+        return {lvlError, HintFmt("%s", Uncolored(e.what()))};
+    } catch (...) {
+        return {lvlError, HintFmt("unknown exception")};
+    }
+}
 }
 }
 
-#define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                         \
-    ({                                                                         \
-        auto _lix_awaited = (_l_map) (co_await (__VA_ARGS__));                 \
-        if (_lix_awaited.has_error()) {                                        \
-            try {                                                              \
-                _lix_awaited.value();                                          \
-            } catch (::nix::BaseException & e) {                               \
-                e.addAsyncTrace(::std::source_location::current(), _l_ctx());  \
-                throw;                                                         \
-                /* NOLINTNEXTLINE(lix-foreign-exceptions) */                   \
-            } catch (::kj::Exception & e) {                                    \
-                ::nix::Error fe{e.getDescription().cStr()};                    \
-                fe.addAsyncTrace(::std::source_location::current(), _l_ctx()); \
-                throw fe;                                                      \
-            } catch (...) {                                                    \
-                auto fe = ::nix::ForeignException::wrapCurrent();              \
-                fe.addAsyncTrace(::std::source_location::current(), _l_ctx()); \
-                throw fe;                                                      \
-            }                                                                  \
-        }                                                                      \
-        ::nix::detail::materializeResult(std::move(_lix_awaited));             \
+#define LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, _l_map, ...)                   \
+    ({                                                                   \
+        auto _lix_awaited = (_l_map) (co_await (__VA_ARGS__));           \
+        if (_lix_awaited.has_error()) {                                  \
+            try {                                                        \
+                _lix_awaited.value();                                    \
+            } catch (...) {                                              \
+                ::nix::detail::rethrow_async_exception_as_lix(_l_ctx()); \
+            }                                                            \
+        }                                                                \
+        ::nix::detail::materializeResult(std::move(_lix_awaited));       \
     })
 
 #define LIX_TRY_AWAIT_CONTEXT(_l_ctx, ...) \
