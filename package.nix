@@ -833,7 +833,10 @@ stdenv.mkDerivation (finalAttrs: {
           inputsFrom = [ finalAttrs.finalPackage ];
 
           # For Meson to find Boost.
-          env = finalAttrs.env;
+          env = finalAttrs.env // {
+            # for non-nixpkgs rust-analyzer binaries, we need to epxlicitely set RUST_SRC_PATH
+            RUST_SRC_PATH = "${rustPlatform.rustLibSrc}";
+          };
 
           mesonFlags =
             # I guess this is necessary because mesonFlags to mkDerivation doesn't propagate in inputsFrom,
@@ -890,8 +893,6 @@ stdenv.mkDerivation (finalAttrs: {
               cargo
               rustc
               rustfmt
-              rustPlatform.rustLibSrc
-              rustPlatform.rustcSrc
             ]
             ++ lib.optionals stdenv.cc.isClang [
               # Required for clang-tidy checks.
