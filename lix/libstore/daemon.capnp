@@ -28,10 +28,6 @@ interface Protocol {
   # TODO maybe add information or something
 }
 
-# legacy boot protocol. EXPLICITLY UNSTABLE, this id will change frequently and without notice.
-# every change to the experimental tunneling protocol may also change this protocol identifier.
-const unstableLegacyTunneled :Text = "lix/legacy/ba3153c5-4153-4d66-91ec-a258c02e9a3c";
-
 interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
   enum Trust {
     unknown @0;

@@ -20,6 +20,7 @@
 #include <exception>
 #include <kj/async.h>
 #include <kj/encoding.h>
+#include <string_view>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -184,7 +185,7 @@ try {
         auto supportedProtos = supported.getProtocols();
         debug("remote advertised %s", supported.toString().flatten().cStr());
         if (supportedProtos.size() != 1
-            && supportedProtos[0].getId() != rpc::daemon::UNSTABLE_LEGACY_TUNNELED)
+            && rpc::to<std::string_view>(supportedProtos[0].getId()) != rpc::daemon::UNSTABLE_LEGACY_TUNNELED)
         {
             co_return false;
         }
@@ -201,7 +202,7 @@ try {
 
     auto bootstrapReq = bootstrap.requestRequest();
     bootstrapReq.setClientInfo(PACKAGE_STRING);
-    bootstrapReq.setProtocol(rpc::daemon::UNSTABLE_LEGACY_TUNNELED);
+    RPC_FILL(bootstrapReq, setProtocol, rpc::daemon::UNSTABLE_LEGACY_TUNNELED);
     auto legacyBoot =
         TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyBoot>();
     auto initReq = legacyBoot.initRequest();

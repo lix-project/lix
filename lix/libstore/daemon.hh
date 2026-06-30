@@ -6,6 +6,12 @@
 #include "lix/libstore/store-api.hh"
 #include <kj/async-io.h>
 
+namespace nix::rpc::daemon {
+// legacy boot protocol. EXPLICITLY UNSTABLE, this id will change frequently and without notice.
+// every change to the experimental tunneling protocol may also change this protocol identifier.
+extern const std::string UNSTABLE_LEGACY_TUNNELED;
+}
+
 namespace nix::daemon {
 
 void processLegacyConnection(

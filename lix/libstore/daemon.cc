@@ -32,6 +32,8 @@
 #include <kj/memory.h>
 #include <sstream>
 
+const std::string nix::rpc::daemon::UNSTABLE_LEGACY_TUNNELED = "lix/legacy/" PACKAGE_VERSION;
+
 namespace nix::daemon {
 
 Sink & operator << (Sink & sink, const Logger::Fields & fields)
