@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <exception>
 #include <ranges>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace nix::rpc {
@@ -166,4 +168,9 @@ struct Convert<Settings, std::map<std::string, std::string>>
         return result;
     }
 };
+
+namespace error::v1 {
+std::string encodeLossy(const ::nix::ErrorInfo & e);
+std::optional<::nix::ErrorInfo> tryDecode(std::string_view source);
+}
 }

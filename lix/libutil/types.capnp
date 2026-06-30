@@ -17,6 +17,29 @@ enum Verbosity {
   vomit @7;
 }
 
+# NOTE ON ERRORS
+#
+# interfaces in this system may throw errors in an encoded form. this encoded form is not
+# itself meant to be read directly, but to be decoded and rethrown in a better error type
+# than the (very limited) kj exceptions. transporting errors in result types inhibits all
+# pipelining optimizations capnp can do for us (including early aborts in streaming types
+# like encapsulated byte streams, or loggers). all interfaces should be annotated with an
+# appropriate marker to document how their errors are transported. these annotations have
+# NO IMPACT ON CODE GENERATION, error wrapping must still be done in each implementation.
+
+struct ErrorEncoding {
+  header @0 :Text;
+  trailer @1 :Text;
+}
+
+const v1Errors :ErrorEncoding = (
+  header = "{error:ODZmMTlmNjgtMjNiMy00MWE3LTgxYzUtMjY5YWUwN2ZkNDY1Cg:",
+  trailer = ":v1}",
+);
+
+# annotations on interfaces also apply to methods and recursively to all child interfaces
+annotation throws(interface, method) :ErrorEncoding;
+
 struct Error {
   level @0 :Verbosity;
   message @1 :Data;

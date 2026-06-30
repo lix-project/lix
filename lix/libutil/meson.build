@@ -48,6 +48,7 @@ liblix_sources += files(
   'terminal.cc',
   'thread-name.cc',
   'thread-pool.cc',
+  'types-rpc.cc',
   'unix-domain-socket.cc',
   'url-name.cc',
   'url.cc',
