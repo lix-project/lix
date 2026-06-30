@@ -46,21 +46,6 @@ struct Error {
   traces @2 :List(Data);
 }
 
-struct Result(T) {
-  union {
-    good @0 :T;
-    bad @1 :Error;
-  }
-}
-
-# primitives can't be args to generics, so we need to specialize for primitive here.
-struct ResultV {
-  union {
-    good @0 :Void;
-    bad @1 :Error;
-  }
-}
-
 struct Settings {
   struct Setting {
     name @0 :Data;

@@ -37,6 +37,7 @@ liblix_sources += files(
   'processes.cc',
   'references.cc',
   'regex.cc',
+  'rpc.cc',
   'serialise-async.cc',
   'serialise.cc',
   'shlex.cc',

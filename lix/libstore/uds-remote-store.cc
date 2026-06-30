@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <capnp/rpc-twoparty.h>
 #include <cerrno>
+#include <exception>
+#include <kj/async.h>
 #include <kj/encoding.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -200,13 +202,14 @@ try {
     auto bootstrapReq = bootstrap.requestRequest();
     bootstrapReq.setClientInfo(PACKAGE_STRING);
     bootstrapReq.setProtocol(rpc::daemon::UNSTABLE_LEGACY_TUNNELED);
-    auto legacyBoot = TRY_AWAIT_RPC(bootstrapReq.send()).castAs<rpc::daemon::LegacyBoot>();
+    auto legacyBoot =
+        TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyBoot>();
     auto initReq = legacyBoot.initRequest();
     initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(con.rpc->loggerActivity));
     initReq.setReplyStream(kj::heap<LegacyStreamProxy>(*con.rpc));
 
-    auto initResp = initReq.send();
-    auto initResult = TRY_AWAIT_RPC(initResp);
+    auto initResp = TRY_AWAIT_RPC(initReq.send());
+    auto initResult = initResp.getResult();
     con.remoteTrustsUs = initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::TRUSTED
         ? std::optional{Trusted}
         : initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::UNTRUSTED ? std::optional{NotTrusted}
@@ -235,10 +238,10 @@ try {
             auto req = requestStream.feedRequest();
             req.initRaw(*got);
             std::copy(buf.begin(), buf.begin() + *got, req.getRaw().begin());
-            co_await req.send();
+            TRY_AWAIT_RPC(req.send());
         }
     }
-    co_await requestStream.syncRequest().send();
+    TRY_AWAIT_RPC(requestStream.syncRequest().send());
 } catch (...) {
     ignoreExceptionExceptInterrupt();
     error = std::current_exception();
@@ -246,22 +249,24 @@ try {
 
 kj::Promise<void> UDSRemoteStore::LegacyStreamProxy::feed(FeedContext context)
 try {
-    if (!state.error) {
-        auto bytes = context.getParams().getRaw();
-        TRY_AWAIT(state.proxySock->writeFull(bytes.begin(), bytes.size()));
+    if (state.error) {
+        std::rethrow_exception(state.error);
     }
+    auto bytes = context.getParams().getRaw();
+    TRY_AWAIT(state.proxySock->writeFull(bytes.begin(), bytes.size()));
 } catch (...) {
     state.error = std::current_exception();
+    rpc::rethrow_as_rpc_error();
 }
 
 kj::Promise<void> UDSRemoteStore::LegacyStreamProxy::sync(SyncContext context)
-{
+try {
     if (state.error) {
-        RPC_FILL(context.initResults(), initResult, state.error);
-    } else {
-        context.initResults().initResult().setGood();
+        std::rethrow_exception(state.error);
     }
     return kj::READY_NOW;
+} catch (...) {
+    rpc::rethrow_as_rpc_error();
 }
 
 kj::Promise<Result<void>> UDSRemoteStore::initConnection(RemoteStore::Connection & conn)

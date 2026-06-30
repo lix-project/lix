@@ -1,16 +1,23 @@
 #pragma once
 ///@file RPC helper functions
 
+#include "lix/libutil/result.hh"
 #include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/rpc-fwd.hh"
 #include <capnp/blob.h>
 #include <capnp/common.h>
 #include <capnp/list.h>
 #include <concepts>
+#include <kj/async.h>
 #include <ranges>
+#include <source_location>
 #include <string>
 #include <string_view>
 #include <type_traits>
+
+namespace kj {
+class Exception;
+}
 
 namespace nix::rpc {
 
@@ -181,15 +188,70 @@ inline void doFill(auto && builder, Inner (Builder::*field)(Init), From && f, au
 #define LIX_RPC_FILL(fobj, ffield, fsource, ...) \
     [&] { ::nix::rpc::detail::doFill(fobj, &decltype(fobj)::ffield, (fsource), ##__VA_ARGS__); }()
 
-#define LIX_TRY_AWAIT_RPC(...)                                    \
-    LIX_TRY_AWAIT_CONTEXT_MAP(                                    \
-        [] { return "RPC call"; },                                \
-        ([](auto r) { return ::nix::rpc::from(r.getResult()); }), \
-        __VA_ARGS__                                               \
-    )
+namespace detail {
+std::exception_ptr unwrapErrorRaw(kj::Exception & e, std::source_location loc);
+std::exception_ptr unwrapErrorV1(kj::Exception & e, std::source_location loc);
+
+[[noreturn]]
+void rethrowAsErrorV1();
+
+kj::Promise<nix::Result<void>> inline rewrapNoexcept(
+    kj::Promise<void> && promise, std::source_location loc = std::source_location::current()
+)
+{
+    return promise.then(
+        []() -> nix::Result<void> { return result::success(); },
+        [loc](kj::Exception && e) -> nix::Result<void> { return result::failure(unwrapErrorRaw(e, loc)); }
+    );
+}
+
+template<typename T>
+kj::Promise<nix::Result<T>>
+rewrapNoexcept(kj::Promise<T> && promise, std::source_location loc = std::source_location::current())
+{
+    return promise.then(
+        [](T result) -> nix::Result<T> { return result; },
+        [loc](kj::Exception && e) -> nix::Result<T> { return result::failure(unwrapErrorRaw(e, loc)); }
+    );
+}
+
+kj::Promise<nix::Result<void>> inline rewrapV1(
+    kj::Promise<void> && promise, std::source_location loc = std::source_location::current()
+)
+{
+    return promise.then(
+        []() -> nix::Result<void> { return result::success(); },
+        [loc](kj::Exception && e) -> nix::Result<void> { return result::failure(unwrapErrorV1(e, loc)); }
+    );
+}
+
+template<typename T>
+kj::Promise<nix::Result<T>>
+rewrapV1(kj::Promise<T> && promise, std::source_location loc = std::source_location::current())
+{
+    return promise.then(
+        [](T result) -> nix::Result<T> { return result; },
+        [loc](kj::Exception && e) -> nix::Result<T> { return result::failure(unwrapErrorV1(e, loc)); }
+    );
+}
+}
+
+#define LIX_WRAP_RPC_PROMISE_NOEXCEPT(...) (::nix::rpc::detail::rewrapNoexcept(__VA_ARGS__))
+#define LIX_WRAP_RPC_PROMISE_V1(...) (::nix::rpc::detail::rewrapV1(__VA_ARGS__))
+
+#define LIX_TRY_AWAIT_RPC_NOEXCEPT(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_NOEXCEPT(__VA_ARGS__)))
+#define LIX_TRY_AWAIT_RPC_V1(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_V1(__VA_ARGS__)))
+
+[[noreturn]]
+inline void rethrow_as_rpc_error()
+{
+    detail::rethrowAsErrorV1();
+}
 
 #ifdef LIX_UR_COMPILER_UWU
 #define RPC_FILL LIX_RPC_FILL
-#define TRY_AWAIT_RPC LIX_TRY_AWAIT_RPC
+#define TRY_AWAIT_RPC_NOEXCEPT LIX_TRY_AWAIT_RPC_NOEXCEPT
+#define TRY_AWAIT_RPC_V1 LIX_TRY_AWAIT_RPC_V1
+#define TRY_AWAIT_RPC LIX_TRY_AWAIT_RPC_V1
 #endif
 }

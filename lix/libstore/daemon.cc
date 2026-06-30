@@ -1040,34 +1040,34 @@ struct RequestStreamImpl final : LegacyStream::Server
                 auto req = callbacks.feedRequest();
                 req.initRaw(*got);
                 std::copy(buf.begin(), buf.begin() + *got, req.getRaw().begin());
-                co_await req.send();
+                TRY_AWAIT_RPC(req.send());
             }
         }
-        co_await callbacks.syncRequest().send();
+        TRY_AWAIT_RPC(callbacks.syncRequest().send());
     } catch (...) {
         onError(std::current_exception());
     }
 
     kj::Promise<void> feed(FeedContext context) override
     try {
-        auto bytes = context.getParams().getRaw();
-        if (!error) {
-            TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
+        if (error) {
+            std::rethrow_exception(error);
         }
+        auto bytes = context.getParams().getRaw();
+        TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
     } catch (...) {
         onError(std::current_exception());
+        rpc::rethrow_as_rpc_error();
     }
 
     kj::Promise<void> sync(SyncContext context) override
     try {
         TRY_AWAIT(logger->flush());
         if (error) {
-            RPC_FILL(context.initResults(), initResult, error);
-        } else {
-            context.initResults().initResult().setGood();
+            std::rethrow_exception(error);
         }
     } catch (...) {
-        RPC_FILL(context.initResults(), initResult, std::current_exception());
+        rpc::rethrow_as_rpc_error();
     }
 };
 
@@ -1088,7 +1088,7 @@ struct LegacyBootImpl final : LegacyBoot::Server
         logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
 
         auto args = context.getParams();
-        auto result = context.initResults().initResult().initGood();
+        auto result = context.initResults().initResult();
         // We and the underlying store both need to trust the client for it to be trusted.
         if (!state->trusted) {
             result.setTrust(LegacyBoot::Trust::UNTRUSTED);
@@ -1163,7 +1163,7 @@ struct LegacyBootImpl final : LegacyBoot::Server
         );
         used = true;
     } catch (...) {
-        RPC_FILL(context.initResults(), initResult, std::current_exception());
+        rpc::rethrow_as_rpc_error();
     }
 };
 
@@ -1200,7 +1200,6 @@ struct BootstrapImpl final : Bootstrap::Server
                     kj::Exception::Type::UNIMPLEMENTED, "main", 0, kj::str("rpc sockets not enabled")
                 )
             );
-            throw Error("rpc sockets not enabled");
         }
 
         auto result = context.initResults();
@@ -1213,19 +1212,24 @@ struct BootstrapImpl final : Bootstrap::Server
     }
 
     kj::Promise<void> request(RequestContext context) override
-    try {
+    {
         auto id = rpc::to<std::string>(context.getParams().getProtocol());
         if (used) {
-            throw Error("connection already initialized");
+            kj::throwFatalException(
+                kj::Exception(
+                    kj::Exception::Type::FAILED, "main", 0, kj::str("connection already initialized")
+                )
+            );
         } else if (const auto & protocol = get(protocols, id)) {
             used = true;
-            context.initResults().initResult().setGood(protocol->factory(trusted, store));
+            context.initResults().setResult(protocol->factory(trusted, store));
         } else {
-            throw Error("unsupported protocol %s", id);
+            kj::throwFatalException(
+                kj::Exception(
+                    kj::Exception::Type::UNIMPLEMENTED, "main", 0, kj::str("unsupported protocol", id)
+                )
+            );
         }
-        return kj::READY_NOW;
-    } catch (...) {
-        RPC_FILL(context.initResults(), initResult, std::current_exception());
         return kj::READY_NOW;
     }
 };

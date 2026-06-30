@@ -5,6 +5,7 @@
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/logging-rpc.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types.hh"
@@ -50,7 +51,7 @@ struct Instance final : rpc::build_remote::HookInstance::Server
 
     kj::Promise<void> init(InitContext context) override;
 
-    kj::Promise<void> buildImpl(BuildContext context);
+    kj::Promise<Result<void>> buildImpl(BuildContext context);
     kj::Promise<void> build(BuildContext context) override;
 };
 }
@@ -261,7 +262,7 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
     {
     }
 
-    kj::Promise<void> runImpl(RunContext context);
+    kj::Promise<Result<void>> runImpl(RunContext context);
     kj::Promise<void> run(RunContext context) override;
 };
 
@@ -391,16 +392,14 @@ kj::Promise<void> Instance::init(InitContext context)
         initPlugins();
 
         initialized = true;
-
-        context.getResults().initResult().setGood();
     } catch (...) {
-        RPC_FILL(context.getResults(), initResult, std::current_exception());
+        rpc::rethrow_as_rpc_error();
     }
 
     return kj::READY_NOW;
 }
 
-kj::Promise<void> Instance::buildImpl(BuildContext context)
+kj::Promise<Result<void>> Instance::buildImpl(BuildContext context)
 try {
     if (!initialized) {
         throw Error("build hook not fully initialized");
@@ -427,8 +426,8 @@ try {
     debug("got %d remote builders", machines.size());
 
     if (machines.empty()) {
-        context.getResults().initResult().initGood().setDeclinePermanently();
-        co_return;
+        context.getResults().initResult().setDeclinePermanently();
+        co_return result::success();
     }
 
     auto amWilling = context.getParams().getAmWilling();
@@ -444,21 +443,23 @@ try {
     if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
         switch (*immediateResponse) {
         case BuildRejected::Temporarily:
-            context.getResults().initResult().initGood().setPostpone();
-            co_return;
+            context.getResults().initResult().setPostpone();
+            co_return result::success();
         case BuildRejected::Permanently:
-            context.getResults().initResult().initGood().setDecline();
-            co_return;
+            context.getResults().initResult().setDecline();
+            co_return result::success();
         }
     }
 
     auto builder = std::get_if<BuilderConnection>(&result);
     assert(builder);
 
-    auto ac = context.getResults().initResult().initGood().initAccept();
+    auto ac = context.getResults().initResult().initAccept();
     ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+
+    co_return result::success();
 } catch (...) {
-    RPC_FILL(context.getResults(), initResult, std::current_exception());
+    co_return result::current_exception();
 }
 
 kj::Promise<void> Instance::build(BuildContext context)
@@ -467,11 +468,12 @@ try {
         throw Error("build hooks can only accept a single job");
     }
     used = true; // lock out other rpc calls during processing
-    co_await buildImpl(context);
+    auto result = co_await buildImpl(context);
     TRY_AWAIT(logger->flush());
-    used = context.getResults().getResult().getGood().isAccept();
+    used = result.has_value() && context.getResults().getResult().isAccept();
+    result.value();
 } catch (...) {
-    RPC_FILL(context.getResults(), getResult, std::current_exception());
+    rpc::rethrow_as_rpc_error();
 }
 
 kj::Promise<void> AcceptedBuild::run(RunContext context)
@@ -489,14 +491,15 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
             throw Error("build hooks builds are single-use items");
         }
         used = true;
-        co_await runImpl(context);
+        auto result = co_await runImpl(context);
         TRY_AWAIT(logger->flush());
+        result.value();
     } catch (...) {
-        RPC_FILL(context.getResults(), getResult, std::current_exception());
+        rpc::rethrow_as_rpc_error();
     }
 }
 
-kj::Promise<void> AcceptedBuild::runImpl(RunContext context)
+kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
 {
     try {
         auto logHandler = builder.startLogThread(
@@ -618,10 +621,9 @@ kj::Promise<void> AcceptedBuild::runImpl(RunContext context)
         // drop store connection, let log handler process any remaining input
         builder.sshStore = nullptr;
         TRY_AWAIT(logHandler);
-
-        context.getResults().initResult().setGood();
+        co_return result::success();
     } catch (...) {
-        RPC_FILL(context.getResults(), initResult, std::current_exception());
+        co_return result::current_exception();
     }
 }
 

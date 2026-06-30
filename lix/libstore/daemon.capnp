@@ -21,7 +21,7 @@ interface Bootstrap {
   request @1 (
     clientInfo :Text,
     protocol :Text,
-  ) -> (result :T.Result(Protocol));
+  ) -> (result :Protocol);
 }
 
 interface Protocol {
@@ -32,7 +32,7 @@ interface Protocol {
 # every change to the experimental tunneling protocol may also change this protocol identifier.
 const unstableLegacyTunneled :Text = "lix/legacy/ba3153c5-4153-4d66-91ec-a258c02e9a3c";
 
-interface LegacyBoot extends(Protocol) {
+interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
   enum Trust {
     unknown @0;
     untrusted @1;
@@ -42,7 +42,7 @@ interface LegacyBoot extends(Protocol) {
   init @0 (
     logger :Log.LogStream,
     replyStream :LegacyStream,
-  ) -> (result :T.Result(InitResult));
+  ) -> (result :InitResult);
 
   struct InitResult {
     requestStream @0 :LegacyStream;
@@ -51,8 +51,8 @@ interface LegacyBoot extends(Protocol) {
   }
 }
 
-interface LegacyStream {
+interface LegacyStream $T.throws(T.v1Errors) {
   feed @0 (raw :Data) -> stream;
   # must be called before a new op is started, otherwise errors may get lost
-  sync @1 () -> (result :T.ResultV);
+  sync @1 ();
 }

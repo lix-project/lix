@@ -1094,8 +1094,8 @@ try {
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
     RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
-    auto buildRespPromise = buildReq.send();
-    auto buildResp = TRY_AWAIT_RPC(buildRespPromise);
+    auto buildRespV = TRY_AWAIT_RPC(buildReq.send());
+    auto buildResp = buildRespV.getResult();
 
     debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
 
@@ -1139,7 +1139,7 @@ try {
         RPC_FILL(runReq, setDescription, buildDescription());
     }
 
-    auto runPromise = runReq.send();
+    auto runPromise = LIX_WRAP_RPC_PROMISE_V1(runReq.send());
 
     // build via hook is now properly running. wait for it to finish
     actLock.reset();
@@ -1150,8 +1150,8 @@ try {
         wrapChildHandler(runPromise.then([&](auto result) -> kj::Promise<Result<WorkResult>> {
             try {
                 std::shared_ptr<Error> remoteError;
-                if (result.getResult().isBad()) {
-                    remoteError = std::make_shared<Error>(from(result.getResult().getBad()));
+                if (result.has_error()) {
+                    remoteError = std::make_shared<Error>(detail::wrap_exception_as_lix(result.error()));
                     logErrorInfo(remoteError->info().level, remoteError->info());
                 }
                 // close the rpc connection to have the hook exit
