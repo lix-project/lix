@@ -1,5 +1,5 @@
 #include "lix/libstore/filetransfer.hh"
-#include "libutil/file-system.hh"
+#include "lix/libutil/file-system.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
@@ -17,33 +17,29 @@
 #include "lix/libutil/tracepoint.hh"
 #include "lix/libutil/backoff.hh"
 
-#include <cstddef>
-#include <cstdio>
-#include <exception>
-#include <kj/async.h>
-#include <kj/encoding.h>
-#include <kj/time.h>
-#include <memory>
-#include <mutex>
-
 #if ENABLE_DTRACE
 #include "trace-probes.gen.hh"
 #endif
+
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
+#include <exception>
+#include <fcntl.h>
+#include <memory>
+#include <mutex>
+#include <regex>
+#include <thread>
+#include <unistd.h>
 
 #if ENABLE_S3
 #include <aws/core/client/ClientConfiguration.h>
 #endif
 
-#include <unistd.h>
-#include <fcntl.h>
-
 #include <curl/curl.h>
-
-#include <algorithm>
-#include <cmath>
-#include <cstring>
-#include <thread>
-#include <regex>
+#include <kj/async.h>
+#include <kj/encoding.h>
+#include <kj/time.h>
 
 using namespace std::string_literals;
 
