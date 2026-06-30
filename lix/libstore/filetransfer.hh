@@ -3,12 +3,13 @@
 
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/box_ptr.hh"
-#include "lix/libutil/ref.hh"
+#include "lix/libutil/config.hh"
 #include "lix/libutil/logging.hh"
+#include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include "lix/libutil/strings.hh"
 #include "lix/libutil/types.hh"
-#include "lix/libutil/config.hh"
 
 #include <kj/async.h>
 #include <curl/curl.h>
@@ -118,7 +119,18 @@ public:
     std::optional<std::string> response;
 
     template<typename... Args>
-    FileTransferError(FileTransfer::Error error, std::optional<std::string> response, const Args & ... args);
+    FileTransferError(FileTransfer::Error error, std::optional<std::string> response, const Args & ... args)
+        : Error(args...), error(error), response(response)
+    {
+        const auto hf = HintFmt(args...);
+        // FIXME: Due to https://github.com/NixOS/nix/issues/3841 we don't know how
+        // to print different messages for different verbosity levels. For now
+        // we add some heuristics for detecting when we want to show the response.
+        if (response && (response->size() < 1024 || response->find("<html>") != std::string::npos))
+            err.msg = HintFmt("%1%\n\nresponse body:\n\n%2%", Uncolored(hf.str()), chomp(*response));
+        else
+            err.msg = hf;
+    }
 };
 
 }
