@@ -28,6 +28,27 @@ To to(const From & from, auto &&... args)
     return Convert<typename From::Reads, To>::convert(from, args...);
 }
 
+template<typename T>
+    requires std::integral<T> || std::floating_point<T> || std::same_as<T, bool>
+T from(T t, auto &&...)
+{
+    return t;
+}
+
+// blanket converter that turns a `from` into a `to`
+template<typename Rpc, typename To>
+struct Convert
+{
+    template<typename... Args>
+        requires requires(typename Rpc::Reader r, Args... args) {
+            { from(r, args...) } -> std::same_as<To>;
+        }
+    static To convert(const typename Rpc::Reader & r, Args &&... args)
+    {
+        return from(r, args...);
+    }
+};
+
 // conversions for capnp Text
 template<>
 struct Convert<capnp::Text, std::string_view>
@@ -123,21 +144,6 @@ struct Fill<capnp::List<Elem>, From>
         for (auto && e : from) {
             Fill<Elem, std::ranges::range_value_t<From>>::fill(builder[i++], e, args...);
         }
-    }
-};
-
-// blanket converter that turns a `from` into a `to`
-template<typename Rpc, typename To>
-    requires requires(typename Rpc::Reader r) {
-        {
-            from(r)
-        } -> std::same_as<To>;
-    }
-struct Convert<Rpc, To>
-{
-    static To convert(const typename Rpc::Reader & r, auto &&... args)
-    {
-        return from(r, args...);
     }
 };
 
