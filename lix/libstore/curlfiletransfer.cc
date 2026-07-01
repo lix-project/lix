@@ -382,7 +382,7 @@ try {
         auto state(transfer->downloadState.lock());
 
         if (!state->data.empty()) {
-            chunk = std::move(state->data);
+            chunk = std::exchange(state->data, {});
             buffered = chunk;
             totalReceived += chunk.size();
             parent->unpause(transfer);

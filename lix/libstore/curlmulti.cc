@@ -141,7 +141,7 @@ void CurlMulti::workerThreadMain()
 
     while (true) {
         {
-            auto cancel = [&] { return std::move(state_.lock()->cancel); }();
+            auto cancel = [&] { return std::exchange(state_.lock()->cancel, {}); }();
             for (auto & [item, promise] : cancel) {
                 curl_multi_remove_handle(curlm.get(), item->req.get());
                 items.erase(item->req.get());
@@ -189,7 +189,7 @@ void CurlMulti::workerThreadMain()
         timeoutMs = INT64_MAX;
 
         {
-            auto unpause = [&] { return std::move(state_.lock()->unpause); }();
+            auto unpause = [&] { return std::exchange(state_.lock()->unpause, {}); }();
             for (auto & item : unpause) {
                 curl_easy_pause(item->req.get(), CURLPAUSE_CONT);
             }
@@ -197,7 +197,7 @@ void CurlMulti::workerThreadMain()
 
         {
             auto state(state_.lock());
-            incoming = std::move(state->incoming);
+            incoming = std::exchange(state->incoming, {});
             quit = state->quit;
         }
 
