@@ -1,38 +1,11 @@
+#include "lix/libstore/curlfiletransfer.hh"
 #include "lix/libstore/curlmulti.hh"
 #include "lix/libstore/filetransfer.hh"
-#include "lix/libstore/curlfiletransfer.hh"
-#include "lix/libutil/file-system.hh"
-#include "lix/libstore/transferitem.hh"
-#include "lix/libutil/async-io.hh"
-#include "lix/libutil/async.hh"
-#include "lix/libutil/c-calls.hh"
-#include "lix/libutil/error.hh"
-#include "lix/libutil/logging.hh"
-#include "lix/libutil/namespaces.hh"
-#include "lix/libstore/globals.hh"
-#include "lix/libstore/store-api.hh"
-#include "lix/libstore/s3.hh"
-#include "lix/libutil/regex.hh"
-#include "lix/libutil/result.hh"
-#include "lix/libutil/signals.hh"
-#include "lix/libutil/strings.hh"
-#include "lix/libutil/thread-name.hh"
-#include "lix/libutil/tracepoint.hh"
-#include "lix/libutil/backoff.hh"
+#include "lix/libutil/ref.hh"
 
-#if ENABLE_DTRACE
-#include "trace-probes.gen.hh"
-#endif
+#include <optional>
 
-#include <cstddef>
-#include <cstdio>
-#include <cstring>
-#include <exception>
 #include <fcntl.h>
-#include <memory>
-#include <mutex>
-#include <regex>
-#include <thread>
 #include <unistd.h>
 
 #if ENABLE_S3
@@ -43,8 +16,6 @@
 #include <kj/async.h>
 #include <kj/encoding.h>
 #include <kj/time.h>
-
-using namespace std::string_literals;
 
 namespace nix {
 

@@ -14,7 +14,6 @@
 #include <kj/async.h>
 #include <curl/curl.h>
 #include <string>
-#include <future>
 
 namespace nix {
 
