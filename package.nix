@@ -38,9 +38,8 @@
   lowdown-unsandboxed,
   lowdown,
   mdbook,
-  # older nixpkgs only have v1, newer nixpkgs only have v2
-  mdbook-linkcheck ? null,
-  mdbook-linkcheck2 ? mdbook-linkcheck,
+  mdbook-linkcheck2,
+  cacert,
   mercurial,
   meson,
   ninja,
@@ -511,17 +510,10 @@ stdenv.mkDerivation (finalAttrs: {
   ]
   ++ [
     (lib.getBin lowdown-unsandboxed)
-    (lib.warnIf
-      (
-        # if mdbook 0.5 is backported to 25.11
-        (lib.trivial.release == "25.11" && lib.versionAtLeast mdbook.version "0.5.0")
-        # or 25.11 is EOL
-        || (lib.trivial.oldestSupportedRelease > 2511)
-      )
-      "Workarounds for mdbook 0.4.x/0.5.x interoperability can be removed as 0.5.0 is in nixpkgs-stable"
-      mdbook
-    )
+    mdbook
     mdbook-linkcheck2
+    # linkcheck wants a root cert to exist, even if we never actually hit the network
+    cacert
   ]
   ++ [
     pkg-config

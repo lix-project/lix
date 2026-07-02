@@ -24,8 +24,7 @@ def map_contents_recursively(transformer):
 def process_command:
     .[0] as $context |
     .[1] as $body |
-	# XXX FUTURE: drop sections once mdBook is at 0.5.0 or above in nixpkgs
-	$body | (.items? // .sections) |= map(map_contents_recursively(if $context.renderer == "html" then transform_anchors_html else transform_anchors_strip end))
+	$body | .items |= map(map_contents_recursively(if $context.renderer == "html" then transform_anchors_html else transform_anchors_strip end))
 	;
 
 process_command

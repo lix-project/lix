@@ -31,12 +31,11 @@ command = "jq --from-file anchors.jq"
 
 [output.markdown]
 
-# XXX FUTURE: may be reenabled once mdBook 0.5.0 or above and matching mdbook-linkchecker are in nixpkgs
-#[output.linkcheck]
+[output.linkcheck2]
 # no Internet during the build (in the sandbox)
-#follow-web-links = false
+follow-web-links = false
 
 # mdbook-linkcheck does not understand [foo]{#bar} style links, resulting in
 # excessive "Potential incomplete link" warnings. No other kind of warning was
 # produced at the time of writing.
-#warning-policy = "ignore"
+warning-policy = "ignore"

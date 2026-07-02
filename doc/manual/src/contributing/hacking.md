@@ -51,7 +51,7 @@ $ nix-shell -A native-clangStdenvPackages
 
 ### Building from the development shell
 
-We have a [justfile](just.systems) for extra convenient building.
+We have a [justfile](https://just.systems/) for extra convenient building.
 It defaults to using `./build` as the build directory, and `$out` (`./outputs/out`) as the install directory.
 For most cases, you can clean-build, install, and run the tests with:
 

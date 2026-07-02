@@ -70,11 +70,6 @@ def do_include(content: str, relative_md_path: Path, source_root: Path, search_p
 
 def recursive_replace(data, book_root, search_path):
     match data:
-        # XXX FUTURE: drop sections once mdBook is at 0.5.0 or above in nixpkgs
-        case {'sections': sections}:
-            return data | dict(
-                sections = [recursive_replace(section, book_root, search_path) for section in sections],
-            )
         case {'items': items}:
             return data | dict(
                 items = [recursive_replace(item, book_root, search_path) for item in items],
