@@ -308,10 +308,16 @@ static Value fetch(
     //       https://github.com/NixOS/nix/issues/4313
     auto storePath = unpack
         ? state.aio
-              .blockOn(fetchers::downloadTarball(state.ctx.store, *url, name, (bool) expectedHash))
+              .blockOn(
+                  fetchers::downloadTarball(
+                      state.ctx.store, *url, name, expectedHash != Hash(HashType::SHA256)
+                  )
+              )
               .tree.storePath
         : state.aio
-              .blockOn(fetchers::downloadFile(state.ctx.store, *url, name, (bool) expectedHash))
+              .blockOn(
+                  fetchers::downloadFile(state.ctx.store, *url, name, expectedHash != Hash(HashType::SHA256))
+              )
               .storePath;
 
     if (expectedHash) {
