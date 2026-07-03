@@ -481,6 +481,15 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
 
 
 @pytest.fixture
+def fake_nixpkgs(nix: Nix):
+    nixpkgs = nix.env.dirs.test_root / "nixpkgs"
+    nixpkgs.mkdir()
+    (nixpkgs / "default.nix").write_text('{...}: {lib.version = "f2-fake-nixpkgs";}')
+
+    nix.env["NIX_PATH"] = f"nixpkgs={nixpkgs.absolute()}"
+
+
+@pytest.fixture
 def enable_diverted_store(nix: Nix):
     """
     clear NIX_STORE_DIR, resetting it to the default (ie /nix/store).
