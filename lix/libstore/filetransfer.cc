@@ -30,7 +30,7 @@ ref<FileTransfer> getFileTransfer()
 {
     static ref<curlFileTransfer> fileTransfer = makeCurlFileTransfer({});
 
-    if (fileTransfer->multi->state_.lock()->quit) {
+    if (fileTransfer->multi->state_.lock()->quitting) {
         fileTransfer = makeCurlFileTransfer({});
     }
 

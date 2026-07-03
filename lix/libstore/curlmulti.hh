@@ -20,10 +20,13 @@ struct CurlMulti
 public:
     struct State
     {
-        bool quit = false;
+        bool quitting = false;
+        bool workAvailable = false;
         std::vector<std::shared_ptr<TransferItem>> incoming;
         std::vector<std::shared_ptr<TransferItem>> unpause;
         std::map<std::shared_ptr<TransferItem>, std::promise<void>> cancel;
+
+        void quit();
     };
 
     // Fields.
@@ -44,7 +47,7 @@ public:
 
     void cancel(std::shared_ptr<TransferItem> const & transfer);
 
-    void wakeup();
+    void wakeup(State & locked);
 
     void stopWorkerThread();
 
