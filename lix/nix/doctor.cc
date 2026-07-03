@@ -5,6 +5,7 @@
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libexpr/search-path.hh"
 #include "lix/libfetchers/registry.hh"
+#include "lix/libstore/machines.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/serve-protocol.hh"
 #include "lix/libmain/shared.hh"
@@ -71,6 +72,18 @@ struct CmdDoctor : StoreCommand
     bool success = true;
     std::map<std::string, SearchPathFacts> searchPathFacts;
     std::map<std::string, FlakeRegistryEntryFacts> flakeRegistryFacts;
+    bool checkRemote = false;
+
+    CmdDoctor()
+    {
+        addFlag(
+            {.longName = "check-remotes",
+             .description =
+                 "Whether to check remote builder connections. Note: When not running in a DAEMON context or "
+                 "as root, access previleges for the ssh-keys might be missing, breaking this check",
+             .handler = {&checkRemote, true}}
+        );
+    }
 
     /**
      * This command is stable before the others
@@ -93,14 +106,9 @@ struct CmdDoctor : StoreCommand
         printGeneralSystemInfo();
         printInfo("Collecting general Nix configuration information");
         printGeneralNixInfo();
-        printInfo("Running checks against store uri %1%", store->getUri());
 
-        if (store.try_cast_shared<LocalFSStore>()) {
-            success &= checkNixInPath();
-            success &= checkProfileRoots(store);
-        }
-        success &= checkStoreProtocol(aio().blockOn(store->getProtocol()));
-        checkTrustedUser(store);
+        runPerStore(store);
+
         {
             Path profile = getEnv("NIX_PROFILE").value_or(getDefaultProfile());
             checkValidCurrentProfileGeneration(profile);
@@ -117,9 +125,26 @@ struct CmdDoctor : StoreCommand
             printInfo("Collecting information about Nixpkgs provenance");
             success &= checkNixpkgsProvenance();
         }
+        {
+            printInfo("Collecting information about remote builders");
+            success &= checkMachines();
+        }
 
         if (!success)
             throw Exit(2);
+    }
+
+    bool runPerStore(ref<Store> store)
+    {
+        printInfo("Running checks against store uri %1%", store->getUri());
+        bool success = true;
+        if (store.try_cast_shared<LocalFSStore>()) {
+            success &= checkNixInPath();
+            success &= checkProfileRoots(store);
+        }
+        success &= checkStoreProtocol(aio().blockOn(store->getProtocol()));
+        checkTrustedUser(store);
+        return success;
     }
 
     bool printGeneralSystemInfo()
@@ -261,6 +286,40 @@ struct CmdDoctor : StoreCommand
         }
 
         return true;
+    }
+
+    bool checkMachines()
+    {
+        Machines machines;
+        try {
+            machines = getMachines();
+        } catch (nix::Error & e) {
+            std::stringstream ss;
+            ss << "invalid remote builders configuration\n";
+            ss << e.what();
+            return checkFail(ss.str());
+        }
+
+        auto machineCnt = machines.size();
+        if (machineCnt == 0) {
+            checkInfo("no remote builders found");
+            return true;
+        }
+
+        bool success = true;
+        checkInfo(fmt("%d remote builder(s) configured", machineCnt));
+        if (checkRemote) {
+            for (auto m : machines) {
+                checkInfo(fmt("attempting connection to %s", m.name));
+                try {
+                    auto store = aio().blockOn(m.openStore());
+                    success &= runPerStore(store.first);
+                } catch (nix::Error & e) {
+                    success &= checkFail(fmt("connection failed: %s", e.what()));
+                }
+            }
+        }
+        return success;
     }
 
     bool checkNixInPath()

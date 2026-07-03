@@ -1,6 +1,6 @@
 ---
 synopsis: "Improve nix doctor"
-cls: [5316, 5317, 5318, 5319, 5320]
+cls: [5316, 5317, 5318, 5319, 5320, 5768]
 category: Features
 credits: [rootile, raito]
 ---
@@ -10,3 +10,4 @@ The `nix doctor` diagnosics interface now provides a lot more useful information
 - Flake registry
 - Search path Information
 - Nixpkgs provenance
+- Remote builder configuration (including remote connection)
