@@ -127,3 +127,10 @@ def test_doctor_no_check_connection(nix: Nix, files: Path):
     assert "[INFO] 1 remote builder(s) configured" in out
     assert "Running checks against store uri dummy" not in out
     assert "Store protocol: unknown" not in out
+
+
+@pytest.mark.usefixtures("fake_nixpkgs")
+def test_doctor_dot_in_path(nix: Nix):
+    """Haveing `.` in the PATH used to crash nix doctor with "not an absolute path" """
+    nix.env.path.prepend(".")
+    nix.nix(["doctor", "-v"]).run().ok()

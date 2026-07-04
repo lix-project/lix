@@ -1,6 +1,6 @@
 ---
 synopsis: "Improve nix doctor"
-cls: [5316, 5317, 5318, 5319, 5320, 5768]
+cls: [5316, 5317, 5318, 5319, 5320, 5768, 5829]
 category: Features
 credits: [rootile, raito]
 ---
@@ -11,3 +11,4 @@ The `nix doctor` diagnosics interface now provides a lot more useful information
 - Search path Information
 - Nixpkgs provenance
 - Remote builder configuration (including remote connection)
+- fix crash when having relative Paths in PATH

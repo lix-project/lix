@@ -349,7 +349,7 @@ struct CmdDoctor : StoreCommand
         for (auto & dir : tokenizeString<Strings>(getEnv("PATH").value_or(""), ":")) {
             Path profileDir = dirOf(dir);
             try {
-                Path userEnv = canonPath(profileDir, true);
+                Path userEnv = CanonPath::fromCwd(profileDir).abs();
 
                 if (store->isStorePath(userEnv) && userEnv.ends_with("user-environment")) {
                     while (profileDir.find("/profiles/") == std::string::npos && isLink(profileDir))
