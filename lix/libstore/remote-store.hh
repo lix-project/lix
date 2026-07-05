@@ -78,13 +78,14 @@ public:
     /**
      * Add a content-addressable store path. `dump` will be drained.
      */
-    kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
+    virtual kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
         AsyncInputStream & dump,
         std::string_view name,
         ContentAddressMethod caMethod,
         HashType hashType,
         const StorePathSet & references,
-        RepairFlag repair);
+        RepairFlag repair
+    );
 
     /**
      * Add a content-addressable store path. Does not support references. `dump` will be drained.

@@ -147,6 +147,15 @@ public:
 
     /* Overrides for RPC-aware versions of RemoteStore commands */
 
+    kj::Promise<Result<ref<const ValidPathInfo>>> addCAToStore(
+        AsyncInputStream & dump,
+        std::string_view name,
+        ContentAddressMethod caMethod,
+        HashType hashType,
+        const StorePathSet & references,
+        RepairFlag repair
+    ) override;
+
     kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
 
     kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path, const Activity * context) override;

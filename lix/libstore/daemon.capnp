@@ -86,6 +86,17 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     path @1 :Libstore.StorePath;
   }
 
+  interface AddToStoreStream {
+    feed @0 (raw :Data) -> stream;
+    finalize @1 () -> (result :ValidPathInfo);
+  }
+
+  addToStore @9 (
+    name :T.String,
+    contentAddressMethod :T.String,
+    references :List(Libstore.StorePath),
+    repair :Bool
+  ) -> (result :AddToStoreStream);
   ensurePath @1 (path :Libstore.StorePath);
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   optimiseStore @0 ();

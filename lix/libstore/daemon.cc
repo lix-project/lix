@@ -1,8 +1,11 @@
 #include "lix/libstore/daemon.hh"
 #include "filetransfer.hh"
+#include "libstore/path.hh"
 #include "libutil/async.hh"
+#include "libutil/hash.hh"
 #include "libutil/logging-rpc.hh"
 #include "libutil/result.hh"
+#include "libutil/repair-flag.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/monitor-fd.hh"
 #include "lix/libstore/worker-protocol.hh"
@@ -22,6 +25,7 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/args.hh"
 #include "lix/libstore/daemon.capnp.h"
+#include "lix/libstore/daemon-rpc.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh"
 
@@ -1076,6 +1080,91 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     ref<LegacyState> state;
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
+
+    // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
+    struct AddToStoreStream final : LegacyProtocol::AddToStoreStream::Server
+    {
+        ref<LegacyState> state;
+        std::string name;
+        StorePathSet refs;
+        RepairFlag repair;
+
+        std::unique_ptr<AsyncOutputStream> writer;
+        kj::Function<kj::Promise<Result<StorePath>>()> finish;
+
+        AddToStoreStream(ref<LegacyState> state, AddToStoreParams::Reader args)
+            : state(state)
+            , name(rpc::to<std::string>(args.getName()))
+            , refs(rpc::to<StorePathSet>(args.getReferences(), *state->store))
+            , repair(RepairFlag{args.getRepair()})
+        {
+            auto [cam, hashType] =
+                ContentAddressMethod::parse(rpc::to<std::string>(args.getContentAddressMethod()));
+
+            std::tie(writer, finish) = wrapInAsyncPipe([&](auto & reader) {
+                return std::visit(
+                    overloaded{
+                        [&](TextIngestionMethod) {
+                            if (hashType != HashType::SHA256) {
+                                throw UnimplementedError(
+                                    "When adding text-hashed data called '%s', only SHA-256 is supported "
+                                    "but '%s' was given",
+                                    name,
+                                    printHashType(hashType)
+                                );
+                            }
+
+                            return consume(reader);
+                        },
+                        [&](FileIngestionMethod fim) { return consume(reader, fim, hashType); },
+                    },
+                    cam.raw
+                );
+            });
+        }
+
+        kj::Promise<Result<StorePath>> consume(AsyncInputStream & reader)
+        try {
+            // We could stream this by changing Store
+            auto contents = TRY_AWAIT(reader.drain());
+            co_return TRY_AWAIT(state->store->addTextToStore(name, contents, refs, repair));
+        } catch (...) {
+            co_return result::current_exception();
+        }
+
+        kj::Promise<Result<StorePath>>
+        consume(AsyncInputStream & reader, FileIngestionMethod fim, HashType hashType)
+        try {
+            co_return TRY_AWAIT(state->store->addToStoreFromDump(reader, name, fim, hashType, repair, refs));
+        } catch (...) {
+            co_return result::current_exception();
+        }
+
+        kj::Promise<void> feed(FeedContext context) override
+        {
+            return RPC_IMPL({
+                auto bytes = context.getParams().getRaw();
+                TRY_AWAIT(writer->writeFull(bytes.begin(), bytes.size()));
+            });
+        }
+
+        kj::Promise<void> finalize(FinalizeContext context) override
+        {
+            return RPC_IMPL({
+                writer = nullptr;
+                auto path = TRY_AWAIT(finish());
+                auto info = TRY_AWAIT(state->store->queryPathInfo(path));
+                RPC_FILL_STRUCT(context.initResults(), initResult, *info, *state->store);
+            });
+        }
+    };
+
+    kj::Promise<void> addToStore(AddToStoreContext context) override
+    {
+        return RPC_IMPL({
+            context.initResults().setResult(kj::heap<AddToStoreStream>(state, context.getParams()));
+        });
+    }
 
     kj::Promise<void> ensurePath(EnsurePathContext context) override
     {

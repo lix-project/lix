@@ -2,6 +2,7 @@
 #include "daemon.capnp.h"
 #include "globals.hh"
 #include "libstore/daemon.hh"
+#include "libstore/daemon-rpc.hh"
 #include "libutil/logging-rpc.hh"
 #include "libutil/rpc.hh"
 #include "lix/libutil/async.hh"
@@ -448,6 +449,37 @@ try {
 
     auto res = TRY_AWAIT_RPC(req.send());
     co_return rpc::from(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<ref<const ValidPathInfo>>> RpcRemoteStore::addCAToStore(
+    AsyncInputStream & dump,
+    std::string_view name,
+    ContentAddressMethod caMethod,
+    HashType hashType,
+    const StorePathSet & references,
+    RepairFlag repair
+)
+try {
+    auto req = rpc->legacyProtocol.addToStoreRequest();
+    RPC_FILL(req, setName, name);
+    RPC_FILL(req, setContentAddressMethod, caMethod.render(hashType));
+    RPC_FILL(req, initReferences, references, *this);
+    RPC_FILL(req, setRepair, repair);
+
+    auto stream = TRY_AWAIT_RPC(req.send()).getResult();
+
+    constexpr size_t BUF_SIZE = 65536;
+    auto buf = std::make_unique<char[]>(BUF_SIZE);
+    while (auto r = TRY_AWAIT(dump.read(buf.get(), BUF_SIZE))) {
+        auto req = stream.feedRequest();
+        RPC_FILL(req, setRaw, std::string_view(buf.get(), *r));
+        TRY_AWAIT_RPC(req.send());
+    }
+
+    auto res = TRY_AWAIT_RPC(stream.finalizeRequest().send());
+    co_return make_ref<ValidPathInfo>(from(res.getResult(), *this));
 } catch (...) {
     co_return result::current_exception();
 }
