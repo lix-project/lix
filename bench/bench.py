@@ -10,6 +10,7 @@ import platform
 import shlex
 import textwrap
 import dataclasses
+from pathlib import Path
 
 flake_args = ["--extra-experimental-features", "nix-command flakes"]
 cases = {
@@ -18,7 +19,7 @@ cases = {
         *flake_args,
         "search",
         "--no-eval-cache",
-        "github:nixos/nixpkgs/e1fa12d4f6c6fe19ccb59cac54b5b3f25e160870",
+        f"path:{Path('./bench/nixpkgs/').readlink()}",
         "hello",
     ],
     "rebuild": lambda build: [
