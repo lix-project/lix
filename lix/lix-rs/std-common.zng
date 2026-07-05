@@ -35,6 +35,15 @@ mod ::std::option {
 
         fn unwrap(self) -> u64;
     }
+
+    type Option<String> {
+        #layout_conservative(size=24, align=8);
+
+        constructor Some(String);
+        constructor None;
+
+        fn unwrap(self) -> String;
+    }
 }
 
 mod ::std::result {

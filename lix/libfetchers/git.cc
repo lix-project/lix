@@ -16,9 +16,10 @@
 #include "lix/libutil/url-parts.hh"
 #include "lix/libstore/pathlocks.hh"
 #include "lix/libutil/users.hh"
-#include "lix/libutil/git.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/finally.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 
 #include "lix/libfetchers/fetch-settings.hh"
 
@@ -81,17 +82,15 @@ try {
     ));
 
     std::string_view line = output;
-    line = line.substr(0, line.find("\n"));
-    if (const auto parseResult = git::parseLsRemoteLine(line)) {
-        switch (parseResult->kind) {
-            case git::LsRemoteRefLine::Kind::Symbolic:
-                debug("resolved HEAD ref '%s' for repo '%s'", parseResult->target, path);
-                break;
-            case git::LsRemoteRefLine::Kind::Object:
-                debug("resolved HEAD rev '%s' for repo '%s'", parseResult->target, path);
-                break;
+    auto line_rs = rust::to_string(line.substr(0, line.find("\n")));
+    if (const auto parseResult = to_std(rust::lix::fetchers::git::parse_ls_remote_line(line_rs.as_str()))) {
+        auto target = to_std_string(parseResult->target.as_str());
+        if (parseResult->kind.matches_Object()) {
+            debug("resolved HEAD rev '%s' for repo '%s'", target, path);
+        } else {
+            debug("resolved HEAD ref '%s' for repo '%s'", target, path);
         }
-        co_return parseResult->target;
+        co_return to_std_string(parseResult->target.as_str());
     }
     co_return std::nullopt;
 } catch (ExecError &) {

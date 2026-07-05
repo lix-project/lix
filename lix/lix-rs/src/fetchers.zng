@@ -1,0 +1,29 @@
+use ::std::string::String as String;
+
+mod crate::fetchers::git {
+	type Kind {
+		#layout_conservative(size=16, align=8);
+		constructor Symbolic;
+		constructor Object;
+	}
+	type LsRemoteRefLine {
+		#layout_conservative(size=56, align=8);
+		field kind (offset=auto, type=Kind);
+		field target (offset=auto, type=String);
+		field reference (offset=auto, type=::std::option::Option<String>);
+
+		fn matches_ref_uri(&self, &str) -> bool;
+	}
+
+	fn parse_ls_remote_line(&str) -> ::std::option::Option<LsRemoteRefLine>;
+
+	type ::std::option::Option<LsRemoteRefLine> {
+		#layout_conservative(size=56, align=8);
+
+		constructor None;
+		constructor Some(LsRemoteRefLine);
+
+		fn unwrap(self) -> LsRemoteRefLine;
+	}
+
+}

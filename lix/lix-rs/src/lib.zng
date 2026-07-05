@@ -1,5 +1,6 @@
 merge "./ffi_test.zng";
 merge "./repl.zng";
+merge "./fetchers.zng";
 
 mod crate::ffi {
     use ::std::result::Result as Result;

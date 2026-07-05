@@ -55,7 +55,6 @@ libutil_tests_sources = files(
   'libutil/escape-string.cc',
   'libutil/fmt.cc',
   'libutil/generator.cc',
-  'libutil/git.cc',
   'libutil/hash.cc',
   'libutil/hilite.cc',
   'libutil/io-buffer.cc',

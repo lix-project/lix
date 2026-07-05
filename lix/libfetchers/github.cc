@@ -7,10 +7,11 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libutil/url-parts.hh"
-#include "lix/libutil/git.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/fetch-settings.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 
 #include <optional>
 #include <fstream>
@@ -486,15 +487,15 @@ struct SourceHutInputScheme : GitArchiveInputScheme
             std::string line;
             getline(is, line);
 
-            auto remoteLine = git::parseLsRemoteLine(line);
+            auto remoteLine =
+                to_std(rust::lix::fetchers::git::parse_ls_remote_line(rust::to_string(line).as_str()));
             if (!remoteLine) {
                 throw BadURL("in '%d', couldn't resolve HEAD ref '%d'", input.to_string(), ref);
             }
-            refUri = remoteLine->target;
+            refUri = to_std_string(remoteLine->target.as_str());
         } else {
             refUri = fmt("refs/(heads|tags)/%s", ref);
         }
-        std::regex refRegex = regex::parse(refUri);
 
         auto file = store->toRealPath(
             TRY_AWAIT(downloadFile(store, fmt("%s/info/refs", base_url), "source", false, headers))
@@ -505,9 +506,11 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         std::string line;
         std::optional<std::string> id;
         while(!id && getline(is, line)) {
-            auto parsedLine = git::parseLsRemoteLine(line);
-            if (parsedLine && parsedLine->reference && std::regex_match(*parsedLine->reference, refRegex))
-                id = parsedLine->target;
+            auto parsedLine =
+                to_std(rust::lix::fetchers::git::parse_ls_remote_line(rust::to_string(line).as_str()));
+            if (parsedLine && (*parsedLine).matches_ref_uri(rust::to_string(refUri).as_str())) {
+                id = to_std_string(parsedLine->target.as_str());
+            }
         }
 
         if(!id)
