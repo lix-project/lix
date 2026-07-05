@@ -52,6 +52,40 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol $T.throws(T.v1Errors) {
+  enum HashType {
+    md5 @0;
+    sha1 @1;
+    sha256 @2;
+    sha512 @3;
+  }
+  struct Hash {
+    hash @0 :Data;
+    hashType @1 :HashType;
+  }
+  enum ContentAddressMethod {
+    textIngestion @0;
+    flatFileIngestion @1;
+    recursiveFileIngestion @2;
+  }
+  struct ContentAddress {
+    method @0 :ContentAddressMethod;
+    hash @1 :Hash;
+  }
+  struct UnkeyedValidPathInfo {
+    deriver @0 :T.Option(Libstore.StorePath);
+    narHash @1 :Hash;
+    references @2 :List(Libstore.StorePath);
+    registrationTime @3 :T.Time;
+    narSize @4 :UInt64;
+    ultimate @5 :Bool;
+    sigs @6 :List(T.String);
+    ca @7 :T.Option(ContentAddress);
+  }
+  struct ValidPathInfo {
+    unkeyedValidPathInfo @0 :UnkeyedValidPathInfo;
+    path @1 :Libstore.StorePath;
+  }
+
   ensurePath @1 (path :Libstore.StorePath);
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   optimiseStore @0 ();

@@ -265,6 +265,7 @@ libstore_headers = files(
   'crypto.hh',
   'curlfiletransfer.hh',
   'curlmulti.hh',
+  'daemon-rpc.hh',
   'daemon.hh',
   'derivations.hh',
   'derived-path.hh',

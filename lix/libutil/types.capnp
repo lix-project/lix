@@ -71,6 +71,8 @@ struct Map(Key, Value) {
   }
 }
 
+using Time = Int64;
+
 struct Settings {
   struct Setting {
     name @0 :Data;
