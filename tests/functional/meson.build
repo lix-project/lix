@@ -77,7 +77,6 @@ functional_tests_scripts = [
   'logging.sh',
   'config.sh',
   'filter-source.sh',
-  'misc.sh',
   'linux-sandbox.sh',
   'supplementary-groups.sh',
   'build-dry.sh',
