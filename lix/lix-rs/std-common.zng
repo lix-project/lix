@@ -44,6 +44,33 @@ mod ::std::option {
 
         fn unwrap(self) -> String;
     }
+
+    type Option<u8> {
+        #layout_conservative(size = 2, align = 1);
+
+        constructor Some(u8);
+        constructor None;
+
+        fn unwrap(self) -> u8;
+    }
+
+    type Option<&u8> {
+        #layout_conservative(size = 8, align = 8);
+
+        constructor Some(&u8);
+        constructor None;
+
+        fn unwrap(self) -> &u8;
+    }
+
+    type Option<&mut u8> {
+        #layout_conservative(size = 8, align = 8);
+
+        constructor Some(&mut u8);
+        constructor None;
+
+        fn unwrap(self) -> &mut u8;
+    }
 }
 
 mod ::std::result {
@@ -57,6 +84,20 @@ mod ::std::result {
 
         fn unwrap(self) -> ();
         fn unwrap_err(self) -> Box<dyn Error>;
+    }
+}
+
+mod ::std::slice {
+    type Iter<u8> {
+        #layout_conservative(size = 16, align = 8);
+
+        fn next(&mut self) -> ::std::option::Option<&u8>;
+    }
+
+    type IterMut<u8> {
+        #layout_conservative(size = 16, align = 8);
+
+        fn next(&mut self) -> ::std::option::Option<&mut u8>;
     }
 }
 
@@ -78,5 +119,22 @@ mod ::std::vec {
         fn new() -> Vec<String>;
         fn push(&mut self, String);
         fn len(&self) -> usize;
+    }
+
+    type Vec<u8> {
+        #layout_conservative(size = 24, align = 8);
+
+        fn new() -> Vec<u8>;
+        fn push(&mut self, u8);
+        fn len(&self) -> usize;
+        fn as_ref(&self) -> &[u8];
+        fn as_mut(&mut self) -> &mut [u8];
+        fn into_iter(self) -> IntoIter<u8>;
+    }
+
+    type IntoIter<u8> {
+        #layout_conservative(size = 32, align = 8);
+
+        fn next(&mut self) -> ::std::option::Option<u8>;
     }
 }

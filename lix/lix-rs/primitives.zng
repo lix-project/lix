@@ -11,6 +11,9 @@ type [u8] {
 
     fn as_ptr(&self) -> *const u8;
     fn len(&self) -> usize;
+
+    fn iter(&self) -> ::std::slice::Iter<u8>;
+    fn iter_mut(&mut self) -> ::std::slice::IterMut<u8>;
 }
 
 type str {

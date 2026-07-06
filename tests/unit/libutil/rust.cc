@@ -6,8 +6,10 @@
 #include "gtest/gtest.h"
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <ranges>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace nix {
 
@@ -121,5 +123,31 @@ TEST(rustSupport, testOperators)
     set.emplace(args1);
 
     ASSERT_EQ(set.size(), 1);
+}
+
+TEST(rustSupport, iterators)
+{
+    auto vec = rust::Vec<uint8_t>::new_();
+    vec.push(1);
+    vec.push(2);
+    vec.push(3);
+    vec.push(4);
+    vec.push(5);
+
+    int i = 0;
+    for (auto u : vec.as_ref().iter()) {
+        EXPECT_EQ(*u, ++i);
+    }
+    for (auto u : vec.as_mut().iter_mut()) {
+        (*u)++;
+    }
+    i = 1;
+    for (auto u : vec.as_ref().iter()) {
+        EXPECT_EQ(*u, ++i);
+    }
+    i = 1;
+    for (auto u : vec.into_iter()) {
+        EXPECT_EQ(u, ++i);
+    }
 }
 }

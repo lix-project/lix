@@ -224,6 +224,73 @@ concept HasOpEq = requires(Lhs lhs, Rhs rhs) {
     Ref<::std::remove_cvref_t<Lhs>>{};
     Ref<::std::remove_cvref_t<Rhs>>{};
 };
+
+template<typename T>
+struct OptionArg;
+template<typename T>
+struct OptionArg<Option<T>>
+{
+    using type = T;
+};
+
+template<typename T>
+concept IsOption = requires { typename OptionArg<T>::type; };
+
+template<typename T>
+concept Iterator = requires(T t) {
+    { t.next() } -> IsOption;
+};
+
+namespace detail {
+struct iterator_end
+{};
+
+template<typename Iter>
+class iterator
+{
+    using step_type = decltype(to_std(::std::declval<Iter>().next()));
+
+    Iter rs;
+    step_type current;
+
+public:
+    using iterator_category = ::std::input_iterator_tag;
+    using difference_type = void;
+    using value_type = step_type::value_type;
+    using reference = value_type &;
+    using pointer = value_type *;
+
+    explicit iterator(Iter rs) : rs(::std::move(rs))
+    {
+        ++*this;
+    }
+
+    pointer operator->()
+    {
+        return &*current;
+    }
+    reference operator*()
+    {
+        return *current;
+    }
+
+    iterator & operator++()
+    {
+        current = to_std(rs.next());
+        return *this;
+    }
+
+    void operator++(int)
+    {
+        ++*this;
+    }
+
+    bool operator==(iterator_end) const
+    {
+        return !current.has_value();
+    }
+};
+}
 }
 
 // clang-format off
@@ -245,7 +312,17 @@ concept HasOpEq = requires(Lhs lhs, Rhs rhs) {
         template<typename Lhs, typename Rhs> requires ::rust::HasOpEq<Lhs, Rhs>          \
         bool operator!=(const Lhs & lhs, const Rhs & rhs) { return !bool(lhs.eq(rhs)); } \
     }
+#define LIX_DECLARE_ITERATORS(ns) \
+    namespace ns { \
+        template<::rust::Iterator T> \
+        auto begin(T & rs) { return ::rust::detail::iterator{::std::move(rs)}; } \
+        template<::rust::Iterator T> \
+        auto end(const T & rs) { return ::rust::detail::iterator_end{}; } \
+    }
 // clang-format on
 
 LIX_DECLARE_ORD_OPS(rust::lix::ffi_test)
 LIX_DECLARE_EQ_OPS(rust::lix::ffi_test)
+
+LIX_DECLARE_ITERATORS(rust::std::slice)
+LIX_DECLARE_ITERATORS(rust::std::vec)
