@@ -2,6 +2,8 @@
 ///@file convenience utilities for working with the rust ffi bits
 
 #include <cassert>
+#include <concepts>
+#include <cstdint>
 #include <exception>
 #include <optional>
 #include <string_view>
@@ -200,3 +202,50 @@ auto to_std(Option<Args...> r)
 namespace nix {
 using namespace rust::lix;
 }
+
+namespace rust {
+template<typename Lhs, typename Rhs>
+concept HasOpLt = requires(Lhs lhs, Rhs rhs) {
+    lhs.lt(rhs);
+    Ref<::std::remove_cvref_t<Lhs>>{};
+    Ref<::std::remove_cvref_t<Rhs>>{};
+};
+
+template<typename Lhs, typename Rhs>
+concept HasOpLe = requires(Lhs lhs, Rhs rhs) {
+    lhs.le(rhs);
+    Ref<::std::remove_cvref_t<Lhs>>{};
+    Ref<::std::remove_cvref_t<Rhs>>{};
+};
+
+template<typename Lhs, typename Rhs>
+concept HasOpEq = requires(Lhs lhs, Rhs rhs) {
+    lhs.eq(rhs);
+    Ref<::std::remove_cvref_t<Lhs>>{};
+    Ref<::std::remove_cvref_t<Rhs>>{};
+};
+}
+
+// clang-format off
+#define LIX_DECLARE_ORD_OPS(ns)                                                         \
+    namespace ns {                                                                      \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpLt<Lhs, Rhs>         \
+        bool operator<(const Lhs & lhs, const Rhs & rhs) { return bool(lhs.lt(rhs)); }  \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpLe<Lhs, Rhs>         \
+        bool operator<=(const Lhs & lhs, const Rhs & rhs) { return bool(lhs.le(rhs)); } \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpLt<Lhs, Rhs>         \
+        bool operator>(const Lhs & lhs, const Rhs & rhs) { return bool(rhs.lt(lhs)); }  \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpLe<Lhs, Rhs>         \
+        bool operator>=(const Lhs & lhs, const Rhs & rhs) { return bool(rhs.le(lhs)); } \
+    }
+#define LIX_DECLARE_EQ_OPS(ns)                                                           \
+    namespace ns {                                                                       \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpEq<Lhs, Rhs>          \
+        bool operator==(const Lhs & lhs, const Rhs & rhs) { return bool(lhs.eq(rhs)); }  \
+        template<typename Lhs, typename Rhs> requires ::rust::HasOpEq<Lhs, Rhs>          \
+        bool operator!=(const Lhs & lhs, const Rhs & rhs) { return !bool(lhs.eq(rhs)); } \
+    }
+// clang-format on
+
+LIX_DECLARE_ORD_OPS(rust::lix::ffi_test)
+LIX_DECLARE_EQ_OPS(rust::lix::ffi_test)

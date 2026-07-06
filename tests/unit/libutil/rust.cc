@@ -87,4 +87,39 @@ TEST(rustSupport, testResultFromCxx)
     result = test_exceptions(make_box_fn([] {}));
     ASSERT_EQ(to_std_string(result), "");
 }
+
+TEST(rustSupport, testOperators)
+{
+    using rust::lix::ffi_test::TestMultiplyAddLenArgs;
+
+    auto args1 = TestMultiplyAddLenArgs::new_(1, 2);
+    auto args2 = TestMultiplyAddLenArgs::new_(1, 3);
+
+    ASSERT_LT(args1, args2);
+    ASSERT_LE(args1, args1);
+    ASSERT_LE(args1, args2);
+
+    ASSERT_GT(args2, args1);
+    ASSERT_GE(args1, args1);
+    ASSERT_GE(args2, args1);
+
+    ASSERT_EQ(args1, args1);
+    ASSERT_NE(args1, args2);
+
+    std::map<TestMultiplyAddLenArgs, int> map{{args2, 2}, {args1, 1}};
+
+    ASSERT_EQ(map.begin()->first, args1);
+    ASSERT_EQ(map.begin()->second, 1);
+    ASSERT_EQ(map.rbegin()->first, args2);
+    ASSERT_EQ(map.rbegin()->second, 2);
+
+    std::set<TestMultiplyAddLenArgs> set;
+
+    set.emplace(args1);
+    set.emplace(args1);
+    set.emplace(args1);
+    set.emplace(args1);
+
+    ASSERT_EQ(set.size(), 1);
+}
 }

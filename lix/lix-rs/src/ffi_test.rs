@@ -2,10 +2,11 @@ use std::{error::Error, io};
 
 use crate::ffi;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct TestMultiplyAddLenArgs {
     pub a: u64,
     pub b: u64,
+    pub c: Option<u64>,
 }
 
 pub trait SetB {
@@ -20,7 +21,7 @@ impl SetB for TestMultiplyAddLenArgs {
 
 impl TestMultiplyAddLenArgs {
     pub fn new(a: u64, b: u64) -> Self {
-        Self { a, b }
+        Self { a, b, c: None }
     }
 }
 

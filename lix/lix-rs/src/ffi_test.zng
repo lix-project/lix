@@ -6,14 +6,21 @@ use ::std::vec::Vec as Vec;
 
 mod crate::ffi_test {
     type TestMultiplyAddLenArgs {
-        #layout_conservative(size = 16, align = 8);
+        #layout_conservative(size = 32, align = 8);
         wellknown_traits(Copy);
 
         field a (offset = auto, type = u64);
         field b (offset = auto, type = u64);
+        field c (offset = auto, type = Option<u64>);
 
         fn new(u64, u64) -> TestMultiplyAddLenArgs;
         fn set_b(&mut self, u64) use SetB;
+
+        fn clone(&self) -> TestMultiplyAddLenArgs;
+
+        fn eq(&self, &TestMultiplyAddLenArgs) -> bool use ::std::cmp::PartialEq;
+        fn lt(&self, &TestMultiplyAddLenArgs) -> bool use ::std::cmp::PartialOrd;
+        fn le(&self, &TestMultiplyAddLenArgs) -> bool use ::std::cmp::PartialOrd;
     }
 
     fn test_multiply_add_len(TestMultiplyAddLenArgs, &Vec<String>) -> (String, u64);
