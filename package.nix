@@ -352,7 +352,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   # precompile the bridge generator since the zngur parser takes so long to build. this way we can
   # cache the generator in ci and for devshells, both of which decrease cycle times by quite a bit
-  licxxbridge = rustPlatform.buildRustPackage {
+  licxxbridge = buildPackages.rustPlatform.buildRustPackage {
     pname = "licxxbridge";
     version = "0.0.0";
     src = fileset.toSource {
