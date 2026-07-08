@@ -57,10 +57,10 @@ std::string filterANSIEscapes(std::string_view s,
     bool eatTabs = true);
 
 /**
- * Recalculate the window size, updating a global variable. Used in the
+ * Invalidate the window size, updating a global variable. Used in the
  * `SIGWINCH` signal handler.
  */
-void updateWindowSize();
+void invalidateWindowSize();
 
 /**
  * @return the number of rows and columns of the terminal.

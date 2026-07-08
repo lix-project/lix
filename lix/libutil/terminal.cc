@@ -183,22 +183,29 @@ std::string filterANSIEscapes(std::string_view s, bool filterAll, unsigned int w
     return t;
 }
 
-static Sync<std::pair<unsigned short, unsigned short>> windowSize{{0, 0}};
+static volatile sig_atomic_t windowSizeInvalid = 0;
+static Sync<std::pair<unsigned short, unsigned short>> windowSize;
 
-void updateWindowSize()
+void invalidateWindowSize()
 {
-    struct winsize ws;
-    if (ioctl(2, TIOCGWINSZ, &ws) == 0 || ioctl(1, TIOCGWINSZ, &ws) == 0) {
-        auto windowSize_(windowSize.lock());
-        windowSize_->first = ws.ws_row;
-        windowSize_->second = ws.ws_col;
-    }
+    windowSizeInvalid = 1;
 }
 
 
 std::pair<unsigned short, unsigned short> getWindowSize()
 {
-    return *windowSize.lock();
+    auto windowSize_(windowSize.lock());
+    // this is racy, but given that window sizes change very rarely we'll just accept it
+    if (windowSizeInvalid) {
+        windowSizeInvalid = 0;
+        struct winsize ws;
+        if (ioctl(2, TIOCGWINSZ, &ws) == 0 || ioctl(1, TIOCGWINSZ, &ws) == 0) {
+            windowSize_->first = ws.ws_row;
+            windowSize_->second = ws.ws_col;
+        }
+    }
+
+    return *windowSize_;
 }
 
 std::string makeHyperlink(std::string_view linkText, std::string_view target)

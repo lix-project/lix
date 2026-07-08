@@ -1,4 +1,5 @@
 #include "libutil/fmt.hh"
+#include "libutil/terminal.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
@@ -64,6 +65,9 @@ static rust::Ref<rust::Str> promptForType(ReplPromptType promptType)
 bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptType)
 {
     auto s = rl->ask(promptForType(promptType));
+
+    // rustyline temporarily sets a SIGWINCH handler
+    KJ_DEFER(invalidateWindowSize());
 
     return match_result(
         std::move(s),

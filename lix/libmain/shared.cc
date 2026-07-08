@@ -176,12 +176,6 @@ void initNix()
     }
 
 #if __APPLE__
-    /* HACK: on darwin, we need can’t use sigprocmask with SIGWINCH.
-     * Instead, add a dummy sigaction handler, and signalHandlerThread
-     * can handle the rest. */
-    act.sa_handler = sigHandler;
-    if (sigaction(SIGWINCH, &act, 0)) throw SysError("handling SIGWINCH");
-
     /* Disable SA_RESTART for interrupts, so that system calls on this thread
      * error with EINTR like they do on Linux.
      * Most signals on BSD systems default to SA_RESTART on, but Nix

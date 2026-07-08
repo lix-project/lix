@@ -7,6 +7,7 @@
 #include <atomic>
 
 #include <chrono>
+#include <csignal>
 #include <map>
 #include <memory>
 #include <optional>
@@ -118,8 +119,6 @@ static void signalHandlerThread(sigset_t set)
             }
         } else if (signal == SIGTERM || signal == SIGHUP) {
             triggerInterrupt();
-        } else if (signal == SIGWINCH) {
-            updateWindowSize();
         }
     }
 }
@@ -164,7 +163,7 @@ void saveSignalMask() {
 
 void startSignalHandlerThread()
 {
-    updateWindowSize();
+    invalidateWindowSize();
     saveSignalMask();
 
     sigset_t set;
@@ -173,9 +172,10 @@ void startSignalHandlerThread()
     sigaddset(&set, SIGTERM);
     sigaddset(&set, SIGHUP);
     sigaddset(&set, SIGPIPE);
-    sigaddset(&set, SIGWINCH);
     if (pthread_sigmask(SIG_BLOCK, &set, nullptr))
         throw SysError("blocking signals");
+
+    signal(SIGWINCH, [](int) { invalidateWindowSize(); });
 
     std::thread(signalHandlerThread, set).detach();
 }
