@@ -83,7 +83,9 @@ try {
 
     std::string_view line = output;
     auto line_rs = rust::to_string(line.substr(0, line.find("\n")));
-    if (const auto parseResult = to_std(rust::lix::fetchers::git::parse_ls_remote_line(line_rs.as_str()))) {
+    if (const auto parseResult =
+            to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(line_rs.as_str()).ok()))
+    {
         auto target = to_std_string(parseResult->target.as_str());
         if (parseResult->kind.matches_Object()) {
             debug("resolved HEAD rev '%s' for repo '%s'", target, path);

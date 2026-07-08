@@ -13,9 +13,18 @@ mod crate::fetchers::git {
 		field reference (offset=auto, type=::std::option::Option<String>);
 
 		fn matches_ref_uri(&self, &str) -> bool;
+		fn try_from(&str) -> ::std::result::Result<LsRemoteRefLine, String>;
 	}
 
-	fn parse_ls_remote_line(&str) -> ::std::option::Option<LsRemoteRefLine>;
+	type ::std::result::Result<LsRemoteRefLine, String> {
+		#layout_conservative(size=56, align=8);
+
+		constructor Ok(LsRemoteRefLine);
+		constructor Err(String);
+
+		fn unwrap(self) -> LsRemoteRefLine;
+		fn ok(self) -> ::std::option::Option<LsRemoteRefLine>;
+	}
 
 	type ::std::option::Option<LsRemoteRefLine> {
 		#layout_conservative(size=56, align=8);

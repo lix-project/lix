@@ -26,6 +26,9 @@ pub struct LsRemoteRefLine {
     pub reference: Option<String>,
 }
 
+static LS_REMOTE_REF_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(ref: *)?([^\s]+)(?:\t+(.*))?$").unwrap());
+
 impl LsRemoteRefLine {
     pub fn matches_ref_uri(&self, uri: &str) -> bool {
         let uri_regex = Regex::new(uri).unwrap();
@@ -36,33 +39,34 @@ impl LsRemoteRefLine {
     }
 }
 
-static LS_REMOTE_REF_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(ref: *)?([^\s]+)(?:\t+(.*))?$").unwrap());
+impl TryFrom<&str> for LsRemoteRefLine {
+    type Error = String;
 
-pub fn parse_ls_remote_line(line: &str) -> Option<LsRemoteRefLine> {
-    LS_REMOTE_REF_REGEX.captures(line).map(|m| {
-        let kind = m
-            .get(1)
-            .filter(|ma| !ma.is_empty())
-            .map_or(Kind::Object, |_| Kind::Symbolic);
-        let re = m.get(3).map(|ma| ma.as_str()).map(|ma| {
-            if ma.is_empty() {
-                None
-            } else {
-                Some(ma.to_string())
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        LS_REMOTE_REF_REGEX.captures(value).map(|m| {
+            let kind = m
+                .get(1)
+                .filter(|ma| !ma.is_empty())
+                .map_or(Kind::Object, |_| Kind::Symbolic);
+            let re = m.get(3).map(|ma| ma.as_str()).map(|ma| {
+                if ma.is_empty() {
+                    None
+                } else {
+                    Some(ma.to_string())
+                }
+            });
+
+            LsRemoteRefLine {
+                kind: kind,
+                target: m
+                    .get(2)
+                    .expect("regex for matching remtoes has two capture groups defined, so this should not error")
+                    .as_str()
+                    .to_string(),
+                reference: re.flatten(),
             }
-        });
-
-        LsRemoteRefLine {
-            kind: kind,
-            target: m
-                .get(2)
-                .expect("regex for matching remotes has two capture groups defined, so this should not error")
-                .as_str()
-                .to_string(),
-            reference: re.flatten(),
-        }
-    })
+        }).ok_or_else(|| "Invalid ref, did not match expected regex".into())
+    }
 }
 
 #[cfg(test)]
@@ -72,8 +76,8 @@ mod tests {
     #[test]
     fn parse_symref_line_with_reference() {
         let line = "ref: refs/head/main\tHEAD";
-        let res = parse_ls_remote_line(line);
-        assert!(res.is_some());
+        let res = LsRemoteRefLine::try_from(line);
+        assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.kind, Kind::Symbolic);
         assert_eq!(res.target, "refs/head/main");
@@ -83,8 +87,8 @@ mod tests {
     #[test]
     fn parse_symref_line_with_no_reference() {
         let line = "ref: refs/head/main";
-        let res = parse_ls_remote_line(line);
-        assert!(res.is_some());
+        let res = LsRemoteRefLine::try_from(line);
+        assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.kind, Kind::Symbolic);
         assert_eq!(res.target, "refs/head/main");
@@ -94,8 +98,8 @@ mod tests {
     #[test]
     fn parse_object_ref_line() {
         let line = "abc123	refs/head/main";
-        let res = parse_ls_remote_line(line);
-        assert!(res.is_some());
+        let res = LsRemoteRefLine::try_from(line);
+        assert!(res.is_ok());
         let res = res.unwrap();
         assert_eq!(res.kind, Kind::Object);
         assert_eq!(res.target, "abc123");
