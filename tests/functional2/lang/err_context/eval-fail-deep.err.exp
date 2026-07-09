@@ -1,0 +1,24 @@
+error:
+       … computing fib(4)
+
+       … while calling the 'add' builtin
+         at /pwd/in.nix:7:8:
+            6|       # note: we use builtins.add explicitly because it creates more frames than (+)
+            7|       (builtins.add (fib (n - 1)) (fib (n - 2)));
+             |        ^
+            8| in
+
+       … computing fib(3)
+
+       … computing fib(2)
+
+       … computing fib(1)
+
+       (stack trace truncated; use '--show-trace' to show the full trace)
+
+       error: assertion failed
+       at /pwd/in.nix:3:5:
+            2|   fib = n:
+            3|     assert n > 0;
+             |     ^
+            4|     builtins.addErrorContext

@@ -1195,12 +1195,18 @@ Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx p
                     // was being evaluated and an explicit thrown error.
                     if (fn->name == "throw" && !e.hasTrace()) {
                         e.addTrace(ctx.positions[pos], "caused by explicit %s", "throw");
-                    } else {
+                    }
+                    // otherwise, print a trace of this builtin, as long as it isn't
+                    // a 'addErrorContext' call (which would just create noise)
+                    else if (fn->name != "addErrorContext")
+                    {
                         e.addTrace(ctx.positions[pos], "while calling the '%s' builtin", fn->name);
                     }
                     throw;
                 } catch (Error & e) {
-                    e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
+                    if (fn->name != "addErrorContext") {
+                        e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
+                    }
                     throw;
                 }
 
@@ -1246,7 +1252,9 @@ Value EvalState::callFunction(Value & fun, std::span<Value> args, const PosIdx p
                     //    so the debugger allows to inspect the wrong parameters passed to the builtin.
                     vCur = fn->fun(*this, vArgs.data());
                 } catch (Error & e) {
-                    e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
+                    if (fn->name != "addErrorContext") {
+                        e.addTrace(ctx.positions[pos], "while calling the '%1%' builtin", fn->name);
+                    }
                     throw;
                 }
             }

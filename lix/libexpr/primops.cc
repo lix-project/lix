@@ -1,3 +1,4 @@
+#include "libutil/error-trace.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libexpr/eval.hh"
@@ -699,7 +700,7 @@ static Value prim_addErrorContext(EvalState & state, Value ** args)
         auto message = state.coerceToString(noPos, *args[0], context,
                 "while evaluating the error message passed to builtins.addErrorContext",
                 StringCoercionMode::Strict, false).toOwned();
-        e.addTrace(nullptr, HintFmt(message));
+        e.addTrace(nullptr, HintFmt(message), TraceKind::UserTrace);
         throw;
     }
 }

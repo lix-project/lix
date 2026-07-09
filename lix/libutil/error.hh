@@ -199,7 +199,7 @@ public:
         addTrace(std::move(e), HintFmt(std::string(fs), args...));
     }
 
-    void addTrace(std::shared_ptr<Pos> && e, HintFmt hint);
+    void addTrace(std::shared_ptr<Pos> && e, HintFmt hint, TraceKind kind = UnknownTrace);
 
     bool hasTrace() const { return !err.traces.empty(); }
 

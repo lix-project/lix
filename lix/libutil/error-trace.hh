@@ -12,6 +12,15 @@
 
 namespace nix {
 
+/** @brief The kind/origin of a trace frame
+ *
+ * Right now, this is mainly used to prioritize certain traces above others.
+ */
+enum TraceKind {
+    UnknownTrace,
+    UserTrace,
+};
+
 struct Pos;
 
 /** @brief Information for a @ref Trace that encountered a derivation.
@@ -32,13 +41,12 @@ struct DrvTrace
     operator<=>(DrvTrace const & lhs, DrvTrace const & rhs) noexcept = default;
 };
 
-struct Trace;
-
 struct Trace
 {
     std::shared_ptr<Pos> pos;
     HintFmt hint;
     std::optional<DrvTrace> drvTrace;
+    TraceKind kind = UnknownTrace;
 
     /** Construct a Trace and canned format message assuming a derivation's
      * position and name.

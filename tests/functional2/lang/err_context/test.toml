@@ -1,0 +1,8 @@
+[[test]]
+runner = "eval-fail"
+flags = ["--no-show-trace"]
+
+[[test]]
+runner = "eval-fail"
+in = "in-deep.nix"
+flags = ["--no-show-trace"]

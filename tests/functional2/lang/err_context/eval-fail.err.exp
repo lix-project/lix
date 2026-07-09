@@ -1,0 +1,10 @@
+error:
+       … Hello
+
+       … caused by explicit throw
+         at /pwd/in.nix:1:35:
+            1| builtins.addErrorContext "Hello" (throw "Foo")
+             |                                   ^
+            2|
+
+       error: Foo

@@ -18,9 +18,9 @@
 
 namespace nix {
 
-void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint)
+void BaseError::addTrace(std::shared_ptr<Pos> && e, HintFmt hint, TraceKind kind)
 {
-    err.traces.push_front(Trace { .pos = std::move(e), .hint = hint });
+    err.traces.push_front(Trace{.pos = std::move(e), .hint = hint, .kind = kind});
 }
 
 // c++ std::exception descendants must have a 'const char* what()' function.
@@ -150,12 +150,13 @@ void printTrace(
         count++;
 }
 
-void printSkippedTracesMaybe(
+void printDuplicateTracesMaybe(
     std::ostream & output,
     const std::string_view & indent,
     size_t & count,
     std::vector<Trace> & skippedTraces,
-    std::set<Trace> tracesSeen)
+    std::set<Trace> tracesSeen
+)
 {
     if (skippedTraces.size() > 0) {
         // If we only skipped a few frames, print them out normally;
@@ -371,31 +372,39 @@ std::ostream & showErrorInfo(std::ostream & out, const ErrorInfo & einfo, bool s
         // omitted`.
         std::set<Trace> tracesSeen;
         // A consecutive sequence of stack traces that are all in `tracesSeen`.
-        std::vector<Trace> skippedTraces;
+        std::vector<Trace> duplicatedTraces;
         size_t count = 0;
+
+        bool didSkipTrace = false;
 
         for (const auto & trace : einfo.traces) {
             if (trace.hint.str().empty()) continue;
 
-            if (!showTrace && count > 3) {
-                oss << "\n" << ANSI_WARNING "(stack trace truncated; use '--show-trace' to show the full trace)" ANSI_NORMAL << "\n";
-                break;
+            if (!showTrace && count > 3 && trace.kind != TraceKind::UserTrace) {
+                didSkipTrace = true;
+                continue; // continue so that we still print later user traces
             }
 
             if (tracesSeen.count(trace)) {
-                skippedTraces.push_back(trace);
+                duplicatedTraces.push_back(trace);
                 continue;
             }
             tracesSeen.insert(trace);
 
-            printSkippedTracesMaybe(oss, ellipsisIndent, count, skippedTraces, tracesSeen);
+            printDuplicateTracesMaybe(oss, ellipsisIndent, count, duplicatedTraces, tracesSeen);
 
             count++;
 
             printTrace(oss, ellipsisIndent, count, trace);
         }
 
-        printSkippedTracesMaybe(oss, ellipsisIndent, count, skippedTraces, tracesSeen);
+        printDuplicateTracesMaybe(oss, ellipsisIndent, count, duplicatedTraces, tracesSeen);
+        if (didSkipTrace) {
+            oss << "\n"
+                << ANSI_WARNING
+                "(stack trace truncated; use '--show-trace' to show the full trace)" ANSI_NORMAL
+                << "\n";
+        }
         oss << "\n" << prefix;
     }
 
