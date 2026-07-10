@@ -452,6 +452,7 @@ version = "0.0.0"
 dependencies = [
  "lix-doc",
  "regex",
+ "rootcause",
  "rustyline",
  "rustyline-derive",
  "zngur",
@@ -661,6 +662,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "rootcause"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b660d9968fae12f4e691f2b2be5d9a3a6de875300c682e8d2cb89a618dd60875"
+dependencies = [
+ "hashbrown 0.17.1",
+ "indexmap",
+ "rootcause-internals",
+ "rustc-hash 2.1.3",
+ "triomphe",
+]
+
+[[package]]
+name = "rootcause-internals"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0184f6fcff3b58b7c963aee6e3cc915c04331aa6eef974f79d7d44d21e246c24"
+dependencies = [
+ "triomphe",
+]
+
+[[package]]
 name = "rowan"
 version = "0.15.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -668,7 +691,7 @@ checksum = "0a542b0253fa46e632d27a1dc5cf7b930de4df8659dc6e720b647fc72147ae3d"
 dependencies = [
  "countme",
  "hashbrown 0.14.5",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "text-size",
 ]
 
@@ -677,6 +700,12 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustc-hash"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
 
 [[package]]
 name = "rustyline"
@@ -798,6 +827,12 @@ name = "text-size"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f18aa187839b2bdb1ad2fa35ead8c4c2976b64e4363c386d45ac0f7ee85c9233"
+
+[[package]]
+name = "triomphe"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b40688ea6389c8171614b25491f71d4a27946e0c7ce2da1c6de27e25abf1a0ae"
 
 [[package]]
 name = "typenum"

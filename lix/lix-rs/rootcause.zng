@@ -1,0 +1,10 @@
+use ::rootcause::Report as Report;
+
+mod ::rootcause {
+	type Report {
+		#layout_conservative(size = 8, align = 8);
+		wellknown_traits(Debug);
+
+		fn to_string(&self) -> ::std::string::String;
+	}
+}

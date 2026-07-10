@@ -12,7 +12,8 @@ default = []
 
 [dependencies]
 lix-doc.path = "../lix-doc"
-regex.workspace=true
+regex.workspace = true
+rootcause.workspace=true
 rustyline.workspace = true
 rustyline-derive.workspace = true
 

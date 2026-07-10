@@ -13,6 +13,7 @@
 // in a readable and maintainable state without scattering bits of types all over the place.
 
 merge "./primitives.zng";
+merge "./rootcause.zng";
 merge "./std-common.zng";
 merge "./tuples.zng";
 
