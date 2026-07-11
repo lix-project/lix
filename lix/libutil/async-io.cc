@@ -8,6 +8,8 @@
 #include <cerrno>
 #include <exception>
 #include <fcntl.h>
+#include <kj/async-queue.h>
+#include <variant>
 
 namespace nix {
 kj::Promise<Result<void>> AsyncInputStream::drainInto(Sink & sink)
@@ -272,5 +274,132 @@ try {
     co_return size;
 } catch (...) {
     co_return result::current_exception();
+}
+
+AsyncPipe newZeroCopyPipe()
+{
+    struct PipeBuffer
+    {
+        kj::WaiterQueue<std::monostate> readers, writer;
+
+        bool broken = false, hasWriter = true;
+        std::span<const uint8_t> currentBuffer;
+
+        void ensureNotBroken()
+        {
+            if (broken) {
+                throw Error("broken pipe");
+            }
+        }
+
+        static void wake(kj::WaiterQueue<std::monostate> & q)
+        {
+            while (!q.empty()) {
+                q.fulfill({});
+            }
+        }
+
+        void dropReader()
+        {
+            broken = true;
+            wake(writer);
+        }
+
+        void dropWriter()
+        {
+            hasWriter = false;
+            wake(readers);
+        }
+
+        kj::Promise<Result<size_t>> write(const void * src, size_t size)
+        try {
+            if (!currentBuffer.empty()) {
+                dropReader();
+                dropWriter();
+            }
+            ensureNotBroken();
+
+            // always break the pipe when writes are cancelled since we can never know
+            // how much data was transferred (if any at all) when cancellations happen
+            auto breakOnCancel = kj::defer([&] { broken = true; });
+
+            currentBuffer = std::span{charptr_cast<const uint8_t *>(src), size};
+            // readers can only run once we yield, so this order is safe
+            wake(readers);
+            co_await writer.wait();
+            ensureNotBroken();
+            breakOnCancel.cancel();
+            co_return size;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size)
+        try {
+            while (currentBuffer.empty() && hasWriter && !broken) {
+                wake(writer); // handle multiple readers finding an empty buffer simultaneously
+                co_await readers.wait();
+            }
+
+            ensureNotBroken();
+            if (!hasWriter) {
+                co_return std::nullopt;
+            }
+
+            size = std::min(size, currentBuffer.size());
+            memcpy(buffer, currentBuffer.data(), size);
+            currentBuffer = currentBuffer.subspan(size);
+            if (currentBuffer.empty()) {
+                wake(writer); // release buffer early to not block writers for too long
+            }
+            co_return size;
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+
+    struct PipeReader : AsyncInputStream
+    {
+        std::shared_ptr<PipeBuffer> pipe;
+
+        PipeReader(const std::shared_ptr<PipeBuffer> & pipe) : pipe(pipe) {}
+
+        ~PipeReader()
+        {
+            if (pipe) {
+                pipe->dropReader();
+            }
+        }
+
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
+        {
+            return pipe->read(buffer, size);
+        }
+    };
+
+    struct PipeWriter : AsyncOutputStream
+    {
+        std::shared_ptr<PipeBuffer> pipe;
+
+        PipeWriter(const std::shared_ptr<PipeBuffer> & pipe) : pipe(pipe) {}
+
+        ~PipeWriter()
+        {
+            if (pipe) {
+                pipe->dropWriter();
+            }
+        }
+
+        kj::Promise<Result<size_t>> write(const void * src, size_t size) override
+        {
+            return pipe->write(src, size);
+        }
+    };
+
+    auto buffer = std::make_shared<PipeBuffer>();
+    return {
+        .reader = std::make_unique<PipeReader>(buffer),
+        .writer = std::make_unique<PipeWriter>(buffer),
+    };
 }
 }

@@ -259,4 +259,18 @@ public:
 
     kj::Promise<Result<size_t>> write(const void * src, size_t size) override;
 };
+
+struct AsyncPipe
+{
+    std::unique_ptr<AsyncInputStream> reader;
+    std::unique_ptr<AsyncOutputStream> writer;
+};
+
+/**
+ * Creates a zero-copy pipe that runs entirely inside the event loop. Calls to
+ * `writer.write` will not return before before the reader has either read all
+ * data passed to `write` or has been dropped. Multiple writers are forbidden;
+ * multiple readers are allowed, but are serviced in some indeterminate order.
+ */
+AsyncPipe newZeroCopyPipe();
 }
