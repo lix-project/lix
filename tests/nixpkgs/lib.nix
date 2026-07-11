@@ -61,7 +61,7 @@ symlinkJoin {
           )
         ]
         ++ optionals stdenv.isLinux [
-          ((pkgs.callPackage (nixpkgs + "/ci/eval") { inherit nix; } { }).attrpathsSuperset {
+          ((pkgs.callPackage (nixpkgs + "/ci/eval") { inherit nix; } { }).preEval {
             evalSystem = system;
           })
         ]
