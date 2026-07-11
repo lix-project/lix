@@ -467,6 +467,14 @@ stdenv.mkDerivation (finalAttrs: {
     buildPackages.clangStdenv.cc
   ];
 
+  # single-user builds fail because cargo can touch the derivation $HOME, which then in
+  # turn breaks the test suite (cf https://git.lix.systems/lix-project/lix/issues/1251)
+  prePatch = ''
+    if [[ -z ''${IN_NIX_SHELL-} && -z ''${CARGO_HOME-} ]]; then
+        export CARGO_HOME=$TMPDIR/.cargo
+    fi
+  '';
+
   nativeBuildInputs = [
     rustPlatform.cargoSetupHook
     finalAttrs.lixPythonForBuild
