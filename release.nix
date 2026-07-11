@@ -5,6 +5,21 @@
 }:
 
 let
+  nixpkgs' =
+    if builtins.isAttrs nixpkgs then
+      nixpkgs
+    else
+      {
+        outPath = nixpkgs;
+        rev = "0000000000000000000000000000000000000000";
+        shortRev = "0000000";
+        lastModifiedDate = "19700101000000";
+      };
+in
+let
+  nixpkgs = nixpkgs';
+in
+let
   flakeLock = builtins.fromJSON (builtins.readFile (lixSrc + "/flake.lock"));
 
   fetchFlakeLockInputs =
