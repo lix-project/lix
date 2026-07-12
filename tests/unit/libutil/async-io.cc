@@ -273,4 +273,57 @@ TEST(AsyncZeroCopyPipe, dropWriter)
     (void) auto(std::move(w));
     ASSERT_EQ(rp.wait(aio.kj.waitScope).value(), std::nullopt);
 }
+
+TEST(wrapInAsyncPipe, good)
+{
+    AsyncIoRoot aio;
+
+    auto fn = [](AsyncInputStream & in) { return in.drain(); };
+    auto [out, finish] = wrapInAsyncPipe(fn);
+    out->write("a", 1).wait(aio.kj.waitScope).value();
+    out->write("b", 1).wait(aio.kj.waitScope).value();
+    (void) auto(std::move(out));
+    ASSERT_EQ(finish().wait(aio.kj.waitScope).value(), "ab");
+}
+
+TEST(wrapInAsyncPipe, earlyReaderExit)
+{
+    AsyncIoRoot aio;
+
+    auto fn = [](AsyncInputStream & in) { return kj::Promise<Result<int>>{{1}}; };
+    auto [out, finish] = wrapInAsyncPipe(fn);
+    // should throw "broken pipe", but result is still good
+    ASSERT_THROW(out->write("a", 1).wait(aio.kj.waitScope).value(), Error);
+    ASSERT_EQ(finish().wait(aio.kj.waitScope).value(), 1);
+}
+
+TEST(wrapInAsyncPipe, earlyFinish)
+{
+    AsyncIoRoot aio;
+
+    auto fn = [](AsyncInputStream & in) { return kj::Promise<Result<int>>{kj::NEVER_DONE}; };
+    auto [out, finish] = wrapInAsyncPipe(fn);
+    auto p = finish();
+    ASSERT_THROW(out->write("a", 1).wait(aio.kj.waitScope).value(), Error);
+    ASSERT_FALSE(p.poll(aio.kj.waitScope));
+}
+
+TEST(wrapInAsyncPipe, readerError)
+{
+    AsyncIoRoot aio;
+
+    auto fn = [](AsyncInputStream & in) -> kj::Promise<Result<int>> {
+        try {
+            char buf;
+            TRY_AWAIT(in.read(&buf, 1));
+            throw UnimplementedError("marker");
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+    auto [out, finish] = wrapInAsyncPipe(fn);
+    out->write("a", 1).wait(aio.kj.waitScope).value();
+    ASSERT_THROW(out->write("a", 1).wait(aio.kj.waitScope).value(), UnimplementedError);
+    ASSERT_THROW(finish().wait(aio.kj.waitScope).value(), UnimplementedError);
+}
 }

@@ -9,10 +9,12 @@
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/serialise.hh"
+#include <concepts>
 #include <kj/async-io.h>
 #include <kj/async-unix.h>
 #include <kj/async.h>
 #include <kj/common.h>
+#include <kj/function.h>
 #include <memory>
 #include <string_view>
 
@@ -273,4 +275,87 @@ struct AsyncPipe
  * multiple readers are allowed, but are serviced in some indeterminate order.
  */
 AsyncPipe newZeroCopyPipe();
+
+/**
+ * Adapts an `AsyncInputStream`-consuming promise created by a callback into a
+ * pair of `AsyncOutputStream` and a callback that awaits the wrapped promise.
+ * Errors flow to both the writer *and* the promise created by the callback we
+ * return here. Awaiting the callback also invalidates the transfer stream; if
+ * the writer isn't done by then it'll receive an exception on the next write.
+ */
+template<std::invocable<AsyncInputStream &> Fn>
+    requires requires(Fn fn, AsyncInputStream & i, AsyncIoRoot aio) {
+        []<typename T>(kj::Promise<Result<T>>) {}(fn(i));
+    }
+auto wrapInAsyncPipe(Fn && fn)
+{
+    using promise_type = std::invoke_result_t<Fn, AsyncInputStream &>;
+    using result_type = decltype(std::declval<promise_type>().wait(std::declval<kj::WaitScope &>()));
+
+    struct State
+    {
+        promise_type inner;
+        std::exception_ptr error;
+        bool finished = false;
+
+        State(Fn && fn, std::unique_ptr<AsyncInputStream> reader)
+            : inner(fn(*reader)
+                        .attach(std::move(reader))
+                        .then([this](auto result) {
+                            if (result.has_error()) {
+                                error = result.error();
+                            }
+                            return result;
+                        })
+                        .eagerlyEvaluate([this](kj::Exception && e) -> result_type {
+                            try {
+                                kj::throwFatalException(std::move(e));
+                            } catch (...) {
+                                error = std::current_exception();
+                                throw;
+                            }
+                        }))
+        {
+        }
+    };
+
+    struct Writer : AsyncOutputStream
+    {
+        ref<State> state;
+        std::unique_ptr<AsyncOutputStream> out;
+
+        Writer(ref<State> state, std::unique_ptr<AsyncOutputStream> out) : state(state), out(std::move(out)) {}
+
+        kj::Promise<Result<size_t>> write(const void * src, size_t size) override
+        try {
+            if (state->error) {
+                co_return result::failure(state->error);
+            } else if (state->finished) {
+                throw Error("stream already closed");
+            }
+            co_return LIX_TRY_AWAIT(out->write(src, size));
+        } catch (...) {
+            // do not report this exception if `error` was set; we want to give
+            // priority to `runInner` for error reporting since the pipe itself
+            // is of little interest. if `inner` fails the pipe will break, all
+            // subsequent writes to the pipe will throw. only the `inner` error
+            // is actually interesting in this case, broken pipe errors aren't.
+            if (state->error) {
+                co_return result::failure(state->error);
+            }
+            state->error = std::current_exception();
+            co_return result::current_exception();
+        }
+    };
+
+    auto [reader, writer] = newZeroCopyPipe();
+    auto state = make_ref<State>(std::forward<Fn>(fn), std::move(reader));
+    return std::pair{
+        std::make_unique<Writer>(state, std::move(writer)),
+        kj::Function<promise_type()>{[state]() {
+            state->finished = true;
+            return std::move(state->inner);
+        }},
+    };
+}
 }
