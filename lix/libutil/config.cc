@@ -105,6 +105,11 @@ void Config::convertToArgs(Args & args, const std::string & category)
     }
 }
 
+bool isAppendOption(std::string_view name)
+{
+    return name.starts_with("extra-") && name != "extra-platforms" && name != "extra-local-jobs";
+}
+
 AbstractSetting::AbstractSetting(
     const std::string & name,
     const std::string & description,
@@ -115,6 +120,12 @@ AbstractSetting::AbstractSetting(
     , aliases(aliases)
     , experimentalFeature(std::move(experimentalFeature))
 {
+    if (isAppendOption(name)) {
+        throw Error(
+            "Lix doesn't support options that start with 'extra-' since this prefix is used to inject "
+            "additional values into options!"
+        );
+    }
 }
 
 AbstractSetting::~AbstractSetting()

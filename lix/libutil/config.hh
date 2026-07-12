@@ -101,6 +101,8 @@ public:
     void convertToArgs(Args & args, const std::string & category) override;
 };
 
+bool isAppendOption(std::string_view name);
+
 class AbstractSetting
 {
     friend class Config;

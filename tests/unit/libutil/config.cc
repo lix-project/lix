@@ -330,6 +330,14 @@ namespace nix {
         ASSERT_THROW(config.applyConfig("value "), UsageError);
     }
 
+    TEST(Config, noExtraPrefixExceptForExistingOptions)
+    {
+        Config config;
+        Setting<std::string> settingOK{&config, "", "extra-platforms", "foo"};
+        ASSERT_EQ("extra-platforms", settingOK.name);
+        ASSERT_THROW(Setting<std::string>(&config, "", "extra-foo", "foo"), Error);
+    }
+
 /* ----------------------------------------------------------------------------
  * Config enums
  * --------------------------------------------------------------------------*/
