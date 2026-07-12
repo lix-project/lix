@@ -13,7 +13,8 @@
 #include "lix/libutil/types.hh"
 
 constexpr std::string_view INVALID_CHANNEL = "channel:example";
-constexpr std::string_view CHANNEL_URL = "https://channels.nixos.org/example/nixexprs.tar.xz";
+constexpr std::string_view CHANNEL_URL_ZST = "https://channels.nixos.org/example/nixexprs.tar.zst";
+constexpr std::string_view CHANNEL_URL_XZ = "https://channels.nixos.org/example/nixexprs.tar.xz";
 
 namespace nix
 {
@@ -58,7 +59,8 @@ TEST(Arguments, lookupFileArg) {
         aio.blockOn(lookupFileArg(*state, INVALID_CHANNEL));
     } catch (Error const & ex) {
         std::string_view const msg(ex.what());
-        EXPECT_NE(msg.find(CHANNEL_URL), msg.npos);
+        EXPECT_NE(msg.find(CHANNEL_URL_ZST), msg.npos);
+        EXPECT_NE(msg.find(CHANNEL_URL_XZ), msg.npos);
     }
 
     SourcePath const normalFile =

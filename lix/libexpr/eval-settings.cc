@@ -84,7 +84,11 @@ bool EvalSettings::isPseudoUrl(std::string_view s)
 std::vector<std::string> EvalSettings::resolvePseudoUrl(std::string_view url)
 {
     if (url.starts_with("channel:"))
-        return {"https://channels.nixos.org/" + std::string(url.substr(8)) + "/nixexprs.tar.xz"};
+        return {
+            "https://channels.nixos.org/" + std::string(url.substr(8)) + "/nixexprs.tar.zst",
+            "https://channels.nixos.org/" + std::string(url.substr(8)) + "/nixexprs.tar.xz",
+            "https://channels.nixos.org/" + std::string(url.substr(8)) + "/nixexprs.tar.bz2",
+        };
     else
         return {std::string(url)};
 }
