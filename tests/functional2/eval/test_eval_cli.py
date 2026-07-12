@@ -2,9 +2,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import sys
 
 from testlib.fixtures.file_helper import with_files, CopyFile, Symlink, File
 from testlib.fixtures.nix import Nix
+
+import subprocess
+import textwrap
 
 
 @pytest.fixture(autouse=True)
@@ -142,3 +146,42 @@ def test_valid_warn_unknown_setting(nix: Nix):
     )
     assert res.stdout_plain == "foxes are cute"
     assert "warning: unknown setting 'foobar'" in res.stderr_plain
+
+
+@with_files(
+    {
+        "nix_conf": {
+            "nix.conf": File(
+                textwrap.dedent("""
+                                experimental-features = flakes
+                                experimental-features = nix-command
+                                extra-experimental-features = auto-allocate-uids
+                                extra-experimental-features = cgroups
+                                """)
+            )
+        }
+    }
+)
+@pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="Experimental features involved in this test don't exist on Darwin.",
+)
+def test_duplicated_keys_warning(nix: Nix, files: Path):
+    # This is testing a special-case of config-parsing that is supposed to be working,
+    # but really shouldn't be used and is thus not reflected in the normal Nix abstraction of f2.
+    res = subprocess.run(
+        executable=nix._nix_executable,
+        args=["nix", "eval", "--expr", '"foxes are cute"', "--raw"],
+        env={"NIX_CONF_DIR": files / "nix_conf"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert res.stdout == "foxes are cute"
+    assert (
+        "warning: Found key 'experimental-features' twice while reading config from" in res.stderr
+    )
+    assert (
+        "warning: Found key 'extra-experimental-features' twice while reading config from"
+        not in res.stderr
+    )

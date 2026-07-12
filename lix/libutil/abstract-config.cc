@@ -1,4 +1,5 @@
 #include "lix/libutil/abstract-config.hh"
+#include "libutil/config.hh"
 #include "lix/libutil/file-system.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/strings.hh"
@@ -12,6 +13,7 @@ static void applyConfigInner(
 )
 {
     unsigned int pos = 0;
+    std::set<std::string> visited;
 
     while (pos < contents.size()) {
         std::string line;
@@ -80,6 +82,15 @@ static void applyConfigInner(
         }
 
         std::string name = std::move(tokens[0]);
+        if (!isAppendOption(name) && visited.count(name) != 0) {
+            printTaggedWarning(
+                "Found key '%1%' twice while reading config from '%2%', discarding previously set values",
+                name,
+                options.path.value_or("string")
+            );
+        }
+
+        visited.insert(name);
 
         auto i = tokens.begin();
         advance(i, 2);
