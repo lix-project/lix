@@ -1,0 +1,7 @@
+mod crate::errors {
+  use ::std::string::String as String;
+  use ::std::vec::Vec as Vec;
+  use ::rootcause::Report as Report;
+
+  fn format_exception_messages_as_rootcause_report(String, Vec<String>) -> Report;
+}

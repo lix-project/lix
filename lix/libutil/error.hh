@@ -15,6 +15,7 @@
  * See libutil/tests/logging.cc for usage examples.
  */
 
+#include "lix/lix-rs/utils.hh"
 #include "lix/libutil/error-trace.hh"
 #include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/suggestions.hh"
@@ -340,4 +341,7 @@ void ignoreExceptionExceptInterrupt(Verbosity lvl = lvlError);
 
 /** Print out details about an exception and its stack trace. */
 void logException(std::string_view message_prefix, const std::exception & ex);
+
+/** Format the details of multiple exceptions together. */
+std::string formatExceptions(std::string_view global_context, const std::list<std::string> & messages);
 }
