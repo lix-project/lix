@@ -147,15 +147,40 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
             if (!unpacked) {
                 // Download the channel tarball.
                 std::optional<fetchers::DownloadFileResult> exprs;
-                try {
-                    exprs = aio.blockOn(fetchers::downloadFile(
-                        store, url + "/nixexprs.tar.xz", "nixexprs.tar.xz", false
-                    ));
-                } catch (FileTransferError & e) {
-                    exprs = aio.blockOn(fetchers::downloadFile(
-                        store, url + "/nixexprs.tar.bz2", "nixexprs.tar.bz2", false
-                    ));
+
+                // NOTE: nixexprs.tar.zst is planned to be the only option from 2028-01-01.
+                // see https://git.lix.systems/lix-project/lix/issues/1252.
+                std::list<std::string> preferences = {
+                    "nixexprs.tar.zst", "nixexprs.tar.xz", "nixexprs.tar.bz2"
+                };
+                std::list<std::string> downloadErrors;
+
+                for (const auto & preference : preferences) {
+                    try {
+                        exprs = aio.blockOn(
+                            fetchers::downloadFile(store, url + "/" + preference, preference, false)
+                        );
+                        break;
+                    } catch (FileTransferError & e) {
+                        debug(
+                            "could not download '%s/%s' channel tarball: %s",
+                            url,
+                            preference,
+                            Uncolored(e.what())
+                        );
+                        downloadErrors.push_back(e.what());
+                    }
                 }
+
+                if (!exprs) {
+                    throw Error(
+                        "%s",
+                        Uncolored(formatExceptions(
+                            "no channel tarball could be downloaded successfully", downloadErrors
+                        ))
+                    );
+                }
+
                 filename = store->toRealPath(exprs->storePath);
             }
             // Regardless of where it came from, add the expression representing this channel to accumulated expression
