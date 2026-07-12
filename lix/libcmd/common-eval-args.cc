@@ -245,15 +245,30 @@ kj::Promise<Result<EvalPaths::PathResult<SourcePath, ThrownError>>>
 lookupFileArg(Evaluator & state, std::string_view fileArg)
 try {
     if (EvalSettings::isPseudoUrl(fileArg)) {
-        auto const url = EvalSettings::resolvePseudoUrl(fileArg);
-        auto const downloaded = TRY_AWAIT(fetchers::downloadTarball(
-            state.store,
-            url,
-            /* name */ "source",
-            /* locked */ false
-        ));
-        StorePath const storePath = downloaded.tree.storePath;
-        co_return SourcePath(CanonPath(state.store->toRealPath(storePath)));
+        auto const urls = EvalSettings::resolvePseudoUrl(fileArg);
+        std::list<std::string> downloadErrors;
+        for (auto const & url : urls) {
+            try {
+                auto const downloaded = TRY_AWAIT(
+                    fetchers::downloadTarball(
+                        state.store,
+                        url,
+                        /* name */ "source",
+                        /* locked */ false
+                    )
+                );
+                StorePath const storePath = downloaded.tree.storePath;
+                co_return SourcePath(CanonPath(state.store->toRealPath(storePath)));
+            } catch (FileTransferError & e) {
+                downloadErrors.push_back(e.what());
+                debug("failed to download pseudo-url: '%s': %s", url, e.msg());
+            }
+        }
+
+        throw Error(
+            "%s",
+            Uncolored(formatExceptions(fmt("failed to download file argument '%s'", fileArg), downloadErrors))
+        );
     } else if (fileArg.starts_with("flake:")) {
         experimentalFeatureSettings.require(Xp::Flakes);
         static constexpr size_t FLAKE_LEN = std::string_view("flake:").size();

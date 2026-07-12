@@ -239,7 +239,7 @@ static Value fetch(
     EvalState & state, const PosIdx pos, Value ** args, const std::string & who, bool unpack, std::string name
 )
 {
-    std::optional<std::string> url;
+    std::vector<std::string> urls;
     std::optional<Hash> expectedHash;
 
     state.forceValue(*args[0], pos);
@@ -249,8 +249,10 @@ static Value fetch(
         for (auto & attr : *args[0]->attrs()) {
             std::string_view n(state.ctx.symbols[attr.name]);
             if (n == "url")
-                url = state.forceStringNoCtx(
-                    attr.value, attr.pos, "while evaluating the url we should fetch"
+                urls.push_back(
+                    std::string(state.forceStringNoCtx(
+                        attr.value, attr.pos, "while evaluating the url we should fetch"
+                    ))
                 );
             else if (n == "sha256") {
                 expectedHash = newHashAllowEmpty(
@@ -274,63 +276,90 @@ static Value fetch(
             }
         }
 
-        if (!url)
-            state.ctx.errors.make<EvalError>(
-                "'url' argument required").atPos(pos).debugThrow();
+        if (urls.empty()) {
+            state.ctx.errors.make<EvalError>("'url' argument required").atPos(pos).debugThrow();
+        }
     } else
-        url = state.forceStringNoCtx(*args[0], pos, "while evaluating the url we should fetch");
+        urls.push_back(
+            std::string(state.forceStringNoCtx(*args[0], pos, "while evaluating the url we should fetch"))
+        );
 
-    if (who == "fetchTarball")
-        url = evalSettings.resolvePseudoUrl(*url);
+    if (who == "fetchTarball") {
+        assert(urls.size() == 1);
+        urls = evalSettings.resolvePseudoUrl(urls[0]);
+    }
 
-    state.ctx.paths.checkURI(*url);
-
-    if (name == "")
-        name = baseNameOf(*url);
+    for (const auto & url : urls) {
+        state.ctx.paths.checkURI(url);
+    }
 
     if (evalSettings.pureEval && !expectedHash)
         state.ctx.errors.make<EvalError>("in pure evaluation mode, '%s' requires a 'sha256' argument", who).atPos(pos).debugThrow();
 
     // early exit if pinned and already in the store
     if (expectedHash && expectedHash->type == HashType::SHA256) {
-        auto expectedPath = state.ctx.store->makeFixedOutputPath(
-            name,
-            FixedOutputInfo {
-                .method = unpack ? FileIngestionMethod::Recursive : FileIngestionMethod::Flat,
-                .hash = *expectedHash,
-                .references = {}
-            });
+        for (const auto & url : urls) {
+            auto nameForThisUrl = name == "" ? baseNameOf(url) : name;
+            auto expectedPath = state.ctx.store->makeFixedOutputPath(
+                nameForThisUrl,
+                FixedOutputInfo{
+                    .method = unpack ? FileIngestionMethod::Recursive : FileIngestionMethod::Flat,
+                    .hash = *expectedHash,
+                    .references = {}
+                }
+            );
 
-        if (state.aio.blockOn(state.ctx.store->isValidPath(expectedPath))) {
-            return state.ctx.paths.allowAndSetStorePathString(expectedPath);
+            if (state.aio.blockOn(state.ctx.store->isValidPath(expectedPath))) {
+                return state.ctx.paths.allowAndSetStorePathString(expectedPath);
+            }
         }
     }
 
+    std::string selectedUrl;
+    std::optional<StorePath> obtainedStorePath = std::nullopt;
+    std::list<std::string> downloadErrors;
+
     // TODO: fetching may fail, yet the path may be substitutable.
     //       https://github.com/NixOS/nix/issues/4313
-    auto storePath = unpack
-        ? state.aio
-              .blockOn(
-                  fetchers::downloadTarball(
-                      state.ctx.store, *url, name, expectedHash != Hash(HashType::SHA256)
-                  )
-              )
-              .tree.storePath
-        : state.aio
-              .blockOn(
-                  fetchers::downloadFile(state.ctx.store, *url, name, expectedHash != Hash(HashType::SHA256))
-              )
-              .storePath;
+    for (const auto & url : urls) {
+        try {
+            auto nameForThisUrl = std::string(name == "" ? baseNameOf(url) : name);
+            auto storePath = unpack
+                ? state.aio
+                      .blockOn(
+                          fetchers::downloadTarball(
+                              state.ctx.store, url, nameForThisUrl, expectedHash != Hash(HashType::SHA256)
+                          )
+                      )
+                      .tree.storePath
+                : state.aio
+                      .blockOn(
+                          fetchers::downloadFile(
+                              state.ctx.store, url, nameForThisUrl, expectedHash != Hash(HashType::SHA256)
+                          )
+                      )
+                      .storePath;
+
+            selectedUrl = url;
+            obtainedStorePath = storePath;
+        } catch (FileTransferError & e) {
+            downloadErrors.push_back(e.what());
+            debug("fetching '%s' has failed, continuing onto the next url: %s", url, e.msg());
+        }
+    }
+
+    if (!obtainedStorePath) {
+        throw Error("%s", Uncolored(formatExceptions("fetching any of the URLs has failed", downloadErrors)));
+    }
 
     if (expectedHash) {
-        auto hash = unpack
-            ? state.aio.blockOn(state.ctx.store->queryPathInfo(storePath))->narHash
-            : hashFile(HashType::SHA256, state.ctx.store->toRealPath(storePath));
+        auto hash = unpack ? state.aio.blockOn(state.ctx.store->queryPathInfo(*obtainedStorePath))->narHash
+                           : hashFile(HashType::SHA256, state.ctx.store->toRealPath(*obtainedStorePath));
         if (hash != *expectedHash) {
             state.ctx.errors
                 .make<EvalError>(
                     "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
-                    *url,
+                    selectedUrl,
                     expectedHash->to_sri(),
                     hash.to_sri()
                 )
@@ -339,7 +368,7 @@ static Value fetch(
         }
     }
 
-    return state.ctx.paths.allowAndSetStorePathString(storePath);
+    return state.ctx.paths.allowAndSetStorePathString(*obtainedStorePath);
 }
 
 Value prim_fetchurl(EvalState & state, Value ** args)

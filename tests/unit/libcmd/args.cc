@@ -21,6 +21,11 @@ namespace nix
 TEST(Arguments, lookupFileArg) {
     AsyncIoRoot aio;
 
+    // Do not wait for the other archive formats.
+    fileTransferSettings.maxConnectTimeout.override(0);
+    fileTransferSettings.initialConnectTimeout.override(0);
+    fileTransferSettings.tries.override(1);
+
     initNix();
     initLibExpr();
 
@@ -51,7 +56,7 @@ TEST(Arguments, lookupFileArg) {
 
     try {
         aio.blockOn(lookupFileArg(*state, INVALID_CHANNEL));
-    } catch (FileTransferError const & ex) {
+    } catch (Error const & ex) {
         std::string_view const msg(ex.what());
         EXPECT_NE(msg.find(CHANNEL_URL), msg.npos);
     }

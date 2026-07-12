@@ -12,7 +12,7 @@ struct EvalSettings : Config
 
     static bool isPseudoUrl(std::string_view s);
 
-    static std::string resolvePseudoUrl(std::string_view url);
+    static std::vector<std::string> resolvePseudoUrl(std::string_view url);
 
 #include "lix/libexpr/libexpr-settings.gen.inc"
 

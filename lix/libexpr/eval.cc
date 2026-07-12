@@ -2226,18 +2226,37 @@ try {
     std::optional<std::string> res;
 
     if (EvalSettings::isPseudoUrl(value)) {
-        try {
-            auto storePath = TRY_AWAIT(fetchers::downloadTarball(
-                store, EvalSettings::resolvePseudoUrl(value), "source", false)).tree.storePath;
-            res = { store->toRealPath(storePath) };
-        } catch (FileTransferError & e) {
-            e.addTrace(nullptr, "while downloading %s to satisfy NIX_PATH lookup, ignoring search path entry", value);
-            logWarning(e.info());
-            res = std::nullopt;
+        std::list<std::string> downloadErrors;
+
+        for (const auto & url : EvalSettings::resolvePseudoUrl(value)) {
+            try {
+                auto storePath =
+                    TRY_AWAIT(fetchers::downloadTarball(store, url, "source", false)).tree.storePath;
+                res = {store->toRealPath(storePath)};
+                break;
+            } catch (FileTransferError & e) {
+                downloadErrors.push_back(e.what());
+                debug(
+                    "failed to download '%s' to satisfy NIX_PATH lookup for '%s', continuing on the next "
+                    "candidate: %s",
+                    url,
+                    value,
+                    e.msg()
+                );
+            }
+        }
+
+        if (!res) {
+            printTaggedWarning(
+                "Failed to download '%s' to satisfy NIX_PATH lookup, ignoring search path entry%s",
+                value,
+                Uncolored(formatExceptions("", downloadErrors))
+            );
         }
     }
 
-    else if (value.starts_with("flake:")) {
+    else if (value.starts_with("flake:"))
+    {
         experimentalFeatureSettings.require(Xp::Flakes);
         auto flakeRef = parseFlakeRef(value.substr(6), {}, true, false);
         debug("fetching flake search path element '%s''", value);
