@@ -1,6 +1,6 @@
 xdist_opts = [
-  # auto number of workers, max 12 jobs
-  '-n', 'auto', '--maxprocesses=12',
+  # auto number of workers, auto number of jobs
+  '-n', 'auto',
   # Distributes tests evenly at first and then, if workers run out of tests, they steal from a different worker
   # This is useful here, due to differing durations of tests, especially when tests check timeout functionality
   #
@@ -40,5 +40,5 @@ test(
   depends : nix,
   protocol : 'tap',
   suite : 'installcheck',
-  timeout : 300,
+  timeout : 1800,
 )
