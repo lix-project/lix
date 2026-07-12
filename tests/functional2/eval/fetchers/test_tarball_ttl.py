@@ -5,7 +5,6 @@ import pytest
 from testlib.fixtures.nix import Nix
 
 
-@pytest.mark.no_daemon
 @pytest.mark.parametrize("sha", ["", "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="])
 def test_locked_tarball_ttl(nix: Nix, sha: str):
     files = nix.env.dirs.home

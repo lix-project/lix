@@ -2,7 +2,7 @@ import contextlib
 import copy
 import dataclasses
 import sys
-from functools import partialmethod, partial
+from functools import partialmethod
 from pathlib import Path
 from typing import Any, Literal, get_args
 from collections.abc import Callable, Generator
@@ -401,10 +401,17 @@ def _daemon_wrapper(
         log_daemon_result(result, level)
 
 
+@pytest.fixture
+def nix_settings(request: pytest.FixtureRequest) -> dict[str, _NixSettingValue]:
+    return getattr(request, "param", {})
+
+
 def _nix_plain_impl(
-    tmp_path: Path, env: ManagedEnv, logger: logging.Logger
+    tmp_path: Path, env: ManagedEnv, logger: logging.Logger, settings: dict[str, _NixSettingValue]
 ) -> Generator[Nix, Any, None]:
-    yield Nix(env, logger)
+    nix = Nix(env, logger)
+    nix.settings.update(settings)
+    yield nix
     # when things are done using the nix store, the permissions for the store are read only
     # after the test was executed, we set the permissions to rwx (write being the important part)
     # for pytest to be able to delete the files during cleanup
@@ -414,27 +421,43 @@ def _nix_plain_impl(
 
 @pytest.fixture
 def nix(
-    tmp_path: Path, env: ManagedEnv, logger: logging.Logger, request: pytest.FixtureRequest
+    tmp_path: Path,
+    env: ManagedEnv,
+    logger: logging.Logger,
+    request: pytest.FixtureRequest,
+    nix_settings: dict[str, _NixSettingValue],
 ) -> Generator[Nix, Any, None]:
     """
     Provides a rich way of calling `nix`.
     For pre-applied commands use `nix.nix_instantiate`, `nix.nix_build` etc.
     After configuring the command, use `.run()` to run it
     """
-    for nix in _nix_plain_impl(tmp_path, env, logger):
+    for nix in _nix_plain_impl(tmp_path, env, logger, nix_settings):
         if getattr(request, "param", None) is None:
             yield nix
         else:
-            with _daemon_wrapper(request.param, nix) as inner:
+            with _daemon_wrapper(request.param, nix, settings=nix_settings) as inner:
                 yield inner
 
 
 @pytest.fixture(params=daemon_protocols)
-def daemon(request: pytest.FixtureRequest) -> NixDaemon:
+def daemon(request: pytest.FixtureRequest, nix_settings: dict[str, _NixSettingValue]) -> NixDaemon:
     """
     paramterize every daemon tests to run using all supported nix protocols
     """
-    return partial(_daemon_wrapper, request.param)
+
+    def wrapper(
+        nix: Nix,
+        args: list[str] | None = None,
+        settings: dict[str, _NixSettingValue] | None = None,
+        protocol: NixDaemonProtocol | None = None,
+        **kwargs,
+    ) -> contextlib.AbstractAsyncContextManager[Nix]:
+        return _daemon_wrapper(
+            request.param, nix, args, nix_settings | (settings or {}), protocol, **kwargs
+        )
+
+    return wrapper
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc):
@@ -444,6 +467,13 @@ def pytest_generate_tests(metafunc: pytest.Metafunc):
     """
     if "nix" not in metafunc.fixturenames or "daemon" in metafunc.fixturenames:
         return
+    nix_settings = {}
+    for settings in metafunc.definition.iter_markers("nix_settings"):
+        nix_settings.update({k.replace("_", "-"): v for k, v in settings.kwargs.items()})
+    if nix_settings:
+        metafunc.parametrize(
+            "nix_settings", [nix_settings], indirect=True, ids=[pytest.HIDDEN_PARAM]
+        )
     if not list(metafunc.definition.iter_markers("no_daemon")):
         protocols = [None, *daemon_protocols]
         ids = protocols

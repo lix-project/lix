@@ -19,7 +19,7 @@ def test_timeout_timeout(nix: Nix):
     assert "timed out" in res.stderr_plain
 
 
-@pytest.mark.no_daemon
+@pytest.mark.nix_settings(trusted_users="*")
 @with_files(_files)
 def test_timeout_max_log(nix: Nix):
     res = (

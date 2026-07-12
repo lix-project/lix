@@ -6,7 +6,11 @@ requires-python = ">=3.12"
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
 
-markers = ["full_sandbox: test requires a fully isolated sandbox", "no_daemon: only use the local store for this test and do not test the daemon protocol implementations"]
+markers = [
+    "full_sandbox: test requires a fully isolated sandbox",
+    "no_daemon: only use the local store for this test and do not test the daemon protocol implementations",
+    "nix_settings: default settings for Nix and NixDaemon fixtures",
+]
 
 # xfail tests should fail when not failing as described
 xfail_strict = true

@@ -56,7 +56,7 @@ def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:
     """)
 
 
-@pytest.mark.no_daemon
+@pytest.mark.nix_settings(trusted_users="*", system_features=["bar"])
 @pytest.mark.full_sandbox
 @with_files(
     {
@@ -66,17 +66,7 @@ def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:
 )
 def test_remote_trustless_unsigned(nix: Nix, env: ManagedEnv, busybox_args: list[str]):
     # We first build a dependency of the derivation we eventually want to build.
-    nix.nix_build(
-        [
-            "build-hook.nix",
-            "-A",
-            "passthru.input2",
-            *busybox_args,
-            "--option",
-            "system-features",
-            "bar",
-        ]
-    ).run().ok()
+    nix.nix_build(["build-hook.nix", "-A", "passthru.input2", *busybox_args]).run().ok()
 
     # Now when we go to build that downstream derivation, Lix will try to
     # copy our already-build `input2` to the remote store. That store object
@@ -99,7 +89,7 @@ def test_remote_trustless_unsigned(nix: Nix, env: ManagedEnv, busybox_args: list
     )
 
 
-@pytest.mark.no_daemon
+@pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
 @pytest.mark.parametrize(
     ("protocol", "flags"), [("ssh", []), ("ssh-ng", []), ("ssh-ng", ["--force-untrusted"])]
@@ -129,7 +119,7 @@ def test_remote_trustless_ia(
     assert nix.physical_store_path_for(out_path).read_text() == "FOO BAR BAZ\n"
 
 
-@pytest.mark.no_daemon
+@pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
 @pytest.mark.parametrize(("protocol", "flags"), [("ssh", []), ("ssh-ng", ["--force-untrusted"])])
 @with_files(

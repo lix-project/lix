@@ -6,7 +6,7 @@ from testlib.utils import get_global_asset
 
 import pytest
 
-pytestmark = pytest.mark.no_daemon
+pytestmark = [pytest.mark.nix_settings(trusted_users="*")]
 
 
 @with_files({"config.nix": get_global_asset("config.nix")})
