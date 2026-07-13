@@ -423,7 +423,6 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optionals hostPlatform.isStatic [
       "-Denable-embedded-sandbox-shell=true"
       "-Denable-contrib-plugins=false"
-      "-Db_sanitize=none"
     ]
     ++ lib.optional ciBuildAndDeleteBothLibraries "-Ddefault_library=both"
     # musl doesn't support fibers, and we can't detect this with meson alone.

@@ -43,9 +43,10 @@ project('lix', 'cpp', 'rust',
     'debug=true',
     'optimization=2',
     'errorlogs=true', # Please print logs for tests that fail
-    # Instead of using the default sanitizer, we combine this with
-    # -fsanitize-undefined-trap-on-error below in this file.
-    'b_sanitize=signed-integer-overflow',
+    # NOTE we attempted to use meson for sanitizer config once (22e2ecdc43), but that
+    # broke clang-tidy in the devshell. our plugin ended up with undefined symbols in
+    # the linked object, and clang-tidy helpfully just ignores objects it can't load.
+    #'b_sanitize=signed-integer-overflow',
   ],
 )
 
@@ -690,15 +691,20 @@ add_project_arguments(
 sanitize_args = []
 cargo_sanitizer_args = []
 
-# 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
-# a regression of about 10% on hackage-packages.nix with clang. So if the
-# signed-integer-overflow sanitizer is requested (our default), we trap instead.
-# Trapping has an unmeasurably low overhead in Nix evaluation benchmarks.
-if cxx.get_id() in ['gcc', 'clang'] and 'signed-integer-overflow' in get_option('b_sanitize')
+# We turn off the production UBSan if the slower dev UBSan is requested, to
+# give better diagnostics.
+if cxx.get_id() in ['gcc', 'clang'] and 'undefined' not in get_option('b_sanitize')
+  # 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
+  # a regression of about 10% on hackage-packages.nix with clang. So we are trapping instead.
+  #
+  # This has an unmeasurably low overhead in Nix evaluation benchmarks.
+  #
   # N.B. Meson generates a completely nonsense warning here:
   # https://github.com/mesonbuild/meson/issues/9822
-  # -fsanitize-undefined-trap-on-error is not representable in -Db_sanitize=
-  sanitize_args = ['-fsanitize-undefined-trap-on-error']
+  # Both of these args cannot be written in the default meson configuration.
+  # b_sanitize=signed-integer-overflow is ignored, and
+  # -fsanitize-undefined-trap-on-error is not representable.
+  sanitize_args = ['-fsanitize=signed-integer-overflow', '-fsanitize-undefined-trap-on-error']
   add_project_arguments(sanitize_args, language: 'cpp')
   add_project_link_arguments(sanitize_args, language: 'cpp')
 endif
@@ -708,9 +714,9 @@ if cxx.get_id() == 'clang' and get_option('b_sanitize') != ''
   add_project_link_arguments('-shared-libsan', language : 'cpp')
   cargo_sanitizer_args = [
     '-shared-libsan',
-    '-fsanitize=' + get_option('b_sanitize'),
+    get_option('b_sanitize') != 'none' ? '-fsanitize=' + get_option('b_sanitize') : [],
     sanitize_args,
-  ]
+  ].flatten()
 endif
 
 # Clang gets grumpy about missing libasan symbols if -shared-libasan is not
