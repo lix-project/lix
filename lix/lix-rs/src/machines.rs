@@ -205,14 +205,23 @@ pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machi
     match get_toml_machines(&setting, &current_system) {
         Ok(machines) => Ok(machines),
         Err(TomlParsingError::YouIntendedTomlError(e)) => Err(e),
-        Err(TomlParsingError::UncertainErr(e)) => {
+        Err(TomlParsingError::UncertainErr(toml_err)) => {
             print_debug!("Trying again with legacy format");
-            parseBuilderLines(setting.as_str(), current_system.as_str())
-                .map_err(|e| report!(e).into_dynamic())
-                .attach(e)
-                .attach(format!("settings.builders: {}", setting))
+            match parseBuilderLines(setting.as_str(), current_system.as_str()) {
+                Ok(machines) => {
+                    if machines.iter().any(|m| m.system_types.contains("=")) {
+                        Err(toml_err)
+                    } else {
+                        Ok(machines)
+                    }
+                }
+                Err(e) => Err(report!(e)
+                    .into_dynamic()
+                    .attach(toml_err.to_string().trim_start().to_string())),
+            }
         }
     }
+    .attach(format!("builders setting: {}", setting))
 }
 
 #[cfg(test)]
@@ -281,6 +290,19 @@ mod tests {
             let machines = gm("a\nb").unwrap();
             assert!(machines.iter().any(|m| m.uri.ends_with("a")));
             assert!(machines.iter().any(|m| m.uri.ends_with("b")));
+        }
+
+        #[test]
+        fn missing_quotes_doesnt_retry() {
+            let err = gm(r#"
+[machines.andesite]
+uri = ssh://whooooops.forgotten.quotes
+speed-factor = 3
+"#)
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("string values must be quoted"));
+            assert!(!err.contains("bad machine specification"));
         }
     }
     mod toml {
