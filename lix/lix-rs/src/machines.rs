@@ -168,9 +168,26 @@ impl Machine {
     }
 }
 
-fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Machine>, Report> {
+enum TomlParsingError {
+    YouIntendedTomlError(Report),
+    UncertainErr(Report),
+}
+
+fn get_toml_machines(
+    setting: &String,
+    current_system: &String,
+) -> Result<Vec<Machine>, TomlParsingError> {
     let content = if let Some(file_path) = setting.strip_prefix("@") {
-        std::fs::read_to_string(file_path).context("while reading external machines file")?
+        std::fs::read_to_string(file_path)
+            .context("while reading external machines file")
+            .map_err(|e| {
+                let e = e.into_dynamic();
+                if file_path.ends_with("toml") {
+                    TomlParsingError::YouIntendedTomlError(e)
+                } else {
+                    TomlParsingError::UncertainErr(e)
+                }
+            })?
     } else {
         setting.to_string()
     };
@@ -178,17 +195,17 @@ fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Ma
         return Ok(vec![]);
     }
     Ok(toml::from_str::<MachinesFile>(content.as_str())
-        .context("while deserializing TOML")?
+        .map_err(|e| TomlParsingError::UncertainErr(report!(e).into_dynamic()))?
         .to_machines(current_system.as_str())
-        .context("while validating machines")?)
+        .context("while validating machines")
+        .map_err(|e| TomlParsingError::YouIntendedTomlError(e.into_dynamic()))?)
 }
 
 pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machine>, Report> {
-    match get_toml_machines(&setting, &current_system)
-        .context("while parsing machines as TOML machines")
-    {
+    match get_toml_machines(&setting, &current_system) {
         Ok(machines) => Ok(machines),
-        Err(e) => {
+        Err(TomlParsingError::YouIntendedTomlError(e)) => Err(e),
+        Err(TomlParsingError::UncertainErr(e)) => {
             print_debug!("Trying again with legacy format");
             parseBuilderLines(setting.as_str(), current_system.as_str())
                 .map_err(|e| report!(e).into_dynamic())
@@ -231,6 +248,12 @@ mod tests {
         }
 
         #[test]
+        fn missing_toml_uri_doesnt_retry() {
+            let err = gm("[machines.missing-uri]").unwrap_err().to_string();
+            assert!(err.contains("uri must be present"));
+        }
+
+        #[test]
         fn both_invalid_shows_both_errors() {
             let err = gm(r#"
                     hello world this is a very much invalid file
@@ -242,6 +265,23 @@ mod tests {
             assert!(err.contains("bad machine specification: failed to convert column"));
             assert!(err.contains("TOML parse error at line 2, column 27"));
         }
+
+        #[test]
+        fn bad_toml_file_doesnt_retry_legacy() {
+            // Non-existing files do not throw errors with the legacy format
+            // but will just return an empty list of builders
+            let err = gm("@/this/file/does/not/exist.toml")
+                .unwrap_err()
+                .to_string();
+            assert!(err.contains("No such file"));
+        }
+
+        #[test]
+        fn bad_toml_deser_retrys() {
+            let machines = gm("a\nb").unwrap();
+            assert!(machines.iter().any(|m| m.uri.ends_with("a")));
+            assert!(machines.iter().any(|m| m.uri.ends_with("b")));
+        }
     }
     mod toml {
         use crate::machines::*;
@@ -251,6 +291,10 @@ mod tests {
                 &machines.to_string(),
                 &"TEST_ARCH-TEST_OS".to_string(),
             )
+            .map_err(|e| match e {
+                TomlParsingError::YouIntendedTomlError(e) => e,
+                TomlParsingError::UncertainErr(e) => e,
+            })
         }
 
         #[test]
