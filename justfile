@@ -21,6 +21,7 @@ list:
 # Clean build artifacts and outputs.
 clean:
     rm -rf {{ quote(builddir) }}/* {{ quote(builddir) }}/.* {{ quote(outdir) }}/* {{ quote(outdir) }}/.*
+    cargo clean
 
 # Prepare meson for building.
 [positional-arguments]
