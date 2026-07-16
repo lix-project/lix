@@ -56,6 +56,12 @@ test-integration *OPTIONS: (test "--suite" "installcheck" OPTIONS)
 test-functional2 *OPTIONS:
     cd tests/functional2 && python -m pytest -v "$@"
 
+# special target for cargo because meson cannot be convinced to not mangle cargo test output,
+# and getting properly colored test output any other way also doesn't look all that possible.
+[positional-arguments]
+test-rs *OPTIONS:
+    meson test -C {{ builddir }} --interactive lix-rs-tests "$@"
+
 # Lint with `clang-tidy`
 lint:
     ninja -C build clang-tidy

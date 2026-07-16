@@ -19,3 +19,4 @@ rustyline-derive.workspace = true
 
 [build-dependencies]
 zngur.workspace = true
+pkg-config.workspace = true

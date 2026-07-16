@@ -176,22 +176,6 @@ lixrs = custom_target(
   env : lixrs_cargo_env,
 )
 
-if meson.can_run_host_binaries()
-  test(
-    'lix-rs-tests',
-    cargo,
-    args : [
-      'test',
-      '--all', '--all-targets',
-      '--no-fail-fast',
-      cargo_jobs_args,
-    ],
-    suite : 'check',
-    env : lixrs_cargo_env,
-    timeout : 300,
-  )
-endif
-
 liblix_cpp_static = static_library(
   'lix_cpp_static',
   liblix_sources,
@@ -203,6 +187,34 @@ liblix_cpp_static = static_library(
   cpp_args : cpp_args,
   cpp_pch : cpp_pch,
 )
+
+if meson.can_run_host_binaries()
+  lixrs_test_deps = []
+  foreach dep : dependencies.flatten()
+    lixrs_test_deps += dep.name()
+  endforeach
+
+  test(
+    'lix-rs-tests',
+    cargo,
+    args : [
+      'test',
+      '--all', '--all-targets',
+      '--no-fail-fast',
+      cargo_jobs_args,
+    ],
+    depends : [
+      liblix_cpp_static,
+    ],
+    suite : 'check',
+    env : lixrs_cargo_env + {
+      'CXX_LINK_DIR_FOR_TEST': meson.current_build_dir(),
+      'CXX_LINK_LIBS_FOR_TEST': lixrs_test_deps,
+      'CXX_TEST_SANITIZERS': cargo_sanitizer_args,
+    },
+    timeout : 300,
+  )
+endif
 
 if is_darwin
   lixrs_link_args = [ '-Wl,-force_load,lix/liblixrs.a' ]

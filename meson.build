@@ -687,6 +687,9 @@ add_project_arguments(
   language : 'cpp',
 )
 
+sanitize_args = []
+cargo_sanitizer_args = []
+
 # 2024-03-24: jade benchmarked the default sanitize reporting in clang and got
 # a regression of about 10% on hackage-packages.nix with clang. So if the
 # signed-integer-overflow sanitizer is requested (our default), we trap instead.
@@ -703,6 +706,11 @@ endif
 # GCC defaults to shared libsan so is fine.
 if cxx.get_id() == 'clang' and get_option('b_sanitize') != ''
   add_project_link_arguments('-shared-libsan', language : 'cpp')
+  cargo_sanitizer_args = [
+    '-shared-libsan',
+    '-fsanitize=' + get_option('b_sanitize'),
+    sanitize_args,
+  ]
 endif
 
 # Clang gets grumpy about missing libasan symbols if -shared-libasan is not
