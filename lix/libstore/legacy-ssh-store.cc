@@ -1,4 +1,6 @@
 #include "lix/libstore/legacy-ssh-store.hh"
+#include "libutil/error.hh"
+#include "libutil/logging.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -20,6 +22,8 @@
 #include "path-info.hh"
 #include "path.hh"
 #include <cstdint>
+#include <exception>
+#include <kj/async.h>
 #include <optional>
 
 namespace nix {
@@ -95,25 +99,25 @@ struct LegacySSHStoreConfig : CommonSSHStoreConfig
     }
 };
 
-struct LegacySSHStoreConfigWithLog : LegacySSHStoreConfig
-{
-    using LegacySSHStoreConfig::LegacySSHStoreConfig;
-
-    // Hack for getting remote build log output.
-    // Intentionally not in `LegacySSHStoreConfig` so that it doesn't appear in
-    // the documentation
-    const Setting<int> logFD{this, -1, "log-fd", "file descriptor to which SSH's stderr is connected"};
-};
-
 struct LegacySSHStore final : public Store
 {
-    LegacySSHStoreConfigWithLog config_;
+    LegacySSHStoreConfig config_;
 
-    LegacySSHStoreConfigWithLog & config() override { return config_; }
-    const LegacySSHStoreConfigWithLog & config() const override { return config_; }
+    LegacySSHStoreConfig & config() override
+    {
+        return config_;
+    }
+    const LegacySSHStoreConfig & config() const override
+    {
+        return config_;
+    }
 
     struct Connection
     {
+        // make sure this is destroyed last so the sshConn that feeds it dies first
+        kj::Promise<void> logHandlerPromise{nullptr};
+        std::list<Activity> act;
+
         ref<IoBuffer> fromBuf{make_ref<IoBuffer>()};
         std::unique_ptr<SSH::Connection> sshConn;
         ServeProto::Version remoteVersion;
@@ -134,6 +138,54 @@ struct LegacySSHStore final : public Store
                 .store = *store,
                 .version = remoteVersion,
             };
+        }
+
+        kj::Promise<void> logHandler(std::string storeUri)
+        try {
+            // NOTE this is very similar to handleBuilderOutput in DerivationGoal, but unlike
+            // the derivation goal we do not need to handle EIO from a pty here. we also have
+            // no timeouts or limits to keep track of, which makes deduplication less useful.
+
+            std::map<ActivityId, Activity> activities;
+
+            auto stderrPipe = std::move(sshConn->stderrPipe);
+            auto reader = AIO().lowLevelProvider.wrapInputFd(stderrPipe.get());
+
+            LogLineSplitter splitter;
+
+            auto flushLine = [&](const std::string & line) {
+                if (const auto state = handleJSONLogMessage(line, act.back(), activities, storeUri)) {
+                    return *state;
+                } else {
+                    return act.back().result(resBuildLogLine, line);
+                }
+            };
+
+            auto buf = kj::heapArray<char>(4096);
+            while (true) {
+                const auto got = co_await reader->tryRead(buf.begin(), 1, buf.size());
+                if (got == 0) {
+                    break;
+                }
+
+                std::string_view data{buf.begin(), got};
+                while (!data.empty()) {
+                    if (auto line = splitter.feed(data)) {
+                        if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
+                            TRY_AWAIT(act.back().getLogger().flush());
+                        }
+                    }
+                }
+            }
+
+            if (auto line = splitter.finish(); !line.empty()) {
+                (void) flushLine(line);
+                TRY_AWAIT(act.back().getLogger().flush());
+            }
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+            logException("remote store error", e);
+        } catch (...) {
+            std::terminate();
         }
 
         template<typename Arg>
@@ -210,24 +262,18 @@ struct LegacySSHStore final : public Store
 
     static std::set<std::string> uriSchemes() { return {"ssh"}; }
 
-    LegacySSHStore(
-        const std::string & scheme, const std::string & host, LegacySSHStoreConfigWithLog config
-    )
+    LegacySSHStore(const std::string & scheme, const std::string & host, LegacySSHStoreConfig config)
         : Store(config)
         , config_(std::move(config))
         , host(host)
-        , connections(make_ref<Pool<Connection>>(
-            std::max(1, (int) config_.maxConnections),
-            [this]() { return openConnection(); },
-            [](const ref<Connection> & r) { return r->good; }
-            ))
-        , ssh(
-            host,
-            config_.port,
-            config_.sshKey,
-            config_.sshPublicHostKey,
-            config_.compress,
-            config_.logFD)
+        , connections(
+              make_ref<Pool<Connection>>(
+                  std::max(1, (int) config_.maxConnections),
+                  [this]() { return openConnection(); },
+                  [](const ref<Connection> & r) { return r->good; }
+              )
+          )
+        , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
     {
     }
 
@@ -236,37 +282,43 @@ struct LegacySSHStore final : public Store
         auto conn = make_ref<Connection>();
         conn->sshConn = ssh.startCommand(
             fmt("%s --serve --write", config_.remoteProgram)
-            + (config_.remoteStore.get() == ""
-                   ? ""
-                   : " --store " + shellEscape(config_.remoteStore.get()))
+            + (config_.remoteStore.get() == "" ? "" : " --store " + shellEscape(config_.remoteStore.get()))
         );
-        FdSink to(conn->sshConn->socket.get());
-        FdSource from(conn->sshConn->socket.get(), conn->fromBuf);
-        conn->store = this;
 
         try {
-            to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
-            to.flush();
+            FdSink to(conn->sshConn->socket.get());
+            FdSource from(conn->sshConn->socket.get(), conn->fromBuf);
+            conn->store = this;
 
-            uint64_t magic = readNum<uint64_t>(from);
-            if (magic != SERVE_MAGIC_2)
-                throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
-            conn->remoteVersion = readNum<unsigned>(from);
-            if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200)
-                throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);
+            try {
+                to << SERVE_MAGIC_1 << SERVE_PROTOCOL_VERSION;
+                to.flush();
 
-            /* No longer support protocols this old*/
-            if (GET_PROTOCOL_MINOR(conn->remoteVersion) < 4) {
-                throw Error(
-                    "remote '%s' is too old (protocol version %x)", host, conn->remoteVersion
-                );
+                uint64_t magic = readNum<uint64_t>(from);
+                if (magic != SERVE_MAGIC_2) {
+                    throw Error("'nix-store --serve' protocol mismatch from '%s'", host);
+                }
+                conn->remoteVersion = readNum<unsigned>(from);
+                if (GET_PROTOCOL_MAJOR(conn->remoteVersion) != 0x200) {
+                    throw Error("unsupported 'nix-store --serve' protocol version on '%s'", host);
+                }
+
+                /* No longer support protocols this old*/
+                if (GET_PROTOCOL_MINOR(conn->remoteVersion) < 4) {
+                    throw Error("remote '%s' is too old (protocol version %x)", host, conn->remoteVersion);
+                }
+
+            } catch (EndOfFile & e) {
+                throw Error("cannot connect to '%1%'", host);
             }
 
-        } catch (EndOfFile & e) {
-            throw Error("cannot connect to '%1%'", host);
+            conn->act.emplace_back(logger->startActivity(lvlDebug, actUnknown, "remote store " + getUri()));
+            conn->logHandlerPromise = conn->logHandler(host);
+            return {conn};
+        } catch (Error & e) {
+            std::string msg = chomp(drainFD(conn->sshConn->stderrPipe.get(), false));
+            throw Error("cannot connect to %s: %s (%s)", getUri(), e.msg(), msg);
         }
-
-        return {conn};
     } catch (...) {
         return {result::current_exception()};
     };
@@ -425,6 +477,18 @@ public:
     ) override
     try {
         auto conn(TRY_AWAIT(connections->get()));
+
+        // this is a duplicate of DerivationGoal::buildDescription because ugh.
+        // getting that information into here where needed is nigh *impossible*
+        auto description = fmt(buildMode == bmRepair      ? "repairing outputs of '%s'"
+                                   : buildMode == bmCheck ? "checking outputs of '%s'"
+                                                          : "building '%s'",
+                               printStorePath(drvPath))
+            + "on " + getUri();
+        conn->act.emplace_back(logger->startActivity(
+            lvlInfo, actBuild, description, Logger::Fields{printStorePath(drvPath), getUri(), 1, 1}
+        ));
+        KJ_DEFER(conn->act.pop_back());
 
         co_return TRY_AWAIT(conn->sendCommand<BuildResult>(
             ServeProto::Command::BuildDerivation,

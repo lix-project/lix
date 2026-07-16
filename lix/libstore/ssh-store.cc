@@ -28,48 +28,25 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     }
 };
 
-struct SSHStoreConfigWithLog : SSHStoreConfig
-{
-    SSHStoreConfigWithLog(const Params & params)
-        : StoreConfig(params)
-        , RemoteStoreConfig(params)
-        , CommonSSHStoreConfig(params)
-        , SSHStoreConfig(params)
-    {
-    }
-
-    // Hack for getting ssh errors into build-remote.
-    // Intentionally not in `SSHStoreConfig` so that it doesn't appear in
-    // the documentation
-    const Setting<int> logFD{
-        this, -1, "log-fd", "file descriptor to which SSH's stderr is connected"
-    };
-};
-
 class SSHStore final : public RemoteStore
 {
-    SSHStoreConfigWithLog config_;
+    SSHStoreConfig config_;
 
 public:
-    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfigWithLog config)
+    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfig config)
         : Store(config)
         , RemoteStore(config)
         , config_(std::move(config))
         , host(host)
-        , ssh(host,
-              config_.port,
-              config_.sshKey,
-              config_.sshPublicHostKey,
-              config_.compress,
-              config_.logFD)
+        , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
     {
     }
 
-    SSHStoreConfigWithLog & config() override
+    SSHStoreConfig & config() override
     {
         return config_;
     }
-    const SSHStoreConfigWithLog & config() const override
+    const SSHStoreConfig & config() const override
     {
         return config_;
     }
@@ -93,11 +70,53 @@ protected:
 
     struct Connection : RemoteStore::Connection
     {
+        // make sure this is destroyed last so the sshConn that feeds it dies first
+        kj::Promise<void> logHandlerPromise{nullptr};
         std::unique_ptr<SSH::Connection> sshConn;
+
+        ~Connection() noexcept = default;
 
         int getFD() const override
         {
             return sshConn->socket.get();
+        }
+
+        std::string connectErrorInfo() override
+        {
+            return chomp(drainFD(sshConn->stderrPipe.get(), false));
+        }
+
+        kj::Promise<void> logHandler(std::string storeUri)
+        try {
+            auto stderrPipe = std::move(sshConn->stderrPipe);
+            auto reader = AIO().lowLevelProvider.wrapInputFd(stderrPipe.get());
+
+            LogLineSplitter splitter;
+
+            auto flushLine = [&](const std::string & line) { debug("ssh(%s): %s", storeUri, line); };
+
+            auto buf = kj::heapArray<char>(4096);
+            while (true) {
+                const auto got = co_await reader->tryRead(buf.begin(), 1, buf.size());
+                if (got == 0) {
+                    break;
+                }
+
+                std::string_view data{buf.begin(), got};
+                while (!data.empty()) {
+                    if (auto line = splitter.feed(data)) {
+                        flushLine(*line);
+                    }
+                }
+            }
+
+            if (auto line = splitter.finish(); !line.empty()) {
+                flushLine(line);
+            }
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+            logException("remote store error", e);
+        } catch (...) {
+            std::terminate();
         }
     };
 
@@ -117,6 +136,16 @@ protected:
         */
         return {result::success()};
     };
+
+    kj::Promise<Result<void>> initConnection(RemoteStore::Connection & conn) override
+    try {
+        TRY_AWAIT(RemoteStore::initConnection(conn));
+        auto & sshConn = static_cast<Connection &>(conn);
+        sshConn.logHandlerPromise = sshConn.logHandler(getUri());
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
 };
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> SSHStore::openConnection()

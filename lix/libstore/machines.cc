@@ -34,10 +34,8 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
         });
 }
 
-kj::Promise<Result<std::pair<ref<Store>, Pipe>>> Machine::openStore() const
+kj::Promise<Result<ref<Store>>> Machine::openStore() const
 try {
-    Pipe pipe;
-
     StoreConfig::Params storeParams;
     if (storeUri.starts_with("ssh://")) {
         // Remote builds become flakey, when having more than one ssh connection
@@ -45,8 +43,6 @@ try {
     }
 
     if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
-        pipe.create();
-        storeParams["log-fd"] = std::to_string(pipe.writeSide.get());
         if (sshKey != "")
             storeParams["ssh-key"] = sshKey;
         if (sshPublicHostKey != "")
@@ -65,7 +61,7 @@ try {
         append(mandatoryFeatures);
     }
 
-    co_return {TRY_AWAIT(nix::openStore(storeUri, storeParams)), std::move(pipe)};
+    co_return TRY_AWAIT(nix::openStore(storeUri, storeParams));
 } catch (...) {
     co_return result::current_exception();
 }

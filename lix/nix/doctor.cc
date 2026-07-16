@@ -313,7 +313,7 @@ struct CmdDoctor : StoreCommand
                 checkInfo(fmt("attempting connection to %s", m.name));
                 try {
                     auto store = aio().blockOn(m.openStore());
-                    success &= runPerStore(store.first);
+                    success &= runPerStore(store);
                 } catch (nix::Error & e) {
                     success &= checkFail(fmt("connection failed: %s", e.what()));
                 }

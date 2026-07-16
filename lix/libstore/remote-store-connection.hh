@@ -102,6 +102,14 @@ struct RemoteStore::Connection
     };
 
     kj::Promise<Result<RemoteError>> processStderr(AsyncFdIoStream & stream);
+
+    /**
+     * hook to provide additional error information for a failed connection.
+     */
+    virtual std::string connectErrorInfo()
+    {
+        return "";
+    }
 };
 
 /**

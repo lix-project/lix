@@ -185,67 +185,6 @@ struct BuilderConnection
     AutoCloseFD slotLock;
     std::shared_ptr<Store> sshStore;
     std::string storeUri;
-    Pipe logPipe;
-
-    // start the thread that reads ssh stderr and turns it into log items.
-    // this future *must* outlive sshStore, otherwise it will never finish
-    kj::Promise<Result<void>> startLogThread(std::string buildDescription, std::string drvPath)
-    try {
-        if (!logPipe.readSide) {
-            co_return result::success();
-        }
-
-        logPipe.writeSide.close();
-
-        // NOTE this is very similar to handleBuilderOutput in DerivationGoal, but unlike
-        // the derivation goal we do not need to handle EIO from a pty here. we also have
-        // no timeouts or limits to keep track of, which makes deduplication less useful.
-        auto act = logger->startActivity(
-            lvlInfo, actBuild, buildDescription, Logger::Fields{drvPath, storeUri, 1, 1}
-        );
-
-        std::map<ActivityId, Activity> activities;
-
-        auto reader = AIO().lowLevelProvider.wrapInputFd(logPipe.readSide.get());
-
-        LogLineSplitter splitter;
-
-        auto flushLine = [&](const std::string & line) {
-            if (const auto state =
-                    handleJSONLogMessage(line, act, activities, "the derivation builder"))
-            {
-                return *state;
-            } else {
-                return act.result(resBuildLogLine, line);
-            }
-        };
-
-        auto buf = kj::heapArray<char>(4096);
-        while (true) {
-            const auto got = co_await reader->tryRead(buf.begin(), 1, buf.size());
-            if (got == 0) {
-                break;
-            }
-
-            std::string_view data{buf.begin(), got};
-            while (!data.empty()) {
-                if (auto line = splitter.feed(data)) {
-                    if (flushLine(*line) == Logger::BufferState::NeedsFlush) {
-                        TRY_AWAIT(act.getLogger().flush());
-                    }
-                }
-            }
-        }
-
-        if (auto line = splitter.finish(); !line.empty()) {
-            (void) flushLine(line);
-            TRY_AWAIT(act.getLogger().flush());
-        }
-
-        co_return result::success();
-    } catch (...) {
-        co_return result::current_exception();
-    }
 };
 
 struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Server
@@ -327,22 +266,16 @@ try {
         lock.reset();
 
         std::shared_ptr<Store> sshStore;
-        Pipe logPipe;
 
         try {
             auto act =
                 logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->name));
 
-            std::tie(sshStore, logPipe) = TRY_AWAIT(bestMachine->openStore());
+            sshStore = TRY_AWAIT(bestMachine->openStore());
             TRY_AWAIT(sshStore->connect());
-            co_return BuilderConnection{
-                std::move(bestSlotLock), sshStore, bestMachine->storeUri, std::move(logPipe)
-            };
+            co_return BuilderConnection{std::move(bestSlotLock), sshStore, bestMachine->storeUri};
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            std::string msg = logPipe.readSide ? chomp(drainFD(logPipe.readSide.get(), false)) : "";
-            printError(
-                "cannot build on '%s': %s%s", bestMachine->name, e.what(), msg.empty() ? "" : ": " + msg
-            );
+            printError("cannot build on '%s': %s", bestMachine->name, e.what());
             bestMachine->enabled = false;
         }
     }
@@ -502,13 +435,6 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
 kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
 {
     try {
-        auto logHandler = builder.startLogThread(
-            fmt("%s on '%s'",
-                rpc::to<std::string_view>(context.getParams().getDescription()),
-                builder.storeUri),
-            store->printStorePath(drvPath)
-        );
-
         auto & sshStore = builder.sshStore;
         auto & storeUri = builder.storeUri;
 
@@ -618,9 +544,6 @@ kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
             );
         }
 
-        // drop store connection, let log handler process any remaining input
-        builder.sshStore = nullptr;
-        TRY_AWAIT(logHandler);
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();

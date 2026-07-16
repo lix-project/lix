@@ -18,7 +18,6 @@ private:
     const std::string keyFile;
     const std::string sshPublicHostKey;
     const bool compress;
-    const int logFD;
 
     struct State
     {
@@ -34,13 +33,12 @@ public:
         const std::optional<uint16_t> port,
         const std::string & keyFile,
         const std::string & sshPublicHostKey,
-        bool compress,
-        int logFD);
+        bool compress);
 
     struct Connection
     {
         Pid sshPid;
-        AutoCloseFD socket;
+        AutoCloseFD socket, stderrPipe;
     };
 
     std::unique_ptr<Connection> startCommand(const std::string & command);

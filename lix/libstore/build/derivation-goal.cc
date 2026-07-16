@@ -1136,7 +1136,6 @@ try {
             missingOutputs.insert(outputName);
         }
         RPC_FILL(runReq, initWantedOutputs, missingOutputs);
-        RPC_FILL(runReq, setDescription, buildDescription());
     }
 
     auto runPromise = LIX_WRAP_RPC_PROMISE_V1(runReq.send());

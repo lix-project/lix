@@ -42,7 +42,7 @@ struct Machine {
      */
     bool mandatoryMet(const std::set<std::string> & features) const;
 
-    kj::Promise<Result<std::pair<ref<Store>, Pipe>>> openStore() const;
+    kj::Promise<Result<ref<Store>>> openStore() const;
 };
 
 typedef std::vector<Machine> Machines;

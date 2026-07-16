@@ -1,3 +1,4 @@
+#include "libutil/fmt.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -114,7 +115,15 @@ try {
         }
     }
     catch (Error & e) {
-        throw Error("cannot open connection to remote store '%s': %s", getUri(), e.what());
+        auto info = conn.connectErrorInfo();
+        throw Error(
+            "cannot open connection to remote store '%s': %s%s%s%s",
+            getUri(),
+            e.what(),
+            Uncolored(info.empty() ? "" : " ("),
+            info,
+            Uncolored(info.empty() ? "" : ")")
+        );
     }
 
     TRY_AWAIT(setOptions(conn));

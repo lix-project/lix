@@ -14,7 +14,6 @@ interface HookInstance $Types.throws(Types.v1Errors) {
       logger :Log.LogStream,
       inputs :List(StoreTypes.StorePath), # actual a set
       wantedOutputs :List(Data), # actually StringSet
-      description :Text, # root activity description for this build
     );
   }
 

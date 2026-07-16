@@ -14,14 +14,19 @@
 
 namespace nix {
 
-SSH::SSH(const std::string & host, const std::optional<uint16_t> port, const std::string & keyFile, const std::string & sshPublicHostKey, bool compress, int logFD)
+SSH::SSH(
+    const std::string & host,
+    const std::optional<uint16_t> port,
+    const std::string & keyFile,
+    const std::string & sshPublicHostKey,
+    bool compress
+)
     : host(host)
     , port(port)
     , fakeSSH(host == "localhost")
     , keyFile(keyFile)
     , sshPublicHostKey(sshPublicHostKey)
     , compress(compress)
-    , logFD(logFD)
 {
     if (host == "" || host.starts_with("-"))
         throw Error("invalid SSH host name '%s'", host);
@@ -55,6 +60,9 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 {
     auto [parent, child] = SocketPair::stream();
     auto conn = std::make_unique<Connection>();
+    Pipe stderrPipe;
+
+    stderrPipe.create();
 
     std::optional<Finally<std::function<void()>>> resumeLoggerDefer;
     if (!fakeSSH) {
@@ -79,9 +87,7 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 
     options.redirections.push_back({.dup = STDIN_FILENO, .from = child.get()});
     options.redirections.push_back({.dup = STDOUT_FILENO, .from = child.get()});
-    if (logFD != -1) {
-        options.redirections.push_back({.dup = STDERR_FILENO, .from = logFD});
-    }
+    options.redirections.push_back({.dup = STDERR_FILENO, .from = stderrPipe.writeSide.get()});
 
     auto [pid, _stdout] = runProgram2(options).release();
     conn->sshPid = std::move(pid);
@@ -89,6 +95,7 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
     child.close();
 
     conn->socket = std::move(parent);
+    conn->stderrPipe = std::move(stderrPipe.readSide);
 
     return conn;
 }
