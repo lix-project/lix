@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
@@ -24,14 +25,6 @@ template<typename T> class Pool;
 struct RemoteStoreConfig : virtual StoreConfig
 {
     using StoreConfig::StoreConfig;
-
-    const Setting<int> maxConnections{this, 1, "max-connections",
-        "Maximum number of concurrent connections to the Nix daemon."};
-
-    const Setting<unsigned int> maxConnectionAge{this,
-        std::numeric_limits<unsigned int>::max(),
-        "max-connection-age",
-        "Maximum age of a connection before it is closed."};
 };
 
 /**
@@ -184,11 +177,9 @@ protected:
 
     virtual kj::Promise<Result<ref<Connection>>> openConnection() = 0;
 
-    kj::Promise<Result<ref<Connection>>> openAndInitConnection();
-
     virtual kj::Promise<Result<void>> initConnection(Connection & conn);
 
-    ref<Pool<Connection>> connections;
+    Sync<std::shared_ptr<Connection>, AsyncMutex> connection;
 
     virtual kj::Promise<Result<void>> setOptions(Connection & conn);
 

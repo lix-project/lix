@@ -37,10 +37,6 @@ bool Machine::mandatoryMet(const std::set<std::string> & features) const
 kj::Promise<Result<ref<Store>>> Machine::openStore() const
 try {
     StoreConfig::Params storeParams;
-    if (storeUri.starts_with("ssh://")) {
-        // Remote builds become flakey, when having more than one ssh connection
-        storeParams["max-connections"] = "1";
-    }
 
     if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
         if (sshKey != "")

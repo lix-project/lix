@@ -1,6 +1,7 @@
 #include "lix/libstore/legacy-ssh-store.hh"
 #include "libutil/error.hh"
 #include "libutil/logging.hh"
+#include "libutil/sync.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -85,9 +86,6 @@ struct LegacySSHStoreConfig : CommonSSHStoreConfig
 
     const Setting<Path> remoteProgram{this, "nix-store", "remote-program",
         "Path to the `nix-store` executable on the remote machine."};
-
-    const Setting<int> maxConnections{this, 1, "max-connections",
-        "Maximum number of concurrent SSH connections."};
 
     const std::string name() override { return "SSH Store"; }
 
@@ -256,7 +254,7 @@ struct LegacySSHStore final : public Store
 
     std::string host;
 
-    ref<Pool<Connection>> connections;
+    Sync<Connection, AsyncMutex> connection;
 
     SSH ssh;
 
@@ -266,20 +264,18 @@ struct LegacySSHStore final : public Store
         : Store(config)
         , config_(std::move(config))
         , host(host)
-        , connections(
-              make_ref<Pool<Connection>>(
-                  std::max(1, (int) config_.maxConnections),
-                  [this]() { return openConnection(); },
-                  [](const ref<Connection> & r) { return r->good; }
-              )
-          )
         , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
     {
     }
 
-    kj::Promise<Result<ref<Connection>>> openConnection()
+    kj::Promise<Result<decltype(connection)::Lock>> getConnection()
     try {
-        auto conn = make_ref<Connection>();
+        auto conn = co_await connection.lock();
+        if (conn->good && conn->sshConn) {
+            co_return conn;
+        }
+
+        *conn = {};
         conn->sshConn = ssh.startCommand(
             fmt("%s --serve --write", config_.remoteProgram)
             + (config_.remoteStore.get() == "" ? "" : " --store " + shellEscape(config_.remoteStore.get()))
@@ -314,14 +310,14 @@ struct LegacySSHStore final : public Store
 
             conn->act.emplace_back(logger->startActivity(lvlDebug, actUnknown, "remote store " + getUri()));
             conn->logHandlerPromise = conn->logHandler(host);
-            return {conn};
+            co_return conn;
         } catch (Error & e) {
             std::string msg = chomp(drainFD(conn->sshConn->stderrPipe.get(), false));
             throw Error("cannot connect to %s: %s (%s)", getUri(), e.msg(), msg);
         }
     } catch (...) {
-        return {result::current_exception()};
-    };
+        co_return result::current_exception();
+    }
 
     std::string getUri() override
     {
@@ -331,7 +327,7 @@ struct LegacySSHStore final : public Store
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoUncached(const StorePath & path, const Activity * context) override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         debug("querying remote host '%s' for info on '%s'", host, printStorePath(path));
 
@@ -359,7 +355,7 @@ struct LegacySSHStore final : public Store
     try {
         debug("adding path '%s' to remote host '%s'", printStorePath(info.path), host);
 
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
         unsigned result;
 
         if (GET_PROTOCOL_MINOR(conn->remoteVersion) >= 5) {
@@ -403,16 +399,16 @@ struct LegacySSHStore final : public Store
     kj::Promise<Result<box_ptr<AsyncInputStream>>>
     narFromPath(const StorePath & path, const Activity * context) override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         struct NarStream : AsyncInputStream
         {
-            Pool<Connection>::Handle conn;
+            Sync<Connection, AsyncMutex>::Lock conn;
             AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn->sshConn->socket.get()};
             AsyncBufferedInputStream buffered{stream, conn->fromBuf};
             box_ptr<AsyncInputStream> copier{copyNAR(buffered)};
 
-            NarStream(Pool<Connection>::Handle conn) : conn(std::move(conn)) {}
+            NarStream(Sync<Connection, AsyncMutex>::Lock conn) : conn(std::move(conn)) {}
 
             kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
             {
@@ -476,7 +472,7 @@ public:
         const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
     ) override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         // this is a duplicate of DerivationGoal::buildDescription because ugh.
         // getting that information into here where needed is nigh *impossible*
@@ -509,7 +505,7 @@ public:
         if (evalStore && evalStore.get() != this)
             throw Error("building on an SSH store is incompatible with '--eval-store'");
 
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         Strings ss;
         for (auto & p : drvPaths) {
@@ -568,7 +564,7 @@ public:
             co_return result::success();
         }
 
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         out.merge(TRY_AWAIT(conn->sendCommand<StorePathSet>(
             ServeProto::Command::QueryClosure, includeOutputs, ServeProto::write(*conn, paths)
@@ -582,7 +578,7 @@ public:
     kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
         SubstituteFlag maybeSubstitute = NoSubstitute) override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
 
         co_return TRY_AWAIT(conn->sendCommand<StorePathSet>(
             ServeProto::Command::QueryValidPaths,
@@ -596,7 +592,7 @@ public:
 
     kj::Promise<Result<void>> init() override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
         co_return result::success();
     } catch (...) {
         co_return result::current_exception();
@@ -604,7 +600,7 @@ public:
 
     kj::Promise<Result<unsigned int>> getProtocol() override
     try {
-        auto conn(TRY_AWAIT(connections->get()));
+        auto conn(TRY_AWAIT(getConnection()));
         co_return conn->remoteVersion;
     } catch (...) {
         co_return result::current_exception();

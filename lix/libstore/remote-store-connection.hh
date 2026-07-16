@@ -121,12 +121,21 @@ struct RemoteStore::Connection
  */
 struct RemoteStore::ConnectionHandle
 {
-    Pool<RemoteStore::Connection>::Handle handle;
+    Sync<std::shared_ptr<Connection>, AsyncMutex>::Lock handle;
 
-    ConnectionHandle(Pool<RemoteStore::Connection>::Handle && handle) : handle(std::move(handle)) {}
+    ConnectionHandle(Sync<std::shared_ptr<Connection>, AsyncMutex>::Lock && handle)
+        : handle(std::move(handle))
+    {
+    }
 
-    RemoteStore::Connection & operator * () { return *handle; }
-    RemoteStore::Connection * operator -> () { return &*handle; }
+    RemoteStore::Connection & operator*()
+    {
+        return **handle;
+    }
+    RemoteStore::Connection * operator->()
+    {
+        return &**handle;
+    }
 
     kj::Promise<Result<void>> processStderr(AsyncFdIoStream & stream);
 
@@ -148,11 +157,11 @@ struct RemoteStore::ConnectionHandle
         // the stack, but that's sufficiently suspect to warrant being as careful.
         auto invalidateOnCancel = kj::defer([&] {
             if (std::uncaught_exceptions() == 0) {
-                handle.markBad();
+                *handle = nullptr;
             }
         });
 
-        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, handle->getFD()};
+        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, (*handle)->getFD()};
 
         // if the last argument can be serialized normally we will serialize *all*
         // arguments at once and hand off to the remote. if the last argument does
@@ -165,7 +174,7 @@ struct RemoteStore::ConnectionHandle
                 ((msg << std::forward<Args>(args)), ...);
                 TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
             } catch (...) {
-                handle.markBad();
+                *handle = nullptr;
                 throw;
             }
             LIX_TRY_AWAIT(processStderr(stream));
@@ -183,7 +192,7 @@ struct RemoteStore::ConnectionHandle
                     }(ImmediateArgsIdxs{});
                     TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
                 } catch (...) {
-                    handle.markBad();
+                    *handle = nullptr;
                     throw;
                 }
 
@@ -195,14 +204,16 @@ struct RemoteStore::ConnectionHandle
             co_return result::success();
         } else {
             try {
-                AsyncBufferedInputStream from{stream, handle->fromBuf};
-                auto result = LIX_TRY_AWAIT(WorkerProto::readAsync(
-                    from, *handle->store, handle->daemonVersion, WorkerProto::Serialise<R>::read
-                ));
+                AsyncBufferedInputStream from{stream, (*handle)->fromBuf};
+                auto result = LIX_TRY_AWAIT(
+                    WorkerProto::readAsync(
+                        from, *(*handle)->store, (*handle)->daemonVersion, WorkerProto::Serialise<R>::read
+                    )
+                );
                 invalidateOnCancel.cancel();
                 co_return result;
             } catch (...) {
-                handle.markBad();
+                *handle = nullptr;
                 throw;
             }
         }

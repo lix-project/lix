@@ -1,4 +1,5 @@
 #include "libutil/fmt.hh"
+#include "libutil/ref.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -39,32 +40,23 @@
 namespace nix {
 
 /* TODO: Separate these store impls into different files, give them better names */
-RemoteStore::RemoteStore(const RemoteStoreConfig & config)
-    : Store(config)
-    , connections(make_ref<Pool<Connection>>(
-          std::max(1, (int) config.maxConnections),
-          [this]() { return openAndInitConnection(); },
-          [this](const ref<Connection> & r) {
-              return std::chrono::duration_cast<std::chrono::seconds>(
-                         std::chrono::steady_clock::now() - r->startTime
-                     )
-                         .count()
-                  < this->config().maxConnectionAge;
-          }
-      ))
-{
-}
+RemoteStore::RemoteStore(const RemoteStoreConfig & config) : Store(config) {}
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionForDaemonForwarding()
 {
     return openConnection();
 }
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openAndInitConnection()
+kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
-    auto conn = TRY_AWAIT(openConnection());
-    TRY_AWAIT(initConnection(*conn));
-    co_return conn;
+    auto conn = co_await connection.lock();
+    if (*conn) {
+        co_return {std::move(conn)};
+    }
+
+    *conn = TRY_AWAIT(openConnection());
+    TRY_AWAIT(initConnection(**conn));
+    co_return {std::move(conn)};
 } catch (...) {
     co_return result::current_exception();
 }
@@ -184,26 +176,19 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr(AsyncFdIoStream & stream)
 try {
-    auto ex = TRY_AWAIT(handle->processStderr(stream));
+    auto ex = TRY_AWAIT((*handle)->processStderr(stream));
     if (ex.e) {
         co_return result::failure(ex.e);
     }
     co_return result::success();
 } catch (...) {
-    handle.markBad();
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
-try {
-    co_return ConnectionHandle(TRY_AWAIT(connections->get()));
-} catch (...) {
+    *handle = nullptr;
     co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> RemoteStore::setOptions()
 try {
-    TRY_AWAIT(setOptions(*(TRY_AWAIT(getConnection()).handle)));
+    TRY_AWAIT(setOptions(*(TRY_AWAIT(getConnection()))));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -372,10 +357,6 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RemoteStore::addCAToStore(
     RepairFlag repair)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-
-    // The dump source may invoke the store, so we need to make some room.
-    connections->incCapacity();
-    Finally cleanup([&]() { connections->decCapacity(); });
 
     co_return make_ref<ValidPathInfo>(TRY_AWAIT(conn.sendCommand<ValidPathInfo>(
         WorkerProto::Op::AddToStore,
@@ -708,8 +689,7 @@ try {
 
 kj::Promise<Result<unsigned int>> RemoteStore::getProtocol()
 try {
-    auto conn(TRY_AWAIT(connections->get()));
-    co_return conn->daemonVersion;
+    co_return TRY_AWAIT(getConnection())->daemonVersion;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -856,7 +836,7 @@ try {
             TRY_AWAIT(framed.finish());
             co_return result::success();
         } catch (...) {
-            handle.markBad();
+            *handle = nullptr;
             co_return result::current_exception();
         }
     };
