@@ -21,6 +21,7 @@ def _clean_output(output: str, origin: Path) -> str:
     return re.sub(lix_version_regex, "Lix VERSION", output.replace(str(origin), "/pwd"))
 
 
+@pytest.mark.nix_settings(trusted_users="*")  # silence trusted settings warnings
 def test_repl_char(nix: Nix, do_snapshot_update: bool, metadata: ReplTestMetadata, files: Path):
     nix.settings.add_xp_feature("nix-command", "flakes", "repl-automation")
     with MarkdownRenderer() as renderer:

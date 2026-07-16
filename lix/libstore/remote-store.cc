@@ -697,8 +697,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> RemoteStore::connect()
+kj::Promise<Result<void>> RemoteStore::init()
 try {
     auto conn(TRY_AWAIT(getConnection()));
     co_return result::success();

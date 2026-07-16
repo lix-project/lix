@@ -9,6 +9,7 @@ from testlib.fixtures.file_helper import File, FileDeclaration, with_files
 from testlib.fixtures.http_server import http_server
 from testlib.fixtures.nix import Nix
 
+pytestmark = pytest.mark.nix_settings(trusted_users="*")
 ca_key: str = """
 -----BEGIN EC PARAMETERS-----
 BggqhkjOPQMBBw==

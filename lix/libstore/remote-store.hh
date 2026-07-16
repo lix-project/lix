@@ -170,7 +170,7 @@ public:
 
     kj::Promise<Result<std::optional<std::string>>> getVersion() override;
 
-    kj::Promise<Result<void>> connect() override;
+    kj::Promise<Result<void>> init() override;
 
     kj::Promise<Result<unsigned int>> getProtocol() override;
 

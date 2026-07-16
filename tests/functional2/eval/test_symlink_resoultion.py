@@ -1,9 +1,13 @@
 from collections.abc import Callable
 from pathlib import Path
 
+import pytest
+
 from testlib.fixtures.file_helper import with_files, File, AssetSymlink, Symlink
 from testlib.fixtures.nix import Nix
 from testlib.fixtures.snapshot import Snapshot
+
+pytestmark = pytest.mark.no_daemon
 
 
 @with_files(

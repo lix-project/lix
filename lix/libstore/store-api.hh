@@ -253,7 +253,8 @@ public:
 
     /**
      * Perform any necessary effectful operation to make the store up and
-     * running
+     * running. For stores that open connections to remote hosts `init()`
+     * must also open such a connection and report errors as appropriate.
      */
     virtual kj::Promise<Result<void>> init()
     {
@@ -873,12 +874,6 @@ public:
     {
         (co_await state.lock())->pathInfoCache.clear();
     }
-
-    /**
-     * Establish a connection to the store, for store types that have
-     * a notion of connection. Otherwise this is a no-op.
-     */
-    virtual kj::Promise<Result<void>> connect() { return {result::success()}; }
 
     /**
      * Get the protocol version of this store or it's connection.

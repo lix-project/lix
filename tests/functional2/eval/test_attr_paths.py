@@ -3,6 +3,8 @@ import pytest
 from typing import NamedTuple
 from textwrap import dedent
 
+pytestmark = pytest.mark.no_daemon
+
 
 class ShouldError(NamedTuple):
     expr: str

@@ -272,7 +272,6 @@ try {
                 logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->name));
 
             sshStore = TRY_AWAIT(bestMachine->openStore());
-            TRY_AWAIT(sshStore->connect());
             co_return BuilderConnection{std::move(bestSlotLock), sshStore, bestMachine->storeUri};
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
             printError("cannot build on '%s': %s", bestMachine->name, e.what());

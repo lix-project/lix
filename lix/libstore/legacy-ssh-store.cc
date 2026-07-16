@@ -594,7 +594,7 @@ public:
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<void>> connect() override
+    kj::Promise<Result<void>> init() override
     try {
         auto conn(TRY_AWAIT(connections->get()));
         co_return result::success();

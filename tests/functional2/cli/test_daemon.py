@@ -25,5 +25,5 @@ def test_stdio_forward_failure(nix: Nix, files: Path):
         .run()
         .expect(1)
     )
-    assert "stream ended unexpectedly" in result.stderr_plain
+    assert "cannot open connection to remote store" in result.stderr_plain
     assert "Lix crashed" not in result.stderr_plain
