@@ -194,7 +194,7 @@ class Nix:
         """
         if self._settings is None:
             self._settings = NixSettings()
-            self._settings.store = f"local?root={self.env.dirs.test_root}"
+            self._settings.store = f"local?root={self.env.dirs.test_root}&log={self.env.dirs.nix_log_dir}&state={self.env.dirs.nix_state_dir}"
             if sys.platform == "linux":
                 # sandbox build dir cannot be withing store dir. choose a short non-overlapping path.
                 self._settings.sandbox_build_dir = (
@@ -363,7 +363,7 @@ def _daemon_wrapper(
     daemon.logger = nix.logger.getChild("daemon")
     daemon.settings["allowed-users"] = ["*"]
     daemon.settings["trusted-users"] = []
-    daemon.settings.store = f"local?root={nix.env.dirs.test_root}"
+    daemon.settings.store = f"local?root={nix.env.dirs.test_root}&log={nix.env.dirs.nix_log_dir}&state={nix.env.dirs.nix_state_dir}"
     daemon.settings.update(settings)
     if requires_features := _daemon_protocol_xp_features.get(protocol):
         daemon.settings.add_xp_feature(*requires_features)
