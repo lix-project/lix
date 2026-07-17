@@ -4,3 +4,5 @@ args: [f, list]
 ---
 Return a list consisting of the elements of *list* for which the
 function *f* returns `true`.
+
+Makes `O(n)` calls to *f*, where `n` is the size of the input *list*.

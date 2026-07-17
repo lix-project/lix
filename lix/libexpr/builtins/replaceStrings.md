@@ -14,3 +14,5 @@ builtins.replaceStrings ["oo" "a"] ["a" "i"] "foobar"
 ```
 
 evaluates to `"fabir"`.
+
+Has `O(n k)` time complexity, where `n` is the length of *s* and `k` is the number of replacements.

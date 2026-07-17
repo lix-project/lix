@@ -17,3 +17,5 @@ evaluates to
 ```nix
 { right = [ 23 42 ]; wrong = [ 1 9 3 ]; }
 ```
+
+Makes `O(n)` calls to *pred*, where `n` is the size of the *list*.

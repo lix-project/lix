@@ -11,3 +11,5 @@ true; }`.
 "Formal argument" here refers to the attributes pattern-matched by
 the function. Plain lambdas are not included, e.g. `functionArgs (x:
 ...) = { }`.
+
+Has `O(a log a)` where `a` is the number of arguments provided to *f*.

@@ -11,3 +11,5 @@ builtins.catAttrs "a" [{a = 1;} {b = 0;} {a = 2;}]
 ```
 
 evaluates to `[1 2]`.
+
+Has `O(n)` time complexity, where `n` is the size of the *list*.

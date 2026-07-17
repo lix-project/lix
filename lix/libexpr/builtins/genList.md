@@ -10,3 +10,5 @@ builtins.genList (x: x * x) 5
 ```
 
 returns the list `[ 0 1 4 9 16 ]`.
+
+Makes `length` calls to `generator`.

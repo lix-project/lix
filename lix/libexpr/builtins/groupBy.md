@@ -18,3 +18,6 @@ evaluates to
 ```nix
 { b = [ "bar" "baz" ]; f = [ "foo" ]; }
 ```
+
+Makes `O(n)` calls to *f* and performs `O(n log n)` additional work, where `n`
+is the size of the input *list*.

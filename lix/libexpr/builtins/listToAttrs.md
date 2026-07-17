@@ -25,3 +25,5 @@ evaluates to
 ```nix
 { foo = 123; bar = 456; }
 ```
+
+Has `O(n log n)` time complexity, where `n` is size of the list.

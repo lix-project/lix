@@ -15,3 +15,5 @@ produces the list `[ 42 77 147 249 483 526 ]`.
 
 This is a stable sort: it preserves the relative order of elements
 deemed equal by the comparator.
+
+Makes `O(n log n)` calls to *comparator*, where `n` is the size of the *list*.

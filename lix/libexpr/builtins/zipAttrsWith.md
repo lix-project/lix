@@ -26,3 +26,5 @@ evaluates to
   b = { name = "b"; values = [ "z" ]; };
 }
 ```
+
+Has `O(n log n)` time complexity, where `n` is the number of attributes across all sets.
