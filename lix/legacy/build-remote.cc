@@ -193,12 +193,23 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
     StorePath drvPath;
     BuilderConnection builder;
     bool used = false;
+    Logger * oldLogger = nullptr;
 
     AcceptedBuild(ref<Store> store, StorePath drvPath, BuilderConnection builder)
         : store(store)
         , drvPath(drvPath)
         , builder(std::move(builder))
     {
+    }
+
+    ~AcceptedBuild()
+    {
+        // revert to previous logger as rpc logger will go away during teardown.
+        // dangling pointers tend to have deleterious effects on program health.
+        if (oldLogger) {
+            std::swap(logger, oldLogger);
+            delete oldLogger;
+        }
     }
 
     kj::Promise<Result<void>> runImpl(RunContext context);
@@ -306,7 +317,7 @@ static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings
 
 kj::Promise<void> Instance::init(InitContext context)
 {
-    try {
+    return RPC_IMPL({
         if (initialized) {
             throw Error("build hook can only be initialized once");
         }
@@ -324,11 +335,7 @@ kj::Promise<void> Instance::init(InitContext context)
         initPlugins();
 
         initialized = true;
-    } catch (...) {
-        rpc::rethrow_as_rpc_error();
-    }
-
-    return kj::READY_NOW;
+    });
 }
 
 kj::Promise<Result<void>> Instance::buildImpl(BuildContext context)
@@ -395,40 +402,32 @@ try {
 }
 
 kj::Promise<void> Instance::build(BuildContext context)
-try {
-    if (used) {
-        throw Error("build hooks can only accept a single job");
-    }
-    used = true; // lock out other rpc calls during processing
-    auto result = co_await buildImpl(context);
-    TRY_AWAIT(logger->flush());
-    used = result.has_value() && context.getResults().getResult().isAccept();
-    result.value();
-} catch (...) {
-    rpc::rethrow_as_rpc_error();
+{
+    return RPC_IMPL({
+        if (used) {
+            throw Error("build hooks can only accept a single job");
+        }
+        used = true; // lock out other rpc calls during processing
+        auto result = co_await buildImpl(context);
+        used = result.has_value() && context.getResults().getResult().isAccept();
+        result.value();
+    });
 }
 
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
-    try {
-        auto oldLogger = logger;
-        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
-        TRY_AWAIT(oldLogger->flush());
-        KJ_DEFER({
-            delete logger;
-            logger = oldLogger;
-        });
-
+    return RPC_IMPL({
         if (used) {
             throw Error("build hooks builds are single-use items");
         }
+        auto oldLogger = logger;
+        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
+        TRY_AWAIT(oldLogger->flush());
         used = true;
+        this->oldLogger = oldLogger;
         auto result = co_await runImpl(context);
-        TRY_AWAIT(logger->flush());
         result.value();
-    } catch (...) {
-        rpc::rethrow_as_rpc_error();
-    }
+    });
 }
 
 kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)

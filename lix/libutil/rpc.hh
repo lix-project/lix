@@ -291,6 +291,27 @@ rewrapV1(kj::Promise<T> && promise, std::source_location loc = std::source_locat
         [loc](kj::Exception && e) -> nix::Result<T> { return result::failure(unwrapErrorV1(e, loc)); }
     );
 }
+
+// we can't use the logger header here because this header is also used from libexec helpers
+kj::Promise<void> flushLogger();
+
+static kj::Promise<void> wrapForRpcV1(auto inner)
+try {
+    std::exception_ptr error;
+    try {
+        LIX_TRY_AWAIT(inner());
+    } catch (...) {
+        error = std::current_exception();
+    }
+    // ignore flush errors as we can't handle them.
+    // TODO maybe terminate the connection instead?
+    co_await flushLogger();
+    if (error) {
+        std::rethrow_exception(error);
+    }
+} catch (...) {
+    rethrowAsErrorV1();
+}
 }
 
 #define LIX_WRAP_RPC_PROMISE_NOEXCEPT(...) (::nix::rpc::detail::rewrapNoexcept(__VA_ARGS__))
@@ -300,6 +321,21 @@ rewrapV1(kj::Promise<T> && promise, std::source_location loc = std::source_locat
 #define LIX_TRY_AWAIT_RPC_NOEXCEPT(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_NOEXCEPT(__VA_ARGS__)))
 // IMPORTANT! Keep the result of this in a variable, or readers will dereference dangling pointers!
 #define LIX_TRY_AWAIT_RPC_V1(...) (LIX_TRY_AWAIT(LIX_WRAP_RPC_PROMISE_V1(__VA_ARGS__)))
+
+#define LIX_RPC_IMPL_V1(...)                                                                  \
+    /* NOLINTBEGIN(cppcoreguidelines-avoid-capturing-lambda-coroutines):                      \
+     * the wrapForRpc functions keep the closure alive for us as needed.                      \
+     */                                                                                       \
+    ::nix::rpc::detail::wrapForRpcV1([context, this]() mutable -> kj::Promise<Result<void>> { \
+        /* NOLINTEND(cppcoreguidelines-avoid-capturing-lambda-coroutines) */                  \
+        try {                                                                                 \
+            (void) (this, context);                                                           \
+            __VA_ARGS__;                                                                      \
+            co_return result::success();                                                      \
+        } catch (...) {                                                                       \
+            co_return result::current_exception();                                            \
+        }                                                                                     \
+    })
 
 [[noreturn]]
 inline void rethrow_as_rpc_error()
@@ -314,5 +350,6 @@ inline void rethrow_as_rpc_error()
 #define TRY_AWAIT_RPC_NOEXCEPT LIX_TRY_AWAIT_RPC_NOEXCEPT
 #define TRY_AWAIT_RPC_V1 LIX_TRY_AWAIT_RPC_V1
 #define TRY_AWAIT_RPC LIX_TRY_AWAIT_RPC_V1
+#define RPC_IMPL LIX_RPC_IMPL_V1
 #endif
 }

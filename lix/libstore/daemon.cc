@@ -27,6 +27,7 @@
 #include <capnp/rpc-twoparty.h>
 #include <cstdint>
 #include <ctime>
+#include <kj/async.h>
 #include <kj/encoding.h>
 #include <kj/exception.h>
 #include <kj/memory.h>
@@ -1052,25 +1053,19 @@ struct RequestStreamImpl final : LegacyStream::Server
     }
 
     kj::Promise<void> feed(FeedContext context) override
-    try {
-        if (error) {
-            std::rethrow_exception(error);
-        }
-        auto bytes = context.getParams().getRaw();
-        TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
-    } catch (...) {
-        onError(std::current_exception());
-        rpc::rethrow_as_rpc_error();
+    {
+        return RPC_IMPL({
+            if (error) {
+                std::rethrow_exception(error);
+            }
+            auto bytes = context.getParams().getRaw();
+            TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
+        });
     }
 
     kj::Promise<void> sync(SyncContext context) override
-    try {
-        TRY_AWAIT(logger->flush());
-        if (error) {
-            std::rethrow_exception(error);
-        }
-    } catch (...) {
-        rpc::rethrow_as_rpc_error();
+    {
+        return kj::READY_NOW;
     }
 };
 

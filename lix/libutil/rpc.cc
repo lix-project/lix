@@ -1,7 +1,9 @@
 #include "libutil/rpc.hh"
 #include "libutil/error.hh"
+#include "libutil/logging.hh"
 #include "libutil/types-rpc.hh"
 #include <exception>
+#include <kj/async.h>
 
 namespace nix::rpc::detail {
 std::exception_ptr unwrapErrorRaw(kj::Exception & e, std::source_location loc)
@@ -31,5 +33,10 @@ void rethrowAsErrorV1()
             kj::Exception(kj::Exception::Type::FAILED, "remote", 0, kj::str(error::v1::encodeLossy(e.info())))
         );
     }
+}
+
+kj::Promise<void> flushLogger()
+{
+    return logger->flush().ignoreResult();
 }
 }
