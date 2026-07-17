@@ -845,11 +845,12 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::AddBuildLog: {
         StorePath path{readString(from)};
         logger->startWork();
-        if (!trusted)
-            throw Error("you are not privileged to add logs");
         auto & logStore = require<LogStore>(*store);
         {
             FramedSource source(from);
+            if (!trusted) {
+                throw Error("you are not privileged to add logs");
+            }
             StringSink sink;
             source.drainInto(sink);
             aio.blockOn(logStore.addBuildLog(path, sink.s));
