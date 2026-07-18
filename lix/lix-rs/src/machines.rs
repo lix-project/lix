@@ -8,6 +8,8 @@ use rootcause::{
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
+use crate::generated::parseBuilderLines;
+
 const MIN_VERSION: u16 = 1;
 const LATEST_VERSION: u16 = 1;
 
@@ -166,7 +168,7 @@ impl Machine {
     }
 }
 
-pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machine>, Report> {
+fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Machine>, Report> {
     let content = if let Some(file_path) = setting.strip_prefix("@") {
         std::fs::read_to_string(file_path).context("while reading external machines file")?
     } else {
@@ -181,13 +183,74 @@ pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machi
         .context("while validating machines")?)
 }
 
+pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machine>, Report> {
+    match get_toml_machines(&setting, &current_system)
+        .context("while parsing machines as TOML machines")
+    {
+        Ok(machines) => Ok(machines),
+        Err(e) => {
+            print_debug!("Trying again with legacy format");
+            parseBuilderLines(setting.as_str(), current_system.as_str())
+                .map_err(|e| report!(e).into_dynamic())
+                .attach(e)
+                .attach(format!("settings.builders: {}", setting))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    mod integration {
+        use crate::machines::*;
+
+        fn gm(machines: &str) -> Result<Vec<Machine>, Report> {
+            get_machines(machines.to_string(), "TEST_ARCH-TEST_OS".to_string())
+        }
+        #[test]
+        fn toml_single_valid() {
+            let machines = gm(r#"
+                [machines.andesite]
+                uri = "ssh://lix@andesite.lix.systems"
+                "#)
+            .unwrap();
+            assert_eq!(machines.len(), 1);
+            assert_eq!(
+                machines.get(0).unwrap().uri.as_str(),
+                "ssh://lix@andesite.lix.systems"
+            );
+        }
+
+        #[test]
+        fn legacy_single_valid() {
+            let machines = gm("ssh://lix@diorite.lix.systems").unwrap();
+            assert_eq!(machines.len(), 1);
+            assert_eq!(
+                machines.get(0).unwrap().uri.as_str(),
+                "ssh://lix@diorite.lix.systems"
+            );
+        }
+
+        #[test]
+        fn both_invalid_shows_both_errors() {
+            let err = gm(r#"
+                    hello world this is a very much invalid file
+                    for both amazingly stupid formats
+                    and i am having a buuuuuunch of fun writing this test file
+                "#)
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("bad machine specification: failed to convert column"));
+            assert!(err.contains("TOML parse error at line 2, column 27"));
+        }
+    }
     mod toml {
         use crate::machines::*;
 
         fn gm(machines: &str) -> Result<Vec<Machine>, Report> {
-            crate::machines::get_machines(machines.to_string(), "TEST_ARCH-TEST_OS".to_string())
+            crate::machines::get_toml_machines(
+                &machines.to_string(),
+                &"TEST_ARCH-TEST_OS".to_string(),
+            )
         }
 
         #[test]
