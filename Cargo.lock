@@ -913,8 +913,7 @@ checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 [[package]]
 name = "zngur"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fc912d12934b4d04aabc52c14db6fc88ae8aa5a47902f27e8759c2de254723f"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
 dependencies = [
  "zngur-generator",
 ]
@@ -922,8 +921,7 @@ dependencies = [
 [[package]]
 name = "zngur-def"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f27e49a62db537cea43a6c122ded7eda99c4ac0ca1d7cfd74f2bf6a6c88712d"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
 dependencies = [
  "indexmap",
  "itertools",
@@ -932,8 +930,7 @@ dependencies = [
 [[package]]
 name = "zngur-generator"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ffad8c6994c477023aba7613bdf17c470003bbd191846d3096e84ffecf86d4c"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
 dependencies = [
  "askama",
  "hex",
@@ -947,8 +944,7 @@ dependencies = [
 [[package]]
 name = "zngur-parser"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d66c1b85ca6eab9576df5de31758cb1f9046b4ce47b25f45dabcb0fc7ef8789"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
 dependencies = [
  "ariadne",
  "chumsky",

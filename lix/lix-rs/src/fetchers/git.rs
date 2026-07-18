@@ -20,6 +20,7 @@ pub enum Kind {
 /// - Object reference of the form
 ///     {target}     {reference}
 ///     where {target} is a commit id and {reference} is mandatory
+#[derive(Debug)]
 pub struct LsRemoteRefLine {
     pub kind: Kind,
     pub target: String,

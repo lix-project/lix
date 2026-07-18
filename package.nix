@@ -335,7 +335,7 @@ stdenv.mkDerivation (finalAttrs: {
         ./lix/lix-rs/src/lib.rs
       ];
     };
-    cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
+    cargoDeps = finalAttrs.cargoDeps;
     cargoBuildFlags = [
       "-p"
       "licxxbridge"
@@ -636,7 +636,12 @@ stdenv.mkDerivation (finalAttrs: {
     NIX_CFLAGS_LINK = "-L${lib.getLib pkgsStatic.gcc.cc}/lib";
   };
 
-  cargoDeps = rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
+  cargoDeps = rustPlatform.importCargoLock {
+    lockFile = ./Cargo.lock;
+    outputHashes = {
+      "zngur-0.10.0" = "sha256-q8mkHbZwrgLF61Esbd9nK9y8GnZqHWzSubY9ERibBEo=";
+    };
+  };
 
   preConfigure = ''
     # Fix up /usr/bin/env shebangs relied on by the build
