@@ -93,7 +93,7 @@ static std::vector<std::string> expandBuilderLines(const std::string & builders)
     return result;
 }
 
-static Machine parseBuilderLine(const std::string & line)
+static Machine parseBuilderLine(const std::string & line, const std::string & thisSystem)
 {
     const auto tokens = tokenizeString<std::vector<std::string>>(line);
 
@@ -141,8 +141,8 @@ static Machine parseBuilderLine(const std::string & line)
         ? storeUri
         : "ssh://" + storeUri;
 
-    auto systemTypes = isSet(1) ? tokenizeString<std::set<std::string>>(tokens[1], ",")
-                                : std::set<std::string>{settings.thisSystem};
+    auto systemTypes =
+        isSet(1) ? tokenizeString<std::set<std::string>>(tokens[1], ",") : std::set<std::string>{thisSystem};
     auto sshKey = isSet(2) ? tokens[2] : "";
     auto maxJobs = isSet(3) ? parseUnsignedIntField(3) : 1U;
     auto speedFactor = isSet(4) ? parseFloatField(4) : 1.0f;
@@ -171,17 +171,19 @@ static Machine parseBuilderLine(const std::string & line)
     };
 }
 
-static Machines parseBuilderLines(const std::vector<std::string> & builders)
+static Machines parseBuilderLines(const std::vector<std::string> & builders, const std::string & thisSystem)
 {
     Machines result;
-    std::transform(builders.begin(), builders.end(), std::back_inserter(result), parseBuilderLine);
+    for (auto & builderLine : builders) {
+        result.push_back(parseBuilderLine(builderLine, thisSystem));
+    }
     return result;
 }
 
-Machines getMachines()
+Machines getMachines(const std::string & builders, const std::string & thisSystem)
 {
-    const auto builderLines = expandBuilderLines(settings.builders);
-    return parseBuilderLines(builderLines);
+    const auto builderLines = expandBuilderLines(builders);
+    return parseBuilderLines(builderLines, thisSystem);
 }
 
 }
@@ -256,7 +258,7 @@ static toml::result<float, std::string> getSpeedFactor(const toml::value & data)
 }
 
 static toml::result<Machine, std::vector<std::string>>
-parseMachine(const std::string name, const toml::value & data)
+parseMachine(const std::string name, const toml::value & data, const std::string & thisSystem)
 {
     std::vector<std::string> errs;
 
@@ -269,9 +271,8 @@ parseMachine(const std::string name, const toml::value & data)
 
     // parsing
     auto storeUri = parse<std::string>(data, "uri");
-    auto systemTypes = parse<std::vector<std::string>>(
-        data, "system-types", std::vector<std::string>{settings.thisSystem}
-    );
+    auto systemTypes =
+        parse<std::vector<std::string>>(data, "system-types", std::vector<std::string>{thisSystem});
     auto sshKey = parse<std::string>(data, "ssh-key", "");
     auto maxJobs = parse<int>(data, "jobs", 1U);
     auto speedFactor = getSpeedFactor(data);
@@ -345,7 +346,8 @@ parseMachine(const std::string name, const toml::value & data)
     });
 }
 
-static toml::result<Machines, std::vector<std::string>> parseToml(const toml::value & data)
+static toml::result<Machines, std::vector<std::string>>
+parseToml(const toml::value & data, const std::string & thisSystem)
 {
     auto const array_name = "machines";
     std::vector<std::string> parserErrors;
@@ -399,7 +401,7 @@ static toml::result<Machines, std::vector<std::string>> parseToml(const toml::va
     }
 
     for (const auto & [name, machine] : data.at(array_name).as_table()) {
-        auto const res = parseMachine(name, machine);
+        auto const res = parseMachine(name, machine, thisSystem);
         if (res.is_err()) {
             auto err = res.as_err();
             parserErrors.push_back(fmt("for machine %s:", name));
@@ -424,18 +426,17 @@ static toml::result<Machines, std::vector<std::string>> parseToml(const toml::va
     return toml::success(machines);
 }
 
-static std::optional<Machines> getMachines()
+static std::optional<Machines> getMachines(const std::string & builders, const std::string & thisSystem)
 {
     toml::value data;
-    auto buildersStr = settings.builders.get();
     try {
-        if (buildersStr.size() > 0 && buildersStr.at(0) == '@') {
-            data = toml::parse(buildersStr.substr(1));
+        if (builders.size() > 0 && builders.at(0) == '@') {
+            data = toml::parse(builders.substr(1));
         } else {
             data = toml::parse_str(settings.builders);
         }
     } catch (toml::syntax_error const & e) { // NOLINT(lix-foreign-exceptions)
-        if (toLower(buildersStr).contains("toml") || buildersStr.contains("\"")) {
+        if (toLower(builders).contains("toml") || builders.contains("\"")) {
             // Yes, we are sure this is a TOML and no this shitty legacy format
             // so we can safely throw the syntax error here
             throw UsageError(fmt("invalid Machines TOML syntax: \n%s", e.what()));
@@ -446,7 +447,7 @@ static std::optional<Machines> getMachines()
         // which requires **silently ignoring** invalid files
         return {};
     }
-    auto const fromToml = parseToml(data);
+    auto const fromToml = parseToml(data, thisSystem);
     if (fromToml.is_ok()) {
         return fromToml.unwrap();
     }
@@ -462,12 +463,14 @@ static std::optional<Machines> getMachines()
 
 Machines getMachines()
 {
-    auto const toml_result = machines_toml_parsing::getMachines();
+    auto const builders = settings.builders;
+    auto const thisSystem = settings.thisSystem;
+    auto const toml_result = machines_toml_parsing::getMachines(builders, thisSystem);
     if (toml_result.has_value()) {
         return toml_result.value();
     }
     debug("Trying again with legacy format");
-    return machines_legacy_parsing::getMachines();
+    return machines_legacy_parsing::getMachines(builders, thisSystem);
 }
 
 }
