@@ -5,6 +5,7 @@ lix_rs_files += files(
   'src/fetchers/mod.rs',
   'src/ffi_test.rs',
   'src/lib.rs',
+  'src/machines.rs',
   'src/repl.rs',
   # keep-sorted end
 )

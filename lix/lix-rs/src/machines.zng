@@ -1,0 +1,60 @@
+use ::std::string::String as String;
+use ::std::collections::hash_set::HashSet as HashSet;
+use ::std::result::Result as Result;
+use ::std::vec::Vec as Vec;
+
+mod crate::machines {
+	type Machine {
+		#layout_conservative(size = 256, align = 8);
+		field name (offset=auto, type=String);
+		field uri (offset=auto, type=String);
+		field system_types (offset=auto, type=HashSet<String>);
+		field ssh_key (offset=auto, type=String);
+		field max_jobs (offset=auto, type=u32);
+		field speed_factor (offset=auto, type=f32);
+		field supported_features (offset=auto, type=HashSet<String>);
+		field mandatory_features (offset=auto, type=HashSet<String>);
+		field ssh_public_host_key (offset=auto, type=String);
+		field enabled (offset=auto, type=bool);
+
+		fn system_supported(&self, &String) -> bool;
+		fn all_supported(&self, &HashSet<String>) -> bool;
+		fn mandatory_met(&self, &HashSet<String>) -> bool;
+		fn is_eligible(&self, &String, &HashSet<String>) -> bool;
+
+		fn clone(&self) -> Machine use ::std::clone::Clone;
+
+		fn disable(&mut self);
+		fn format_for_error(&self) -> String;
+
+	}
+
+	fn get_machines(String, String) -> ::std::result::Result<Vec<Machine>, ::rootcause::Report>;
+
+	type ::std::result::Result<Vec<Machine>, ::rootcause::Report> {
+		#layout_conservative(size = 24, align = 8);
+	}
+
+
+	type ::std::vec::Vec<Machine> {
+		#layout_conservative(size = 24, align = 8);
+	}
+
+	type ::std::vec::IntoIter<Machine> {}
+
+	type [Machine] {}
+
+	type ::std::slice::Iter<Machine> {}
+	type ::std::slice::IterMut<Machine> {}
+
+	type ::std::option::Option<Machine> {
+		#layout_conservative(size = 256, align = 8);
+	}
+
+	type ::std::option::Option<&Machine> {}
+	type ::std::option::Option<&mut Machine> {}
+
+	type ::std::result::Result<Vec<Machine>, String> {
+		#layout_conservative(size = 32, align = 8);
+	}
+}

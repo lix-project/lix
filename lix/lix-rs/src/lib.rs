@@ -147,4 +147,5 @@ pub(crate) mod log {
 
 pub mod fetchers;
 mod ffi_test;
+mod machines;
 mod repl;

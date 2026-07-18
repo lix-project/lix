@@ -60,6 +60,13 @@ mod ::std::option {
     }
     type Option<&u8> {}
     type Option<&mut u8> {}
+
+    type Option<String> {
+        #layout_conservative(size = 24, align = 8);
+    }
+
+    type Option<&String> {}
+    type Option<&mut String> {}
 }
 
 mod ::std::result {
@@ -71,6 +78,7 @@ mod ::std::result {
 
         fn unwrap(self) -> T;
         fn unwrap_err(self) -> E;
+        fn is_ok(&self) -> bool;
     }
 
     type Result<(), Box<dyn Error>> {
@@ -117,6 +125,7 @@ mod ::std::vec {
 
         fn new() -> Vec<T>;
         fn push(&mut self, T);
+        fn get(&self, usize) -> ::std::option::Option<&T> deref [T];
         fn len(&self) -> usize;
         fn as_ref(&self) -> &[T];
         fn as_mut(&mut self) -> &mut [T];
@@ -134,4 +143,24 @@ mod ::std::vec {
 
     type Vec<u8> {}
     type IntoIter<u8> {}
+}
+
+mod ::std::collections::hash_set {
+    type<T> HashSet<T> {
+        fn new() -> HashSet<T>;
+        fn insert(&mut self, T) -> bool;
+        fn len(&self) -> usize;
+        fn iter(&self) -> Iter<T>;
+    }
+
+    type HashSet<String> {
+        #layout_conservative(size = 48, align = 8);
+    }
+
+    type<T> Iter<T> {
+        #layout_conservative(size = 40, align = 8);
+        fn next(&mut self) -> ::std::option::Option<&T>;
+    }
+
+    type Iter<String> {}
 }

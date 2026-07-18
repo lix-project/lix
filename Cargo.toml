@@ -10,12 +10,15 @@ members = [
 edition = "2021"
 
 [workspace.dependencies]
+base64 = "0.22.1"
 clap = "4"
 regex = "1.12.4"
 rootcause = "0.13.0"
 rustyline = "18"
 rustyline-derive = "0.12"
 syn = "2.0"
+serde = { version = "1.0", features = ["derive"]}
+toml = "1.1.2"
 # post-0.10 with some very nice features and fixes
 zngur = { git = "https://github.com/hkalbasi/zngur.git", rev = "d99315122cfc3d3337159197c304e66009675247" }
 pkg-config = "0.3.33"

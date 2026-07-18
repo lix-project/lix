@@ -180,7 +180,7 @@ static Machines parseBuilderLines(const std::vector<std::string> & builders, con
     return result;
 }
 
-Machines getMachines(const std::string & builders, const std::string & thisSystem)
+static Machines getMachines(const std::string & builders, const std::string & thisSystem)
 {
     const auto builderLines = expandBuilderLines(builders);
     return parseBuilderLines(builderLines, thisSystem);

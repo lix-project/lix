@@ -11,11 +11,14 @@ crate-type = ["staticlib"]
 default = []
 
 [dependencies]
+base64.workspace = true
 lix-doc.path = "../lix-doc"
 regex.workspace = true
 rootcause.workspace=true
 rustyline.workspace = true
 rustyline-derive.workspace = true
+serde.workspace = true
+toml.workspace = true
 
 [build-dependencies]
 zngur.workspace = true

@@ -6,6 +6,7 @@
 
 type bool {
     #layout(size = 1, align = 1);
+    wellknown_traits(Copy);
 }
 
 type<T> [T] {
@@ -26,4 +27,6 @@ type str {
     fn as_bytes(&self) -> &[u8];
     fn as_ptr(&self) -> *const u8;
     fn len(&self) -> usize;
+    fn starts_with(&self, &str) -> bool;
+    fn is_empty(&self) -> bool;
 }

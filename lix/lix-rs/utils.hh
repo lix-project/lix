@@ -326,3 +326,4 @@ LIX_DECLARE_EQ_OPS(rust::lix::ffi_test)
 
 LIX_DECLARE_ITERATORS(rust::std::slice)
 LIX_DECLARE_ITERATORS(rust::std::vec)
+LIX_DECLARE_ITERATORS(rust::std::collections::hash_set)
