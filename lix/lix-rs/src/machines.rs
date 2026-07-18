@@ -447,4 +447,173 @@ mod tests {
             assert!(err.contains("No such file or directory"));
         }
     }
+    mod legacy {
+        use crate::generated::parseBuilderLines;
+        use crate::machines::Machine;
+        use std::collections::HashSet;
+
+        fn parse(line: &str) -> Result<Vec<Machine>, String> {
+            parseBuilderLines(line, "TEST_ARCH-TEST_OS")
+        }
+
+        #[test]
+        fn empty_builders() {
+            let machines = parse("").unwrap();
+            assert_eq!(machines, vec![]);
+        }
+
+        #[test]
+        fn uri_only() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl").unwrap();
+            assert_eq!(machines.len(), 1);
+            let m = machines.get(0).unwrap();
+            assert_eq!(m.uri, "ssh://nix@scratchy.labs.cs.uu.nl".to_string());
+            assert_eq!(
+                m.system_types,
+                HashSet::from(["TEST_ARCH-TEST_OS".to_string()])
+            );
+            assert_eq!(m.ssh_key, "".to_string());
+            assert_eq!(m.max_jobs, 1);
+            assert_eq!(m.speed_factor, 1.0);
+            assert_eq!(m.supported_features.len(), 0);
+            assert_eq!(m.mandatory_features.len(), 0);
+            assert_eq!(m.ssh_public_host_key, "".to_string());
+        }
+
+        #[test]
+        fn defaults() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl - - - - - - -").unwrap();
+            assert_eq!(machines.len(), 1);
+            let m = machines.get(0).unwrap();
+            assert_eq!(m.uri, "ssh://nix@scratchy.labs.cs.uu.nl".to_string());
+            assert_eq!(
+                m.system_types,
+                HashSet::from(["TEST_ARCH-TEST_OS".to_string()])
+            );
+            assert_eq!(m.ssh_key, "".to_string());
+            assert_eq!(m.max_jobs, 1);
+            assert_eq!(m.speed_factor, 1.0);
+            assert_eq!(m.supported_features.len(), 0);
+            assert_eq!(m.mandatory_features.len(), 0);
+            assert_eq!(m.ssh_public_host_key, "".to_string());
+        }
+
+        #[test]
+        fn newline_sep() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl\nnix@itchy.labs.cs.uu.nl").unwrap();
+            assert_eq!(machines.len(), 2);
+            let uris = machines.iter().map(|m| m.uri.as_str()).collect::<Vec<_>>();
+            assert!(uris.contains(&"ssh://nix@scratchy.labs.cs.uu.nl"));
+            assert!(uris.contains(&"ssh://nix@itchy.labs.cs.uu.nl"));
+        }
+
+        #[test]
+        fn semicolon_sep() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl ; nix@itchy.labs.cs.uu.nl").unwrap();
+            assert_eq!(machines.len(), 2);
+            let uris = machines.iter().map(|m| m.uri.as_str()).collect::<Vec<_>>();
+            assert!(uris.contains(&"ssh://nix@scratchy.labs.cs.uu.nl"));
+            assert!(uris.contains(&"ssh://nix@itchy.labs.cs.uu.nl"));
+        }
+
+        #[test]
+        fn complete_builder() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl     i686-linux      /home/nix/.ssh/id_scratchy_auto        8 3 kvm benchmark SSH+HOST+PUBLIC+KEY+BASE64+ENCODED==").unwrap();
+            assert_eq!(machines.len(), 1);
+            let m = machines.get(0).unwrap();
+            assert_eq!(m.uri.as_str(), "ssh://nix@scratchy.labs.cs.uu.nl");
+            assert_eq!(m.system_types, HashSet::from(["i686-linux".to_string()]));
+            assert_eq!(m.ssh_key, "/home/nix/.ssh/id_scratchy_auto".to_string());
+            assert_eq!(m.max_jobs, 8);
+            assert_eq!(m.speed_factor, 3.0);
+            assert_eq!(m.supported_features, HashSet::from(["kvm".to_string()]));
+            assert_eq!(
+                m.mandatory_features,
+                HashSet::from(["benchmark".to_string()])
+            );
+            assert_eq!(
+                m.ssh_public_host_key.as_str(),
+                "SSH+HOST+PUBLIC+KEY+BASE64+ENCODED=="
+            );
+        }
+
+        #[test]
+        fn complete_builder_tab_column() {
+            let machines = parse("nix@scratchy.labs.cs.uu.nl\ti686-linux\t/home/nix/.ssh/id_scratchy_auto\t8\t3\tkvm\tbenchmark\tSSH+HOST+PUBLIC+KEY+BASE64+ENCODED==").unwrap();
+            assert_eq!(machines.len(), 1);
+            let m = machines.get(0).unwrap();
+            assert_eq!(m.uri.as_str(), "ssh://nix@scratchy.labs.cs.uu.nl");
+            assert_eq!(m.system_types, HashSet::from(["i686-linux".to_string()]));
+            assert_eq!(m.ssh_key, "/home/nix/.ssh/id_scratchy_auto".to_string());
+            assert_eq!(m.max_jobs, 8);
+            assert_eq!(m.speed_factor, 3.0);
+            assert_eq!(m.supported_features, HashSet::from(["kvm".to_string()]));
+            assert_eq!(
+                m.mandatory_features,
+                HashSet::from(["benchmark".to_string()])
+            );
+            assert_eq!(
+                m.ssh_public_host_key.as_str(),
+                "SSH+HOST+PUBLIC+KEY+BASE64+ENCODED=="
+            );
+        }
+
+        #[test]
+        fn multi_options() {
+            let machines =
+                parse("nix@scratchy.labs.cs.uu.nl Arch1,Arch2 - - - SF1,SF2 MF1,MF2").unwrap();
+            assert_eq!(machines.len(), 1);
+            let m = machines.get(0).unwrap();
+            assert_eq!(m.uri.as_str(), "ssh://nix@scratchy.labs.cs.uu.nl");
+            assert_eq!(
+                m.system_types,
+                HashSet::from(["Arch1".to_string(), "Arch2".to_string()])
+            );
+            assert_eq!(
+                m.supported_features,
+                HashSet::from(["SF1".to_string(), "SF2".to_string()])
+            );
+            assert_eq!(
+                m.mandatory_features,
+                HashSet::from(["MF1".to_string(), "MF2".to_string()])
+            );
+        }
+
+        #[test]
+        fn incorrect_formatting() {
+            let err = parse("nix@scratchy.labs.cs.uu.nl - - eight").unwrap_err();
+            assert!(err.contains("FormatError"));
+            assert!(err.contains("failed to convert column"));
+            assert!(err.contains("eight"));
+            assert!(err.contains("to 'unsigned int'"));
+            let err = parse("nix@scratchy.labs.cs.uu.nl - - -1").unwrap_err();
+            assert!(err.contains("FormatError"));
+            assert!(err.contains("failed to convert column"));
+            assert!(err.contains("-1"));
+            assert!(err.contains("to 'unsigned int'"));
+            let err = parse("nix@scratchy.labs.cs.uu.nl - - 8 three").unwrap_err();
+            assert!(err.contains("FormatError"));
+            assert!(err.contains("failed to convert column"));
+            assert!(err.contains("three"));
+            assert!(err.contains("to 'float'"));
+            let err = parse("nix@scratchy.labs.cs.uu.nl - - 8 -3").unwrap_err();
+            assert!(err.contains("UsageError"));
+            assert!(err.contains("speed factor must be >= 0"));
+            let err = parse("nix@scratchy.labs.cs.uu.nl - - 8 3 - - BAD_BASE64").unwrap_err();
+            assert!(err.contains("FormatError"));
+            assert!(err.contains("is not valid base64"));
+        }
+
+        #[test]
+        fn empty_file_ref() {
+            let machines = parse("@/dev/null").unwrap();
+            assert_eq!(machines.len(), 0);
+        }
+
+        #[test]
+        fn bad_file() {
+            let machines = parse("@/this/does/not/exist/at/all").unwrap();
+            assert_eq!(machines.len(), 0);
+        }
+    }
 }
