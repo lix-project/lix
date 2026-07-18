@@ -80,7 +80,7 @@ public:
     kj::Promise<Result<box_ptr<AsyncInputStream>>>
     narFromPath(const StorePath & path, const Activity * context) override
     {
-        return LocalFSStore::narFromPath(path, context);
+        return RemoteStore::narFromPath(path, context);
     }
 
     kj::Promise<Result<void>> repairPath(const StorePath & path) override
