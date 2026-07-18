@@ -14,70 +14,39 @@
 
 namespace nix {
 
-bool Machine::systemSupported(const std::string & system) const
-{
-    return system == "builtin" || (systemTypes.count(system) > 0);
-}
-
-bool Machine::allSupported(const std::set<std::string> & features) const
-{
-    return std::all_of(features.begin(), features.end(),
-        [&](const std::string & feature) {
-            return supportedFeatures.count(feature) ||
-                mandatoryFeatures.count(feature);
-        });
-}
-
-bool Machine::mandatoryMet(const std::set<std::string> & features) const
-{
-    return std::all_of(mandatoryFeatures.begin(), mandatoryFeatures.end(),
-        [&](const std::string & feature) {
-            return features.count(feature);
-        });
-}
-
-kj::Promise<Result<ref<Store>>> Machine::openStore() const
+kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m)
 try {
     StoreConfig::Params storeParams;
+    auto storeUri = m.uri.as_str();
 
-    if (storeUri.starts_with("ssh://") || storeUri.starts_with("ssh-ng://")) {
-        if (sshKey != "")
-            storeParams["ssh-key"] = sshKey;
-        if (sshPublicHostKey != "")
-            storeParams["base64-ssh-public-host-key"] = sshPublicHostKey;
+    if (storeUri.starts_with("ssh://"_rs) || storeUri.starts_with("ssh-ng://"_rs)) {
+        auto sshKey = m.ssh_key.as_str();
+        if (sshKey.is_empty()) {
+            storeParams["ssh-key"] = to_std_string(sshKey);
+        }
+        auto sshPublicHostKey = m.ssh_public_host_key.as_str();
+        if (sshPublicHostKey.is_empty()) {
+            storeParams["base64-ssh-public-host-key"] = to_std_string(sshPublicHostKey);
+        }
     }
 
     {
         auto & fs = storeParams["system-features"];
-        auto append = [&](auto feats) {
-            for (auto & f : feats) {
-                if (fs.size() > 0) fs += ' ';
-                fs += f;
+        auto append = [&](auto & feats) {
+            for (auto & f : feats.iter()) {
+                if (fs.size() > 0) {
+                    fs += ' ';
+                }
+                fs += to_std_string(f.as_str());
             }
         };
-        append(supportedFeatures);
-        append(mandatoryFeatures);
+        append(m.supported_features);
+        append(m.mandatory_features);
     }
 
-    co_return TRY_AWAIT(nix::openStore(storeUri, storeParams));
+    co_return TRY_AWAIT(nix::openStore(to_std_string(storeUri), storeParams));
 } catch (...) {
     co_return result::current_exception();
-}
-
-rust::lix::machines::Machine Machine::to_rust() const
-{
-    return rust::lix::machines::Machine::new_(
-        rust::to_string(storeUri),
-        rust::to_string(storeUri),
-        rust::to_hash_set(systemTypes),
-        rust::to_string(sshKey),
-        maxJobs,
-        speedFactor,
-        rust::to_hash_set(supportedFeatures),
-        rust::to_hash_set(mandatoryFeatures),
-        rust::to_string(sshPublicHostKey),
-        enabled
-    );
 }
 
 namespace machines_legacy_parsing {
@@ -176,24 +145,25 @@ static Machine parseBuilderLine(const std::string & line, const std::string & th
         throw UsageError("speed factor must be >= 0");
     }
 
-    return {
-        storeUri,
-        storeUri,
-        systemTypes,
-        sshKey,
+    return Machine::new_(
+        rust::to_string(storeUri),
+        rust::to_string(storeUri),
+        rust::to_hash_set(systemTypes),
+        rust::to_string(sshKey),
         maxJobs,
         speedFactor,
-        supportedFeatures,
-        mandatoryFeatures,
-        sshPublicHostKey
-    };
+        rust::to_hash_set(supportedFeatures),
+        rust::to_hash_set(mandatoryFeatures),
+        rust::to_string(sshPublicHostKey),
+        true
+    );
 }
 
 static Machines parseBuilderLines(const std::vector<std::string> & builders, const std::string & thisSystem)
 {
-    Machines result;
+    Machines result = Machines::new_();
     for (auto & builderLine : builders) {
-        result.push_back(parseBuilderLine(builderLine, thisSystem));
+        result.push(parseBuilderLine(builderLine, thisSystem));
     }
     return result;
 }
@@ -206,289 +176,19 @@ static Machines getMachines(const std::string & builders, const std::string & th
 
 }
 
-namespace machines_toml_parsing {
-
-static constexpr int MIN_VERSION = 1;
-static constexpr int LATEST_VERSION = 1;
-// Toml format:
-// [[machines.andesite]]
-// uri = "..."
-//
-// [[machines.diorite]]
-// ...
-
-template<typename T>
-static toml::result<T, std::string> parse(const toml::value & data, const std::string & key)
-{
-    try {
-        return toml::success(toml::get<T>(data.at(key)));
-    } catch (toml::type_error & e) { // NOLINT(lix-foreign-exceptions)
-        return toml::failure<std::string>({e.what()});
-    } catch (std::out_of_range & _) { // NOLINT(lix-foreign-exceptions)
-        const auto ei =
-            toml::make_error_info(fmt("%s must be present", key), data, "but was not set");
-        return toml::failure(toml::format_error(ei));
-    }
-}
-
-template<typename T>
-static toml::result<T, std::string>
-parse(const toml::value & data, const std::string & key, T defaultValue)
-{
-    if (!data.contains(key)) {
-        return toml::success(defaultValue);
-    }
-    try {
-        return toml::success(toml::get<T>(data.at(key)));
-    } catch (toml::type_error & e) { // NOLINT(lix-foreign-exceptions)
-        // invalid value
-        return toml::failure<std::string>({e.what()});
-    }
-}
-
-static const std::set<std::string> EXPECTED_KEYS = {
-    "uri",
-    "system-types",
-    "ssh-key",
-    "jobs",
-    "speed-factor",
-    "supported-features",
-    "mandatory-features",
-    "ssh-public-host-key",
-    "enable",
-};
-
-static toml::result<float, std::string> getSpeedFactor(const toml::value & data)
-{
-    if (data.contains("speed-factor")) {
-        auto sf = data.at("speed-factor");
-        if (sf.is_integer()) {
-            return toml::success(static_cast<float>(sf.as_integer()));
-        }
-        if (sf.is_floating()) {
-            return toml::success(static_cast<float>(sf.as_floating()));
-        }
-        return toml::failure(toml::format_error(toml::make_error_info(
-            "bad_cast to floating for `speed-factor`", sf, "Was neither an integer nor a float"
-        )));
-    }
-    return toml::success(1.0f);
-}
-
-static toml::result<Machine, std::vector<std::string>>
-parseMachine(const std::string name, const toml::value & data, const std::string & thisSystem)
-{
-    std::vector<std::string> errs;
-
-    if (!data.is_table()) {
-        errs.push_back(toml::format_error(toml::make_error_info(
-            "Each machine must be a table", data, "This should be a table. Did you mean `.uri = `?"
-        )));
-        return toml::failure(errs);
-    }
-
-    // parsing
-    auto storeUri = parse<std::string>(data, "uri");
-    auto systemTypes =
-        parse<std::vector<std::string>>(data, "system-types", std::vector<std::string>{thisSystem});
-    auto sshKey = parse<std::string>(data, "ssh-key", "");
-    auto maxJobs = parse<int>(data, "jobs", 1U);
-    auto speedFactor = getSpeedFactor(data);
-    auto supportedFeatures =
-        parse<std::vector<std::string>>(data, "supported-features", std::vector<std::string>{});
-    auto mandatoryFeatures =
-        parse<std::vector<std::string>>(data, "mandatory-features", std::vector<std::string>{});
-    auto sshPublicHostKey = parse<std::string>(data, "ssh-public-host-key", "");
-
-    // parsing validation
-    if (storeUri.is_err()) {
-        errs.push_back(storeUri.as_err());
-    }
-    if (systemTypes.is_err()) {
-        errs.push_back(systemTypes.as_err());
-    }
-    if (sshKey.is_err()) {
-        errs.push_back(sshKey.as_err());
-    }
-    if (maxJobs.is_err()) {
-        errs.push_back(maxJobs.as_err());
-    }
-    if (speedFactor.is_err()) {
-        errs.push_back(speedFactor.as_err());
-    }
-    if (supportedFeatures.is_err()) {
-        errs.push_back(supportedFeatures.as_err());
-    }
-    if (mandatoryFeatures.is_err()) {
-        errs.push_back(mandatoryFeatures.as_err());
-    }
-    if (sshPublicHostKey.is_err()) {
-        errs.push_back(sshPublicHostKey.as_err());
-    }
-
-    // value validation
-    if (maxJobs.is_ok() && maxJobs.as_ok() < 0) {
-        auto ei =
-            toml::make_error_info("jobs must be >= 0", data.at("jobs"), "but got negative value");
-        errs.push_back(toml::format_error(ei));
-    }
-
-    if (speedFactor.is_ok() && speedFactor.as_ok() < 0.0) {
-        auto ei = toml::make_error_info(
-            "speed factor must be >= 0", data.at("speed-factor"), "but got negative value"
-        );
-        errs.push_back(toml::format_error(ei));
-    }
-
-    for (const auto & [key, _] : data.as_table()) {
-        if (!EXPECTED_KEYS.contains(key)) {
-            errs.push_back(toml::format_error(toml::make_error_info(
-                fmt("unexpected key `%s`", key), data.at(key), "should not be present"
-            )));
-        }
-    }
-
-    if (!errs.empty()) {
-        return toml::failure(errs);
-    }
-    return toml::success<Machine>({
-        name,
-        storeUri.unwrap(),
-        std::set(systemTypes.unwrap().begin(), systemTypes.unwrap().end()),
-        sshKey.unwrap(),
-        static_cast<unsigned>(maxJobs.unwrap()),
-        speedFactor.unwrap(),
-        std::set(supportedFeatures.unwrap().begin(), supportedFeatures.unwrap().end()),
-        std::set(mandatoryFeatures.unwrap().begin(), mandatoryFeatures.unwrap().end()),
-        base64Encode(sshPublicHostKey.unwrap()),
-    });
-}
-
-static toml::result<Machines, std::vector<std::string>>
-parseToml(const toml::value & data, const std::string & thisSystem)
-{
-    auto const array_name = "machines";
-    std::vector<std::string> parserErrors;
-    Machines machines;
-    // Empty config
-    if (data.size() == 0) {
-        return toml::success<Machines>({});
-    }
-    if (!data.is_table()) {
-        parserErrors.push_back(
-            "Top level must be a table. This should never throw as this is required by the toml "
-            "SPEC"
-        );
-        return toml::failure(parserErrors);
-    }
-
-    if (auto config_version = parse<int>(data, "version", LATEST_VERSION); config_version.is_err())
-    {
-        parserErrors.push_back(config_version.as_err());
-    } else if (config_version.as_ok() < MIN_VERSION || config_version.as_ok() > LATEST_VERSION) {
-        parserErrors.push_back(
-            fmt("Unable to parse Machines of version %d, only versions between %d and %d are "
-                "supported.",
-                config_version.as_ok(),
-                MIN_VERSION,
-                LATEST_VERSION)
-        );
-    }
-    if (!parserErrors.empty()) {
-        return toml::failure(parserErrors);
-    }
-
-    auto & tbl = data.as_table();
-    std::string unexpected_keys;
-    for (auto it = tbl.begin(); it != tbl.end(); ++it) {
-        if (it->first == array_name || it->first == "version") {
-            // expected keys
-            continue;
-        }
-        unexpected_keys += ", " + it->first;
-    }
-    if (unexpected_keys.size()) {
-        parserErrors.push_back(fmt("unexpected keys found: %s", unexpected_keys.erase(0, 2)));
-    }
-
-    if (!data.at(array_name).is_table()) {
-        parserErrors.push_back(
-            fmt("Expected key `%s` to be a table of name -> machine configurations", array_name)
-        );
-        return toml::failure(parserErrors);
-    }
-
-    for (const auto & [name, machine] : data.at(array_name).as_table()) {
-        auto const res = parseMachine(name, machine, thisSystem);
-        if (res.is_err()) {
-            auto err = res.as_err();
-            parserErrors.push_back(fmt("for machine %s:", name));
-            parserErrors.insert(parserErrors.end(), err.begin(), err.end());
-            continue;
-        }
-        auto enable = parse<bool>(machine, "enable", true);
-        if (enable.is_ok()) {
-            if (enable.unwrap()) {
-                // Check if it hasn't been statically disabled
-                // But still throw parsing errors if it was
-                machines.push_back(res.unwrap());
-            }
-        } else {
-            parserErrors.push_back(enable.as_err());
-        }
-    }
-
-    if (!parserErrors.empty()) {
-        return toml::failure(parserErrors);
-    }
-    return toml::success(machines);
-}
-
-static std::optional<Machines> getMachines(const std::string & builders, const std::string & thisSystem)
-{
-    toml::value data;
-    try {
-        if (builders.size() > 0 && builders.at(0) == '@') {
-            data = toml::parse(builders.substr(1));
-        } else {
-            data = toml::parse_str(settings.builders);
-        }
-    } catch (toml::syntax_error const & e) { // NOLINT(lix-foreign-exceptions)
-        if (toLower(builders).contains("toml") || builders.contains("\"")) {
-            // Yes, we are sure this is a TOML and no this shitty legacy format
-            // so we can safely throw the syntax error here
-            throw UsageError(fmt("invalid Machines TOML syntax: \n%s", e.what()));
-        }
-        return {};
-    } catch (toml::file_io_error const & _) { // NOLINT(lix-foreign-exceptions)
-        // sadly we have to do this otherwise we break the old format,
-        // which requires **silently ignoring** invalid files
-        return {};
-    }
-    auto const fromToml = parseToml(data, thisSystem);
-    if (fromToml.is_ok()) {
-        return fromToml.unwrap();
-    }
-
-    auto const & errs = fromToml.as_err();
-    std::string msg = "invalid Machines TOML:\n";
-    msg += concatStringsSep("\n", errs);
-
-    throw UsageError(msg);
-}
-
-}
-
 Machines getMachines()
 {
     auto const builders = settings.builders;
     auto const thisSystem = settings.thisSystem;
-    auto const toml_result = machines_toml_parsing::getMachines(builders, thisSystem);
-    if (toml_result.has_value()) {
-        return toml_result.value();
-    }
-    debug("Trying again with legacy format");
-    return machines_legacy_parsing::getMachines(builders, thisSystem);
+
+    auto machinesResult =
+        rust::lix::machines::get_machines(rust::to_string(builders.get()), rust::to_string(thisSystem.get()));
+
+    return match_result(
+        std::move(machinesResult),
+        [](auto machines) { return machines; },
+        [](auto err) -> Machines { throw UsageError(to_std_string(err.to_string())); }
+    );
 }
 
 }
@@ -499,16 +199,11 @@ namespace exported_functions {
 Result<Vec<lix::machines::Machine>, String> parseBuilderLines(Ref<Str> setting, Ref<Str> thisSystem)
 {
     using res_t = Result<Vec<lix::machines::Machine>, String>;
-    auto res = Vec<lix::machines::Machine>::new_();
     auto builders = to_std_string(setting);
     auto thisSys = to_std_string(thisSystem);
 
     try {
-        auto machines = nix::machines_legacy_parsing::getMachines(builders, thisSys);
-        for (auto & m : machines) {
-            res.push(m.to_rust());
-        }
-        return res_t::Ok(::std::move(res));
+        return res_t::Ok(nix::machines_legacy_parsing::getMachines(builders, thisSys));
     } catch (nix::FormatError & e) {
         return res_t::Err(to_string(nix::fmt("FormatError: %s", e.what())));
     } catch (nix::UsageError & e) {

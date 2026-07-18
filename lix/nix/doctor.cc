@@ -17,6 +17,7 @@
 #include "lix/libutil/compile-time-features.hh"
 #include "lix/libutil/users.hh"
 #include "lix/libstore/profiles.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "doctor.hh"
 
 namespace nix {
@@ -300,7 +301,7 @@ struct CmdDoctor : StoreCommand
             return checkFail(ss.str());
         }
 
-        auto machineCnt = machines.size();
+        auto machineCnt = machines.len();
         if (machineCnt == 0) {
             checkInfo("no remote builders found");
             return true;
@@ -309,10 +310,10 @@ struct CmdDoctor : StoreCommand
         bool success = true;
         checkInfo(fmt("%d remote builder(s) configured", machineCnt));
         if (checkRemote) {
-            for (auto m : machines) {
-                checkInfo(fmt("attempting connection to %s", m.name));
+            for (auto & m : machines.into_iter()) {
+                checkInfo(fmt("attempting connection to %s", to_std_string(m.name.as_str())));
                 try {
-                    auto store = aio().blockOn(m.openStore());
+                    auto store = aio().blockOn(openStore(m));
                     success &= runPerStore(store);
                 } catch (nix::Error & e) {
                     success &= checkFail(fmt("connection failed: %s", e.what()));

@@ -36,6 +36,8 @@
 #include "lix/libutil/thread-name.hh"
 #include "lix/libstore/platform/linux.hh"
 #include "lix/libstore/path-tree.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 #include "request.capnp.h"
 
 #include <capnp/message.h>
@@ -230,7 +232,7 @@ retry:
             co_return co_await tryToBuild();
         }
 
-        if (getMachines().empty()) {
+        if (getMachines().len() == 0) {
             throw Error(
                 "unable to start any build; either set '--max-jobs' to a non-zero value or enable "
                 "remote builds.\n"

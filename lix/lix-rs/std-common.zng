@@ -130,6 +130,8 @@ mod ::std::vec {
         fn as_ref(&self) -> &[T];
         fn as_mut(&mut self) -> &mut [T];
         fn into_iter(self) -> IntoIter<T>;
+        fn iter(&self) -> ::std::slice::Iter<T> deref [T];
+        fn iter_mut(&mut self) -> ::std::slice::IterMut<T> deref [T];
     }
 
     type<T> IntoIter<T> {

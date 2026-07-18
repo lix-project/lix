@@ -9,6 +9,7 @@
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types.hh"
+#include "lix/lix-rs/utils.hh"
 #include <algorithm>
 #include <capnp/rpc-twoparty.h>
 #include <cstring>
@@ -37,6 +38,7 @@
 #include "lix/libcmd/legacy.hh"
 #include "lix/libutil/experimental-features.hh"
 #include "lix/libutil/hash.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "build-remote.hh"
 
 #include "lix/libstore/build/hook-instance.capnp.h"
@@ -74,9 +76,11 @@ static std::string makeLockFilename(const std::string & storeUri) {
     return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
 }
 
-static AutoCloseFD openSlotLock(const Machine & m, uint64_t slot)
+static AutoCloseFD openSlotLock(const rust::Ref<Machine> m, uint64_t slot)
 {
-    return openLockFile(fmt("%s/%s-%d", currentLoad, makeLockFilename(m.storeUri), slot), true);
+    return openLockFile(
+        fmt("%s/%s-%d", currentLoad, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
+    );
 }
 
 static bool allSupportedLocally(Store & store, const std::set<std::string>& requiredFeatures) {
@@ -85,27 +89,24 @@ static bool allSupportedLocally(Store & store, const std::set<std::string>& requ
     return true;
 }
 
-static std::tuple<bool, Machine *, AutoCloseFD> selectBestMachine(
-    Machines & machines,
-    const std::string & neededSystem,
-    const std::set<std::string> & requiredFeatures
+static std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD> selectBestMachine(
+    Machines & machines, const std::string & neededSystem, const std::set<std::string> & requiredFeatures
 )
 {
     bool rightType = false;
-    Machine * bestMachine = nullptr;
+    rust::RefMut<Machine> bestMachine;
     AutoCloseFD bestSlotLock;
     uint64_t bestLoad = 0;
+    auto needed_system_rust = rust::to_string(neededSystem);
+    auto required_features_rs = rust::to_hash_set(requiredFeatures);
 
-    for (auto & m : machines) {
-        debug("considering building on remote machine '%s'", m.name);
-
-        if (m.enabled && m.systemSupported(neededSystem) && m.allSupported(requiredFeatures)
-            && m.mandatoryMet(requiredFeatures))
-        {
+    for (auto m : machines.iter_mut()) {
+        debug("considering building on remote machine '%s'", to_std_string(m.name.as_str()));
+        if (m.is_eligible(needed_system_rust, required_features_rs)) {
             rightType = true;
             AutoCloseFD free;
             uint64_t load = 0;
-            for (uint64_t slot = 0; slot < m.maxJobs; ++slot) {
+            for (uint64_t slot = 0; slot < m.max_jobs; ++slot) {
                 auto slotLock = openSlotLock(m, slot);
                 if (tryLockFile(slotLock.get(), ltWrite)) {
                     if (!free) {
@@ -121,12 +122,12 @@ static std::tuple<bool, Machine *, AutoCloseFD> selectBestMachine(
             bool best = false;
             if (!bestSlotLock) {
                 best = true;
-            } else if (load / m.speedFactor < bestLoad / bestMachine->speedFactor) {
+            } else if (load / m.speed_factor < bestLoad / bestMachine.speed_factor) {
                 best = true;
-            } else if (load / m.speedFactor == bestLoad / bestMachine->speedFactor) {
-                if (m.speedFactor > bestMachine->speedFactor) {
+            } else if (load / m.speed_factor == bestLoad / bestMachine.speed_factor) {
+                if (m.speed_factor > bestMachine.speed_factor) {
                     best = true;
-                } else if (m.speedFactor == bestMachine->speedFactor) {
+                } else if (m.speed_factor == bestMachine.speed_factor) {
                     if (load < bestLoad) {
                         best = true;
                     }
@@ -135,7 +136,7 @@ static std::tuple<bool, Machine *, AutoCloseFD> selectBestMachine(
             if (best) {
                 bestLoad = load;
                 bestSlotLock = std::move(free);
-                bestMachine = &m;
+                bestMachine = m;
             }
         }
     }
@@ -153,15 +154,9 @@ static void printSelectionFailureMessage(
 {
     std::string machinesFormatted;
 
-    for (auto & m : machines) {
-        machinesFormatted += HintFmt(
-                                 "\n([%s], %s, [%s], [%s])",
-                                 concatStringsSep<StringSet>(", ", m.systemTypes),
-                                 m.maxJobs,
-                                 concatStringsSep<StringSet>(", ", m.supportedFeatures),
-                                 concatStringsSep<StringSet>(", ", m.mandatoryFeatures)
-        )
-                                 .str();
+    for (auto & m : machines.iter()) {
+        machinesFormatted += '\n';
+        machinesFormatted += to_std_string_view(m.format_for_error());
     }
 
     printMsg(
@@ -174,7 +169,7 @@ static void printSelectionFailureMessage(
         drvstr,
         neededSystem,
         concatStringsSep<StringSet>(", ", requiredFeatures),
-        machines.size(),
+        machines.len(),
         Uncolored(machinesFormatted)
     );
 }
@@ -248,8 +243,7 @@ try {
         AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
         TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
 
-        auto [rightType, bestMachine, slotLock] =
-            selectBestMachine(machines, neededSystem, requiredFeatures);
+        auto [rightType, bestMachine, slotLock] = selectBestMachine(machines, neededSystem, requiredFeatures);
         bestSlotLock = std::move(slotLock);
 
         if (!bestSlotLock) {
@@ -277,16 +271,19 @@ try {
         lock.reset();
 
         std::shared_ptr<Store> sshStore;
+        auto machineName = to_std_string(bestMachine.name.as_str());
 
         try {
             auto act =
-                logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", bestMachine->name));
+                logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", machineName));
 
-            sshStore = TRY_AWAIT(bestMachine->openStore());
-            co_return BuilderConnection{std::move(bestSlotLock), sshStore, bestMachine->storeUri};
+            sshStore = TRY_AWAIT(openStore(bestMachine));
+            co_return BuilderConnection{
+                std::move(bestSlotLock), sshStore, to_std_string(bestMachine.uri.as_str())
+            };
         } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            printError("cannot build on '%s': %s", bestMachine->name, e.what());
-            bestMachine->enabled = false;
+            printError("cannot build on '%s': %s", machineName, e.what());
+            bestMachine.disable();
         }
     }
 } catch (...) {
@@ -362,9 +359,10 @@ try {
     }
 
     auto machines = getMachines();
-    debug("got %d remote builders", machines.size());
+    auto machinesCnt = machines.len();
+    debug("got %d remote builders", machinesCnt);
 
-    if (machines.empty()) {
+    if (machinesCnt == 0) {
         context.getResults().initResult().setDeclinePermanently();
         co_return result::success();
     }
