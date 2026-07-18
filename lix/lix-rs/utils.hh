@@ -9,6 +9,7 @@
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include <set>
 
 // this header requires `std` to mean `::std`
 #include "lix/lix-rs/zngur.gen.hh"
@@ -43,6 +44,11 @@ struct String;
 namespace std::vec {
 template<typename...>
 struct Vec;
+}
+
+namespace std::collections::hash_set {
+template<typename...>
+struct HashSet;
 }
 
 using std::option::Option;
@@ -142,6 +148,8 @@ namespace std::string {
 ::std::string_view to_std_string_view(const String & s);
 ::std::string to_std_string(const String & s);
 }
+
+std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s);
 
 String to_string(::std::string_view sv);
 

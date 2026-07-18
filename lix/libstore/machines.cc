@@ -4,6 +4,8 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 
 #include <numeric>
 #include <algorithm>
@@ -60,6 +62,22 @@ try {
     co_return TRY_AWAIT(nix::openStore(storeUri, storeParams));
 } catch (...) {
     co_return result::current_exception();
+}
+
+rust::lix::machines::Machine Machine::to_rust() const
+{
+    return rust::lix::machines::Machine::new_(
+        rust::to_string(storeUri),
+        rust::to_string(storeUri),
+        rust::to_hash_set(systemTypes),
+        rust::to_string(sshKey),
+        maxJobs,
+        speedFactor,
+        rust::to_hash_set(supportedFeatures),
+        rust::to_hash_set(mandatoryFeatures),
+        rust::to_string(sshPublicHostKey),
+        enabled
+    );
 }
 
 namespace machines_legacy_parsing {
@@ -473,4 +491,32 @@ Machines getMachines()
     return machines_legacy_parsing::getMachines(builders, thisSystem);
 }
 
+}
+
+namespace rust {
+
+namespace exported_functions {
+Result<Vec<lix::machines::Machine>, String> parseBuilderLines(Ref<Str> setting, Ref<Str> thisSystem)
+{
+    using res_t = Result<Vec<lix::machines::Machine>, String>;
+    auto res = Vec<lix::machines::Machine>::new_();
+    auto builders = to_std_string(setting);
+    auto thisSys = to_std_string(thisSystem);
+
+    try {
+        auto machines = nix::machines_legacy_parsing::getMachines(builders, thisSys);
+        for (auto & m : machines) {
+            res.push(m.to_rust());
+        }
+        return res_t::Ok(::std::move(res));
+    } catch (nix::FormatError & e) {
+        return res_t::Err(to_string(nix::fmt("FormatError: %s", e.what())));
+    } catch (nix::UsageError & e) {
+        return res_t::Err(to_string(nix::fmt("UsageError: %s", e.what())));
+    } catch (::std::exception & e) { // NOLINT(lix-foreign-exceptions)
+        return res_t::Err(to_string(nix::fmt("UnknownException: %s", e.what())));
+    }
+}
+
+}
 }

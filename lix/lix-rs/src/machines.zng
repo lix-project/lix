@@ -3,6 +3,10 @@ use ::std::collections::hash_set::HashSet as HashSet;
 use ::std::result::Result as Result;
 use ::std::vec::Vec as Vec;
 
+extern "C++" {
+	safe fn parseBuilderLines(&str, &str) -> Result<Vec<crate::machines::Machine>, String>;
+}
+
 mod crate::machines {
 	type Machine {
 		#layout_conservative(size = 256, align = 8);
@@ -27,6 +31,18 @@ mod crate::machines {
 		fn disable(&mut self);
 		fn format_for_error(&self) -> String;
 
+		fn new(
+			String,
+			String,
+			HashSet<String>,
+			String,
+			u32,
+			f32,
+			HashSet<String>,
+			HashSet<String>,
+			String,
+			bool
+		) -> Machine;
 	}
 
 	fn get_machines(String, String) -> ::std::result::Result<Vec<Machine>, ::rootcause::Report>;

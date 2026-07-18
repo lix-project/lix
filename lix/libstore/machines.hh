@@ -8,6 +8,10 @@
 #include <set>
 #include <vector>
 
+namespace rust::lix::machines {
+struct Machine;
+}
+
 namespace nix {
 
 class Store;
@@ -41,6 +45,8 @@ struct Machine {
      * @return @Whether `mandatoryFeatures` is a subset of `features`
      */
     bool mandatoryMet(const std::set<std::string> & features) const;
+
+    rust::lix::machines::Machine to_rust() const;
 
     kj::Promise<Result<ref<Store>>> openStore() const;
 };

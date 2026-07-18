@@ -138,6 +138,32 @@ impl Machine {
             && self.all_supported(required_features)
             && self.mandatory_met(required_features)
     }
+
+    pub fn new(
+        name: String,
+        uri: String,
+        system_types: HashSet<String>,
+        ssh_key: String,
+        max_jobs: u32,
+        speed_factor: f32,
+        supported_features: HashSet<String>,
+        mandatory_features: HashSet<String>,
+        ssh_public_host_key: String,
+        enabled: bool,
+    ) -> Self {
+        Self {
+            name,
+            uri,
+            system_types,
+            ssh_key,
+            max_jobs,
+            speed_factor,
+            supported_features,
+            mandatory_features,
+            ssh_public_host_key,
+            enabled,
+        }
+    }
 }
 
 pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machine>, Report> {

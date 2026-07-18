@@ -31,6 +31,15 @@ String to_string(::std::string_view sv)
     return String::from_utf8_lossy(slice).into_owned();
 }
 
+std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s)
+{
+    auto hs = std::collections::hash_set::HashSet<String>::new_();
+    for (auto & str : s) {
+        hs.insert(to_string(str));
+    }
+    return hs;
+}
+
 std::string::String Impl<lix::ffi::Error, Inherent>::to_string(Ref<lix::ffi::Error> ptr)
 {
     using String = std::string::String;
