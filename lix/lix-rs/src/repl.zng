@@ -41,21 +41,9 @@ mod crate::repl {
 
     type Result<Rustyline, Box<dyn Error>> {
         #heap_allocated;
-
-        constructor Ok(Rustyline);
-        constructor Err(Box<dyn Error>);
-
-        fn unwrap(self) -> Rustyline;
-        fn unwrap_err(self) -> Box<dyn Error>;
     }
 
     type Result<String, ReadlineError> {
         #layout_conservative(size = 24, align = 8);
-
-        constructor Ok(String);
-        constructor Err(ReadlineError);
-
-        fn unwrap(self) -> String;
-        fn unwrap_err(self) -> ReadlineError;
     }
 }

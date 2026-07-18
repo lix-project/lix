@@ -19,20 +19,10 @@ mod crate::fetchers::git {
 	type ::std::result::Result<LsRemoteRefLine, String> {
 		#layout_conservative(size=56, align=8);
 
-		constructor Ok(LsRemoteRefLine);
-		constructor Err(String);
-
-		fn unwrap(self) -> LsRemoteRefLine;
 		fn ok(self) -> ::std::option::Option<LsRemoteRefLine>;
 	}
 
 	type ::std::option::Option<LsRemoteRefLine> {
 		#layout_conservative(size=56, align=8);
-
-		constructor None;
-		constructor Some(LsRemoteRefLine);
-
-		fn unwrap(self) -> LsRemoteRefLine;
 	}
-
 }

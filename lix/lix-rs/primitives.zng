@@ -2,19 +2,23 @@
 // operation is used only very rare that may help readability. in general we want to collect
 // anything that's used a lot here to not clutter the remainder of our ffi definition files.
 
+#unstable(template_types)
+
 type bool {
     #layout(size = 1, align = 1);
 }
 
-type [u8] {
+type<T> [T] {
     wellknown_traits(?Sized);
 
-    fn as_ptr(&self) -> *const u8;
+    fn as_ptr(&self) -> *const T;
     fn len(&self) -> usize;
 
-    fn iter(&self) -> ::std::slice::Iter<u8>;
-    fn iter_mut(&mut self) -> ::std::slice::IterMut<u8>;
+    fn iter(&self) -> ::std::slice::Iter<T>;
+    fn iter_mut(&mut self) -> ::std::slice::IterMut<T>;
 }
+
+type [u8] {}
 
 type str {
     wellknown_traits(?Sized);

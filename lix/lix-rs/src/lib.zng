@@ -21,9 +21,6 @@ mod crate::ffi {
 
     type Result<(), Error> {
         #layout_conservative(size = 16, align = 8);
-
-        constructor Ok(());
-        constructor Err(Error);
     }
 
     type Box<dyn Fn() -> Result<(), Error>> {

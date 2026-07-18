@@ -1,5 +1,7 @@
 // common rust stdlib types go here.
 
+#unstable(template_types)
+
 use ::std::string::String as String;
 use ::std::vec::Vec as Vec;
 
@@ -27,78 +29,73 @@ mod ::std::io {
 }
 
 mod ::std::option {
-    type Option<u64> {
-        #layout_conservative(size = 16, align = 8);
-
-        constructor Some(u64);
+    type<T> Option<T> {
+        constructor Some(T);
         constructor None;
 
-        fn unwrap(self) -> u64;
+        fn unwrap(self) -> T;
+    }
+
+    type<T> Option<&T> {
+        #layout_conservative(size = 8, align = 8);
+        wellknown_traits(Copy);
+    }
+
+    type<T> Option<&mut T> {
+        #layout_conservative(size = 8, align = 8);
+    }
+
+    type Option<u64> {
+        #layout_conservative(size = 16, align = 8);
     }
 
     type Option<String> {
         #layout_conservative(size=24, align=8);
-
-        constructor Some(String);
-        constructor None;
-
-        fn unwrap(self) -> String;
     }
+    type Option<&String> {}
+    type Option<&mut String> {}
 
     type Option<u8> {
         #layout_conservative(size = 2, align = 1);
-
-        constructor Some(u8);
-        constructor None;
-
-        fn unwrap(self) -> u8;
     }
-
-    type Option<&u8> {
-        #layout_conservative(size = 8, align = 8);
-
-        constructor Some(&u8);
-        constructor None;
-
-        fn unwrap(self) -> &u8;
-    }
-
-    type Option<&mut u8> {
-        #layout_conservative(size = 8, align = 8);
-
-        constructor Some(&mut u8);
-        constructor None;
-
-        fn unwrap(self) -> &mut u8;
-    }
+    type Option<&u8> {}
+    type Option<&mut u8> {}
 }
 
 mod ::std::result {
     use ::std::error::Error as Error;
 
+    type<T, E> Result<T, E> {
+        constructor Ok(T);
+        constructor Err(E);
+
+        fn unwrap(self) -> T;
+        fn unwrap_err(self) -> E;
+    }
+
     type Result<(), Box<dyn Error>> {
         #layout_conservative(size = 16, align = 8);
-
-        constructor Ok(());
-        constructor Err(Box<dyn Error>);
-
-        fn unwrap(self) -> ();
-        fn unwrap_err(self) -> Box<dyn Error>;
     }
 }
 
 mod ::std::slice {
-    type Iter<u8> {
+    type<T> Iter<T> {
         #layout_conservative(size = 16, align = 8);
 
-        fn next(&mut self) -> ::std::option::Option<&u8>;
+        fn next(&mut self) -> ::std::option::Option<&T>;
     }
 
-    type IterMut<u8> {
+    type<T> IterMut<T> {
         #layout_conservative(size = 16, align = 8);
 
-        fn next(&mut self) -> ::std::option::Option<&mut u8>;
+        fn next(&mut self) -> ::std::option::Option<&mut T>;
     }
+
+    type Iter<u8> {}
+    type IterMut<u8> {}
+
+    type Iter<::std::string::String> {}
+    type IterMut<::std::string::String> {}
 }
 
 mod ::std::string {
@@ -110,31 +107,31 @@ mod ::std::string {
         fn from(&str) -> String;
         fn from_utf8_lossy(&[u8]) -> ::std::borrow::Cow<str>;
     }
+
+    type [String] {}
 }
 
 mod ::std::vec {
-    type Vec<String> {
+    type<T> Vec<T> {
         #layout_conservative(size = 24, align = 8);
 
-        fn new() -> Vec<String>;
-        fn push(&mut self, String);
+        fn new() -> Vec<T>;
+        fn push(&mut self, T);
         fn len(&self) -> usize;
+        fn as_ref(&self) -> &[T];
+        fn as_mut(&mut self) -> &mut [T];
+        fn into_iter(self) -> IntoIter<T>;
     }
 
-    type Vec<u8> {
-        #layout_conservative(size = 24, align = 8);
-
-        fn new() -> Vec<u8>;
-        fn push(&mut self, u8);
-        fn len(&self) -> usize;
-        fn as_ref(&self) -> &[u8];
-        fn as_mut(&mut self) -> &mut [u8];
-        fn into_iter(self) -> IntoIter<u8>;
-    }
-
-    type IntoIter<u8> {
+    type<T> IntoIter<T> {
         #layout_conservative(size = 32, align = 8);
 
-        fn next(&mut self) -> ::std::option::Option<u8>;
+        fn next(&mut self) -> ::std::option::Option<T>;
     }
+
+    type Vec<String> {}
+    type IntoIter<String> {}
+
+    type Vec<u8> {}
+    type IntoIter<u8> {}
 }
