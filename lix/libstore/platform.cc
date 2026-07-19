@@ -14,15 +14,19 @@
 namespace nix {
 ref<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
 {
+    kj::Badge<LocalStore> badge;
+    auto result =
 #if __linux__
-    return make_ref<LinuxLocalStore>(params);
+        make_ref<LinuxLocalStore>(badge, params)
 #elif __APPLE__
-    return make_ref<DarwinLocalStore>(params);
+        make_ref<DarwinLocalStore>(badge, params)
 #elif __FreeBSD__
-    return make_ref<FreeBSDLocalStore>(params);
+        make_ref<FreeBSDLocalStore>(badge, params)
 #else
-    return make_ref<FallbackLocalStore>(params);
+        make_ref<FallbackLocalStore>(badge, params)
 #endif
+        ;
+    return result;
 }
 
 std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(

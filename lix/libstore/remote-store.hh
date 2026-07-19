@@ -35,10 +35,10 @@ class RemoteStore : public virtual Store,
     public virtual GcStore,
     public virtual LogStore
 {
-public:
-
+protected:
     RemoteStore(const RemoteStoreConfig & config);
 
+public:
     RemoteStoreConfig & config() override = 0;
     const RemoteStoreConfig & config() const override = 0;
 

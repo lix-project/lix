@@ -33,7 +33,7 @@ class SSHStore final : public RemoteStore
     SSHStoreConfig config_;
 
 public:
-    SSHStore(const std::string & scheme, const std::string & host, SSHStoreConfig config)
+    SSHStore(kj::Badge<SSHStore>, const std::string & scheme, const std::string & host, SSHStoreConfig config)
         : Store(config)
         , RemoteStore(config)
         , config_(std::move(config))
@@ -45,7 +45,7 @@ public:
     static std::optional<ref<Store>>
     open(const std::string & scheme, const Path & host, SSHStoreConfig config)
     {
-        return make_ref<SSHStore>(scheme, host, std::move(config));
+        return make_ref<SSHStore>(kj::Badge<SSHStore>{}, scheme, host, std::move(config));
     }
 
     SSHStoreConfig & config() override

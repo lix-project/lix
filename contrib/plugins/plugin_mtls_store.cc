@@ -60,7 +60,7 @@ struct mTLSBinaryCacheStoreImpl : public HttpBinaryCacheStore
         const std::string & uriScheme, const Path & _cacheUri, mTLSBinaryCacheStoreConfig config
     )
         : Store(config)
-        , HttpBinaryCacheStore("https", _cacheUri, config)
+        , HttpBinaryCacheStore(badge(), "https", _cacheUri, config)
         , config_(std::move(config))
         , keyring(std::make_shared<Keyring>(config_.tlsCertificate.get(), config_.tlsKey.get()))
     {

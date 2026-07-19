@@ -41,7 +41,7 @@ std::string UDSRemoteStoreConfig::doc()
         ;
 }
 
-UDSRemoteStore::UDSRemoteStore(UDSRemoteStoreConfig config, std::optional<std::string> path)
+UDSRemoteStore::UDSRemoteStore(Badge, UDSRemoteStoreConfig config, std::optional<std::string> path)
     : Store(config)
     , RemoteStore(config)
     , config_(std::move(config))

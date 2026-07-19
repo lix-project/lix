@@ -35,10 +35,18 @@ private:
 
     Sync<State> _state;
 
+    using Badge = kj::Badge<HttpBinaryCacheStore>;
+
+protected:
+    static Badge badge()
+    {
+        return {};
+    }
+
 public:
 
     HttpBinaryCacheStore(
-        const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
+        Badge, const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
     );
 
     static std::optional<ref<Store>>

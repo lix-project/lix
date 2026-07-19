@@ -19,7 +19,7 @@ std::string HttpBinaryCacheStoreConfig::doc()
 }
 
 HttpBinaryCacheStore::HttpBinaryCacheStore(
-    const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
+    Badge, const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
 )
     : Store(config)
     , BinaryCacheStore(config)
@@ -37,7 +37,7 @@ std::optional<ref<Store>> HttpBinaryCacheStore::open(
     const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config
 )
 {
-    return make_ref<HttpBinaryCacheStore>(scheme, cacheUri, std::move(config));
+    return make_ref<HttpBinaryCacheStore>(Badge{}, scheme, cacheUri, std::move(config));
 }
 
 kj::Promise<Result<void>> HttpBinaryCacheStore::init()

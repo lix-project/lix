@@ -234,6 +234,8 @@ protected:
 
     Store(const StoreConfig & config);
 
+    KJ_DISALLOW_COPY_AND_MOVE(Store);
+
 public:
     struct AssociatedCredentials
     {

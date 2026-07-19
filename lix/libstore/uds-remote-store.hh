@@ -61,13 +61,15 @@ class UDSRemoteStore : public virtual IndirectRootStore
 {
     UDSRemoteStoreConfig config_;
 
+    using Badge = kj::Badge<UDSRemoteStore>;
+
 public:
 
-    UDSRemoteStore(UDSRemoteStoreConfig config, std::optional<std::string> path);
+    UDSRemoteStore(Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
 
     static std::optional<ref<Store>> open(UDSRemoteStoreConfig config, std::optional<std::string> path)
     {
-        return make_ref<UDSRemoteStore>(std::move(config), std::move(path));
+        return make_ref<UDSRemoteStore>(Badge{}, std::move(config), std::move(path));
     }
 
     static std::optional<ref<Store>> open(UDSRemoteStoreConfig config)
