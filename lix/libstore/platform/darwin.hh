@@ -13,15 +13,7 @@ namespace nix {
 class DarwinLocalStore : public LocalStore
 {
 public:
-    DarwinLocalStore(LocalStoreConfig config)
-        : Store(config), LocalStore(config)
-    {
-    }
-    DarwinLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
-        : DarwinLocalStore(config)
-    {
-        throw UnimplementedError("DarwinLocalStore");
-    }
+    DarwinLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
 
 private:
 

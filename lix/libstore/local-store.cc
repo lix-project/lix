@@ -320,14 +320,6 @@ void LocalStore::prepareStatements(DBState & state)
     state.stmts->QueryValidPaths = state.db.create("select path from ValidPaths");
 }
 
-
-LocalStore::LocalStore(std::string scheme, std::string path, LocalStoreConfig config)
-    : LocalStore(std::move(config))
-{
-    throw UnimplementedError("LocalStore");
-}
-
-
 AutoCloseFD LocalStore::openGCLock()
 {
     Path fnGCLock = config_.stateDir + "/gc.lock";

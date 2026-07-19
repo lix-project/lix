@@ -14,11 +14,6 @@ class FallbackLocalStore : public LocalStore
 {
 public:
     FallbackLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
-    FallbackLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
-        : FallbackLocalStore(config)
-    {
-        throw UnimplementedError("FallbackLocalStore");
-    }
 };
 
 /**

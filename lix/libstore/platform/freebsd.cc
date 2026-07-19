@@ -143,7 +143,7 @@ void FreeBSDLocalStore::findPlatformRoots(UncheckedRoots & unchecked)
 
 void registerLocalStore()
 {
-    StoreImplementations::add<FreeBSDLocalStore, LocalStoreConfig>();
+    StoreImplementations::addConfigOnly<LocalStoreConfig>();
 }
 
 }

@@ -317,7 +317,7 @@ static Pid launchPasta(
 }
 
 void registerLocalStore() {
-    StoreImplementations::add<LinuxLocalStore, LocalStoreConfig>();
+    StoreImplementations::addConfigOnly<LocalStoreConfig>();
 }
 
 static void readProcLink(const std::string & file, UncheckedRoots & roots)

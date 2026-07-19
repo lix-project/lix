@@ -179,7 +179,6 @@ protected:
      * instead of a platform's subclass.
      */
     LocalStore(LocalStoreConfig config);
-    LocalStore(std::string scheme, std::string path, LocalStoreConfig config);
 
 public:
 

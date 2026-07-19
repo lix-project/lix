@@ -14,11 +14,6 @@ class FreeBSDLocalStore : public LocalStore
 {
 public:
     FreeBSDLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
-    FreeBSDLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
-        : FreeBSDLocalStore(config)
-    {
-        throw UnimplementedError("FreeBSDLocalStore");
-    }
 
 private:
 

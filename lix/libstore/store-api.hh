@@ -1066,39 +1066,51 @@ kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters();
 struct StoreFactory
 {
     std::set<std::string> uriSchemes;
-    std::function<
-        std::optional<ref<Store>> (
-            const std::string & scheme,
-            const std::string & uri,
-            const StoreConfig::Params & params
-        )
-    > create;
-    std::function<std::shared_ptr<StoreConfig> ()> getConfig;
+    std::function<std::optional<ref<Store>>(
+        const std::string & scheme, const std::string & uri, const StoreConfig::Params & params
+    )>
+        create = [](const auto &...) -> std::optional<ref<Store>> { return std::nullopt; };
+    std::function<std::shared_ptr<StoreConfig>()> getConfig;
 };
 
 struct StoreImplementations
 {
     static std::vector<StoreFactory> * registered;
 
+    static void register_(StoreFactory && sf)
+    {
+        if (!registered) {
+            registered = new std::vector<StoreFactory>();
+        }
+        registered->push_back(std::move(sf));
+    }
+
     template<typename T, typename TConfig>
     static void add()
     {
-        if (!registered) registered = new std::vector<StoreFactory>();
-        StoreFactory factory{
+        register_({
             .uriSchemes = T::uriSchemes(),
-            .create =
-                ([](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
-                 -> std::optional<ref<Store>>
-                 { return make_ref<T>(scheme, uri, params); }),
-            .getConfig =
-                ([]()
-                 -> std::shared_ptr<StoreConfig>
-                 { return std::make_shared<TConfig>(StringMap({})); })
-        };
-        registered->push_back(factory);
+            .create = [](const std::string & scheme,
+                         const std::string & uri,
+                         const StoreConfig::Params & params) -> std::optional<ref<Store>> {
+                return make_ref<T>(scheme, uri, params);
+            },
+            .getConfig = []() -> std::shared_ptr<StoreConfig> {
+                return std::make_shared<TConfig>(StringMap({}));
+            },
+        });
+    }
+
+    template<typename TConfig>
+    static void addConfigOnly()
+    {
+        register_({
+            .getConfig = []() -> std::shared_ptr<StoreConfig> {
+                return std::make_shared<TConfig>(StringMap({}));
+            },
+        });
     }
 };
-
 
 /**
  * Display a set of paths in human-readable form (i.e., between quotes

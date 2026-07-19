@@ -16,11 +16,6 @@ class LinuxLocalStore : public LocalStore
 {
 public:
     LinuxLocalStore(LocalStoreConfig config) : Store(config), LocalStore(config) {}
-    LinuxLocalStore(const std::string scheme, std::string path, LocalStoreConfig config)
-        : LinuxLocalStore(config)
-    {
-        throw UnimplementedError("LinuxLocalStore");
-    }
 
 private:
 

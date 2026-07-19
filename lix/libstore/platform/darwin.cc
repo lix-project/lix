@@ -376,7 +376,7 @@ void DarwinLocalDerivationGoal::fillBuilderConfig(build::Request::Builder reques
 }
 
 void registerLocalStore() {
-    StoreImplementations::add<DarwinLocalStore, LocalStoreConfig>();
+    StoreImplementations::addConfigOnly<LocalStoreConfig>();
 }
 
 }

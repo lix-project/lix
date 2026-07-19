@@ -2,6 +2,6 @@
 
 namespace nix {
 void registerLocalStore() {
-    Implementations::add<FallbackLocalStore, LocalStoreConfig>();
+    Implementations::addConfigOnly<LocalStoreConfig>();
 }
 }
