@@ -77,7 +77,7 @@ protected:
     // The prefix under which realisation infos will be stored
     const std::string realisationsPrefix = "realisations";
 
-    BinaryCacheStore(const BinaryCacheStoreConfig & config);
+    BinaryCacheStore(MustCallInit &, const BinaryCacheStoreConfig & config);
 
 public:
 
@@ -111,9 +111,9 @@ public:
     virtual kj::Promise<Result<std::optional<std::string>>>
     getFileContents(const std::string & path, const Activity * context = nullptr);
 
-public:
+protected:
 
-    virtual kj::Promise<Result<void>> init() override;
+    kj::Promise<Result<void>> init();
 
 private:
 

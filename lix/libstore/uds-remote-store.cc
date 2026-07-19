@@ -41,12 +41,25 @@ std::string UDSRemoteStoreConfig::doc()
         ;
 }
 
-UDSRemoteStore::UDSRemoteStore(Badge, UDSRemoteStoreConfig config, std::optional<std::string> path)
+UDSRemoteStore::UDSRemoteStore(
+    MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path
+)
     : Store(config)
-    , RemoteStore(config)
+    , RemoteStore(w, config)
     , config_(std::move(config))
     , path(std::move(path))
 {
+}
+
+kj::Promise<Result<std::optional<ref<Store>>>>
+UDSRemoteStore::open(UDSRemoteStoreConfig config, std::optional<std::string> path)
+try {
+    MustCallInit init;
+    auto store = make_ref<UDSRemoteStore>(init, Badge{}, std::move(config), std::move(path));
+    TRY_AWAIT(init(store));
+    co_return store;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::string UDSRemoteStore::getUri()

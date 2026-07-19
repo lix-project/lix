@@ -271,7 +271,9 @@ struct LegacySSHStore final : public Store
     static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & host, LegacySSHStoreConfig config)
     try {
-        co_return make_ref<LegacySSHStore>(scheme, host, std::move(config));
+        auto store = make_ref<LegacySSHStore>(scheme, host, std::move(config));
+        TRY_AWAIT(store->init());
+        co_return store;
     } catch (...) {
         co_return result::current_exception();
     }
@@ -598,7 +600,7 @@ public:
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<void>> init() override
+    kj::Promise<Result<void>> init()
     try {
         auto conn(TRY_AWAIT(getConnection()));
         co_return result::success();

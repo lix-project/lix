@@ -27,7 +27,7 @@
 
 namespace nix {
 
-BinaryCacheStore::BinaryCacheStore(const BinaryCacheStoreConfig & config)
+BinaryCacheStore::BinaryCacheStore(MustCallInit &, const BinaryCacheStoreConfig & config)
 {
     if (config.secretKeyFile != "")
         secretKey = std::make_unique<SecretKey>(SecretKey::parse(readFile(config.secretKeyFile)));

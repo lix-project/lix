@@ -23,8 +23,10 @@
 #include "lix/libutil/repair-flag.hh"
 #include "lix/libutil/source-path.hh"
 
+#include <exception>
 #include <kj/async.h>
 #include <atomic>
+#include <kj/common.h>
 #include <limits>
 #include <map>
 #include <optional>
@@ -196,6 +198,31 @@ class Store : public std::enable_shared_from_this<Store>
 {
 protected:
 
+    /**
+     * some stores may have an `init` method that must be called to fully construct
+     * a store. this class encapsulates these requirements and how to fulfill them.
+     */
+    class MustCallInit
+    {
+        bool initCalled = false;
+    public:
+        MustCallInit() = default;
+        KJ_DISALLOW_COPY_AND_MOVE(MustCallInit);
+        ~MustCallInit()
+        {
+            // if anything throws we'll assume the store will be destroyed. this is
+            // technically unsafe, but it's better than asserting in cleanup paths.
+            assert(initCalled || std::uncaught_exceptions() > 0);
+        }
+        auto operator()(auto & store)
+        {
+            // this is *also* technically unsafe if init returns a promise. promise
+            // types are must-use though, so not awaiting them will produce errors.
+            initCalled = true;
+            return store->init();
+        }
+    };
+
     struct PathInfoCacheValue {
 
         /**
@@ -251,16 +278,6 @@ public:
     virtual std::optional<AssociatedCredentials> associatedCredentials() const
     {
         return {};
-    }
-
-    /**
-     * Perform any necessary effectful operation to make the store up and
-     * running. For stores that open connections to remote hosts `init()`
-     * must also open such a connection and report errors as appropriate.
-     */
-    virtual kj::Promise<Result<void>> init()
-    {
-        return {result::success()};
     }
 
     virtual StoreConfig & config() = 0;

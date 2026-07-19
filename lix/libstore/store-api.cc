@@ -1539,7 +1539,6 @@ try {
                 auto store = TRY_AWAIT(implem.create(parsedUri.scheme, baseURI, params));
                 if (store) {
                     experimentalFeatureSettings.require((*store)->config().experimentalFeature());
-                    TRY_AWAIT((*store)->init());
                     (*store)->config().warnUnknownSettings();
                     co_return *store;
                 }

@@ -40,7 +40,7 @@
 namespace nix {
 
 /* TODO: Separate these store impls into different files, give them better names */
-RemoteStore::RemoteStore(const RemoteStoreConfig & config) : Store(config) {}
+RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config) : Store(config) {}
 
 kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionForDaemonForwarding()
 {

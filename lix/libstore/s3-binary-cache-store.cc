@@ -366,12 +366,14 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
     S3Helper s3Helper;
 
     S3BinaryCacheStoreImpl(
+        MustCallInit & w,
         const std::string & uriScheme,
         const std::string & bucketName,
-        S3BinaryCacheStoreConfig config)
+        S3BinaryCacheStoreConfig config
+    )
         : Store(config)
-        , BinaryCacheStore(config)
-        , S3BinaryCacheStore(config)
+        , BinaryCacheStore(w, config)
+        , S3BinaryCacheStore(w, config)
         , config_(std::move(config))
         , bucketName(bucketName)
         , s3Helper(config_.profile, config_.region, config_.scheme, config_.endpoint)
@@ -382,7 +384,10 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
     static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & uriScheme, const Path & bucketName, S3BinaryCacheStoreConfig config)
     try {
-        co_return make_ref<S3BinaryCacheStoreImpl>(uriScheme, bucketName, std::move(config));
+        MustCallInit init;
+        auto store = make_ref<S3BinaryCacheStoreImpl>(init, uriScheme, bucketName, std::move(config));
+        TRY_AWAIT(init(store));
+        co_return store;
     } catch (...) {
         co_return result::current_exception();
     }
@@ -392,7 +397,7 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         return "s3://" + bucketName;
     }
 
-    kj::Promise<Result<void>> init() override
+    kj::Promise<Result<void>> init()
     try {
         if (auto cacheInfo = diskCache->upToDateCacheExists(getUri())) {
             config().wantMassQuery.setDefault(cacheInfo->wantMassQuery);

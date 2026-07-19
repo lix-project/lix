@@ -33,9 +33,15 @@ class SSHStore final : public RemoteStore
     SSHStoreConfig config_;
 
 public:
-    SSHStore(kj::Badge<SSHStore>, const std::string & scheme, const std::string & host, SSHStoreConfig config)
+    SSHStore(
+        MustCallInit & w,
+        kj::Badge<SSHStore>,
+        const std::string & scheme,
+        const std::string & host,
+        SSHStoreConfig config
+    )
         : Store(config)
-        , RemoteStore(config)
+        , RemoteStore(w, config)
         , config_(std::move(config))
         , host(host)
         , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
@@ -45,7 +51,10 @@ public:
     static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & host, SSHStoreConfig config)
     try {
-        co_return make_ref<SSHStore>(kj::Badge<SSHStore>{}, scheme, host, std::move(config));
+        MustCallInit init;
+        auto store = make_ref<SSHStore>(init, kj::Badge<SSHStore>{}, scheme, host, std::move(config));
+        TRY_AWAIT(init(store));
+        co_return store;
     } catch (...) {
         co_return result::current_exception();
     }

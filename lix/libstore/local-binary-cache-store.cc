@@ -37,11 +37,13 @@ public:
     const LocalBinaryCacheStoreConfig & config() const override { return config_; }
 
     LocalBinaryCacheStore(
+        MustCallInit & w,
         const std::string scheme,
         const Path & binaryCacheDir,
-        LocalBinaryCacheStoreConfig config)
+        LocalBinaryCacheStoreConfig config
+    )
         : Store(config)
-        , BinaryCacheStore(config)
+        , BinaryCacheStore(w, config)
         , config_(std::move(config))
         , binaryCacheDir(binaryCacheDir)
     {
@@ -50,12 +52,15 @@ public:
     static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & binaryCacheDir, LocalBinaryCacheStoreConfig config)
     try {
-        co_return make_ref<LocalBinaryCacheStore>(scheme, binaryCacheDir, std::move(config));
+        MustCallInit init;
+        auto store = make_ref<LocalBinaryCacheStore>(init, scheme, binaryCacheDir, std::move(config));
+        TRY_AWAIT(init(store));
+        co_return store;
     } catch (...) {
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<void>> init() override;
+    kj::Promise<Result<void>> init();
 
     std::string getUri() override
     {

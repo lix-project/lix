@@ -36,7 +36,7 @@ class RemoteStore : public virtual Store,
     public virtual LogStore
 {
 protected:
-    RemoteStore(const RemoteStoreConfig & config);
+    RemoteStore(MustCallInit &, const RemoteStoreConfig & config);
 
 public:
     RemoteStoreConfig & config() override = 0;
@@ -163,7 +163,7 @@ public:
 
     kj::Promise<Result<std::optional<std::string>>> getVersion() override;
 
-    kj::Promise<Result<void>> init() override;
+    kj::Promise<Result<void>> init();
 
     kj::Promise<Result<unsigned int>> getProtocol() override;
 

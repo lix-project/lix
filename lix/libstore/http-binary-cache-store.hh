@@ -46,7 +46,11 @@ protected:
 public:
 
     HttpBinaryCacheStore(
-        Badge, const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
+        MustCallInit & w,
+        Badge,
+        const std::string & scheme,
+        const Path & _cacheUri,
+        HttpBinaryCacheStoreConfig config
     );
 
     static kj::Promise<Result<std::optional<ref<Store>>>>
@@ -66,7 +70,7 @@ public:
         return cacheUri;
     }
 
-    kj::Promise<Result<void>> init() override;
+    kj::Promise<Result<void>> init();
 
     /** Override this to configure additional curl options on the request.
      * e.g. authentication method or key material.
