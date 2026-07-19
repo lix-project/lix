@@ -1430,16 +1430,19 @@ static bool isNonUriPath(const std::string & spec)
         && spec.find("/") != std::string::npos;
 }
 
+static bool anyDaemonSocketExists()
+{
+    return std::ranges::any_of(settings.nixDaemonSockets(), [](auto & socket) {
+        return pathExists(socket.path);
+    });
+}
+
 static kj::Promise<Result<std::optional<ref<Store>>>>
 openFromNonUri(const std::string & uri, const StoreConfig::Params & params, AllowDaemon allowDaemon)
 try {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
-        if (allowDaemon == AllowDaemon::Allow
-            && std::ranges::any_of(
-                settings.nixDaemonSockets(), [](auto & socket) { return pathExists(socket.path); }
-            ))
-        {
+        if (allowDaemon == AllowDaemon::Allow && anyDaemonSocketExists()) {
             co_return TRY_AWAIT(UDSRemoteStore::open(params));
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
             co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
@@ -1521,22 +1524,33 @@ static std::string extractConnStr(const std::string &proto, const std::string &c
     return connStr;
 }
 
+static std::tuple<std::string, std::string, StoreConfig::Params>
+parseStoreURI(const std::string & uri, StoreConfig::Params params)
+{
+    auto parsedUri = parseURL(uri);
+    params.insert(parsedUri.query.begin(), parsedUri.query.end());
+
+    auto baseURI = extractConnStr(parsedUri.scheme, parsedUri.authority.value_or("") + parsedUri.path);
+    return {parsedUri.scheme, baseURI, std::move(params)};
+}
+
+static std::tuple<std::string, StoreConfig::Params>
+parseStoreNonURI(const std::string & uri_, StoreConfig::Params params)
+{
+    auto [uri, uriParams] = splitUriAndParams(uri_);
+    params.insert(uriParams.begin(), uriParams.end());
+    return {uri, std::move(params)};
+}
+
 kj::Promise<Result<ref<Store>>>
 openStore(const std::string & uri_, const StoreConfig::Params & extraParams, AllowDaemon allowDaemon)
 try {
-    auto params = extraParams;
     try {
-        auto parsedUri = parseURL(uri_);
-        params.insert(parsedUri.query.begin(), parsedUri.query.end());
-
-        auto baseURI = extractConnStr(
-            parsedUri.scheme,
-            parsedUri.authority.value_or("") + parsedUri.path
-        );
+        auto [scheme, baseURI, params] = parseStoreURI(uri_, extraParams);
 
         for (auto implem : *StoreImplementations::registered) {
-            if (implem.uriSchemes.count(parsedUri.scheme)) {
-                auto store = TRY_AWAIT(implem.create(parsedUri.scheme, baseURI, params));
+            if (implem.uriSchemes.count(scheme)) {
+                auto store = TRY_AWAIT(implem.create(scheme, baseURI, params));
                 if (store) {
                     experimentalFeatureSettings.require((*store)->config().experimentalFeature());
                     (*store)->config().warnUnknownSettings();
@@ -1550,8 +1564,7 @@ try {
         // retry with non-uri stores
     }
 
-    auto [uri, uriParams] = splitUriAndParams(uri_);
-    params.insert(uriParams.begin(), uriParams.end());
+    auto [uri, params] = parseStoreNonURI(uri_, extraParams);
 
     if (auto store = TRY_AWAIT(openFromNonUri(uri, params, allowDaemon))) {
         (*store)->config().warnUnknownSettings();
