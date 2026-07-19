@@ -1,9 +1,9 @@
 #pragma once
 ///@file
 
-#include "libutil/box_ptr.hh"
-#include "libutil/logging-rpc.hh"
-#include "libutil/logging.hh"
+#include "lix/libutil/box_ptr.hh"
+#include "lix/libutil/logging-rpc.hh"
+#include "lix/libutil/logging.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/indirect-root-store.hh"

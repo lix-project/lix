@@ -6,6 +6,7 @@
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/uds-remote-store.hh"
 #include "lix/libutil/async-collect.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
@@ -614,13 +615,16 @@ runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustCl
         // If --force-untrusted is passed, we cannot forward the connection and
         // must process it ourselves (before delegating to the next store) to
         // force untrusting the client.
-        if (auto remoteStore = store.try_cast_shared<RemoteStore>(); remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
+        if (auto remoteStore = store.try_cast_shared<UDSRemoteStore>();
+            remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
+        {
             forwardStdioConnection(aio, *remoteStore);
-        else
+        } else {
             // `Trusted` is passed in the auto (no override case) because we
             // cannot see who is on the other side of a plain pipe. Limiting
             // access to those is explicitly not `nix-daemon`'s responsibility.
             processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
+        }
     } else {
         try {
             aio.blockOn(makeInterruptible(daemonLoop(forceTrustClientOpt)));
