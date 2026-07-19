@@ -701,7 +701,7 @@ void registerLegacyNixDaemon() {
     LegacyCommandRegistry::addWithRaw("nix-daemon", main_nix_daemon);
 }
 
-struct CmdDaemon : StoreCommand
+struct CmdDaemon : Command
 {
     bool stdio = false;
     std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
@@ -756,7 +756,7 @@ struct CmdDaemon : StoreCommand
           ;
     }
 
-    void run(ref<Store> store) override
+    void run() override
     {
         runDaemon(aio(), stdio, isTrustedOpt);
     }
