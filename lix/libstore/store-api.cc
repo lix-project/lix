@@ -1430,9 +1430,9 @@ static bool isNonUriPath(const std::string & spec)
         && spec.find("/") != std::string::npos;
 }
 
-static std::optional<ref<Store>>
+static kj::Promise<Result<std::optional<ref<Store>>>>
 openFromNonUri(const std::string & uri, const StoreConfig::Params & params, AllowDaemon allowDaemon)
-{
+try {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
         if (allowDaemon == AllowDaemon::Allow
@@ -1440,9 +1440,9 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
                 settings.nixDaemonSockets(), [](auto & socket) { return pathExists(socket.path); }
             ))
         {
-            return make_ref<UDSRemoteStore>(params);
+            co_return make_ref<UDSRemoteStore>(params);
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
-            return LocalStore::makeLocalStore(params);
+            co_return LocalStore::makeLocalStore(params);
         }
 #if __linux__
         else if (!pathExists(stateDir) && params.empty() && getuid() != 0
@@ -1456,7 +1456,7 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
                 try {
                     createDirs(chrootStore);
                 } catch (Error & e) {
-                    return LocalStore::makeLocalStore(params);
+                    co_return LocalStore::makeLocalStore(params);
                 }
                 printTaggedWarning(
                     "'%s' does not exist, so Lix will use '%s' as a chroot store",
@@ -1468,25 +1468,27 @@ openFromNonUri(const std::string & uri, const StoreConfig::Params & params, Allo
             StoreConfig::Params chrootStoreParams;
             chrootStoreParams["root"] = chrootStore;
             // FIXME? this ignores *all* store parameters passed to this function?
-            return LocalStore::makeLocalStore(chrootStoreParams);
+            co_return LocalStore::makeLocalStore(chrootStoreParams);
         }
 #endif
         else
-            return LocalStore::makeLocalStore(params);
+            co_return LocalStore::makeLocalStore(params);
     } else if (uri == "daemon") {
         if (allowDaemon == AllowDaemon::Disallow) {
             throw Error("tried to open a daemon store in a context that doesn't support this");
         }
-        return make_ref<UDSRemoteStore>(params);
+        co_return make_ref<UDSRemoteStore>(params);
     } else if (uri == "local") {
-        return LocalStore::makeLocalStore(params);
+        co_return LocalStore::makeLocalStore(params);
     } else if (isNonUriPath(uri)) {
         StoreConfig::Params params2 = params;
         params2["root"] = absPath(uri);
-        return LocalStore::makeLocalStore(params2);
+        co_return LocalStore::makeLocalStore(params2);
     } else {
-        return std::nullopt;
+        co_return std::nullopt;
     }
+} catch (...) {
+    co_return result::current_exception();
 }
 
 // The `parseURL` function supports both IPv6 URIs as defined in
@@ -1541,15 +1543,18 @@ try {
                 }
             }
         }
-    }
-    catch (BadURL &) {
-        auto [uri, uriParams] = splitUriAndParams(uri_);
-        params.insert(uriParams.begin(), uriParams.end());
 
-        if (auto store = openFromNonUri(uri, params, allowDaemon)) {
-            (*store)->config().warnUnknownSettings();
-            co_return *store;
-        }
+        throw Error("don't know how to open Nix store '%s'", uri_);
+    } catch (BadURL &) {
+        // retry with non-uri stores
+    }
+
+    auto [uri, uriParams] = splitUriAndParams(uri_);
+    params.insert(uriParams.begin(), uriParams.end());
+
+    if (auto store = TRY_AWAIT(openFromNonUri(uri, params, allowDaemon))) {
+        (*store)->config().warnUnknownSettings();
+        co_return *store;
     }
 
     throw Error("don't know how to open Nix store '%s'", uri_);
