@@ -88,15 +88,12 @@ struct mTLSBinaryCacheStoreImpl : public HttpBinaryCacheStore
 
         return options;
     }
-
-    static std::set<std::string> uriSchemes()
-    {
-        return {"https+mtls"};
-    }
 };
 }
 
 extern "C" void nix_plugin_entry()
 {
-    nix::StoreImplementations::add<nix::mTLSBinaryCacheStoreImpl, nix::mTLSBinaryCacheStoreConfig>();
+    nix::StoreImplementations::add<nix::mTLSBinaryCacheStoreImpl, nix::mTLSBinaryCacheStoreConfig>(
+        {"https+mtls"}
+    );
 }

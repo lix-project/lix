@@ -71,9 +71,6 @@ public:
 
     std::string getUri() override;
 
-    static std::set<std::string> uriSchemes()
-    { return {"unix"}; }
-
     ref<FSAccessor> getFSAccessor() override
     { return LocalFSStore::getFSAccessor(); }
 

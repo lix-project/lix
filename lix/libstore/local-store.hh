@@ -189,9 +189,6 @@ public:
 
     virtual ~LocalStore();
 
-    static std::set<std::string> uriSchemes()
-    { return {}; }
-
     /**
      * Create a LocalStore, possibly a platform-specific subclass
      */

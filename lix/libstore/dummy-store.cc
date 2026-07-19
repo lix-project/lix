@@ -32,7 +32,7 @@ struct DummyStore final : public Store
 
     std::string getUri() override
     {
-        return *uriSchemes().begin();
+        return scheme;
     }
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
@@ -49,9 +49,7 @@ struct DummyStore final : public Store
         return {result::success(Trusted)};
     }
 
-    static std::set<std::string> uriSchemes() {
-        return {"dummy"};
-    }
+    static inline const std::string scheme = "dummy";
 
     kj::Promise<Result<std::optional<StorePath>>>
     queryPathFromHashPart(const std::string & hashPart) override
@@ -94,7 +92,7 @@ struct DummyStore final : public Store
 };
 
 void registerDummyStore() {
-    StoreImplementations::add<DummyStore, DummyStoreConfig>();
+    StoreImplementations::add<DummyStore, DummyStoreConfig>({DummyStore::scheme});
 }
 
 }

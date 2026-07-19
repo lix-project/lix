@@ -258,7 +258,7 @@ struct LegacySSHStore final : public Store
 
     SSH ssh;
 
-    static std::set<std::string> uriSchemes() { return {"ssh"}; }
+    static inline const std::string scheme = "ssh";
 
     LegacySSHStore(const std::string & scheme, const std::string & host, LegacySSHStoreConfig config)
         : Store(config)
@@ -321,7 +321,7 @@ struct LegacySSHStore final : public Store
 
     std::string getUri() override
     {
-        return *uriSchemes().begin() + "://" + host;
+        return scheme + "://" + host;
     }
 
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
@@ -617,7 +617,7 @@ public:
 };
 
 void registerLegacySSHStore() {
-    StoreImplementations::add<LegacySSHStore, LegacySSHStoreConfig>();
+    StoreImplementations::add<LegacySSHStore, LegacySSHStoreConfig>({LegacySSHStore::scheme});
 }
 
 }

@@ -290,7 +290,7 @@ try {
 
 
 void registerUDSRemoteStore() {
-    StoreImplementations::add<UDSRemoteStore, UDSRemoteStoreConfig>();
+    StoreImplementations::add<UDSRemoteStore, UDSRemoteStoreConfig>({"unix"});
 }
 
 }

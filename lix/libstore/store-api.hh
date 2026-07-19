@@ -1086,10 +1086,10 @@ struct StoreImplementations
     }
 
     template<typename T, typename TConfig>
-    static void add()
+    static void add(std::set<std::string> && uriSchemes)
     {
         register_({
-            .uriSchemes = T::uriSchemes(),
+            .uriSchemes = std::move(uriSchemes),
             .create = [](const std::string & scheme,
                          const std::string & uri,
                          const StoreConfig::Params & params) -> std::optional<ref<Store>> {

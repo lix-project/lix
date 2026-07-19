@@ -54,8 +54,6 @@ public:
         return "file://" + binaryCacheDir;
     }
 
-    static std::set<std::string> uriSchemes();
-
 protected:
 
     kj::Promise<Result<bool>>
@@ -141,16 +139,9 @@ try {
     return {result::current_exception()};
 }
 
-std::set<std::string> LocalBinaryCacheStore::uriSchemes()
-{
-    if (getEnv("_NIX_FORCE_HTTP") == "1")
-        return {};
-    else
-        return {"file"};
-}
-
 void registerLocalBinaryCacheStore() {
-    StoreImplementations::add<LocalBinaryCacheStore, LocalBinaryCacheStoreConfig>();
+    StoreImplementations::add<LocalBinaryCacheStore, LocalBinaryCacheStoreConfig>(
+        getEnv("_NIX_FORCE_HTTP") == "1" ? std::set<std::string>{} : std::set<std::string>{"file"}
+    );
 }
-
 }

@@ -694,13 +694,10 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
     {
         return {result::success(std::nullopt)};
     }
-
-    static std::set<std::string> uriSchemes() { return {"s3"}; }
-
 };
 
 void registerS3BinaryCacheStore() {
-    StoreImplementations::add<S3BinaryCacheStoreImpl, S3BinaryCacheStoreConfig>();
+    StoreImplementations::add<S3BinaryCacheStoreImpl, S3BinaryCacheStoreConfig>({"s3"});
 }
 
 }

@@ -65,16 +65,6 @@ public:
      */
     virtual FileTransferOptions makeOptions(Headers && headers = {});
 
-    static std::set<std::string> uriSchemes()
-    {
-        static bool forceHttp = getEnv("_NIX_FORCE_HTTP") == "1";
-        auto ret = std::set<std::string>({"http", "https"});
-        if (forceHttp) {
-            ret.insert("file");
-        }
-        return ret;
-    }
-
 protected:
 
     void maybeDisable();

@@ -51,11 +51,11 @@ public:
         return config_;
     }
 
-    static std::set<std::string> uriSchemes() { return {"ssh-ng"}; }
+    static inline const std::string scheme = "ssh-ng";
 
     std::string getUri() override
     {
-        return *uriSchemes().begin() + "://" + host;
+        return scheme + "://" + host;
     }
 
     // FIXME extend daemon protocol, move implementation to RemoteStore
@@ -163,7 +163,7 @@ try {
 }
 
 void registerSSHStore() {
-    StoreImplementations::add<SSHStore, SSHStoreConfig>();
+    StoreImplementations::add<SSHStore, SSHStoreConfig>({SSHStore::scheme});
 }
 
 }

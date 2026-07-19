@@ -139,7 +139,12 @@ try {
 }
 
 void registerHttpBinaryCacheStore() {
-    StoreImplementations::add<HttpBinaryCacheStore, HttpBinaryCacheStoreConfig>();
+    bool forceHttp = getEnv("_NIX_FORCE_HTTP") == "1";
+    auto schemes = std::set<std::string>({"http", "https"});
+    if (forceHttp) {
+        schemes.insert("file");
+    }
+    StoreImplementations::add<HttpBinaryCacheStore, HttpBinaryCacheStoreConfig>(std::move(schemes));
 }
 
 }
