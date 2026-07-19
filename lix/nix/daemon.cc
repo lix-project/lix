@@ -562,10 +562,9 @@ static void daemonInstance(
  *
  * Loops until standard input disconnects, or an error is encountered.
  */
-static void forwardStdioConnection(AsyncIoRoot & aio, RemoteStore & store)
+static void forwardStdioConnection(AsyncIoRoot & aio, StoreProxy & proxy)
 {
-    auto conn = aio.blockOn(store.openConnectionForDaemonForwarding());
-    auto connSocket = AIO().lowLevelProvider.wrapSocketFd(conn->getFD());
+    auto connSocket = AIO().lowLevelProvider.wrapSocketFd(proxy.getFD());
     auto asyncStdin = AIO().lowLevelProvider.wrapInputFd(STDIN_FILENO);
     auto asyncStdout = AIO().lowLevelProvider.wrapOutputFd(STDOUT_FILENO);
 
@@ -610,21 +609,22 @@ static void
 runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustClientOpt)
 {
     if (stdio) {
-        auto store = aio.blockOn(openUncachedStore());
-
         // If --force-untrusted is passed, we cannot forward the connection and
         // must process it ourselves (before delegating to the next store) to
         // force untrusting the client.
-        if (auto remoteStore = store.try_cast_shared<UDSRemoteStore>();
-            remoteStore && (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted))
-        {
-            forwardStdioConnection(aio, *remoteStore);
-        } else {
-            // `Trusted` is passed in the auto (no override case) because we
-            // cannot see who is on the other side of a plain pipe. Limiting
-            // access to those is explicitly not `nix-daemon`'s responsibility.
-            processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
+        if (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted) {
+            if (auto proxy = aio.blockOn(openProxy(settings.storeUri))) {
+                forwardStdioConnection(aio, *proxy);
+                return;
+            }
         }
+
+        auto store = aio.blockOn(openUncachedStore());
+
+        // `Trusted` is passed in the auto (no override case) because we
+        // cannot see who is on the other side of a plain pipe. Limiting
+        // access to those is explicitly not `nix-daemon`'s responsibility.
+        processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
     } else {
         try {
             aio.blockOn(makeInterruptible(daemonLoop(forceTrustClientOpt)));

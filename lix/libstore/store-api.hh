@@ -4,6 +4,7 @@
 #include "lix/libutil/archive.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
+#include "lix/libutil/generator.hh"
 #include "lix/libutil/json-fwd.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libstore/nar-info.hh"
@@ -1076,6 +1077,21 @@ kj::Promise<Result<ref<Store>>> openStore(const std::string & uri = settings.sto
     const StoreConfig::Params & extraParams = {},
     AllowDaemon allowDaemon = AllowDaemon::Allow);
 
+struct StoreProxy
+{
+    StoreProxy() = default;
+    KJ_DISALLOW_COPY_AND_MOVE(StoreProxy);
+    virtual ~StoreProxy() = default;
+
+    virtual int getFD() const = 0;
+};
+
+/**
+ * like `openStore`, but opens a proxy connection instead.
+ */
+kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+openProxy(const std::string & uri = settings.storeUri.get(), const StoreConfig::Params & extraParams = {});
+
 /**
  * @return the default substituter stores, defined by the
  * ‘substituters’ option and various legacy options.
@@ -1090,6 +1106,12 @@ struct StoreFactory
     )>
         create = [](const auto &...) -> kj::Promise<Result<std::optional<ref<Store>>>> {
         return {{std::nullopt}};
+    };
+    std::function<kj::Promise<Result<std::shared_ptr<StoreProxy>>>(
+        const std::string & scheme, const std::string & uri, const StoreConfig::Params & params
+    )>
+        proxy = [](const auto &...) -> kj::Promise<Result<std::shared_ptr<StoreProxy>>> {
+        return {result::success(nullptr)};
     };
     std::function<std::shared_ptr<StoreConfig> ()> getConfig;
 };
@@ -1118,6 +1140,11 @@ struct StoreImplementations
                 return std::make_shared<TConfig>(StringMap({}));
             },
         });
+        if constexpr (requires { T::proxy("", "", StringMap{}); }) {
+            registered->back().proxy =
+                [](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
+                -> kj::Promise<Result<std::shared_ptr<StoreProxy>>> { return T::proxy(scheme, uri, params); };
+        }
     }
 
     template<typename TConfig>
@@ -1128,6 +1155,15 @@ struct StoreImplementations
                 return std::make_shared<TConfig>(StringMap({}));
             },
         });
+    }
+
+    static Generator<StoreFactory *> forScheme(std::string scheme)
+    {
+        for (auto impl : *StoreImplementations::registered) {
+            if (impl.uriSchemes.count(scheme)) {
+                co_yield &impl;
+            }
+        }
     }
 };
 

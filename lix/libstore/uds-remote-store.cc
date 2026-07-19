@@ -62,6 +62,27 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+UDSRemoteStore::proxy(UDSRemoteStoreConfig config, std::optional<std::string> path)
+try {
+    struct Proxy : StoreProxy
+    {
+        ref<RemoteStore::Connection> inner;
+
+        Proxy(ref<RemoteStore::Connection> inner) : inner(inner) {}
+
+        int getFD() const override
+        {
+            return inner->getFD();
+        }
+    };
+
+    auto conn = TRY_AWAIT(openConnection(path, config.protocol.get(), false));
+    co_return std::make_shared<Proxy>(conn);
+} catch (...) {
+    co_return result::current_exception();
+}
+
 std::string UDSRemoteStore::getUri()
 {
     if (path) {
@@ -90,25 +111,27 @@ static bool tryToConnect(AutoCloseFD & sockFD, const daemon::Protocol & socket)
     }
 }
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection(bool allowRPC)
+kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection(
+    const std::optional<std::string> & path, std::string_view protocol, bool allowRPC, Store * rpcStore
+)
 try {
     auto conn = make_ref<Connection>();
 
     std::list<daemon::Protocol> candidates;
 
     if (path) {
-        if (config().protocol == "any") {
+        if (protocol == "any") {
             candidates = daemon::supportedProtocols(*path);
         } else {
-            for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
+            for (const auto & proto : tokenizeString<std::list<std::string>>(protocol, " ,")) {
                 candidates.push_back(daemon::getProtocol(proto, *path));
             }
         }
     } else {
-        if (config().protocol == "any") {
+        if (protocol == "any") {
             candidates = settings.nixDaemonSockets();
         } else {
-            for (const auto & proto : tokenizeString<std::list<std::string>>(config().protocol.get(), " ,")) {
+            for (const auto & proto : tokenizeString<std::list<std::string>>(protocol, " ,")) {
                 auto socket = daemon::getProtocol(proto);
                 for (auto & candidate : settings.nixDaemonSockets()) {
                     // legacy-combined has even more special socket search behavior for `daemon` uris. sigh.
@@ -124,7 +147,7 @@ try {
     }
 
     for (const auto & path : candidates) {
-        if (!allowRPC) {
+        if (!allowRPC || !rpcStore) {
             switch (path.type) {
             case daemon::Protocol::LEGACY_COMBINED:
             case daemon::Protocol::LEGACY:
@@ -145,7 +168,7 @@ try {
             // daemons can be updated independently we can never be sure that the rpc protocols
             // we want to use are supported on both sides without checking first, and sadly the
             // only place we can do such checks without disturbing fallback behavior is *here*.
-            if (path.type == daemon::Protocol::RPC_V1 && !TRY_AWAIT(prepareRpcConnection(*conn))) {
+            if (path.type == daemon::Protocol::RPC_V1 && !TRY_AWAIT(prepareRpcConnection(*conn, rpcStore))) {
                 continue;
             }
 
@@ -161,17 +184,12 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnectionForDaemonForwarding()
-{
-    return openConnection(false);
-}
-
 kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection()
 {
-    return openConnection(true);
+    return openConnection(path, config().protocol.get(), true, this);
 }
 
-kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con)
+kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con, Store * store)
 try {
     auto rpcStream =
         AIO().lowLevelProvider.wrapSocketFd(con.fd.get(), kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
@@ -220,7 +238,7 @@ try {
                                                                              : std::nullopt;
     con.daemonVersion = PROTOCOL_VERSION;
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
-    con.store = this;
+    con.store = store;
     con.rpc->requestStream = initResult.getRequestStream();
     con.rpc->forwarder = con.rpc->forwardRequests();
 

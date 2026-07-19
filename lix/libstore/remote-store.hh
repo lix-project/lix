@@ -171,8 +171,6 @@ public:
 
     struct Connection;
 
-    virtual kj::Promise<Result<ref<Connection>>> openConnectionForDaemonForwarding();
-
 protected:
 
     virtual kj::Promise<Result<ref<Connection>>> openConnection() = 0;

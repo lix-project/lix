@@ -81,6 +81,9 @@ public:
         return open(std::move(config), uri);
     }
 
+    static kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+    proxy(UDSRemoteStoreConfig config, std::optional<std::string> path);
+
     UDSRemoteStoreConfig & config() override { return config_; }
     const UDSRemoteStoreConfig & config() const override { return config_; }
 
@@ -154,11 +157,15 @@ private:
         }
     };
 
-    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection(bool allowRPC);
+    static kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection(
+        const std::optional<std::string> & path,
+        std::string_view protocol,
+        bool allowRPC,
+        Store * rpcStore = nullptr
+    );
 
-    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnectionForDaemonForwarding() override;
     kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
-    kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
+    static kj::Promise<Result<bool>> prepareRpcConnection(Connection & con, Store * store);
     kj::Promise<Result<void>> initConnection(RemoteStore::Connection & conn) override;
     std::optional<std::string> path;
 };

@@ -42,11 +42,6 @@ namespace nix {
 /* TODO: Separate these store impls into different files, give them better names */
 RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config) : Store(config) {}
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> RemoteStore::openConnectionForDaemonForwarding()
-{
-    return openConnection();
-}
-
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
     auto conn = co_await connection.lock();

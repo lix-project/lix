@@ -1496,6 +1496,18 @@ try {
     co_return result::current_exception();
 }
 
+static kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+openProxyFromNonUri(const std::string & uri, const StoreConfig::Params & params)
+try {
+    if (((uri == "" || uri == "auto") && anyDaemonSocketExists()) || uri == "daemon") {
+        co_return TRY_AWAIT(UDSRemoteStore::proxy(params, std::nullopt));
+    } else {
+        co_return result::success(nullptr);
+    }
+} catch (...) {
+    co_return result::current_exception();
+}
+
 // The `parseURL` function supports both IPv6 URIs as defined in
 // RFC2732, but also pure addresses. The latter one is needed here to
 // connect to a remote store via SSH (it's possible to do e.g. `ssh root@::1`).
@@ -1548,14 +1560,12 @@ try {
     try {
         auto [scheme, baseURI, params] = parseStoreURI(uri_, extraParams);
 
-        for (auto implem : *StoreImplementations::registered) {
-            if (implem.uriSchemes.count(scheme)) {
-                auto store = TRY_AWAIT(implem.create(scheme, baseURI, params));
-                if (store) {
-                    experimentalFeatureSettings.require((*store)->config().experimentalFeature());
-                    (*store)->config().warnUnknownSettings();
-                    co_return *store;
-                }
+        for (auto implem : StoreImplementations::forScheme(scheme)) {
+            auto store = TRY_AWAIT(implem->create(scheme, baseURI, params));
+            if (store) {
+                experimentalFeatureSettings.require((*store)->config().experimentalFeature());
+                (*store)->config().warnUnknownSettings();
+                co_return *store;
             }
         }
 
@@ -1572,6 +1582,34 @@ try {
     }
 
     throw Error("don't know how to open Nix store '%s'", uri_);
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+openProxy(const std::string & uri_, const StoreConfig::Params & extraParams)
+try {
+    try {
+        auto [scheme, baseURI, params] = parseStoreURI(uri_, extraParams);
+
+        for (auto implem : StoreImplementations::forScheme(scheme)) {
+            if (auto proxy = TRY_AWAIT(implem->proxy(scheme, baseURI, params))) {
+                co_return proxy;
+            }
+        }
+
+        co_return result::success(nullptr);
+    } catch (BadURL &) {
+        // retry with non-uri stores
+    }
+
+    auto [uri, params] = parseStoreNonURI(uri_, extraParams);
+
+    if (auto proxy = TRY_AWAIT(openProxyFromNonUri(uri, params))) {
+        co_return proxy;
+    }
+
+    co_return result::success(nullptr);
 } catch (...) {
     co_return result::current_exception();
 }
