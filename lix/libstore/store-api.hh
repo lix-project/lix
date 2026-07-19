@@ -1068,11 +1068,13 @@ kj::Promise<Result<std::list<ref<Store>>>> getDefaultSubstituters();
 struct StoreFactory
 {
     std::set<std::string> uriSchemes;
-    std::function<std::optional<ref<Store>>(
+    std::function<kj::Promise<Result<std::optional<ref<Store>>>>(
         const std::string & scheme, const std::string & uri, const StoreConfig::Params & params
     )>
-        create = [](const auto &...) -> std::optional<ref<Store>> { return std::nullopt; };
-    std::function<std::shared_ptr<StoreConfig>()> getConfig;
+        create = [](const auto &...) -> kj::Promise<Result<std::optional<ref<Store>>>> {
+        return {{std::nullopt}};
+    };
+    std::function<std::shared_ptr<StoreConfig> ()> getConfig;
 };
 
 struct StoreImplementations
@@ -1092,11 +1094,9 @@ struct StoreImplementations
     {
         register_({
             .uriSchemes = std::move(uriSchemes),
-            .create = [](const std::string & scheme,
-                         const std::string & uri,
-                         const StoreConfig::Params & params) -> std::optional<ref<Store>> {
-                return T::open(scheme, uri, params);
-            },
+            .create =
+                [](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
+                -> kj::Promise<Result<std::optional<ref<Store>>>> { return T::open(scheme, uri, params); },
             .getConfig = []() -> std::shared_ptr<StoreConfig> {
                 return std::make_shared<TConfig>(StringMap({}));
             },

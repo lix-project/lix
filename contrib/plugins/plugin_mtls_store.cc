@@ -66,10 +66,12 @@ struct mTLSBinaryCacheStoreImpl : public HttpBinaryCacheStore
     {
     }
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & uriScheme, const Path & cacheUri, mTLSBinaryCacheStoreConfig config)
-    {
-        return make_ref<mTLSBinaryCacheStoreImpl>(uriScheme, cacheUri, std::move(config));
+    try {
+        co_return make_ref<mTLSBinaryCacheStoreImpl>(uriScheme, cacheUri, std::move(config));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     FileTransferOptions makeOptions(Headers && headers = {}) override

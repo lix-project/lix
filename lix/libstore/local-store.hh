@@ -192,7 +192,7 @@ public:
     /**
      * Create a LocalStore, possibly a platform-specific subclass
      */
-    static ref<LocalStore> makeLocalStore(const StoreConfig::Params & params);
+    static kj::Promise<Result<ref<LocalStore>>> makeLocalStore(const StoreConfig::Params & params);
 
     /**
      * Implementations of abstract store API methods.

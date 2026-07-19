@@ -26,9 +26,13 @@ struct DummyStore final : public Store
 
     DummyStore(DummyStoreConfig config) : Store(config), config_(std::move(config)) {}
 
-    std::optional<ref<Store>> static open(const std::string &, const Path &, DummyStoreConfig config)
-    {
-        return make_ref<DummyStore>(std::move(config));
+    kj::Promise<Result<std::optional<ref<Store>>>> static open(
+        const std::string &, const Path &, DummyStoreConfig config
+    )
+    try {
+        co_return make_ref<DummyStore>(std::move(config));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::string getUri() override

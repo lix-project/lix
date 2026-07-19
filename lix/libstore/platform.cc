@@ -12,8 +12,8 @@
 #endif
 
 namespace nix {
-ref<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
-{
+kj::Promise<Result<ref<LocalStore>>> LocalStore::makeLocalStore(const StoreConfig::Params & params)
+try {
     kj::Badge<LocalStore> badge;
     auto result =
 #if __linux__
@@ -26,7 +26,9 @@ ref<LocalStore> LocalStore::makeLocalStore(const StoreConfig::Params & params)
         make_ref<FallbackLocalStore>(badge, params)
 #endif
         ;
-    return result;
+    co_return result;
+} catch (...) {
+    co_return result::current_exception();
 }
 
 std::unique_ptr<LocalDerivationGoal> LocalDerivationGoal::makeLocalDerivationGoal(

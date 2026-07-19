@@ -1440,9 +1440,9 @@ try {
                 settings.nixDaemonSockets(), [](auto & socket) { return pathExists(socket.path); }
             ))
         {
-            co_return UDSRemoteStore::open(params);
+            co_return TRY_AWAIT(UDSRemoteStore::open(params));
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
-            co_return LocalStore::makeLocalStore(params);
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
         }
 #if __linux__
         else if (!pathExists(stateDir) && params.empty() && getuid() != 0
@@ -1453,37 +1453,39 @@ try {
                store in ~/.local/share/nix/root. */
             auto chrootStore = getDataDir() + "/nix/root";
             if (!pathExists(chrootStore)) {
+                bool threw = false;
                 try {
                     createDirs(chrootStore);
                 } catch (Error & e) {
-                    co_return LocalStore::makeLocalStore(params);
+                    threw = true;
+                }
+                if (threw) {
+                    co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
                 }
                 printTaggedWarning(
-                    "'%s' does not exist, so Lix will use '%s' as a chroot store",
-                    stateDir,
-                    chrootStore
+                    "'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore
                 );
             } else
                 debug("'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore);
             StoreConfig::Params chrootStoreParams;
             chrootStoreParams["root"] = chrootStore;
             // FIXME? this ignores *all* store parameters passed to this function?
-            co_return LocalStore::makeLocalStore(chrootStoreParams);
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(chrootStoreParams));
         }
 #endif
         else
-            co_return LocalStore::makeLocalStore(params);
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
     } else if (uri == "daemon") {
         if (allowDaemon == AllowDaemon::Disallow) {
             throw Error("tried to open a daemon store in a context that doesn't support this");
         }
-        co_return UDSRemoteStore::open(params);
+        co_return TRY_AWAIT(UDSRemoteStore::open(params));
     } else if (uri == "local") {
-        co_return LocalStore::makeLocalStore(params);
+        co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
     } else if (isNonUriPath(uri)) {
         StoreConfig::Params params2 = params;
         params2["root"] = absPath(uri);
-        co_return LocalStore::makeLocalStore(params2);
+        co_return TRY_AWAIT(LocalStore::makeLocalStore(params2));
     } else {
         co_return std::nullopt;
     }
@@ -1534,7 +1536,7 @@ try {
 
         for (auto implem : *StoreImplementations::registered) {
             if (implem.uriSchemes.count(parsedUri.scheme)) {
-                auto store = implem.create(parsedUri.scheme, baseURI, params);
+                auto store = TRY_AWAIT(implem.create(parsedUri.scheme, baseURI, params));
                 if (store) {
                     experimentalFeatureSettings.require((*store)->config().experimentalFeature());
                     TRY_AWAIT((*store)->init());

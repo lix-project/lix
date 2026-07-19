@@ -33,11 +33,13 @@ HttpBinaryCacheStore::HttpBinaryCacheStore(
     diskCache = getNarInfoDiskCache();
 }
 
-std::optional<ref<Store>> HttpBinaryCacheStore::open(
+kj::Promise<Result<std::optional<ref<Store>>>> HttpBinaryCacheStore::open(
     const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config
 )
-{
-    return make_ref<HttpBinaryCacheStore>(Badge{}, scheme, cacheUri, std::move(config));
+try {
+    co_return make_ref<HttpBinaryCacheStore>(Badge{}, scheme, cacheUri, std::move(config));
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<void>> HttpBinaryCacheStore::init()

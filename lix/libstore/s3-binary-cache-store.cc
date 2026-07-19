@@ -379,10 +379,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         diskCache = getNarInfoDiskCache();
     }
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & uriScheme, const Path & bucketName, S3BinaryCacheStoreConfig config)
-    {
-        return make_ref<S3BinaryCacheStoreImpl>(uriScheme, bucketName, std::move(config));
+    try {
+        co_return make_ref<S3BinaryCacheStoreImpl>(uriScheme, bucketName, std::move(config));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     std::string getUri() override

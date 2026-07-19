@@ -47,10 +47,12 @@ public:
     {
     }
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & binaryCacheDir, LocalBinaryCacheStoreConfig config)
-    {
-        return make_ref<LocalBinaryCacheStore>(scheme, binaryCacheDir, std::move(config));
+    try {
+        co_return make_ref<LocalBinaryCacheStore>(scheme, binaryCacheDir, std::move(config));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<void>> init() override;

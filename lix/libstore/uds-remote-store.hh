@@ -67,17 +67,20 @@ public:
 
     UDSRemoteStore(Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
 
-    static std::optional<ref<Store>> open(UDSRemoteStoreConfig config, std::optional<std::string> path)
-    {
-        return make_ref<UDSRemoteStore>(Badge{}, std::move(config), std::move(path));
+    static kj::Promise<Result<std::optional<ref<Store>>>>
+    open(UDSRemoteStoreConfig config, std::optional<std::string> path)
+    try {
+        co_return make_ref<UDSRemoteStore>(Badge{}, std::move(config), std::move(path));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
-    static std::optional<ref<Store>> open(UDSRemoteStoreConfig config)
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(UDSRemoteStoreConfig config)
     {
         return open(std::move(config), std::nullopt);
     }
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & uri, UDSRemoteStoreConfig config)
     {
         return open(std::move(config), uri);

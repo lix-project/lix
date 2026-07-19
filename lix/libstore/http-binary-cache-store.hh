@@ -49,7 +49,7 @@ public:
         Badge, const std::string & scheme, const Path & _cacheUri, HttpBinaryCacheStoreConfig config
     );
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config);
 
     HttpBinaryCacheStoreConfig & config() override

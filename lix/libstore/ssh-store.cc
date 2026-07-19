@@ -42,10 +42,12 @@ public:
     {
     }
 
-    static std::optional<ref<Store>>
+    static kj::Promise<Result<std::optional<ref<Store>>>>
     open(const std::string & scheme, const Path & host, SSHStoreConfig config)
-    {
-        return make_ref<SSHStore>(kj::Badge<SSHStore>{}, scheme, host, std::move(config));
+    try {
+        co_return make_ref<SSHStore>(kj::Badge<SSHStore>{}, scheme, host, std::move(config));
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     SSHStoreConfig & config() override
