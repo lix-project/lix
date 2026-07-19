@@ -33,6 +33,13 @@ HttpBinaryCacheStore::HttpBinaryCacheStore(
     diskCache = getNarInfoDiskCache();
 }
 
+std::optional<ref<Store>> HttpBinaryCacheStore::open(
+    const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config
+)
+{
+    return make_ref<HttpBinaryCacheStore>(scheme, cacheUri, std::move(config));
+}
+
 kj::Promise<Result<void>> HttpBinaryCacheStore::init()
 try {
     // FIXME: do this lazily?

@@ -42,6 +42,12 @@ public:
     {
     }
 
+    static std::optional<ref<Store>>
+    open(const std::string & scheme, const Path & host, SSHStoreConfig config)
+    {
+        return make_ref<SSHStore>(scheme, host, std::move(config));
+    }
+
     SSHStoreConfig & config() override
     {
         return config_;

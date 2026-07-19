@@ -41,23 +41,13 @@ std::string UDSRemoteStoreConfig::doc()
         ;
 }
 
-UDSRemoteStore::UDSRemoteStore(UDSRemoteStoreConfig config)
+UDSRemoteStore::UDSRemoteStore(UDSRemoteStoreConfig config, std::optional<std::string> path)
     : Store(config)
     , RemoteStore(config)
     , config_(std::move(config))
+    , path(std::move(path))
 {
 }
-
-
-UDSRemoteStore::UDSRemoteStore(
-    const std::string scheme,
-    std::string socket_path,
-    UDSRemoteStoreConfig config)
-    : UDSRemoteStore(std::move(config))
-{
-    path.emplace(socket_path);
-}
-
 
 std::string UDSRemoteStore::getUri()
 {

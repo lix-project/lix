@@ -47,6 +47,12 @@ public:
     {
     }
 
+    static std::optional<ref<Store>>
+    open(const std::string & scheme, const Path & binaryCacheDir, LocalBinaryCacheStoreConfig config)
+    {
+        return make_ref<LocalBinaryCacheStore>(scheme, binaryCacheDir, std::move(config));
+    }
+
     kj::Promise<Result<void>> init() override;
 
     std::string getUri() override

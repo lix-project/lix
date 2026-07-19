@@ -63,8 +63,23 @@ class UDSRemoteStore : public virtual IndirectRootStore
 
 public:
 
-    UDSRemoteStore(UDSRemoteStoreConfig config);
-    UDSRemoteStore(const std::string scheme, std::string path, UDSRemoteStoreConfig config);
+    UDSRemoteStore(UDSRemoteStoreConfig config, std::optional<std::string> path);
+
+    static std::optional<ref<Store>> open(UDSRemoteStoreConfig config, std::optional<std::string> path)
+    {
+        return make_ref<UDSRemoteStore>(std::move(config), std::move(path));
+    }
+
+    static std::optional<ref<Store>> open(UDSRemoteStoreConfig config)
+    {
+        return open(std::move(config), std::nullopt);
+    }
+
+    static std::optional<ref<Store>>
+    open(const std::string & scheme, const Path & uri, UDSRemoteStoreConfig config)
+    {
+        return open(std::move(config), uri);
+    }
 
     UDSRemoteStoreConfig & config() override { return config_; }
     const UDSRemoteStoreConfig & config() const override { return config_; }

@@ -1093,7 +1093,7 @@ struct StoreImplementations
             .create = [](const std::string & scheme,
                          const std::string & uri,
                          const StoreConfig::Params & params) -> std::optional<ref<Store>> {
-                return make_ref<T>(scheme, uri, params);
+                return T::open(scheme, uri, params);
             },
             .getConfig = []() -> std::shared_ptr<StoreConfig> {
                 return std::make_shared<TConfig>(StringMap({}));

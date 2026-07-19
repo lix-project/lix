@@ -268,6 +268,12 @@ struct LegacySSHStore final : public Store
     {
     }
 
+    static std::optional<ref<Store>>
+    open(const std::string & scheme, const Path & host, LegacySSHStoreConfig config)
+    {
+        return make_ref<LegacySSHStore>(scheme, host, std::move(config));
+    }
+
     kj::Promise<Result<decltype(connection)::Lock>> getConnection()
     try {
         auto conn = co_await connection.lock();

@@ -1440,7 +1440,7 @@ try {
                 settings.nixDaemonSockets(), [](auto & socket) { return pathExists(socket.path); }
             ))
         {
-            co_return make_ref<UDSRemoteStore>(params);
+            co_return UDSRemoteStore::open(params);
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
             co_return LocalStore::makeLocalStore(params);
         }
@@ -1477,7 +1477,7 @@ try {
         if (allowDaemon == AllowDaemon::Disallow) {
             throw Error("tried to open a daemon store in a context that doesn't support this");
         }
-        co_return make_ref<UDSRemoteStore>(params);
+        co_return UDSRemoteStore::open(params);
     } else if (uri == "local") {
         co_return LocalStore::makeLocalStore(params);
     } else if (isNonUriPath(uri)) {

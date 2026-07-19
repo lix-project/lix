@@ -379,6 +379,12 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         diskCache = getNarInfoDiskCache();
     }
 
+    static std::optional<ref<Store>>
+    open(const std::string & uriScheme, const Path & bucketName, S3BinaryCacheStoreConfig config)
+    {
+        return make_ref<S3BinaryCacheStoreImpl>(uriScheme, bucketName, std::move(config));
+    }
+
     std::string getUri() override
     {
         return "s3://" + bucketName;

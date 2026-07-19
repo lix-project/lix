@@ -24,11 +24,12 @@ struct DummyStore final : public Store
     DummyStoreConfig & config() override { return config_; }
     const DummyStoreConfig & config() const override { return config_; }
 
-    DummyStore(const std::string scheme, const std::string uri, DummyStoreConfig config)
-        : DummyStore(std::move(config))
-    { }
-
     DummyStore(DummyStoreConfig config) : Store(config), config_(std::move(config)) {}
+
+    std::optional<ref<Store>> static open(const std::string &, const Path &, DummyStoreConfig config)
+    {
+        return make_ref<DummyStore>(std::move(config));
+    }
 
     std::string getUri() override
     {

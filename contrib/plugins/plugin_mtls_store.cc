@@ -66,6 +66,12 @@ struct mTLSBinaryCacheStoreImpl : public HttpBinaryCacheStore
     {
     }
 
+    static std::optional<ref<Store>>
+    open(const std::string & uriScheme, const Path & cacheUri, mTLSBinaryCacheStoreConfig config)
+    {
+        return make_ref<mTLSBinaryCacheStoreImpl>(uriScheme, cacheUri, std::move(config));
+    }
+
     FileTransferOptions makeOptions(Headers && headers = {}) override
     {
         auto options = HttpBinaryCacheStore::makeOptions(std::move(headers));
