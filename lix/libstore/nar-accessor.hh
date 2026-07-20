@@ -18,6 +18,8 @@ struct Source;
  */
 ref<FSAccessor> makeNarAccessor(std::string && nar);
 
+ref<FSAccessor> makeNarAccessor(Source & source);
+
 /**
  * Create a NAR accessor from a NAR listing (in the format produced by
  * listNar()). The callback getNarBytes(offset, length) is used by the

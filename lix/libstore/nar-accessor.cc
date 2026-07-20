@@ -161,6 +161,11 @@ ref<FSAccessor> makeNarAccessor(std::string && nar)
     return make_ref<NarAccessor>(std::move(nar));
 }
 
+ref<FSAccessor> makeNarAccessor(Source & source)
+{
+    return make_ref<NarAccessor>(source);
+}
+
 ref<FSAccessor> makeLazyNarAccessor(const std::string & listing,
     GetNarBytes getNarBytes)
 {

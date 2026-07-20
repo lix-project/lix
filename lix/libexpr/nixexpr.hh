@@ -126,7 +126,7 @@ public:
         std::unique_ptr<Expr> parsed, Evaluator & es, const std::shared_ptr<const StaticEnv> & env
     );
 
-    virtual JSON toJSON(const SymbolTable & symbols) const = 0;
+    virtual JSON toJSON(const SymbolTable & symbols) const;
     virtual void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) = 0;
     virtual Value eval(EvalState & state, Env & env);
     Value makeThunk(Evaluator & ctx, Env & env);
@@ -303,11 +303,7 @@ struct ExprInheritFrom : Expr
     {
     }
 
-    JSON toJSON(const SymbolTable & symbols) const override
-    {
-        abort();
-    }
-
+    JSON toJSON(const SymbolTable & symbols) const override;
     Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };
@@ -522,6 +518,7 @@ struct ExprLambda : Expr
     {
     }
     void setName(Symbol name) override;
+    std::string showNamePos(const EvalState & state) const;
 
     /** Returns the name of the lambda,
      * or "anonymous lambda" if it doesn't have one.
@@ -660,11 +657,6 @@ struct ExprPos : Expr
 /* only used to mark thunks as black holes. */
 struct ExprBlackHole : Expr
 {
-    JSON toJSON(const SymbolTable & symbols) const override
-    {
-        abort();
-    }
-
     Value eval(EvalState & state, Env & env) override;
     void accept(ExprVisitor & ev, std::unique_ptr<Expr> & ptr) override { ev.visit(*this, ptr); }
 };

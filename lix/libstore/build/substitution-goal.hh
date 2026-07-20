@@ -90,6 +90,10 @@ public:
     kj::Promise<Result<WorkResult>> referencesValid() noexcept;
     kj::Promise<Result<WorkResult>> tryToRun() noexcept;
     kj::Promise<Result<WorkResult>> finished() noexcept;
+
+    JobCategory jobCategory() const override {
+        return JobCategory::Substitution;
+    };
 };
 
 }

@@ -27,6 +27,23 @@ typedef std::shared_ptr<Goal> GoalPtr;
  */
 typedef std::set<GoalPtr> Goals;
 
+/**
+ * Used as a hint to the worker on how to schedule a particular goal. For example,
+ * builds are typically CPU- and memory-bound, while substitutions are I/O bound.
+ * Using this information, the worker might decide to schedule more or fewer goals
+ * of each category in parallel.
+ */
+enum struct JobCategory {
+    /**
+     * A build of a derivation; it will use CPU and disk resources.
+     */
+    Build,
+    /**
+     * A substitution an arbitrary store object; it will use network resources.
+     */
+    Substitution,
+};
+
 struct Goal
 {
     typedef enum {ecSuccess, ecFailed, ecNoSubstituters, ecIncompleteClosure} ExitCode;
@@ -122,7 +139,13 @@ public:
         return name;
     }
 
-    virtual void cleanup() {}
+    virtual void cleanup() { }
+
+    /**
+     * @brief Hint for the scheduler, which concurrency limit applies.
+     * @see JobCategory
+     */
+    virtual JobCategory jobCategory() const = 0;
 };
 
 }

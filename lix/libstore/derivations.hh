@@ -359,6 +359,7 @@ struct Sink;
 
 Source & readDerivation(Source & in, const Store & store, BasicDerivation & drv, std::string_view name);
 WireFormatGenerator serializeDerivation(const Store & store, const BasicDerivation & drv);
+void writeDerivation(Sink & out, const Store & store, const BasicDerivation & drv);
 
 /**
  * This creates an opaque and almost certainly unique string

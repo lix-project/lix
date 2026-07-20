@@ -99,6 +99,13 @@ JSON ExprVar::toJSON(const SymbolTable & symbols) const
     return {{"_type", "ExprVar"}, {"value", stringToJSON(symbols[name])}};
 }
 
+JSON ExprInheritFrom::toJSON(SymbolTable const & symbols) const
+{
+    return {
+        {"_type", "ExprInheritFrom"}
+    };
+}
+
 JSON ExprSelect::toJSON(const SymbolTable & symbols) const
 {
     JSON out = {
@@ -739,6 +746,17 @@ void ExprLambda::setName(Symbol name)
     this->name = name;
     body->setName(name);
 }
+
+
+std::string ExprLambda::showNamePos(const EvalState & state) const
+{
+    std::string id(name
+        ? concatStrings("'", state.ctx.symbols[name], "'")
+        : "anonymous function");
+    return fmt("%1% at %2%", id, state.ctx.positions[pos]);
+}
+
+
 
 /* Position table. */
 

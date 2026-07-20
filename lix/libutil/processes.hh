@@ -122,6 +122,11 @@ public:
     int wait();
     void waitAndCheck();
 
+    std::optional<int> getStdoutFD() const
+    {
+        return childStdout ? std::optional(childStdout->getFD()) : std::nullopt;
+    }
+
     AsyncFdIoStream * getStdout() const
     {
         return childStdout.get();
@@ -155,6 +160,7 @@ public:
 
     using RunningProgram::operator bool;
     using RunningProgram::getStdout;
+    using RunningProgram::getStdoutFD;
     using RunningProgram::kill;
     using RunningProgram::wait;
 
