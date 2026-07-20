@@ -55,6 +55,15 @@ UDSRemoteStore::UDSRemoteStore(
 {
 }
 
+RpcRemoteStore::RpcRemoteStore(
+    MustCallInit & w, Badge b, UDSRemoteStoreConfig config, std::optional<std::string> path
+)
+    : Store(config)
+    , RemoteStore(w, config)
+    , UDSRemoteStore(w, b, config, path)
+{
+}
+
 std::string UDSRemoteStore::getUri()
 {
     if (path) {
@@ -166,10 +175,22 @@ try {
 
         if (tryToConnect(fd, socketPath)) {
             try {
-                MustCallInit init;
-                auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path);
-                TRY_AWAIT(init(store, std::move(fd), socketPath.type));
-                co_return store;
+                switch (socketPath.type) {
+                case daemon::Protocol::LEGACY_COMBINED:
+                case daemon::Protocol::LEGACY: {
+                    MustCallInit init;
+                    auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path);
+                    TRY_AWAIT(init(store, std::move(fd)));
+                    co_return store;
+                }
+
+                case daemon::Protocol::RPC_V1: {
+                    MustCallInit init;
+                    auto store = make_ref<RpcRemoteStore>(init, Badge{}, config, path);
+                    TRY_AWAIT(init(store, std::move(fd)));
+                    co_return store;
+                }
+                }
             } catch (ProtocolUnavailable &) {
             }
         }
@@ -183,30 +204,34 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd, daemon::Protocol::Type type)
+kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd)
 try {
     auto conn = std::make_shared<Connection>();
     conn->fd = std::move(fd);
     conn->startTime = std::chrono::steady_clock::now();
-
-    if (type == daemon::Protocol::RPC_V1) {
-        if (!TRY_AWAIT(prepareRpcConnection(*conn))) {
-            throw ProtocolUnavailable("");
-        }
-    }
-
-    if (conn->rpc) {
-        TRY_AWAIT(setOptions(*conn));
-    } else {
-        TRY_AWAIT(RemoteStore::initConnection(*conn));
-    }
+    TRY_AWAIT(RemoteStore::initConnection(*conn));
     *(co_await connection.lock()) = conn;
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con)
+kj::Promise<Result<void>> RpcRemoteStore::init(AutoCloseFD fd)
+try {
+    auto conn = std::make_shared<Connection>();
+    conn->fd = std::move(fd);
+    conn->startTime = std::chrono::steady_clock::now();
+    if (!TRY_AWAIT(prepareRpcConnection(*conn))) {
+        throw ProtocolUnavailable("");
+    }
+    TRY_AWAIT(setOptions(*conn));
+    *(co_await connection.lock()) = conn;
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<bool>> RpcRemoteStore::prepareRpcConnection(Connection & con)
 try {
     auto rpcStream =
         AIO().lowLevelProvider.wrapSocketFd(con.fd.get(), kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
@@ -267,7 +292,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<void> UDSRemoteStore::RpcState::forwardRequests()
+kj::Promise<void> RpcRemoteStore::RpcState::forwardRequests()
 try {
     std::array<char, 8192> buf;
     while (true) {
@@ -286,7 +311,7 @@ try {
     error = std::current_exception();
 }
 
-kj::Promise<void> UDSRemoteStore::LegacyStreamProxy::feed(FeedContext context)
+kj::Promise<void> RpcRemoteStore::LegacyStreamProxy::feed(FeedContext context)
 try {
     if (state.error) {
         std::rethrow_exception(state.error);
@@ -298,7 +323,7 @@ try {
     rpc::rethrow_as_rpc_error();
 }
 
-kj::Promise<void> UDSRemoteStore::LegacyStreamProxy::sync(SyncContext context)
+kj::Promise<void> RpcRemoteStore::LegacyStreamProxy::sync(SyncContext context)
 try {
     if (state.error) {
         std::rethrow_exception(state.error);

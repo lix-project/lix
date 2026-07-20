@@ -65,6 +65,7 @@ class UDSRemoteStore : public virtual IndirectRootStore
 
     UDSRemoteStoreConfig config_;
 
+protected:
     using Badge = kj::Badge<UDSRemoteStore>;
 
 public:
@@ -123,6 +124,28 @@ public:
     kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
 private:
+    struct Connection : RemoteStore::Connection
+    {
+        AutoCloseFD fd;
+
+        int getFD() const override
+        {
+            return fd.get();
+        }
+    };
+
+    kj::Promise<Result<void>> init(AutoCloseFD fd);
+    std::optional<std::string> path;
+};
+
+class RpcRemoteStore : public UDSRemoteStore
+{
+    friend MustCallInit;
+
+public:
+    RpcRemoteStore(MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
+
+private:
     struct RpcState
     {
         kj::Own<kj::AsyncIoStream> rpcStream;
@@ -161,7 +184,7 @@ private:
         }
     };
 
-    kj::Promise<Result<void>> init(AutoCloseFD fd, daemon::Protocol::Type type);
+    kj::Promise<Result<void>> init(AutoCloseFD fd);
     kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
     std::optional<std::string> path;
 };
