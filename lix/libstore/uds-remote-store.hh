@@ -1,6 +1,8 @@
 #pragma once
 ///@file
 
+#include "lix/libstore/globals.hh"
+#include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libutil/logging-rpc.hh"
 #include "lix/libutil/logging.hh"
@@ -159,10 +161,7 @@ private:
         }
     };
 
-    kj::Promise<Result<std::shared_ptr<Connection>>>
-    openConnection(const std::optional<std::string> & path, std::string_view protocol);
-
-    kj::Promise<Result<void>> init();
+    kj::Promise<Result<void>> init(AutoCloseFD fd, daemon::Protocol::Type type);
     kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
     std::optional<std::string> path;
 };

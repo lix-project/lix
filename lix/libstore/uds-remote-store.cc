@@ -34,6 +34,10 @@
 
 namespace nix {
 
+namespace {
+MakeError(ProtocolUnavailable, Error);
+}
+
 std::string UDSRemoteStoreConfig::doc()
 {
     return
@@ -49,17 +53,6 @@ UDSRemoteStore::UDSRemoteStore(
     , config_(std::move(config))
     , path(std::move(path))
 {
-}
-
-kj::Promise<Result<std::optional<ref<Store>>>>
-UDSRemoteStore::open(UDSRemoteStoreConfig config, std::optional<std::string> path)
-try {
-    MustCallInit init;
-    auto store = make_ref<UDSRemoteStore>(init, Badge{}, std::move(config), std::move(path));
-    TRY_AWAIT(init(store));
-    co_return store;
-} catch (...) {
-    co_return result::current_exception();
 }
 
 std::string UDSRemoteStore::getUri()
@@ -163,30 +156,22 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>>
-UDSRemoteStore::openConnection(const std::optional<std::string> & path, std::string_view protocol)
+kj::Promise<Result<std::optional<ref<Store>>>>
+UDSRemoteStore::open(UDSRemoteStoreConfig config, std::optional<std::string> path)
 try {
-    auto conn = make_ref<Connection>();
+    std::list<daemon::Protocol> candidates = protocolsFor(path, config.protocol.get());
 
-    std::list<daemon::Protocol> candidates = protocolsFor(path, protocol);
+    for (const auto & socketPath : candidates) {
+        auto fd = createUnixDomainSocket();
 
-    for (const auto & path : candidates) {
-        /* Connect to a daemon that does the privileged work for us. */
-        conn->fd = createUnixDomainSocket();
-
-        if (tryToConnect(conn->fd, path)) {
-            conn->startTime = std::chrono::steady_clock::now();
-
-            // NOTE we do all this setup *here* instead of in initConnection because we want to
-            // provide graceful fallback during the transition period to rpc. since clients and
-            // daemons can be updated independently we can never be sure that the rpc protocols
-            // we want to use are supported on both sides without checking first, and sadly the
-            // only place we can do such checks without disturbing fallback behavior is *here*.
-            if (path.type == daemon::Protocol::RPC_V1 && !TRY_AWAIT(prepareRpcConnection(*conn))) {
-                continue;
+        if (tryToConnect(fd, socketPath)) {
+            try {
+                MustCallInit init;
+                auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path);
+                TRY_AWAIT(init(store, std::move(fd), socketPath.type));
+                co_return store;
+            } catch (ProtocolUnavailable &) {
             }
-
-            co_return conn;
         }
     }
 
@@ -198,9 +183,18 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> UDSRemoteStore::init()
+kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd, daemon::Protocol::Type type)
 try {
-    auto conn = TRY_AWAIT(openConnection(path, config().protocol.get()));
+    auto conn = std::make_shared<Connection>();
+    conn->fd = std::move(fd);
+    conn->startTime = std::chrono::steady_clock::now();
+
+    if (type == daemon::Protocol::RPC_V1) {
+        if (!TRY_AWAIT(prepareRpcConnection(*conn))) {
+            throw ProtocolUnavailable("");
+        }
+    }
+
     if (conn->rpc) {
         TRY_AWAIT(setOptions(*conn));
     } else {

@@ -215,12 +215,13 @@ protected:
             // technically unsafe, but it's better than asserting in cleanup paths.
             assert(initCalled || std::uncaught_exceptions() > 0);
         }
-        auto operator()(auto & store)
+        template<typename... Args>
+        auto operator()(auto & store, Args &&... args)
         {
             // this is *also* technically unsafe if init returns a promise. promise
             // types are must-use though, so not awaiting them will produce errors.
             initCalled = true;
-            return store->init();
+            return store->init(std::forward<Args>(args)...);
         }
     };
 
