@@ -163,8 +163,6 @@ public:
 
     kj::Promise<Result<std::optional<std::string>>> getVersion() override;
 
-    kj::Promise<Result<void>> init();
-
     kj::Promise<Result<unsigned int>> getProtocol() override;
 
     kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
@@ -172,6 +170,7 @@ public:
     struct Connection;
 
 protected:
+    kj::Promise<Result<void>> init();
 
     virtual kj::Promise<Result<ref<Connection>>> openConnection() = 0;
 

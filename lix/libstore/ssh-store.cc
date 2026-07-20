@@ -30,6 +30,8 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
 
 class SSHStore final : public RemoteStore
 {
+    friend MustCallInit;
+
     SSHStoreConfig config_;
 
 public:

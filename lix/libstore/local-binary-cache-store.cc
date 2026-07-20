@@ -26,6 +26,8 @@ struct LocalBinaryCacheStoreConfig final : BinaryCacheStoreConfig
 
 class LocalBinaryCacheStore final : public BinaryCacheStore
 {
+    friend MustCallInit;
+
 private:
 
     LocalBinaryCacheStoreConfig config_;
@@ -60,14 +62,13 @@ public:
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<void>> init();
-
     std::string getUri() override
     {
         return "file://" + binaryCacheDir;
     }
 
 protected:
+    kj::Promise<Result<void>> init();
 
     kj::Promise<Result<bool>>
     fileExists(const std::string & path, const Activity * context) override;

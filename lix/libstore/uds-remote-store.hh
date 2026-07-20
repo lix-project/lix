@@ -59,6 +59,8 @@ struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreCon
 class UDSRemoteStore : public virtual IndirectRootStore
     , public virtual RemoteStore
 {
+    friend MustCallInit;
+
     UDSRemoteStoreConfig config_;
 
     using Badge = kj::Badge<UDSRemoteStore>;

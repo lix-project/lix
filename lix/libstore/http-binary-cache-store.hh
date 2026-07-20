@@ -23,6 +23,7 @@ struct HttpBinaryCacheStoreConfig : BinaryCacheStoreConfig
 class HttpBinaryCacheStore : public BinaryCacheStore
 {
 private:
+    friend MustCallInit;
 
     HttpBinaryCacheStoreConfig config_;
     Path cacheUri;
@@ -70,8 +71,6 @@ public:
         return cacheUri;
     }
 
-    kj::Promise<Result<void>> init();
-
     /** Override this to configure additional curl options on the request.
      * e.g. authentication method or key material.
      *
@@ -81,6 +80,7 @@ public:
     virtual FileTransferOptions makeOptions(Headers && headers = {});
 
 protected:
+    kj::Promise<Result<void>> init();
 
     void maybeDisable();
     void checkEnabled();
