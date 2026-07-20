@@ -111,12 +111,9 @@ static bool tryToConnect(AutoCloseFD & sockFD, const daemon::Protocol & socket)
     }
 }
 
-kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>> UDSRemoteStore::openConnection(
-    const std::optional<std::string> & path, std::string_view protocol, bool allowRPC, Store * rpcStore
-)
-try {
-    auto conn = make_ref<Connection>();
-
+static std::list<daemon::Protocol>
+protocolsFor(const std::optional<std::string> & path, std::string_view protocol)
+{
     std::list<daemon::Protocol> candidates;
 
     if (path) {
@@ -145,6 +142,17 @@ try {
             }
         }
     }
+
+    return candidates;
+}
+
+kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>> UDSRemoteStore::openConnection(
+    const std::optional<std::string> & path, std::string_view protocol, bool allowRPC, Store * rpcStore
+)
+try {
+    auto conn = make_ref<Connection>();
+
+    std::list<daemon::Protocol> candidates = protocolsFor(path, protocol);
 
     for (const auto & path : candidates) {
         if (!allowRPC || !rpcStore) {
