@@ -44,14 +44,7 @@ RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config) : Sto
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
-    auto conn = co_await connection.lock();
-    if (*conn) {
-        co_return {std::move(conn)};
-    }
-
-    *conn = TRY_AWAIT(openConnection());
-    TRY_AWAIT(initConnection(**conn));
-    co_return {std::move(conn)};
+    co_return co_await connection.lock();
 } catch (...) {
     co_return result::current_exception();
 }

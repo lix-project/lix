@@ -159,16 +159,15 @@ private:
         }
     };
 
-    static kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection(
+    static kj::Promise<Result<std::shared_ptr<Connection>>> openConnection(
         const std::optional<std::string> & path,
         std::string_view protocol,
         bool allowRPC,
         Store * rpcStore = nullptr
     );
 
-    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
+    kj::Promise<Result<void>> init();
     static kj::Promise<Result<bool>> prepareRpcConnection(Connection & con, Store * store);
-    kj::Promise<Result<void>> initConnection(RemoteStore::Connection & conn) override;
     std::optional<std::string> path;
 };
 

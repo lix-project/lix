@@ -172,9 +172,7 @@ public:
 protected:
     kj::Promise<Result<void>> init();
 
-    virtual kj::Promise<Result<ref<Connection>>> openConnection() = 0;
-
-    virtual kj::Promise<Result<void>> initConnection(Connection & conn);
+    kj::Promise<Result<void>> initConnection(Connection & conn);
 
     Sync<std::shared_ptr<Connection>, AsyncMutex> connection;
 

@@ -7,6 +7,7 @@
 #include "lix/libstore/ssh.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
+#include <memory>
 
 namespace nix {
 
@@ -139,7 +140,7 @@ protected:
         }
     };
 
-    kj::Promise<Result<ref<RemoteStore::Connection>>> openConnection() override;
+    kj::Promise<Result<void>> init();
 
     std::string host;
 
@@ -155,30 +156,23 @@ protected:
         */
         return {result::success()};
     };
-
-    kj::Promise<Result<void>> initConnection(RemoteStore::Connection & conn) override
-    try {
-        TRY_AWAIT(RemoteStore::initConnection(conn));
-        auto & sshConn = static_cast<Connection &>(conn);
-        sshConn.logHandlerPromise = sshConn.logHandler(getUri());
-        co_return result::success();
-    } catch (...) {
-        co_return result::current_exception();
-    }
 };
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> SSHStore::openConnection()
+kj::Promise<Result<void>> SSHStore::init()
 try {
-    auto conn = make_ref<Connection>();
+    auto conn = std::make_shared<Connection>();
 
     std::string command = config_.remoteProgram + " --stdio";
     if (config_.remoteStore.get() != "")
         command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = ssh.startCommand(command);
-    return {conn};
+    TRY_AWAIT(RemoteStore::initConnection(*conn));
+    conn->logHandlerPromise = conn->logHandler(getUri());
+    *(co_await connection.lock()) = conn;
+    co_return result::success();
 } catch (...) {
-    return {result::current_exception()};
+    co_return result::current_exception();
 }
 
 void registerSSHStore() {

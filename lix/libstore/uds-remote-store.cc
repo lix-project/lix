@@ -67,9 +67,9 @@ UDSRemoteStore::proxy(UDSRemoteStoreConfig config, std::optional<std::string> pa
 try {
     struct Proxy : StoreProxy
     {
-        ref<RemoteStore::Connection> inner;
+        std::shared_ptr<RemoteStore::Connection> inner;
 
-        Proxy(ref<RemoteStore::Connection> inner) : inner(inner) {}
+        Proxy(std::shared_ptr<RemoteStore::Connection> inner) : inner(inner) {}
 
         int getFD() const override
         {
@@ -111,7 +111,7 @@ static bool tryToConnect(AutoCloseFD & sockFD, const daemon::Protocol & socket)
     }
 }
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection(
+kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>> UDSRemoteStore::openConnection(
     const std::optional<std::string> & path, std::string_view protocol, bool allowRPC, Store * rpcStore
 )
 try {
@@ -184,9 +184,18 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<ref<RemoteStore::Connection>>> UDSRemoteStore::openConnection()
-{
-    return openConnection(path, config().protocol.get(), true, this);
+kj::Promise<Result<void>> UDSRemoteStore::init()
+try {
+    auto conn = TRY_AWAIT(openConnection(path, config().protocol.get(), true, this));
+    if (conn->rpc) {
+        TRY_AWAIT(setOptions(*conn));
+    } else {
+        TRY_AWAIT(RemoteStore::initConnection(*conn));
+    }
+    *(co_await connection.lock()) = conn;
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con, Store * store)
@@ -289,15 +298,6 @@ try {
     return kj::READY_NOW;
 } catch (...) {
     rpc::rethrow_as_rpc_error();
-}
-
-kj::Promise<Result<void>> UDSRemoteStore::initConnection(RemoteStore::Connection & conn)
-{
-    if (dynamic_cast<Connection &>(conn).rpc) {
-        return setOptions(conn);
-    } else {
-        return RemoteStore::initConnection(conn);
-    }
 }
 
 kj::Promise<Result<void>> UDSRemoteStore::addIndirectRoot(const Path & path)
