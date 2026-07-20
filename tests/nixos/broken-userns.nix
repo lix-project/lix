@@ -50,7 +50,8 @@ in
 
       # Building it normally should work
       machine.succeed(r"""
-        nix-build --argstr cacheBreak 1 --store daemon ${testDerivation}
+        nix-build --argstr cacheBreak 1 --store daemon ${testDerivation} --debug \
+          |& tee /dev/stderr | grep -sv 'not using a user namespace'
       """)
 
       # Building it with broken userns should also work
@@ -58,9 +59,13 @@ in
         # break user ns
         sysctl -w user.max_user_namespaces=0
       """)
-      machine.systemctl("restart nix-daemon")
+      # ensure we are running with socket activation. otherwise we would have to restart
+      # the daemon for the sysctl to take full effect, but restarting the daemon is racy
+      machine.succeed("systemctl status nix-daemon.socket")
+      machine.fail("systemctl status nix-daemon.service")
       machine.succeed(r"""
-        nix-build --argstr cacheBreak 2 --store daemon ${testDerivation}
+        nix-build --argstr cacheBreak 2 --store daemon ${testDerivation} --debug \
+          |& tee /dev/stderr | grep -s 'not using a user namespace'
       """)
     '';
 }
