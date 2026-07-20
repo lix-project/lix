@@ -159,15 +159,11 @@ private:
         }
     };
 
-    static kj::Promise<Result<std::shared_ptr<Connection>>> openConnection(
-        const std::optional<std::string> & path,
-        std::string_view protocol,
-        bool allowRPC,
-        Store * rpcStore = nullptr
-    );
+    kj::Promise<Result<std::shared_ptr<Connection>>>
+    openConnection(const std::optional<std::string> & path, std::string_view protocol);
 
     kj::Promise<Result<void>> init();
-    static kj::Promise<Result<bool>> prepareRpcConnection(Connection & con, Store * store);
+    kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
     std::optional<std::string> path;
 };
 

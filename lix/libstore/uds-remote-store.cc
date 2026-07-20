@@ -62,27 +62,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::shared_ptr<StoreProxy>>>
-UDSRemoteStore::proxy(UDSRemoteStoreConfig config, std::optional<std::string> path)
-try {
-    struct Proxy : StoreProxy
-    {
-        std::shared_ptr<RemoteStore::Connection> inner;
-
-        Proxy(std::shared_ptr<RemoteStore::Connection> inner) : inner(inner) {}
-
-        int getFD() const override
-        {
-            return inner->getFD();
-        }
-    };
-
-    auto conn = TRY_AWAIT(openConnection(path, config.protocol.get(), false));
-    co_return std::make_shared<Proxy>(conn);
-} catch (...) {
-    co_return result::current_exception();
-}
-
 std::string UDSRemoteStore::getUri()
 {
     if (path) {
@@ -146,25 +125,52 @@ protocolsFor(const std::optional<std::string> & path, std::string_view protocol)
     return candidates;
 }
 
-kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>> UDSRemoteStore::openConnection(
-    const std::optional<std::string> & path, std::string_view protocol, bool allowRPC, Store * rpcStore
-)
+kj::Promise<Result<std::shared_ptr<StoreProxy>>>
+UDSRemoteStore::proxy(UDSRemoteStoreConfig config, std::optional<std::string> path)
+try {
+    struct Proxy : StoreProxy
+    {
+        AutoCloseFD fd;
+
+        Proxy(AutoCloseFD fd) : fd(std::move(fd)) {}
+
+        int getFD() const override
+        {
+            return fd.get();
+        }
+    };
+
+    auto candidates = protocolsFor(path, config.protocol.get());
+    // we only support proxying legacy wire connections for now. rpc connections should
+    // use a new scheme instead since passing protocol types for remote store urls is a
+    // right pain in the tail (and might even break on hardened remote builder setups).
+    candidates.remove_if([](daemon::Protocol & p) {
+        return !(p.type == daemon::Protocol::LEGACY_COMBINED || p.type == daemon::Protocol::LEGACY);
+    });
+
+    for (const auto & path : candidates) {
+        auto fd = createUnixDomainSocket();
+        if (tryToConnect(fd, path)) {
+            co_return std::make_shared<Proxy>(std::move(fd));
+        }
+    }
+
+    throw Error(
+        "could not connect to any lix socket (tried %s)",
+        concatMapStringsSep(", ", candidates, [](auto & s) { return s.path; })
+    );
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::shared_ptr<UDSRemoteStore::Connection>>>
+UDSRemoteStore::openConnection(const std::optional<std::string> & path, std::string_view protocol)
 try {
     auto conn = make_ref<Connection>();
 
     std::list<daemon::Protocol> candidates = protocolsFor(path, protocol);
 
     for (const auto & path : candidates) {
-        if (!allowRPC || !rpcStore) {
-            switch (path.type) {
-            case daemon::Protocol::LEGACY_COMBINED:
-            case daemon::Protocol::LEGACY:
-                break;
-            case daemon::Protocol::RPC_V1:
-                continue;
-            }
-        }
-
         /* Connect to a daemon that does the privileged work for us. */
         conn->fd = createUnixDomainSocket();
 
@@ -176,7 +182,7 @@ try {
             // daemons can be updated independently we can never be sure that the rpc protocols
             // we want to use are supported on both sides without checking first, and sadly the
             // only place we can do such checks without disturbing fallback behavior is *here*.
-            if (path.type == daemon::Protocol::RPC_V1 && !TRY_AWAIT(prepareRpcConnection(*conn, rpcStore))) {
+            if (path.type == daemon::Protocol::RPC_V1 && !TRY_AWAIT(prepareRpcConnection(*conn))) {
                 continue;
             }
 
@@ -194,7 +200,7 @@ try {
 
 kj::Promise<Result<void>> UDSRemoteStore::init()
 try {
-    auto conn = TRY_AWAIT(openConnection(path, config().protocol.get(), true, this));
+    auto conn = TRY_AWAIT(openConnection(path, config().protocol.get()));
     if (conn->rpc) {
         TRY_AWAIT(setOptions(*conn));
     } else {
@@ -206,7 +212,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con, Store * store)
+kj::Promise<Result<bool>> UDSRemoteStore::prepareRpcConnection(Connection & con)
 try {
     auto rpcStream =
         AIO().lowLevelProvider.wrapSocketFd(con.fd.get(), kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
@@ -255,7 +261,7 @@ try {
                                                                              : std::nullopt;
     con.daemonVersion = PROTOCOL_VERSION;
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
-    con.store = store;
+    con.store = this;
     con.rpc->requestStream = initResult.getRequestStream();
     con.rpc->forwarder = con.rpc->forwardRequests();
 
