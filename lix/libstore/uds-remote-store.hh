@@ -176,7 +176,6 @@ private:
     struct Connection : RemoteStore::Connection
     {
         AutoCloseFD fd;
-        std::shared_ptr<RpcState> rpc;
 
         int getFD() const override
         {
@@ -186,7 +185,9 @@ private:
 
     kj::Promise<Result<void>> init(AutoCloseFD fd);
     kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
+
     std::optional<std::string> path;
+    std::shared_ptr<RpcState> rpc;
 };
 
 void registerUDSRemoteStore();

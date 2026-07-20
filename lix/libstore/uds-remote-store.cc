@@ -254,7 +254,7 @@ try {
         }
     }
 
-    con.rpc = std::make_shared<RpcState>(RpcState{
+    rpc = std::make_shared<RpcState>(RpcState{
         .rpcStream = std::move(rpcStream),
         .proxySock = make_box_ptr<AsyncFdIoStream>(std::move(proxyAsync)),
         .client = std::move(client),
@@ -269,8 +269,8 @@ try {
     auto legacyBoot =
         TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyBoot>();
     auto initReq = legacyBoot.initRequest();
-    initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(con.rpc->loggerActivity));
-    initReq.setReplyStream(kj::heap<LegacyStreamProxy>(*con.rpc));
+    initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(rpc->loggerActivity));
+    initReq.setReplyStream(kj::heap<LegacyStreamProxy>(*rpc));
 
     auto initResp = TRY_AWAIT_RPC(initReq.send());
     auto initResult = initResp.getResult();
@@ -281,8 +281,8 @@ try {
     con.daemonVersion = PROTOCOL_VERSION;
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
     con.store = this;
-    con.rpc->requestStream = initResult.getRequestStream();
-    con.rpc->forwarder = con.rpc->forwardRequests();
+    rpc->requestStream = initResult.getRequestStream();
+    rpc->forwarder = rpc->forwardRequests();
 
     co_return true;
 } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions): just fall back to legacy for now
