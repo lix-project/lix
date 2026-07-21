@@ -252,6 +252,30 @@ try {
                     else
                         reply["attrs"] = nix::JSON::array();
                 }
+            } else if (v.type() == nix::nList) {
+                // --- NEW: handle list (array of derivations or values) ---
+                auto attrs = nix::JSON::array();
+
+                bool recurse =
+                    args.forceRecurse ||
+                    path.size() == 0;
+
+                auto *list = v.listItems();
+
+                for (size_t i = 0; i < list->size(); ++i) {
+                    auto *elem = list->elems[i];
+
+                    // Option 1: include all elements
+                    // attrs.emplace_back(std::to_string(i));
+                    if (elem.type() == nix::nAttrs) {
+                        attrs.emplace_back(std::to_string(i));
+                    }
+                }
+
+                if (recurse)
+                    reply["attrs"] = std::move(attrs);
+                else
+                    reply["attrs"] = nix::JSON::array();
             } else {
                 // We ignore everything that cannot be build
                 reply["attrs"] = nix::JSON::array();
