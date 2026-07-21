@@ -1,10 +1,11 @@
 import contextlib
 import copy
 import dataclasses
+from enum import StrEnum
 import sys
 from functools import partialmethod
 from pathlib import Path
-from typing import Any, Literal, get_args
+from typing import Any
 from collections.abc import Callable, Generator
 import shutil
 import subprocess
@@ -168,12 +169,20 @@ class NixSettings:
         env.set_env("NIX_CONFIG", cfg)
 
 
+# NOTE: the order of items here is important. the daemon fixture requires
+# the first item in this list to be the last socket opened by the daemon.
+class NixDaemonProtocol(StrEnum):
+    LEGACY_COMBINED = "legacy-combined"
+    LEGACY = "legacy"
+    LIX_XP_1 = "lix-xp-1"
+
+
 @dataclasses.dataclass
 class Nix:
     env: ManagedEnv
     logger: logging.Logger
     _settings: NixSettings | None = dataclasses.field(init=False, default=None)
-    uses_daemon: bool = False
+    daemon_protocol: NixDaemonProtocol | None = None
 
     @property
     def _nix_executable(self) -> Path:
@@ -339,13 +348,11 @@ def pytest_runtest_setup(item: pytest.Item):
 
 type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
 
-# NOTE: the order of items here is important. the daemon fixture requires
-# the first item in this list to be the last socket opened by the daemon.
-type NixDaemonProtocol = Literal["legacy-combined", "legacy", "lix-xp-1"]
+daemon_protocols: list[NixDaemonProtocol] = list(NixDaemonProtocol)
 
-daemon_protocols: list[NixDaemonProtocol] = get_args(NixDaemonProtocol.__value__)
-
-_daemon_protocol_xp_features: dict[NixDaemon, list[str]] = {"lix-xp-1": ["rpc-sockets"]}
+_daemon_protocol_xp_features: dict[NixDaemonProtocol, list[str]] = {
+    NixDaemonProtocol.LIX_XP_1: ["rpc-sockets"]
+}
 
 
 @contextlib.contextmanager
@@ -393,7 +400,7 @@ def _daemon_wrapper(
             raise RuntimeError("daemon exited during startup")
 
     inner = copy.deepcopy(nix)
-    inner.uses_daemon = True
+    inner.daemon_protocol = protocol
     socket_path = sockets_dir / "socket" if protocol == "legacy-combined" else sockets_dir
     inner.settings.store = f"unix://{socket_path}?protocol={protocol}"
 

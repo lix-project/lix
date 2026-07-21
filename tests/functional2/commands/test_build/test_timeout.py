@@ -14,7 +14,7 @@ def test_timeout_timeout(nix: Nix):
     res = (
         nix.nix_build(["-Q", "timeout.nix", "-A", "infiniteLoop", "--timeout", "2"])
         .run()
-        .expect(101 if not nix.uses_daemon else 1)
+        .expect(101 if nix.daemon_protocol is None else 1)
     )
     assert "timed out" in res.stderr_plain
 
@@ -35,7 +35,7 @@ def test_timeout_silent(nix: Nix):
     res = (
         nix.nix_build(["timeout.nix", "-A", "silent", "--max-silent-time", "2"])
         .run()
-        .expect(101 if not nix.uses_daemon else 1)
+        .expect(101 if nix.daemon_protocol is None else 1)
     )
     assert "file timed out after 2 seconds of silence" in res.stderr_plain
 
@@ -45,7 +45,7 @@ def test_timeout_close_log(nix: Nix):
     res = (
         nix.nix_build(["timeout.nix", "-A", "closeLog"])
         .run()
-        .expect(100 if not nix.uses_daemon else 1)
+        .expect(100 if nix.daemon_protocol is None else 1)
     )
     assert "failed due to signal 9 (Killed" in res.stderr_plain
 
