@@ -1492,6 +1492,14 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         return RPC_IMPL({ TRY_AWAIT(state->store->optimiseStore()); });
     }
 
+    kj::Promise<void> queryAllValidPaths(QueryAllValidPathsContext context) override
+    {
+        return RPC_IMPL({
+            auto valid = TRY_AWAIT(state->store->queryAllValidPaths());
+            RPC_FILL(context.initResults(), initResult, valid, *state->store);
+        });
+    }
+
     kj::Promise<void> queryValidPaths(QueryValidPathsContext context) override
     {
         return RPC_IMPL({

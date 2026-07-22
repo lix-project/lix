@@ -675,6 +675,16 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<StorePathSet>> RpcRemoteStore::queryAllValidPaths()
+try {
+    auto req = rpc->legacyProtocol.queryAllValidPathsRequest();
+
+    auto res = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<StorePathSet>(res.getResult(), *this);
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<StorePathSet>>
 RpcRemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
 try {

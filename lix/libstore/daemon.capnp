@@ -213,6 +213,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
   narFromPath @21 (path :Libstore.StorePath, into :LegacyStream);
   optimiseStore @0 ();
+  queryAllValidPaths @25 () -> (result :List(Libstore.StorePath));
   queryValidPaths @3 (
     paths :List(Libstore.StorePath),
     substitute :Bool
