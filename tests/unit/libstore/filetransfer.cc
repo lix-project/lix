@@ -133,10 +133,12 @@ serveHTTP(std::vector<Reply> replies)
                             auto written = ::send(conn.get(), bit.data(), bit.size(), MSG_NOSIGNAL);
                             if (written < 0) {
                                 debug("send() failed: %s", strerror(errno));
-                                return;
+                                return false;
                             }
                             bit.remove_prefix(written);
                         }
+
+                        return true;
                     };
 
                     send("HTTP/1.1 ");
@@ -165,7 +167,10 @@ serveHTTP(std::vector<Reply> replies)
                     send("\r\n");
                     for (int round = 0; ; round++) {
                         if (auto content = reply.content(round); content.has_value()) {
-                            send(*content);
+                            // If we cannot continue the connection, let's stop and shutdown.
+                            if (!send(*content)) {
+                                break;
+                            }
                         } else {
                             break;
                         }
