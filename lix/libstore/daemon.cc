@@ -1010,79 +1010,13 @@ struct LegacyState
     LegacyState(ref<Store> store, TrustedFlag trusted) : store(store), trusted(trusted) {}
 };
 
-struct RequestStreamImpl final : LegacyStream::Server
-{
-    ref<LegacyState> state;
-    std::exception_ptr error;
-    AsyncFdIoStream workerSock;
-    kj::Promise<void> responseForwarder;
-
-    RequestStreamImpl(
-        ref<LegacyState> state,
-        kj::Promise<std::exception_ptr> error,
-        LegacyStream::Client callbacks,
-        AutoCloseFD workerFd
-    )
-        : state(state)
-        , workerSock(std::move(workerFd))
-        , responseForwarder(forwardResponse(callbacks).exclusiveJoin(
-              error.then([&](std::exception_ptr e) -> kj::Promise<void> {
-                  onError(e);
-                  return kj::NEVER_DONE;
-              })
-          ))
-    {
-    }
-
-    void onError(std::exception_ptr e)
-    {
-        if (!error) {
-            error = e;
-        }
-    }
-
-    kj::Promise<void> forwardResponse(LegacyStream::Client callbacks)
-    try {
-        std::array<char, 8192> buf;
-        while (true) {
-            if (auto got = TRY_AWAIT(workerSock.read(buf.data(), buf.size())); !got) {
-                break;
-            } else {
-                auto req = callbacks.feedRequest();
-                req.initRaw(*got);
-                std::copy(buf.begin(), buf.begin() + *got, req.getRaw().begin());
-                TRY_AWAIT_RPC(req.send());
-            }
-        }
-        TRY_AWAIT_RPC(callbacks.syncRequest().send());
-    } catch (...) {
-        onError(std::current_exception());
-    }
-
-    kj::Promise<void> feed(FeedContext context) override
-    {
-        return RPC_IMPL({
-            if (error) {
-                std::rethrow_exception(error);
-            }
-            auto bytes = context.getParams().getRaw();
-            TRY_AWAIT(workerSock.writeFull(bytes.begin(), bytes.size()));
-        });
-    }
-
-    kj::Promise<void> sync(SyncContext context) override
-    {
-        return kj::READY_NOW;
-    }
-};
-
 struct LegacyProtocolImpl final : LegacyProtocol::Server
 {
     ref<LegacyState> state;
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
 
-    struct AddBuildLogStream final : LegacyStream::Server
+    struct AddBuildLogStream final : LegacyProtocol::Stream::Server
     {
         ref<LegacyState> state;
         StorePath path;
@@ -1101,7 +1035,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             });
         }
 
-        kj::Promise<void> sync(SyncContext context) override
+        kj::Promise<void> finalize(FinalizeContext context) override
         {
             return RPC_IMPL({
                 auto & logStore = require<LogStore>(*state->store);
@@ -1234,7 +1168,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
-    struct AddToStoreNarStream final : LegacyProtocol::AddToStoreNarStream::Server
+    struct AddToStoreNarStream final : LegacyProtocol::Stream::Server
     {
         ref<LegacyState> state;
         ValidPathInfo info;
@@ -1483,7 +1417,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                 TRY_AWAIT_RPC(req.send());
             }
 
-            TRY_AWAIT_RPC(into.syncRequest().send());
+            TRY_AWAIT_RPC(into.finalizeRequest().send());
         });
     }
 
@@ -1654,11 +1588,9 @@ struct LegacyBootImpl final : LegacyBoot::Server
             throw Error("connection already initialized");
         }
 
-        auto prevLogger = logger;
         logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
 
-        auto args = context.getParams();
-        auto result = context.initResults().initResult();
+        auto result = context.initResults();
         // We and the underlying store both need to trust the client for it to be trusted.
         if (!state->trusted) {
             result.setTrust(LegacyBoot::Trust::UNTRUSTED);
@@ -1686,51 +1618,6 @@ struct LegacyBootImpl final : LegacyBoot::Server
 
         auto req = make_ref<Request>(std::move(rpcSock), std::move(pfp.fulfiller));
 
-        auto legacyThread = std::async(std::launch::async, [prevLogger, state{state}, req] {
-            AsyncIoRoot aio;
-            FdSource from(req->fd.get());
-            FdSink to(req->fd.get());
-            TunnelLogger logger(to, PROTOCOL_VERSION);
-
-            try {
-                processLegacyRequests(
-                    aio, prevLogger, &logger, state->store, from, to, state->trusted, PROTOCOL_VERSION
-                );
-            } catch (Error & e) {
-                req->signal->fulfill(std::current_exception());
-            } catch (std::bad_alloc & e) {
-                req->signal->fulfill(std::make_exception_ptr(Error("Lix daemon out of memory")));
-            } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-                // TODO print stack trace to daemon log, maybe crash?
-                // boost stacktrace has from_current_exception (at a cost) with not-great symbolization,
-                // cpptrace has a *much* better symbolizer (at unknown cost)
-                req->signal->fulfill(
-                    std::make_exception_ptr(Error(
-                        "Unexpected exception on the Lix daemon; this is a bug in Lix.\n"
-                        "We would appreciate a report of the circumstances it happened in at "
-                        "https://git.lix.systems/lix-project/lix.\n%s: %s",
-                        Uncolored(boost::core::demangle(typeid(e).name())),
-                        e.what()
-                    ))
-                );
-            } catch (...) {
-                // TODO print stack trace to daemon log, maybe crash?
-                req->signal->fulfill(
-                    std::make_exception_ptr(Error(
-                        "Unexpected exception on the Lix daemon; this is a bug in Lix.\n"
-                        "We would appreciate a report of the circumstances it happened in at "
-                        "https://git.lix.systems/lix-project/lix.\n"
-                    ))
-                );
-            }
-        });
-
-        result.setRequestStream(
-            kj::heap<RequestStreamImpl>(
-                state, std::move(pfp.promise), args.getReplyStream(), std::move(workerSock)
-            )
-                .attach(std::move(legacyThread))
-        );
         result.setProtocol(kj::heap<LegacyProtocolImpl>(state));
         used = true;
     } catch (...) {

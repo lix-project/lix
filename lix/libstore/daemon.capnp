@@ -37,17 +37,11 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
     trusted @2;
   }
 
-  init @0 (
-    logger :Log.LogStream,
-    replyStream :LegacyStream,
-  ) -> (result :InitResult);
-
-  struct InitResult {
-    protocol @3 :LegacyProtocol;
-    requestStream @0 :LegacyStream;
-    trust @1 :Trust;
-    version @2 :Text;
-  }
+  init @0 (logger :Log.LogStream) -> (
+    protocol :LegacyProtocol,
+    trust :Trust,
+    version :Text,
+  );
 }
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments
@@ -168,12 +162,12 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     feed @0 (raw :Data) -> stream;
     finalize @1 () -> (result :ValidPathInfo);
   }
-  interface AddToStoreNarStream {
+  interface Stream {
     feed @0 (raw :Data) -> stream;
     finalize @1 ();
   }
 
-  addBuildLog @20 (path :Libstore.StorePath) -> (stream :LegacyStream);
+  addBuildLog @20 (path :Libstore.StorePath) -> (stream :Stream);
   addIndirectRoot @11 (path :T.String);
   addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
   addTempRoot @10 (path :Libstore.StorePath);
@@ -188,7 +182,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     repair :Bool,
     dontCheckSigs :Bool
   ) -> (
-    result :AddToStoreNarStream
+    result :Stream
   );
   buildDerivation @24 (
     path :Libstore.StorePath,
@@ -211,7 +205,7 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ensurePath @1 (path :Libstore.StorePath);
   findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
-  narFromPath @21 (path :Libstore.StorePath, into :LegacyStream);
+  narFromPath @21 (path :Libstore.StorePath, into :Stream);
   optimiseStore @0 ();
   queryAllValidPaths @25 () -> (result :List(Libstore.StorePath));
   queryValidPaths @3 (
@@ -240,11 +234,4 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     settingsOverrides :T.Settings
   );
   verifyStore @16 (checkContents :Bool, repair :Bool) -> (result :Bool);
-}
-
-# Tunnel the un-RPC'd wire protocol over an RPC-style bytestream
-interface LegacyStream $T.throws(T.v1Errors) {
-  feed @0 (raw :Data) -> stream;
-  # must be called before a new op is started, otherwise errors may get lost
-  sync @1 ();
 }

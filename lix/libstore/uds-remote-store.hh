@@ -245,43 +245,21 @@ private:
     struct RpcState
     {
         kj::Own<kj::AsyncIoStream> rpcStream;
-        box_ptr<AsyncFdIoStream> proxySock;
         box_ptr<capnp::TwoPartyClient> client;
         Activity loggerActivity;
         rpc::daemon::LegacyProtocol::Client legacyProtocol;
-        rpc::daemon::LegacyStream::Client requestStream;
-
-        kj::Promise<void> forwarder;
-        std::exception_ptr error;
-
-        kj::Promise<void> forwardRequests();
-    };
-
-    // this class is lifetime-bound to its rpc state; requestStream holds onto one of
-    // these proxies. ideally we'd use RpcState itself for this, but kj does not have
-    // shared pointers and cannot provide capabilities through anything except `Own`.
-    struct LegacyStreamProxy final : rpc::daemon::LegacyStream::Server
-    {
-        RpcState & state;
-
-        LegacyStreamProxy(RpcState & state) : state(state) {}
-
-        kj::Promise<void> feed(FeedContext context) override;
-        kj::Promise<void> sync(SyncContext context) override;
     };
 
     struct Connection : RemoteStore::Connection
     {
-        AutoCloseFD fd;
-
         int getFD() const override
         {
-            return fd.get();
+            return -1;
         }
     };
 
     kj::Promise<Result<void>> init(AutoCloseFD fd);
-    kj::Promise<Result<bool>> prepareRpcConnection(Connection & con);
+    kj::Promise<Result<bool>> prepareRpcConnection(AutoCloseFD fd, Connection & con);
 
     std::optional<std::string> path;
     std::shared_ptr<RpcState> rpc;

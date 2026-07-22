@@ -232,9 +232,8 @@ try {
 kj::Promise<Result<void>> RpcRemoteStore::init(AutoCloseFD fd)
 try {
     auto conn = std::make_shared<Connection>();
-    conn->fd = std::move(fd);
     conn->startTime = std::chrono::steady_clock::now();
-    if (!TRY_AWAIT(prepareRpcConnection(*conn))) {
+    if (!TRY_AWAIT(prepareRpcConnection(std::move(fd), *conn))) {
         throw ProtocolUnavailable("");
     }
     TRY_AWAIT(setOptions());
@@ -244,13 +243,11 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<bool>> RpcRemoteStore::prepareRpcConnection(Connection & con)
+kj::Promise<Result<bool>> RpcRemoteStore::prepareRpcConnection(AutoCloseFD fd, Connection & con)
 try {
     auto rpcStream =
-        AIO().lowLevelProvider.wrapSocketFd(con.fd.get(), kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
-    con.fd.release();
-    auto [proxyAsync, proxySync] = SocketPair::stream();
-    con.fd = std::move(proxySync);
+        AIO().lowLevelProvider.wrapSocketFd(fd.get(), kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
+    fd.release();
     auto client = make_box_ptr<capnp::TwoPartyClient>(*rpcStream);
     auto bootstrap = client->bootstrap().castAs<rpc::daemon::Bootstrap>();
 
@@ -269,12 +266,9 @@ try {
 
     rpc = std::make_shared<RpcState>(RpcState{
         .rpcStream = std::move(rpcStream),
-        .proxySock = make_box_ptr<AsyncFdIoStream>(std::move(proxyAsync)),
         .client = std::move(client),
         .loggerActivity = logger->startActivity(lvlDebug, actUnknown, "daemon connection"),
         .legacyProtocol = nullptr,
-        .requestStream = nullptr,
-        .forwarder = nullptr,
     });
 
     auto bootstrapReq = bootstrap.requestRequest();
@@ -284,10 +278,8 @@ try {
         TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyBoot>();
     auto initReq = legacyBoot.initRequest();
     initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(rpc->loggerActivity));
-    initReq.setReplyStream(kj::heap<LegacyStreamProxy>(*rpc));
 
-    auto initResp = TRY_AWAIT_RPC(initReq.send());
-    auto initResult = initResp.getResult();
+    auto initResult = TRY_AWAIT_RPC(initReq.send());
     con.remoteTrustsUs = initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::TRUSTED
         ? std::optional{Trusted}
         : initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::UNTRUSTED ? std::optional{NotTrusted}
@@ -296,8 +288,6 @@ try {
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
     con.store = this;
     rpc->legacyProtocol = initResult.getProtocol();
-    rpc->requestStream = initResult.getRequestStream();
-    rpc->forwarder = rpc->forwardRequests();
 
     co_return true;
 } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions): just fall back to legacy for now
@@ -305,47 +295,6 @@ try {
     co_return false;
 } catch (...) {
     co_return result::current_exception();
-}
-
-kj::Promise<void> RpcRemoteStore::RpcState::forwardRequests()
-try {
-    std::array<char, 8192> buf;
-    while (true) {
-        if (auto got = TRY_AWAIT(proxySock->read(buf.data(), buf.size())); !got) {
-            break;
-        } else {
-            auto req = requestStream.feedRequest();
-            req.initRaw(*got);
-            std::copy(buf.begin(), buf.begin() + *got, req.getRaw().begin());
-            TRY_AWAIT_RPC(req.send());
-        }
-    }
-    TRY_AWAIT_RPC(requestStream.syncRequest().send());
-} catch (...) {
-    ignoreExceptionExceptInterrupt();
-    error = std::current_exception();
-}
-
-kj::Promise<void> RpcRemoteStore::LegacyStreamProxy::feed(FeedContext context)
-try {
-    if (state.error) {
-        std::rethrow_exception(state.error);
-    }
-    auto bytes = context.getParams().getRaw();
-    TRY_AWAIT(state.proxySock->writeFull(bytes.begin(), bytes.size()));
-} catch (...) {
-    state.error = std::current_exception();
-    rpc::rethrow_as_rpc_error();
-}
-
-kj::Promise<void> RpcRemoteStore::LegacyStreamProxy::sync(SyncContext context)
-try {
-    if (state.error) {
-        std::rethrow_exception(state.error);
-    }
-    return kj::READY_NOW;
-} catch (...) {
-    rpc::rethrow_as_rpc_error();
 }
 
 kj::Promise<Result<void>> UDSRemoteStore::addIndirectRoot(const Path & path)
@@ -377,7 +326,7 @@ try {
         TRY_AWAIT_RPC(feedReq.send());
     }
 
-    TRY_AWAIT_RPC(stream.syncRequest().send());
+    TRY_AWAIT_RPC(stream.finalizeRequest().send());
 
     co_return result::success();
 } catch (...) {
@@ -610,7 +559,7 @@ try {
 kj::Promise<Result<box_ptr<AsyncInputStream>>>
 RpcRemoteStore::narFromPath(const StorePath & path, const Activity * context)
 try {
-    struct FeedStream final : rpc::daemon::LegacyStream::Server
+    struct FeedStream final : rpc::daemon::LegacyProtocol::Stream::Server
     {
         std::unique_ptr<AsyncOutputStream> out;
 
@@ -624,7 +573,7 @@ try {
             });
         }
 
-        kj::Promise<void> sync(SyncContext context) override
+        kj::Promise<void> finalize(FinalizeContext context) override
         {
             return RPC_IMPL({ out = nullptr; });
         }
