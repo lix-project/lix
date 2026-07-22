@@ -6,11 +6,15 @@
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
 #include "libstore/derivations.hh"
+#include "libstore/path-info.hh"
+#include "libstore/path.hh"
+#include "libutil/async-collect.hh"
 #include "libutil/async-io.hh"
 #include "libutil/logging-rpc.hh"
 #include "libutil/logging.hh"
 #include "libutil/rpc.hh"
 #include "libutil/serialise.hh"
+#include "libutil/topo-sort.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/file-descriptor.hh"
@@ -386,6 +390,71 @@ try {
     RPC_FILL(req, setPath, path);
     TRY_AWAIT_RPC(req.send());
 
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> RpcRemoteStore::addMultipleToStore(
+    PathsSource & pathsToCopy, Activity & act, RepairFlag repair, CheckSigsFlag checkSigs
+)
+try {
+    struct PathState
+    {
+        const ValidPathInfo * info;
+        std::function<kj::Promise<Result<box_ptr<AsyncInputStream>>>()> * data;
+        std::set<StorePath> needs, neededBy;
+        kj::PromiseFulfillerPair<void> signal = kj::newPromiseAndFulfiller<void>();
+    };
+
+    std::map<StorePath, PathState> pathStates;
+
+    for (auto & [info, fn] : pathsToCopy) {
+        if (!pathStates.emplace(info.path, PathState{&info, &fn}).second) {
+            throw Error("duplicate %s in addMultipleToStore!", info.path.to_string());
+        }
+    }
+    for (auto & [path, state] : pathStates) {
+        for (auto & depPath : state.info->references) {
+            if (auto dep = pathStates.find(depPath); dep != pathStates.end()) {
+                state.needs.insert(depPath);
+                dep->second.neededBy.insert(path);
+            }
+        }
+    }
+
+    // toposort the whole bunch just so we get nice error messages for bad inputs (sigh)
+    topoSort<StorePath>(pathStates | std::views::keys | std::ranges::to<std::set>(), [&](const auto & p) {
+        return pathStates.at(p).needs;
+    });
+
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto process = [&](const PathsSource::value_type & path) -> kj::Promise<Result<void>> {
+        try {
+            auto & state = pathStates.at(path.first.path);
+            if (!state.needs.empty()) {
+                co_await state.signal.promise;
+            }
+
+            auto pathSource = TRY_AWAIT(path.second());
+            auto info = path.first;
+
+            TRY_AWAIT(addToStore(info, *pathSource, repair, checkSigs, &act));
+            for (auto & downstream : pathStates[path.first.path].neededBy) {
+                auto & downstreamState = pathStates[downstream];
+                downstreamState.needs.erase(path.first.path);
+                if (downstreamState.needs.empty()) {
+                    downstreamState.signal.fulfiller->fulfill();
+                }
+            }
+            co_return result::success();
+        } catch (...) {
+            co_return result::current_exception();
+        }
+    };
+
+    // we rely on callers to limit concurrency when that is desirable
+    TRY_AWAIT(asyncSpread(pathsToCopy, process));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
