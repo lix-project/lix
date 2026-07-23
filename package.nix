@@ -141,7 +141,12 @@ let
 
   version =
     __forDefaults.versionJson.version
-    + (if versionSuffix != "" then "-${versionSuffix}" else versionSuffix);
+    + (
+      if versionSuffix != "" && !(lib.hasPrefix "-" versionSuffix) then
+        "-${versionSuffix}"
+      else
+        versionSuffix
+    );
 
   # This could be the dtrace for macOS, etc, but I have no idea if it is
   # packaged or if it works.
