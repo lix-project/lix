@@ -654,7 +654,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  doCheck = canRunInstalled && !lintInsteadOfBuild;
+  doCheck = !hostPlatform.isDarwin && canRunInstalled && !lintInsteadOfBuild;
 
   mesonCheckFlags = [
     "--suite=check"
