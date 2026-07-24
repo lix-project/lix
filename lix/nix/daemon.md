@@ -14,24 +14,6 @@ R""(
   # nix daemon --stdio
   ```
 
-* Run the daemon and force all connections to be trusted:
-
-  ```console
-  # nix daemon --force-trusted
-  ```
-
-* Run the daemon and force all connections to be untrusted:
-
-  ```console
-  # nix daemon --force-untrusted
-  ```
-
-* Run the daemon, listen on standard I/O, and force all connections to use Nix's default trust:
-
-  ```console
-  # nix daemon --stdio --default-trust
-  ```
-
 # Description
 
 This command runs the Nix daemon, which is a required component in

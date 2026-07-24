@@ -20,19 +20,18 @@ def busybox_args(env: ManagedEnv) -> list[str]:
 
 
 @pytest.fixture(autouse=True)
-def _setup_for_remote_builds(nix: Nix, env: ManagedEnv):
+def _setup_for_remote_builds(env: ManagedEnv):
     # always add bash, otherwise lix can't execute the build hook
     env.path.add_program("bash")
-    # we don't always use this feature, but it also doesn't hurt
-    nix.settings.add_xp_feature("daemon-trust-override")
 
 
-def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:
+def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
     prog = "nix-store" if proto == "ssh" else "nix-daemon"
     script = f"""\
         #!{sys.executable}
         import os, sys
-        os.execvp("{env.dirs.nix_bin_dir}/nix", [*{[prog, *flags]!s}, *sys.argv[1:]])
+        {'os.environ["NIX_CONFIG"] += "\\ntrusted-users = \\nstore = /dev/null"' if untrusted else ""}
+        os.execvp("{env.dirs.nix_bin_dir}/nix", ["{prog}", *sys.argv[1:]])
     """
     path = env.dirs.test_root / "remote-builder" / "launch.py"
     path.parent.mkdir()
@@ -56,7 +55,6 @@ def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:
     """)
 
 
-@pytest.mark.nix_settings(trusted_users="*", system_features=["bar"])
 @pytest.mark.full_sandbox
 @with_files(
     {
@@ -64,24 +62,30 @@ def _builders(proto: str, flags: list[str], env: ManagedEnv) -> str:
         "config.nix": get_global_asset("config.nix"),
     }
 )
-def test_remote_trustless_unsigned(nix: Nix, env: ManagedEnv, busybox_args: list[str]):
+def test_remote_trustless_unsigned(
+    nix: Nix, daemon: NixDaemon, env: ManagedEnv, busybox_args: list[str]
+):
+    nix.settings.trusted_users = "*"
+    nix.settings.system_features = ["foo"]
+    nix.settings.store = str(env.dirs.home / "peer")
     # We first build a dependency of the derivation we eventually want to build.
-    nix.nix_build(["build-hook.nix", "-A", "passthru.input2", *busybox_args]).run().ok()
+    nix.nix_build(["build-hook.nix", "-A", "passthru.input1", *busybox_args]).run().ok()
 
     # Now when we go to build that downstream derivation, Lix will try to
     # copy our already-build `input2` to the remote store. That store object
     # is input-addressed, so this will fail.
 
-    result = nix.nix_build(
-        [
-            "build-hook.nix",
-            "--max-jobs",
-            "0",
-            *busybox_args,
-            "--builders",
-            _builders("ssh-ng", ["--force-untrusted"], env),
-        ]
-    ).run()
+    with daemon(nix, settings={"system-features": "foo bar baz"}) as inner:
+        result = nix.nix_build(
+            [
+                "build-hook.nix",
+                "--max-jobs",
+                "0",
+                *busybox_args,
+                "--builders",
+                f"{inner.settings.store} - - - - foo,bar,baz",
+            ]
+        ).run()
     result.expect(1)
     assert re.findall(
         r"cannot add path '[^ ]*' because it lacks a signature by a trusted key",
@@ -92,7 +96,7 @@ def test_remote_trustless_unsigned(nix: Nix, env: ManagedEnv, busybox_args: list
 @pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
 @pytest.mark.parametrize(
-    ("protocol", "flags"), [("ssh", []), ("ssh-ng", []), ("ssh-ng", ["--force-untrusted"])]
+    ("protocol", "untrusted"), [("ssh", False), ("ssh-ng", False), ("ssh-ng", True)]
 )
 @with_files(
     {
@@ -101,7 +105,7 @@ def test_remote_trustless_unsigned(nix: Nix, env: ManagedEnv, busybox_args: list
     }
 )
 def test_remote_trustless_ia(
-    nix: Nix, env: ManagedEnv, busybox_args: list[str], protocol: str, flags: list[str]
+    nix: Nix, env: ManagedEnv, busybox_args: list[str], protocol: str, untrusted: bool
 ):
     result = nix.nix_build(
         [
@@ -110,7 +114,7 @@ def test_remote_trustless_ia(
             "0",
             *busybox_args,
             "--builders",
-            _builders(protocol, flags, env),
+            _builders(protocol, untrusted, env),
         ]
     ).run()
     result.ok()
@@ -121,7 +125,7 @@ def test_remote_trustless_ia(
 
 @pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
-@pytest.mark.parametrize(("protocol", "flags"), [("ssh", []), ("ssh-ng", ["--force-untrusted"])])
+@pytest.mark.parametrize(("protocol", "untrusted"), [("ssh", False), ("ssh-ng", True)])
 @with_files(
     {
         "build-hook-ca-fixed.nix": get_global_asset("build-hook-ca-fixed.nix"),
@@ -129,7 +133,7 @@ def test_remote_trustless_ia(
     }
 )
 def test_remote_trustless_ca(
-    nix: Nix, env: ManagedEnv, busybox_args: list[str], protocol: str, flags: list[str]
+    nix: Nix, env: ManagedEnv, busybox_args: list[str], protocol: str, untrusted: bool
 ):
     # Remote doesn't trusts us, but this is fine because we are only
     # building (fixed) CA derivations.
@@ -140,7 +144,7 @@ def test_remote_trustless_ca(
             "0",
             *busybox_args,
             "--builders",
-            _builders(protocol, flags, env),
+            _builders(protocol, untrusted, env),
         ]
     ).run()
     result.ok()

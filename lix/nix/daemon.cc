@@ -341,12 +341,8 @@ static std::pair<TrustedFlag, std::string> authPeer(const PeerInfo & peer)
     return { trusted, std::move(user) };
 }
 
-static kj::Promise<Result<void>> daemonLoopForSocket(
-    const Path & self,
-    const daemon::Protocol & socket,
-    AutoCloseFD & fdSocket,
-    std::optional<TrustedFlag> forceTrustClientOpt
-)
+static kj::Promise<Result<void>>
+daemonLoopForSocket(const Path & self, const daemon::Protocol & socket, AutoCloseFD & fdSocket)
 try {
     makeNonBlocking(fdSocket.get());
     auto observer = kj::UnixEventPort::FdObserver{
@@ -400,11 +396,6 @@ try {
                     },
                 .redirections = {{.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()}}
             };
-            if (forceTrustClientOpt) {
-                options.args.push_back(
-                    *forceTrustClientOpt ? "--force-trusted" : "--force-untrusted"
-                );
-            }
             auto [pid, _stdout] = runProgram2(options).release();
             pid.release();
         } catch (Error & error) {
@@ -423,12 +414,8 @@ try {
 /**
  * Run a server. The loop opens a socket and accepts new connections from that
  * socket.
- *
- * @param forceTrustClientOpt If present, force trusting or not trusted
- * the client. Otherwise, decide based on the authentication settings
- * and user credentials (from the unix domain socket).
  */
-static kj::Promise<Result<void>> daemonLoop(std::optional<TrustedFlag> forceTrustClientOpt)
+static kj::Promise<Result<void>> daemonLoop()
 try {
     if (chdir("/") == -1) {
         throw SysError("cannot change current directory");
@@ -462,7 +449,7 @@ try {
     setSigChldAction(true);
 
     TRY_AWAIT(asyncSpread(sockets, [&](auto & socket) {
-        return daemonLoopForSocket(self, socket.first, socket.second, forceTrustClientOpt);
+        return daemonLoopForSocket(self, socket.first, socket.second);
     }));
 
     co_return result::success();
@@ -470,12 +457,7 @@ try {
     co_return result::current_exception();
 }
 
-static void daemonInstance(
-    daemon::Protocol protocol,
-    AsyncIoRoot & aio,
-    std::optional<TrustedFlag> forceTrustClientOpt,
-    char * peerPidArg
-)
+static void daemonInstance(daemon::Protocol protocol, AsyncIoRoot & aio, char * peerPidArg)
 {
     //  Handle socket-based activation by systemd.
     const auto [launchedByManager, connectionFd] = [&]() -> std::pair<bool, int> {
@@ -513,18 +495,13 @@ static void daemonInstance(
         }
     }
 
-    if (forceTrustClientOpt) {
-        trusted = *forceTrustClientOpt;
-    } else {
-        std::tie(trusted, user) = authPeer(peer);
-    }
+    std::tie(trusted, user) = authPeer(peer);
 
     printInfo(
-        "%1% is %2% (%3%%4%)",
+        "%1% is %2% (%3%)",
         Uncolored(peer.pid ? fmt("remote pid %s", *peer.pid) : "remote with unknown pid"),
         peer.uid ? fmt("user %s", user) : "unknown user",
-        trusted ? "trusted" : "untrusted",
-        forceTrustClientOpt ? " by override" : ""
+        trusted ? "trusted" : "untrusted"
     );
 
     //  Background the daemon.
@@ -601,33 +578,24 @@ processStdioConnection(AsyncIoRoot & aio, ref<Store> store, TrustedFlag trustCli
 /**
  * Entry point shared between the new CLI `nix daemon` and old CLI
  * `nix-daemon`.
- *
- * @param forceTrustClientOpt See `daemonLoop()` and the parameter with
- * the same name over there for details.
  */
-static void
-runDaemon(AsyncIoRoot & aio, bool stdio, std::optional<TrustedFlag> forceTrustClientOpt)
+static void runDaemon(AsyncIoRoot & aio, bool stdio)
 {
     if (stdio) {
-        // If --force-untrusted is passed, we cannot forward the connection and
-        // must process it ourselves (before delegating to the next store) to
-        // force untrusting the client.
-        if (!forceTrustClientOpt || *forceTrustClientOpt != NotTrusted) {
-            if (auto proxy = aio.blockOn(openProxy(settings.storeUri))) {
-                forwardStdioConnection(aio, *proxy);
-                return;
-            }
+        if (auto proxy = aio.blockOn(openProxy(settings.storeUri))) {
+            forwardStdioConnection(aio, *proxy);
+            return;
         }
 
         auto store = aio.blockOn(openUncachedStore());
 
-        // `Trusted` is passed in the auto (no override case) because we
-        // cannot see who is on the other side of a plain pipe. Limiting
-        // access to those is explicitly not `nix-daemon`'s responsibility.
-        processStdioConnection(aio, store, forceTrustClientOpt.value_or(Trusted));
+        // `Trusted` is passed  because we cannot see who is on the other side
+        // of a plain pipe. Limiting access to those is explicitly not
+        // `nix-daemon`'s responsibility.
+        processStdioConnection(aio, store, Trusted);
     } else {
         try {
-            aio.blockOn(makeInterruptible(daemonLoop(forceTrustClientOpt)));
+            aio.blockOn(makeInterruptible(daemonLoop()));
         } catch (Interrupted &) {
         }
     }
@@ -638,7 +606,6 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
 {
     {
         auto stdio = false;
-        std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
         bool isInstance = false;
         char * peerPidArg = nullptr;
         Verbosity subdaemonLogLevel = lvlInfo;
@@ -653,16 +620,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
                 printVersion("nix-daemon");
             else if (*arg == "--stdio")
                 stdio = true;
-            else if (*arg == "--force-trusted") {
-                experimentalFeatureSettings.require(Xp::DaemonTrustOverride);
-                isTrustedOpt = Trusted;
-            } else if (*arg == "--force-untrusted") {
-                experimentalFeatureSettings.require(Xp::DaemonTrustOverride);
-                isTrustedOpt = NotTrusted;
-            } else if (*arg == "--default-trust") {
-                experimentalFeatureSettings.require(Xp::DaemonTrustOverride);
-                isTrustedOpt = std::nullopt;
-            } else if (*arg == "--for") {
+            else if (*arg == "--for") {
                 isInstance = true;
                 getArg(*arg, arg, end);
             } else if (*arg == "--protocol") {
@@ -692,9 +650,9 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
 
         if (isInstance) {
             setVerbosity(Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit)));
-            daemonInstance(daemon::getProtocol(protocol), aio, isTrustedOpt, peerPidArg);
+            daemonInstance(daemon::getProtocol(protocol), aio, peerPidArg);
         } else {
-            runDaemon(aio, stdio, isTrustedOpt);
+            runDaemon(aio, stdio);
         }
 
         return 0;
@@ -708,7 +666,6 @@ void registerLegacyNixDaemon() {
 struct CmdDaemon : Command
 {
     bool stdio = false;
-    std::optional<TrustedFlag> isTrustedOpt = std::nullopt;
 
     CmdDaemon()
     {
@@ -716,33 +673,6 @@ struct CmdDaemon : Command
             .longName = "stdio",
             .description = "Attach to standard I/O, instead of trying to bind to a UNIX socket.",
             .handler = {&stdio, true},
-        });
-
-        addFlag({
-            .longName = "force-trusted",
-            .description = "Force the daemon to trust connecting clients.",
-            .handler = {[&]() {
-                isTrustedOpt = Trusted;
-            }},
-            .experimentalFeature = Xp::DaemonTrustOverride,
-        });
-
-        addFlag({
-            .longName = "force-untrusted",
-            .description = "Force the daemon to not trust connecting clients. The connection will be processed by the receiving daemon before forwarding commands.",
-            .handler = {[&]() {
-                isTrustedOpt = NotTrusted;
-            }},
-            .experimentalFeature = Xp::DaemonTrustOverride,
-        });
-
-        addFlag({
-            .longName = "default-trust",
-            .description = "Use Nix's default trust.",
-            .handler = {[&]() {
-                isTrustedOpt = std::nullopt;
-            }},
-            .experimentalFeature = Xp::DaemonTrustOverride,
         });
     }
 
@@ -762,7 +692,7 @@ struct CmdDaemon : Command
 
     void run() override
     {
-        runDaemon(aio(), stdio, isTrustedOpt);
+        runDaemon(aio(), stdio);
     }
 };
 
