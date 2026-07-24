@@ -124,6 +124,7 @@ mod ::std::vec {
         #layout_conservative(size = 24, align = 8);
 
         fn new() -> Vec<T>;
+        fn with_capacity(usize) -> Vec<T>;
         fn push(&mut self, T);
         fn get(&self, usize) -> ::std::option::Option<&T> deref [T];
         fn len(&self) -> usize;

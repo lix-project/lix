@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <variant>
 #include <set>
+#include <list>
 
 // this header requires `std` to mean `::std`
 #include "lix/lix-rs/zngur.gen.hh"
@@ -150,6 +151,8 @@ namespace std::string {
 }
 
 std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s);
+std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);
+std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s);
 
 String to_string(::std::string_view sv);
 

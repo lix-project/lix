@@ -40,6 +40,24 @@ std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::
     return hs;
 }
 
+std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s)
+{
+    auto v = std::vec::Vec<String>::with_capacity(s.size());
+    for (auto & str : s) {
+        v.push(to_string(str));
+    }
+    return v;
+}
+
+std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s)
+{
+    auto v = std::vec::Vec<String>::with_capacity(s.size());
+    for (auto & str : s) {
+        v.push(to_string(str));
+    }
+    return v;
+}
+
 std::string::String Impl<lix::ffi::Error, Inherent>::to_string(Ref<lix::ffi::Error> ptr)
 {
     using String = std::string::String;
