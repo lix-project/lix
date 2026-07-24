@@ -87,7 +87,7 @@ try {
             to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(line_rs.as_str()).ok()))
     {
         auto target = to_std_string(parseResult->target.as_str());
-        if (parseResult->kind.matches_Object()) {
+        if (rust::lix::fetchers::git::Kind::Object::check(parseResult->kind)) {
             debug("resolved HEAD rev '%s' for repo '%s'", target, path);
         } else {
             debug("resolved HEAD ref '%s' for repo '%s'", target, path);

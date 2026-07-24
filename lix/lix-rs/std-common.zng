@@ -30,8 +30,10 @@ mod ::std::io {
 
 mod ::std::option {
     type<T> Option<T> {
-        constructor Some(T);
-        constructor None;
+        variant Some {
+            field 0 (offset = auto, type = T);
+        }
+        variant None {}
 
         fn unwrap(self) -> T;
     }
@@ -73,8 +75,12 @@ mod ::std::result {
     use ::std::error::Error as Error;
 
     type<T, E> Result<T, E> {
-        constructor Ok(T);
-        constructor Err(E);
+        variant Ok {
+            field 0 (offset = auto, type = T);
+        }
+        variant Err {
+            field 0 (offset = auto, type = E);
+        }
 
         fn unwrap(self) -> T;
         fn unwrap_err(self) -> E;

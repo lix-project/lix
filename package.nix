@@ -646,7 +646,7 @@ stdenv.mkDerivation (finalAttrs: {
   cargoDeps = rustPlatform.importCargoLock {
     lockFile = ./Cargo.lock;
     outputHashes = {
-      "zngur-0.10.0" = "sha256-q8mkHbZwrgLF61Esbd9nK9y8GnZqHWzSubY9ERibBEo=";
+      "zngur-0.10.0" = "sha256-pad2C+fXiyePnrkhDgRXgdmt7rxghEY4RW9al3qh7ko=";
     };
   };
 

@@ -64,6 +64,8 @@ static rust::Ref<rust::Str> promptForType(ReplPromptType promptType)
 
 bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptType)
 {
+    using Err = rust::rustyline::error::ReadlineError;
+
     auto s = rl->ask(promptForType(promptType));
 
     // rustyline temporarily sets a SIGWINCH handler
@@ -76,13 +78,13 @@ bool ReadlineLikeInteracter::getLine(std::string & input, ReplPromptType promptT
             input += '\n';
             return true;
         },
-        [&](rust::rustyline::error::ReadlineError err) {
-            if (err.matches_Interrupted()) {
+        [&](Err err) {
+            if (Err::Interrupted::check(err)) {
                 input.clear();
                 return true;
             }
 
-            if (err.matches_Eof()) {
+            if (Err::Eof::check(err)) {
                 return false;
             }
 

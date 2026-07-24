@@ -976,7 +976,7 @@ checksum = "09041cd90cf85f7f8b2df60c646f853b7f535ce68f85244eb6731cf89fa498ec"
 [[package]]
 name = "zngur"
 version = "0.10.0"
-source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d729a4d3839fe6d21eaa5e74207d8c332128e2a2#d729a4d3839fe6d21eaa5e74207d8c332128e2a2"
 dependencies = [
  "zngur-generator",
 ]
@@ -984,7 +984,7 @@ dependencies = [
 [[package]]
 name = "zngur-def"
 version = "0.10.0"
-source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d729a4d3839fe6d21eaa5e74207d8c332128e2a2#d729a4d3839fe6d21eaa5e74207d8c332128e2a2"
 dependencies = [
  "indexmap",
  "itertools",
@@ -993,7 +993,7 @@ dependencies = [
 [[package]]
 name = "zngur-generator"
 version = "0.10.0"
-source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d729a4d3839fe6d21eaa5e74207d8c332128e2a2#d729a4d3839fe6d21eaa5e74207d8c332128e2a2"
 dependencies = [
  "askama",
  "hex",
@@ -1007,7 +1007,7 @@ dependencies = [
 [[package]]
 name = "zngur-parser"
 version = "0.10.0"
-source = "git+https://github.com/hkalbasi/zngur.git?rev=d99315122cfc3d3337159197c304e66009675247#d99315122cfc3d3337159197c304e66009675247"
+source = "git+https://github.com/hkalbasi/zngur.git?rev=d729a4d3839fe6d21eaa5e74207d8c332128e2a2#d729a4d3839fe6d21eaa5e74207d8c332128e2a2"
 dependencies = [
  "ariadne",
  "chumsky",

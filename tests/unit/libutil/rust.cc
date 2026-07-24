@@ -33,7 +33,7 @@ TEST(rustSupport, testMultiplyAddLen)
 TEST(rustSupport, testResult)
 {
     auto result = ffi_test::test_result();
-    ASSERT_TRUE(result.matches_Err());
+    ASSERT_TRUE(decltype(result)::Err::check(result));
     EXPECT_DEATH(result.unwrap(), "called `Result::unwrap\\(\\)` on an `Err`");
     auto msg = to_std_string(result.unwrap_err().to_string());
     ASSERT_EQ(msg, "errors travel freely");

@@ -3,8 +3,8 @@ use ::std::string::String as String;
 mod crate::fetchers::git {
 	type Kind {
 		#layout_conservative(size=16, align=8);
-		constructor Symbolic;
-		constructor Object;
+		variant Symbolic {}
+		variant Object {}
 	}
 	type LsRemoteRefLine {
 		#layout_conservative(size=56, align=8);

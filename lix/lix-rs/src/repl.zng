@@ -23,10 +23,13 @@ mod crate::repl {
 
     type ReadlineError {
         #layout_conservative(size = 16, align = 8);
+        non_exhaustive;
 
-        constructor Eof;
-        constructor Interrupted;
-        constructor Io(::std::io::Error);
+        variant Eof {}
+        variant Interrupted {}
+        variant Io {
+            field 0 (offset = auto, type = ::std::io::Error);
+        }
 
         fn into(self) -> Box<dyn Error>;
     }

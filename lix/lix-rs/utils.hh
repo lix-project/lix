@@ -76,7 +76,7 @@ struct as_ok
     template<typename Err>
     operator Result<V, Err>()
     {
-        return Result<V, Err>::Ok(::std::move(v));
+        return typename Result<V, Err>::Ok(::std::move(v));
     }
 };
 
@@ -91,7 +91,7 @@ struct as_err
     template<typename Ok>
     operator Result<Ok, V>()
     {
-        return Result<Ok, V>::Err(::std::move(v));
+        return typename Result<Ok, V>::Err(::std::move(v));
     }
 };
 
@@ -180,7 +180,7 @@ auto to_std(Result<Args...> r)
     using result_type = ::std::
         variant<match<matches::Ok, decltype(r.unwrap())>, match<matches::Err, decltype(r.unwrap_err())>>;
 
-    if (r.matches_Ok()) {
+    if (Result<Args...>::Ok::check(r)) {
         return result_type(match<matches::Ok, decltype(r.unwrap())>{r.unwrap()});
     } else {
         return result_type(match<matches::Err, decltype(r.unwrap_err())>{r.unwrap_err()});
@@ -191,7 +191,7 @@ template<typename Ok, typename Err, ::std::invocable<Ok> FnOk, ::std::invocable<
 auto match_result(Result<Ok, Err> r, FnOk ok, FnErr err)
     -> ::std::common_type_t<::std::invoke_result_t<FnOk, Ok>, ::std::invoke_result_t<FnErr, Err>>
 {
-    return r.matches_Ok() ? ok(r.unwrap()) : err(r.unwrap_err());
+    return Result<Ok, Err>::Ok::check(r) ? ok(r.unwrap()) : err(r.unwrap_err());
 }
 }
 
@@ -201,7 +201,7 @@ auto to_std(Option<Args...> r)
 {
     using result_type = ::std::optional<decltype(r.unwrap())>;
 
-    if (r.matches_Some()) {
+    if (Option<Args...>::Some::check(r)) {
         return result_type{r.unwrap()};
     } else {
         return result_type{};
