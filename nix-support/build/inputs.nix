@@ -32,7 +32,6 @@ let
     ];
     linuxSystems = self.linux32BitSystems ++ self.linux64BitSystems;
     darwinSystems = [
-      "x86_64-darwin"
       "aarch64-darwin"
     ];
     nonDarwinSystems = self.linuxSystems;

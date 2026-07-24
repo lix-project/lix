@@ -62,7 +62,7 @@ verify
     set +e
     (
         echo "cd $(pwd)"
-        echo nix-build ./release.nix -A binaryTarball.x86_64-darwin
+        echo nix-build ./release.nix -A binaryTarball.aarch64-darwin
     ) | bash -l
     set -e
     cp ./result/nix-*.tar.bz2 $scratch/nix.tar.bz2
