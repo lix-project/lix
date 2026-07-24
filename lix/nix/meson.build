@@ -180,6 +180,9 @@ nix = executable(
     libasanoptions,
   ],
   cpp_pch : cpp_pch,
+  override_options: [
+    'unity=off'
+  ],
 )
 
 nix_symlinks = [
