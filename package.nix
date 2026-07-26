@@ -729,9 +729,7 @@ stdenv.mkDerivation (finalAttrs: {
     runHook postInstallCheck
   '';
 
-  # NOTE: This is disabled everywhere except Darwin due to Nixpkgs
-  # corrupting `.debug_gdb_scripts` segments (which currently aren't used on Darwin)
-  separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild && hostPlatform.isDarwin;
+  separateDebugInfo = !hostPlatform.isStatic && !finalAttrs.dontBuild;
 
   strictDeps = true;
 
