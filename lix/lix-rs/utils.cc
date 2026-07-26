@@ -1,7 +1,12 @@
 #include "utils.hh"
 
 #include "libutil/charptr-cast.hh"
+#include "libutil/error.hh"
+#include "libutil/fmt.hh"
 #include "lix/lix-rs/main.gen.hh"
+#include <cstdint>
+#include <kj/async.h>
+#include <kj/exception.h>
 
 namespace rust {
 ::std::string_view to_std_string_view(Ref<Str> s)
@@ -71,5 +76,63 @@ std::string::String Impl<lix::ffi::Error, Inherent>::to_string(Ref<lix::ffi::Err
     } catch (...) {
         return String::from("Unknown exception!"_rs);
     }
+}
+
+void std::result::detail::throw_from_report(rootcause::Report & r)
+{
+    throw ::nix::Error("%s", ::nix::Uncolored(to_std_string(r.to_string())));
+}
+
+rootcause::Report lix::errors::current_exception_as_report()
+{
+    try {
+        throw; // NOLINT(lix-foreign-exceptions)
+    } catch (::std::exception & e) { // NOLINT(lix-foreign-exceptions)
+        return errors::report_from_string_unhooked(to_string(e.what()));
+    } catch (...) {
+        return errors::report_from_string_unhooked(to_string("unknown exception type"));
+    }
+}
+
+namespace lix::futures {
+void Waker::wake() const
+{
+    executor->executeSync([this] { fulfiller->fulfill(); });
+}
+
+void Waker::addRef() const
+{
+    refs++;
+}
+
+void Waker::dropRef() const
+{
+    if (refs.fetch_sub(1) == 1) {
+        delete this;
+    }
+}
+}
+
+Raw<Unit> Impl<lix::futures::CxxWaker, Inherent>::clone(Raw<Unit> w)
+{
+    reinterpret_cast<lix::futures::Waker *>(w.addr())->addRef();
+    return w;
+}
+
+Unit rust::Impl<lix::futures::CxxWaker, Inherent>::wake(Raw<Unit> w)
+{
+    return wake_by_ref(w);
+}
+
+Unit rust::Impl<lix::futures::CxxWaker, Inherent>::wake_by_ref(Raw<Unit> w)
+{
+    reinterpret_cast<lix::futures::Waker *>(w.addr())->wake();
+    return Unit{};
+}
+
+Unit rust::Impl<lix::futures::CxxWaker, Inherent>::drop(Raw<Unit> w)
+{
+    reinterpret_cast<lix::futures::Waker *>(w.addr())->dropRef();
+    return Unit{};
 }
 }

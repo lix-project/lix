@@ -3,6 +3,7 @@ merge "./repl.zng";
 merge "./fetchers.zng";
 merge "./machines.zng";
 merge "./errors.zng";
+merge "./futures.zng";
 
 mod crate::ffi {
     use ::std::result::Result as Result;

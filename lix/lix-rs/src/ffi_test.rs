@@ -1,6 +1,22 @@
-use std::{error::Error, io};
+use std::{
+    error::Error,
+    future::poll_fn,
+    io,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    task::Poll,
+    thread::{self},
+    time::Duration,
+};
 
-use crate::ffi;
+use rootcause::Report;
+
+use crate::{
+    ffi,
+    futures::{CxxFuture, RsFuture},
+};
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub struct TestMultiplyAddLenArgs {
@@ -53,4 +69,41 @@ pub(crate) fn test_exceptions(f: Box<dyn Fn() -> Result<(), ffi::Error>>) -> Str
         Ok(()) => "".into(),
         Err(e) => e.to_string(),
     }
+}
+
+pub(crate) fn wakes_self() -> RsFuture<i32> {
+    let mut called = false;
+    poll_fn(move |ctx| {
+        if called {
+            Poll::Ready(1)
+        } else {
+            called = true;
+            ctx.waker().wake_by_ref();
+            Poll::Pending
+        }
+    })
+    .into()
+}
+
+pub(crate) fn wakes_from_thread() -> RsFuture<i32> {
+    let ready = Arc::new(AtomicBool::new(false));
+    poll_fn(move |ctx| {
+        if ready.load(Ordering::SeqCst) {
+            Poll::Ready(9001)
+        } else {
+            let waker = ctx.waker().clone();
+            let ready = Arc::clone(&ready);
+            thread::spawn(move || {
+                thread::sleep(Duration::from_millis(50));
+                ready.store(true, Ordering::SeqCst);
+                waker.wake();
+            });
+            Poll::Pending
+        }
+    })
+    .into()
+}
+
+pub(crate) fn await_add_one(f: CxxFuture<i32>) -> RsFuture<Result<i32, Report>> {
+    async move { Ok(f.await? + 1) }.into()
 }

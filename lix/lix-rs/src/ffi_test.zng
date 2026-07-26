@@ -1,3 +1,5 @@
+#unstable(template_types)
+
 use ::std::error::Error as Error;
 use ::std::option::Option as Option;
 use ::std::result::Result as Result;
@@ -31,4 +33,25 @@ mod crate::ffi_test {
     fn test_option_none() -> Option<u64>;
 
     fn test_exceptions(Box<dyn Fn() -> Result<(), crate::ffi::Error>>) -> String;
+
+    fn wakes_self() -> crate::futures::RsFuture<i32>;
+    fn wakes_from_thread() -> crate::futures::RsFuture<i32>;
+
+    type crate::futures::RsFuture<i32> {}
+    type ::std::option::Option<i32> {
+        #layout_conservative(size = 8, align = 4);
+    }
+
+    fn await_add_one(crate::futures::CxxFuture<i32>) -> crate::futures::RsFuture<Result<i32, ::rootcause::Report>>;
+
+    type crate::futures::RsFuture<Result<i32, ::rootcause::Report>> {}
+    type ::std::option::Option<Result<i32, ::rootcause::Report>> {
+        #layout_conservative(size = 16, align = 8);
+    }
+
+    type crate::futures::CxxFuture<i32> {}
+    type crate::futures::CxxFutureState<i32> {}
+    type Result<i32, ::rootcause::Report> {
+        #layout_conservative(size = 16, align = 8);
+    }
 }

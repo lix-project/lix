@@ -1,10 +1,13 @@
 #pragma once
 ///@file convenience utilities for working with the rust ffi bits
 
+#include <atomic>
 #include <cassert>
 #include <concepts>
 #include <cstdint>
 #include <exception>
+#include <kj/async.h>
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <type_traits>
@@ -14,6 +17,8 @@
 
 // this header requires `std` to mean `::std`
 #include "lix/lix-rs/zngur.gen.hh"
+
+#include "lix/libutil/result.hh"
 
 // bunch of forward declarations to avoid including all other headers.
 namespace rust {
@@ -50,6 +55,10 @@ struct Vec;
 namespace std::collections::hash_set {
 template<typename...>
 struct HashSet;
+}
+
+namespace rootcause {
+struct Report;
 }
 
 using std::option::Option;
@@ -193,6 +202,21 @@ auto match_result(Result<Ok, Err> r, FnOk ok, FnErr err)
 {
     return Result<Ok, Err>::Ok::check(r) ? ok(r.unwrap()) : err(r.unwrap_err());
 }
+
+namespace detail {
+[[noreturn]]
+void throw_from_report(rootcause::Report & r);
+}
+
+template<typename Ok>
+Ok unwrap(Result<Ok, rootcause::Report> result)
+{
+    return match_result(
+        ::std::move(result),
+        [](auto ok) { return ok; },
+        [](auto err) -> Ok { detail::throw_from_report(err); }
+    );
+}
 }
 
 namespace std::option {
@@ -301,6 +325,92 @@ public:
         return !current.has_value();
     }
 };
+}
+
+namespace lix::errors {
+rootcause::Report report_from_string_unhooked(String) noexcept;
+rootcause::Report current_exception_as_report();
+}
+
+namespace lix::futures {
+class Waker
+{
+    kj::Own<const kj::Executor> executor = kj::getCurrentThreadExecutor().addRef();
+    // SAFETY: only `executor` ever touches this member after construction
+    mutable kj::Own<kj::PromiseFulfiller<void>> fulfiller;
+    mutable ::std::atomic<size_t> refs = 1;
+
+    Waker(kj::Own<kj::PromiseFulfiller<void>> fulfiller) : fulfiller(::std::move(fulfiller)) {}
+
+public:
+    static auto build(kj::Own<kj::PromiseFulfiller<void>> fulfiller)
+    {
+        using Deleter = decltype([](Waker * w) { w->dropRef(); });
+        return ::std::unique_ptr<Waker, Deleter>{new Waker(::std::move(fulfiller))};
+    }
+
+    void wake() const;
+    void addRef() const;
+    void dropRef() const;
+};
+
+template<typename... R>
+struct RsFuture;
+template<typename...>
+struct CxxFuture;
+template<typename...>
+struct CxxFutureState;
+struct CxxPromise;
+
+template<typename... R>
+auto to_kj(RsFuture<R...> f) -> kj::Promise<decltype(f.poll(::std::declval<futures::Waker &>()).unwrap())>
+{
+    while (true) {
+        auto paf = kj::newPromiseAndFulfiller<void>();
+        auto waker = futures::Waker::build(::std::move(paf.fulfiller));
+        if (auto r = to_std(f.poll(*waker))) {
+            co_return ::std::move(*r);
+        } else {
+            co_await paf.promise;
+        }
+    }
+}
+
+template<typename R>
+CxxFuture<R> to_rust(kj::Promise<::nix::Result<R>> p)
+{
+    // anything in this function that looks like it's completely pointless and
+    // makes no sense is there precisely to delay c++ type checks of the code.
+    // we don't have definitions for most of the things we are using here, and
+    // anything that is templated in some way delays type checking to template
+    // instantiation time. it also delays *binding* to instantiation time, and
+    // in doing so lets us use methods we *cannot even know of* at this point.
+    using promise_t = ::std::enable_if_t<((void) sizeof(p), true), CxxPromise>;
+    using res_t = Result<R, rootcause::Report>;
+    using to_error_t = decltype([](auto arg) { return errors::report_from_string_unhooked(to_string(arg)); });
+
+    auto state = CxxFutureState<R>::new_();
+    auto resolve = [f = state.add_ref()](auto result) {
+        try {
+            f.resolve(typename res_t::Ok(::std::move(result.value())));
+        } catch (...) {
+            f.resolve(typename res_t::Err([](auto f) { return f(); }(errors::current_exception_as_report)));
+        }
+    };
+    auto fail = [f = state.add_ref()](kj::Exception && e) {
+        f.resolve(typename res_t::Err(to_error_t()(e.getDescription().cStr())));
+    };
+
+    return CxxFuture<R>::new_(
+        promise_t::build(p.then(::std::move(resolve)).eagerlyEvaluate(::std::move(fail))), ::std::move(state)
+    );
+}
+
+template<typename R>
+CxxFuture<R> to_rust(kj::Promise<R> p)
+{
+    return to_rust(p.then([](auto r) -> ::nix::Result<R> { return ::nix::result::success(::std::move(r)); }));
+}
 }
 }
 

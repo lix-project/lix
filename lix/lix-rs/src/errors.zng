@@ -3,5 +3,6 @@ mod crate::errors {
   use ::std::vec::Vec as Vec;
   use ::rootcause::Report as Report;
 
+  fn report_from_string_unhooked(::std::string::String) -> Report;
   fn format_exception_messages_as_rootcause_report(String, Vec<String>) -> Report;
 }

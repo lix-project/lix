@@ -1,11 +1,16 @@
+#include "lix/libutil/async.hh"
 #include "lix/libutil/error.hh"
+#include "lix/libutil/result.hh"
 #include "lix/libutil/types.hh"
 #include "lix/lix-rs/main.gen.hh"
 #include "lix/lix-rs/utils.hh"
 #include "zngur.gen.hh"
 #include "gtest/gtest.h"
 #include <cstdint>
+#include <exception>
 #include <gtest/gtest.h>
+#include <kj/async.h>
+#include <kj/exception.h>
 #include <ranges>
 #include <utility>
 #include <variant>
@@ -149,5 +154,98 @@ TEST(rustSupport, iterators)
     for (auto u : vec.into_iter()) {
         EXPECT_EQ(u, ++i);
     }
+}
+
+TEST(rustAsync, asyncWakeup)
+{
+    AsyncIoRoot aio;
+    auto future = ffi_test::wakes_self();
+
+    {
+        auto paf = kj::newPromiseAndFulfiller<void>();
+        auto waker = futures::Waker::build(std::move(paf.fulfiller));
+        ASSERT_FALSE(to_std(future.poll(*waker)).has_value());
+        ASSERT_TRUE(paf.promise.poll(aio.kj.waitScope));
+    }
+
+    {
+        auto paf = kj::newPromiseAndFulfiller<void>();
+        auto waker = futures::Waker::build(std::move(paf.fulfiller));
+        ASSERT_EQ(to_std(future.poll(*waker)), 1);
+    }
+}
+
+TEST(rustAsync, asyncWakeupFromThread)
+{
+    // rust requires wakers to be Send + Sync. this is a sanity check for that
+    AsyncIoRoot aio;
+    ASSERT_EQ(to_kj(ffi_test::wakes_from_thread()).wait(aio.kj.waitScope), 9001);
+}
+
+TEST(rustAsync, rustToCpp)
+{
+    AsyncIoRoot aio;
+
+    // if this passes we'll just believe that scheduling works
+    ASSERT_EQ(to_kj(ffi_test::wakes_self()).wait(aio.kj.waitScope), 1);
+}
+
+TEST(rustAsync, cppToRustPlainMustWait)
+{
+    AsyncIoRoot aio;
+    auto paf = kj::newPromiseAndFulfiller<int>();
+    auto p = futures::to_rust(std::move(paf.promise));
+    auto f = to_kj(ffi_test::await_add_one(std::move(p)));
+    // shared state should be Initial
+    ASSERT_FALSE(f.poll(aio.kj.waitScope));
+    // now it should be Waiting
+    paf.fulfiller->fulfill(2);
+    // and now Ready
+    ASSERT_EQ(f.wait(aio.kj.waitScope).unwrap(), 3);
+}
+
+TEST(rustAsync, cppToRustPlainAlreadyDone)
+{
+    AsyncIoRoot aio;
+    auto paf = kj::newPromiseAndFulfiller<int>();
+    auto p = futures::to_rust(std::move(paf.promise));
+    auto f = to_kj(ffi_test::await_add_one(std::move(p)));
+    paf.fulfiller->fulfill(2);
+    // make sure the promise actually gets the memo
+    aio.kj.waitScope.poll();
+    // shared state should be Ready now
+    ASSERT_EQ(f.wait(aio.kj.waitScope).unwrap(), 3);
+}
+
+TEST(rustAsync, cppToRustKjException)
+{
+    AsyncIoRoot aio;
+    auto paf = kj::newPromiseAndFulfiller<int>();
+    auto p = futures::to_rust(std::move(paf.promise));
+    auto f = to_kj(ffi_test::await_add_one(std::move(p)));
+    paf.fulfiller->reject(kj::Exception(kj::Exception::Type::FAILED, kj::str("file"), 0, kj::str("snafu")));
+    ASSERT_EQ(to_std_string(f.wait(aio.kj.waitScope).unwrap_err().to_string()), "\n \xE2\x97\x8F snafu\n");
+}
+
+TEST(rustAsync, cppToRustError)
+{
+    AsyncIoRoot aio;
+    auto paf = kj::newPromiseAndFulfiller<Result<int>>();
+    auto p = futures::to_rust(std::move(paf.promise));
+    auto f = to_kj(ffi_test::await_add_one(std::move(p)));
+    paf.fulfiller->fulfill(std::make_exception_ptr(Error("snafu")));
+    ASSERT_EQ(
+        to_std_string(f.wait(aio.kj.waitScope).unwrap_err().to_string()),
+        "\n \xE2\x97\x8F \x1B[31;1merror:\x1B[0m snafu\n"
+    );
+}
+
+TEST(rustAsync, cppToRustCancel)
+{
+    AsyncIoRoot aio;
+    auto paf = kj::newPromiseAndFulfiller<int>();
+    // dropping a wrapping future must also cancel the wrapped promise
+    (void) futures::to_rust(std::move(paf.promise));
+    ASSERT_FALSE(paf.fulfiller->isWaiting());
 }
 }

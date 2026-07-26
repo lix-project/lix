@@ -1,0 +1,49 @@
+#unstable(template_types)
+
+mod crate::futures {
+    #cpp_additional_includes r#"
+        #include <kj/async.h>
+        #include "lix/libutil/result.hh"
+
+        namespace rust::lix::futures {
+            class Waker;
+        }
+    "#
+
+    type CxxWaker {
+        #cpp_ref "::rust::lix::futures::Waker";
+    }
+
+    extern "C++" {
+        impl CxxWaker {
+            unsafe fn clone(*const ()) -> *const ();
+            unsafe fn wake(*const ());
+            unsafe fn wake_by_ref(*const ());
+            unsafe fn drop(*const ());
+        }
+    }
+
+    type<T> RsFuture<T> {
+        #layout_conservative(size = 16, align = 8);
+        fn poll(&mut self, &CxxWaker) -> ::std::option::Option<T>;
+    }
+
+    type CxxPromise {
+        #layout_conservative(size = 16, align = 8);
+        #cpp_value "0" "kj::Promise<void>";
+    }
+
+    type<T> CxxFutureState<T> {
+        #layout_conservative(size = 24, align = 8);
+
+        fn new() -> CxxFutureState<T>;
+        fn add_ref(&self) -> CxxFutureState<T>;
+        fn resolve(&self, ::std::result::Result<T, ::rootcause::Report>);
+    }
+
+    type<T> CxxFuture<T> {
+        #layout_conservative(size = 48, align = 8);
+
+        fn new(CxxPromise, CxxFutureState<T>) -> CxxFuture<T>;
+    }
+}
