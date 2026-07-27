@@ -58,7 +58,7 @@ impl TryFrom<&str> for LsRemoteRefLine {
             });
 
             LsRemoteRefLine {
-                kind: kind,
+                kind,
                 target: m
                     .get(2)
                     .expect("regex for matching remtoes has two capture groups defined, so this should not error")

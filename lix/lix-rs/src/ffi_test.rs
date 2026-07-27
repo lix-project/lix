@@ -50,10 +50,7 @@ pub(crate) fn test_multiply_add_len(args: TestMultiplyAddLenArgs, s: &Vec<String
 }
 
 pub(crate) fn test_result() -> Result<(), Box<dyn Error>> {
-    Err(Box::new(io::Error::new(
-        io::ErrorKind::Other,
-        "errors travel freely",
-    )))
+    Err(Box::new(io::Error::other("errors travel freely")))
 }
 
 pub(crate) fn test_option_some() -> Option<u64> {

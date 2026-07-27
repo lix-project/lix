@@ -81,8 +81,8 @@ impl MachinesFile {
                     ssh_key: m.ssh_key.unwrap_or_else(|| "".to_string()),
                     max_jobs: m.max_jobs.unwrap_or(1),
                     speed_factor: m.speed_factor.unwrap_or(1.0),
-                    supported_features: m.supported_features.unwrap_or_else(|| HashSet::new()),
-                    mandatory_features: m.mandatory_features.unwrap_or_else(|| HashSet::new()),
+                    supported_features: m.supported_features.unwrap_or_else(HashSet::new),
+                    mandatory_features: m.mandatory_features.unwrap_or_else(HashSet::new),
                     ssh_public_host_key: BASE64_STANDARD
                         .encode(m.ssh_public_host_key.unwrap_or_else(|| "".to_string())),
                     enabled: m.enabled.unwrap_or(true),
@@ -199,11 +199,11 @@ fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Ma
     if content.is_empty() {
         return Ok(vec![]);
     }
-    Ok(toml::from_str::<MachinesFile>(content.as_str())
+    toml::from_str::<MachinesFile>(content.as_str())
         .map_err(|e| TomlParsingError::UncertainErr(report!(e).into_dynamic()))?
         .to_machines(current_system.as_str())
         .context("while validating machines")
-        .map_err(|e| TomlParsingError::YouIntendedTomlError(e.into_dynamic()))?)
+        .map_err(|e| TomlParsingError::YouIntendedTomlError(e.into_dynamic()))
 }
 
 pub fn get_machines(setting: String, current_system: String) -> Result<Vec<Machine>, Report> {

@@ -16,7 +16,7 @@ fn main() {
     println!("cargo::rerun-if-changed={generated}");
 
     println!("cargo::rerun-if-env-changed=CXX_LINK_DIR_FOR_TEST");
-    if let Some(dir) = env::var("CXX_LINK_DIR_FOR_TEST").ok() {
+    if let Ok(dir) = env::var("CXX_LINK_DIR_FOR_TEST") {
         println!("cargo::rustc-link-search={}", dir);
         println!("cargo::rustc-link-lib=static=lix_cpp_static");
     }

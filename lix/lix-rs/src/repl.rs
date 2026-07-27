@@ -33,7 +33,7 @@ impl<'a> Completer for Helper<'a> {
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let line = &line[0..pos];
-        if line == "" {
+        if line.is_empty() {
             Ok((0, vec![]))
         } else {
             let (start, token) = if line.starts_with(':') {

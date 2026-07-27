@@ -306,8 +306,8 @@ pub fn get_function_docs(filename: &str, line: usize, col: usize) -> Option<Stri
     }
 
     // Convert the binding to an identifier if it was found, otherwise use a placeholder.
-    let identifier;
-    identifier = match binding.clone() {
+
+    let identifier = match binding.clone() {
         Some(binding) => ast::AttrpathValue::cast(binding)
             .expect("not an rnix::ast::AttrpathValue; what")
             .attrpath()
@@ -318,7 +318,7 @@ pub fn get_function_docs(filename: &str, line: usize, col: usize) -> Option<Stri
 
     // Find all the comments on the binding or the lambda if we have to fall back.
     let comment_node = binding.as_ref().unwrap_or(lambda.syntax());
-    let comment = find_comment(comment_node).unwrap_or_else(String::new);
+    let comment = find_comment(comment_node).unwrap_or_default();
 
     // And display them properly for the markdown function in Lix.
     Some(visit_lambda(identifier, comment, &lambda).format(filename, line))

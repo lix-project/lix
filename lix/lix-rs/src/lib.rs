@@ -94,35 +94,35 @@ pub(crate) mod log {
 
     #[macro_export]
     macro_rules! print_error {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_ERROR, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_ERROR, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_warning {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_WARN, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_WARN, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_notice {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_NOTICE, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_NOTICE, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_info {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_INFO, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_INFO, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_talkative {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_TALKATIVE, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_TALKATIVE, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_chatty {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_CHATTY, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_CHATTY, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_debug {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_DEBUG, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_DEBUG, $str $($($rest)*)*) }
     }
     #[macro_export]
     macro_rules! print_vomit {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!(crate::log::LVL_VOMIT, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_VOMIT, $str $($($rest)*)*) }
     }
 
     #[macro_export]

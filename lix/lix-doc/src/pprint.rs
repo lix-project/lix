@@ -19,7 +19,7 @@ pub fn pprint_args(lambda: &Lambda) -> String {
                 rowan::NodeOrToken::Node(node) => {
                     out.push_str(&node.text().to_string());
                     if node.kind() == rnix::SyntaxKind::NODE_PAT_ENTRY {
-                        out.push_str(&",\n");
+                        out.push_str(",\n");
                     }
                 }
                 rowan::NodeOrToken::Token(token) => {
@@ -29,7 +29,7 @@ pub fn pprint_args(lambda: &Lambda) -> String {
                     match token.kind() {
                         TOKEN_COMMENT | TOKEN_ELLIPSIS | TOKEN_QUESTION | TOKEN_L_BRACE | TOKEN_R_BRACE => {
                             //dbg!(&token);
-                            out.push_str(&token.text().to_string());
+                            out.push_str(token.text());
                             if token.kind() == TOKEN_COMMENT {
                                 out.push('\n');
                             }
