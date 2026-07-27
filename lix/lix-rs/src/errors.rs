@@ -1,6 +1,5 @@
 use rootcause::{
-    markers::SendSync, report_attachments::ReportAttachments, report_collection::ReportCollection,
-    Report,
+    markers::SendSync, report_attachments::ReportAttachments, report_collection::ReportCollection, Report,
 };
 
 pub(crate) fn report_from_string_unhooked(s: String) -> Report {

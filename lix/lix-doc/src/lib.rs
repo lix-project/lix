@@ -8,9 +8,8 @@ pub mod pprint;
 use crate::pprint::pprint_args;
 
 use rnix::ast::{self, Lambda};
-use rnix::{NodeOrToken, SyntaxKind};
 use rnix::SyntaxNode;
-
+use rnix::{NodeOrToken, SyntaxKind};
 
 // Needed because rnix fucked up and didn't reexport this, oops.
 use rowan::ast::AstNode;
@@ -295,9 +294,7 @@ pub fn get_function_docs(filename: &str, line: usize, col: usize) -> Option<Stri
 
     // There is literally always a lambda or something has gone very very wrong.
     let lambda =
-        ast::Lambda::cast(
-            lambda.expect("no lambda found; what.")
-        ) .expect("not a rnix::ast::Lambda; what.");
+        ast::Lambda::cast(lambda.expect("no lambda found; what.")).expect("not a rnix::ast::Lambda; what.");
 
     // Search up, hopefully to find the binding so we can get the identifier name.
     // TODO: Just provide this directly from the C++ code to make it possible to always have the correct identifier.
@@ -352,22 +349,20 @@ fn find_comment(node: &SyntaxNode) -> Option<String> {
     }
 
     let comments = it.map_while(|element| match element {
-            NodeOrToken::Token(token) => {
-                match token.kind() {
-                    // Map the tokens we're interested in to our internal token type.
-                    SyntaxKind::TOKEN_COMMENT => Some(DocToken::Comment(token.text().to_owned())),
-                    SyntaxKind::TOKEN_WHITESPACE => {
-                        Some(DocToken::Whitespace(token.text().to_owned()))
-                    }
-                    // If we hit a different token type, we know we've gone past relevant comments
-                    // and should stop.
-                    _ => None,
-                }
+        NodeOrToken::Token(token) => {
+            match token.kind() {
+                // Map the tokens we're interested in to our internal token type.
+                SyntaxKind::TOKEN_COMMENT => Some(DocToken::Comment(token.text().to_owned())),
+                SyntaxKind::TOKEN_WHITESPACE => Some(DocToken::Whitespace(token.text().to_owned())),
+                // If we hit a different token type, we know we've gone past relevant comments
+                // and should stop.
+                _ => None,
             }
-            // If we hit a node entry we've definitely gone past comments that would be related to
-            // this node and we should retreat.
-            _ => None,
-        });
+        }
+        // If we hit a node entry we've definitely gone past comments that would be related to
+        // this node and we should retreat.
+        _ => None,
+    });
 
     // For the curious, `into_iter()` here consumes the binding producing an owned value allowing us to avoid
     // making the original binding mutable, we don't reuse it later so this is a cute way to handle it, though

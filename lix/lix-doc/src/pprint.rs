@@ -27,8 +27,7 @@ pub fn pprint_args(lambda: &Lambda) -> String {
                         TOKEN_COMMENT, TOKEN_ELLIPSIS, TOKEN_L_BRACE, TOKEN_QUESTION, TOKEN_R_BRACE,
                     };
                     match token.kind() {
-                        TOKEN_COMMENT | TOKEN_ELLIPSIS | TOKEN_QUESTION | TOKEN_L_BRACE
-                        | TOKEN_R_BRACE => {
+                        TOKEN_COMMENT | TOKEN_ELLIPSIS | TOKEN_QUESTION | TOKEN_L_BRACE | TOKEN_R_BRACE => {
                             //dbg!(&token);
                             out.push_str(&token.text().to_string());
                             if token.kind() == TOKEN_COMMENT {

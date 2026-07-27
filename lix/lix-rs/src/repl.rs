@@ -40,9 +40,7 @@ impl<'a> Completer for Helper<'a> {
                 (0, line)
             } else {
                 // Same as editline's SEPS, except for double and single quotes:
-                extract_word(line, pos, None, |c| {
-                    "#$&()*:;<=>?[\\]^`{,}~\n\t ".contains(c)
-                })
+                extract_word(line, pos, None, |c| "#$&()*:;<=>?[\\]^`{,}~\n\t ".contains(c))
             };
 
             Ok((start, self.cxx.complete(token)))
@@ -57,10 +55,7 @@ pub struct Rustyline<'a> {
 }
 
 impl<'a> Rustyline<'a> {
-    pub fn new(
-        history_file: impl AsRef<Path>,
-        completer: &'a CxxCompleter,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(history_file: impl AsRef<Path>, completer: &'a CxxCompleter) -> Result<Self, Box<dyn Error>> {
         let history_file = history_file.as_ref();
 
         // TODO add settings and stuff

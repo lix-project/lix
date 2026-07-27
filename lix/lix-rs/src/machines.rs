@@ -57,7 +57,15 @@ impl MachinesFile {
         let version = self.version.unwrap_or(LATEST_VERSION);
         if version < MIN_VERSION || version > LATEST_VERSION {
             let mut rc = ReportCollection::new();
-            rc.push(report!("Unable to parse Machines of version {}, only versions between {} and {} are supported.", version, MIN_VERSION, LATEST_VERSION).into_cloneable());
+            rc.push(
+                report!(
+                    "Unable to parse Machines of version {}, only versions between {} and {} are supported.",
+                    version,
+                    MIN_VERSION,
+                    LATEST_VERSION
+                )
+                .into_cloneable(),
+            );
             return Err(rc);
         };
 
@@ -173,10 +181,7 @@ enum TomlParsingError {
     UncertainErr(Report),
 }
 
-fn get_toml_machines(
-    setting: &String,
-    current_system: &String,
-) -> Result<Vec<Machine>, TomlParsingError> {
+fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Machine>, TomlParsingError> {
     let content = if let Some(file_path) = setting.strip_prefix("@") {
         std::fs::read_to_string(file_path)
             .context("while reading external machines file")
@@ -279,9 +284,7 @@ mod tests {
         fn bad_toml_file_doesnt_retry_legacy() {
             // Non-existing files do not throw errors with the legacy format
             // but will just return an empty list of builders
-            let err = gm("@/this/file/does/not/exist.toml")
-                .unwrap_err()
-                .to_string();
+            let err = gm("@/this/file/does/not/exist.toml").unwrap_err().to_string();
             assert!(err.contains("No such file"));
         }
 
@@ -309,14 +312,11 @@ speed-factor = 3
         use crate::machines::*;
 
         fn gm(machines: &str) -> Result<Vec<Machine>, Report> {
-            crate::machines::get_toml_machines(
-                &machines.to_string(),
-                &"TEST_ARCH-TEST_OS".to_string(),
-            )
-            .map_err(|e| match e {
-                TomlParsingError::YouIntendedTomlError(e) => e,
-                TomlParsingError::UncertainErr(e) => e,
-            })
+            crate::machines::get_toml_machines(&machines.to_string(), &"TEST_ARCH-TEST_OS".to_string())
+                .map_err(|e| match e {
+                    TomlParsingError::YouIntendedTomlError(e) => e,
+                    TomlParsingError::UncertainErr(e) => e,
+                })
         }
 
         #[test]
@@ -336,10 +336,7 @@ speed-factor = 3
             assert_eq!(machines.len(), 1);
             let m = machines.get(0).unwrap();
             assert_eq!(m.uri, "ssh://nix@scratchy.labs.cs.uu.nl".to_string());
-            assert_eq!(
-                m.system_types,
-                HashSet::from(["TEST_ARCH-TEST_OS".to_string()])
-            );
+            assert_eq!(m.system_types, HashSet::from(["TEST_ARCH-TEST_OS".to_string()]));
             assert_eq!(m.ssh_key, "".to_string());
             assert_eq!(m.max_jobs, 1);
             assert_eq!(m.speed_factor, 1.0);
@@ -385,10 +382,7 @@ speed-factor = 3
             assert_eq!(m.max_jobs, 8);
             assert_eq!(m.speed_factor, 3.0);
             assert_eq!(m.supported_features, HashSet::from(["kvm".to_string()]));
-            assert_eq!(
-                m.mandatory_features,
-                HashSet::from(["benchmark".to_string()])
-            );
+            assert_eq!(m.mandatory_features, HashSet::from(["benchmark".to_string()]));
             assert_eq!(m.ssh_public_host_key, "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUpZZnFFU2FpUWxPckwzV20xUTlzOXE4YjRtamoybkl1eXFDWnViNWFHUGkgbml4QHNjcmF0Y2h5".to_string());
         }
 
@@ -534,8 +528,8 @@ speed-factor = 3
             .to_string();
 
             assert!(err.contains(
-            "Unable to parse Machines of version 42, only versions between 1 and 1 are supported."
-        ));
+                "Unable to parse Machines of version 42, only versions between 1 and 1 are supported."
+            ));
         }
 
         #[test]
@@ -548,8 +542,8 @@ speed-factor = 3
             .to_string();
 
             assert!(err.contains(
-            "Unable to parse Machines of version 0, only versions between 1 and 1 are supported."
-        ));
+                "Unable to parse Machines of version 0, only versions between 1 and 1 are supported."
+            ));
         }
 
         #[test]
@@ -597,10 +591,7 @@ speed-factor = 3
             assert_eq!(machines.len(), 1);
             let m = machines.get(0).unwrap();
             assert_eq!(m.uri, "ssh://nix@scratchy.labs.cs.uu.nl".to_string());
-            assert_eq!(
-                m.system_types,
-                HashSet::from(["TEST_ARCH-TEST_OS".to_string()])
-            );
+            assert_eq!(m.system_types, HashSet::from(["TEST_ARCH-TEST_OS".to_string()]));
             assert_eq!(m.ssh_key, "".to_string());
             assert_eq!(m.max_jobs, 1);
             assert_eq!(m.speed_factor, 1.0);
@@ -615,10 +606,7 @@ speed-factor = 3
             assert_eq!(machines.len(), 1);
             let m = machines.get(0).unwrap();
             assert_eq!(m.uri, "ssh://nix@scratchy.labs.cs.uu.nl".to_string());
-            assert_eq!(
-                m.system_types,
-                HashSet::from(["TEST_ARCH-TEST_OS".to_string()])
-            );
+            assert_eq!(m.system_types, HashSet::from(["TEST_ARCH-TEST_OS".to_string()]));
             assert_eq!(m.ssh_key, "".to_string());
             assert_eq!(m.max_jobs, 1);
             assert_eq!(m.speed_factor, 1.0);
@@ -656,10 +644,7 @@ speed-factor = 3
             assert_eq!(m.max_jobs, 8);
             assert_eq!(m.speed_factor, 3.0);
             assert_eq!(m.supported_features, HashSet::from(["kvm".to_string()]));
-            assert_eq!(
-                m.mandatory_features,
-                HashSet::from(["benchmark".to_string()])
-            );
+            assert_eq!(m.mandatory_features, HashSet::from(["benchmark".to_string()]));
             assert_eq!(
                 m.ssh_public_host_key.as_str(),
                 "SSH+HOST+PUBLIC+KEY+BASE64+ENCODED=="
@@ -677,10 +662,7 @@ speed-factor = 3
             assert_eq!(m.max_jobs, 8);
             assert_eq!(m.speed_factor, 3.0);
             assert_eq!(m.supported_features, HashSet::from(["kvm".to_string()]));
-            assert_eq!(
-                m.mandatory_features,
-                HashSet::from(["benchmark".to_string()])
-            );
+            assert_eq!(m.mandatory_features, HashSet::from(["benchmark".to_string()]));
             assert_eq!(
                 m.ssh_public_host_key.as_str(),
                 "SSH+HOST+PUBLIC+KEY+BASE64+ENCODED=="
@@ -689,8 +671,7 @@ speed-factor = 3
 
         #[test]
         fn multi_options() {
-            let machines =
-                parse("nix@scratchy.labs.cs.uu.nl Arch1,Arch2 - - - SF1,SF2 MF1,MF2").unwrap();
+            let machines = parse("nix@scratchy.labs.cs.uu.nl Arch1,Arch2 - - - SF1,SF2 MF1,MF2").unwrap();
             assert_eq!(machines.len(), 1);
             let m = machines.get(0).unwrap();
             assert_eq!(m.uri.as_str(), "ssh://nix@scratchy.labs.cs.uu.nl");

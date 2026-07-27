@@ -57,7 +57,8 @@ fn main() {
                     "#include <zngur.h>",
                     &format!("#include \"{}\"", out_shared_header.display()),
                 ),
-            ).expect("failed to rewrite generated header");
+            )
+            .expect("failed to rewrite generated header");
         }
     }
 }

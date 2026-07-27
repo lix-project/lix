@@ -1,0 +1,5 @@
+edition = "2021"
+style_edition = "2021"
+max_width = 110
+# unstable features:
+#comment_width = 110

@@ -144,5 +144,8 @@ pre-commit-run {
         pkgs.ruff
       ];
     };
+    rustfmt = {
+      enable = true;
+    };
   };
 }
