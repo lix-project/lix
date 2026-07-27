@@ -814,6 +814,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(request_key));
     allowSyscall(ctx, SCMP_SYS(restart_syscall));
     allowSyscall(ctx, SCMP_SYS(riscv_flush_icache));
+    allowSyscall(ctx, SCMP_SYS(riscv_hwprobe));
     allowSyscall(ctx, SCMP_SYS(rmdir));
     allowSyscall(ctx, SCMP_SYS(rseq));
     allowSyscall(ctx, SCMP_SYS(rtas));
