@@ -14,12 +14,16 @@ pub enum Kind {
 /// These can be of two kinds:
 ///
 /// - Symbolic references of the form
-///     ref: {target}    {references}
-///     where {target} is itself a reference and {reference} is optional
+///   ```
+///   ref: {target}    {references}
+///   ```
+///   where {target} is itself a reference and {reference} is optional
 ///
 /// - Object reference of the form
-///     {target}     {reference}
-///     where {target} is a commit id and {reference} is mandatory
+///   ```
+///   {target}     {reference}
+///   ```
+///   where {target} is a commit id and {reference} is mandatory
 #[derive(Debug)]
 pub struct LsRemoteRefLine {
     pub kind: Kind,
