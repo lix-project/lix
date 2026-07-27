@@ -10,7 +10,12 @@ let
     tar -xf ${lib.escapeShellArg libseccomp.src} --strip-components=2 ${libseccomp.name}/src/syscalls.csv
     mv syscalls.csv "$out"
   '';
+  shellScript = runCommand "check-syscalls.sh" { } ''
+    mkdir -p $out/bin
+    cp -L ${./check-syscalls.sh} $out/bin/check-syscalls.sh
+    patchShebangs $out/bin/check-syscalls.sh
+  '';
 in
 writeShellScriptBin "check-syscalls" ''
-  ${./check-syscalls.sh} ${syscalls-csv}
+  ${shellScript}/bin/check-syscalls.sh ${syscalls-csv}
 ''

@@ -121,6 +121,23 @@
           clang = self.devShells.${system}.native-clangStdenvPackages;
         });
 
+        # Check that no new syscalls have appeared that needs to be allowed or disallowed explicitly.
+        verifyNoNewSyscalls = lib.genAttrs linux64BitSystems (
+          system:
+          let
+            pkgs = nixpkgsFor.${system}.native;
+          in
+          pkgs.buildPackages.runCommand "verify-no-new-syscalls-have-appeared"
+            {
+              src = self.packages.${system}.nix.src;
+            }
+            ''
+              cd $src
+              ${lib.getExe pkgs.check-syscalls} && echo "No new syscalls have appeared." || ( echo "Syscalls needs to be allowed or disallowed, see below."; exit 1 )
+              touch $out
+            ''
+        );
+
         inherit tests;
 
         pre-commit = forAvailableSystems (
@@ -175,6 +192,7 @@
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
           repl-completion = self.hydraJobs.repl-completion.${system};
+          verifyNoNewSyscalls = self.hydraJobs.verifyNoNewSyscalls.${system};
         }
         // (lib.optionalAttrs (builtins.elem system linux64BitSystems)) {
           dockerImage = self.hydraJobs.dockerImage.${system};
