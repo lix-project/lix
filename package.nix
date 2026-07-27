@@ -779,6 +779,7 @@ stdenv.mkDerivation (finalAttrs: {
         cargo,
         rustc,
         rustfmt,
+        clippy,
         rustPlatform,
 
         # debuggers
@@ -876,6 +877,7 @@ stdenv.mkDerivation (finalAttrs: {
               cargo
               rustc
               rustfmt
+              clippy
             ]
             ++ lib.optionals stdenv.cc.isClang [
               # Required for clang-tidy checks.

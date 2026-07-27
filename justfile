@@ -63,12 +63,18 @@ test-functional2 *OPTIONS:
 test-rs *OPTIONS:
     meson test -C {{ builddir }} --interactive lix-rs-tests "$@"
 
+lint: clang-tidy clippy
+lint-fix: (clippy "--fix") clang-tidy-fix
+
 # Lint with `clang-tidy`
-lint:
+clang-tidy:
     ninja -C build clang-tidy
 
-alias clang-tidy-fix := lint-fix
-
 # Fix lints with `clang-tidy-fix`
-lint-fix:
+clang-tidy-fix:
     ninja -C build clang-tidy-fix
+
+# lint with clippy
+[positional-arguments]
+clippy *OPTIONS:
+    cargo clippy "$@"
