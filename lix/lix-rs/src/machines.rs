@@ -149,6 +149,7 @@ impl Machine {
             && self.mandatory_met(required_features)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: String,
         uri: String,

@@ -66,6 +66,7 @@ enum CxxFutureStateInner<T> {
 pub struct CxxFutureState<T>(Pin<Rc<Mutex<CxxFutureStateInner<T>>>>);
 
 impl<T> CxxFutureState<T> {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self(Rc::pin(Mutex::new(CxxFutureStateInner::Initial)))
     }

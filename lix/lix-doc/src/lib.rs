@@ -373,6 +373,7 @@ fn find_comment(node: &SyntaxNode) -> Option<String> {
 /// Get the docs for a function in the given file path at the given file position and return it as
 /// a C string pointer
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn lixdoc_get_function_docs(
     filename: *const c_char,
     line: usize,
