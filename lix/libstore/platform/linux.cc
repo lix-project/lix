@@ -695,6 +695,9 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(lremovexattr));
     allowSyscall(ctx, SCMP_SYS(lseek));
     // skip lsetxattr (dangerous)
+    allowSyscall(ctx, SCMP_SYS(lsm_get_self_attr));
+    allowSyscall(ctx, SCMP_SYS(lsm_list_modules));
+    // skip lsm_set_self_attr (dangerous)
     allowSyscall(ctx, SCMP_SYS(lstat));
     allowSyscall(ctx, SCMP_SYS(lstat64));
     allowSyscall(ctx, SCMP_SYS(madvise));
