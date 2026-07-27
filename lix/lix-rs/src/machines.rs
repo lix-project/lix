@@ -53,7 +53,7 @@ struct MachinesFile {
 }
 
 impl MachinesFile {
-    fn to_machines(self, current_system: &str) -> Result<Vec<Machine>, ReportCollection> {
+    fn into_machines(self, current_system: &str) -> Result<Vec<Machine>, ReportCollection> {
         let version = self.version.unwrap_or(LATEST_VERSION);
         if version < MIN_VERSION || version > LATEST_VERSION {
             let mut rc = ReportCollection::new();
@@ -182,7 +182,7 @@ enum TomlParsingError {
     UncertainErr(Report),
 }
 
-fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Machine>, TomlParsingError> {
+fn get_toml_machines(setting: &String, current_system: &str) -> Result<Vec<Machine>, TomlParsingError> {
     let content = if let Some(file_path) = setting.strip_prefix("@") {
         std::fs::read_to_string(file_path)
             .context("while reading external machines file")
@@ -202,7 +202,7 @@ fn get_toml_machines(setting: &String, current_system: &String) -> Result<Vec<Ma
     }
     toml::from_str::<MachinesFile>(content.as_str())
         .map_err(|e| TomlParsingError::UncertainErr(report!(e).into_dynamic()))?
-        .to_machines(current_system.as_str())
+        .into_machines(current_system)
         .context("while validating machines")
         .map_err(|e| TomlParsingError::YouIntendedTomlError(e.into_dynamic()))
 }
