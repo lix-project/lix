@@ -21,11 +21,11 @@ try {
 
     if (storeUri.starts_with("ssh://"_rs) || storeUri.starts_with("ssh-ng://"_rs)) {
         auto sshKey = m.ssh_key.as_str();
-        if (sshKey.is_empty()) {
+        if (!sshKey.is_empty()) {
             storeParams["ssh-key"] = to_std_string(sshKey);
         }
         auto sshPublicHostKey = m.ssh_public_host_key.as_str();
-        if (sshPublicHostKey.is_empty()) {
+        if (!sshPublicHostKey.is_empty()) {
             storeParams["base64-ssh-public-host-key"] = to_std_string(sshPublicHostKey);
         }
     }
