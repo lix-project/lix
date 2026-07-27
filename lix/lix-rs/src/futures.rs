@@ -2,8 +2,7 @@ use std::{
     future::Future,
     marker::PhantomPinned,
     pin::Pin,
-    rc::Rc,
-    sync::Mutex,
+    sync::{Arc, Mutex},
     task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
 };
 
@@ -63,12 +62,12 @@ enum CxxFutureStateInner<T> {
 }
 
 /// shared state type for c++ promises adapted to rust futures.
-pub struct CxxFutureState<T>(Pin<Rc<Mutex<CxxFutureStateInner<T>>>>);
+pub struct CxxFutureState<T>(Pin<Arc<Mutex<CxxFutureStateInner<T>>>>);
 
 impl<T> CxxFutureState<T> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self(Rc::pin(Mutex::new(CxxFutureStateInner::Initial)))
+        Self(Arc::pin(Mutex::new(CxxFutureStateInner::Initial)))
     }
 
     pub fn add_ref(&self) -> Self {
