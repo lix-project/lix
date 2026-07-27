@@ -650,6 +650,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(getuid));
     allowSyscall(ctx, SCMP_SYS(getuid32));
     allowSyscall(ctx, SCMP_SYS(getxattr));
+    allowSyscall(ctx, SCMP_SYS(getxattrat));
     allowSyscall(ctx, SCMP_SYS(gtty));
     allowSyscall(ctx, SCMP_SYS(idle));
     allowSyscall(ctx, SCMP_SYS(init_module));
@@ -688,6 +689,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(linkat));
     allowSyscall(ctx, SCMP_SYS(listen));
     allowSyscall(ctx, SCMP_SYS(listxattr));
+    allowSyscall(ctx, SCMP_SYS(listxattrat));
     allowSyscall(ctx, SCMP_SYS(llistxattr));
     allowSyscall(ctx, SCMP_SYS(_llseek));
     allowSyscall(ctx, SCMP_SYS(lock));
@@ -812,6 +814,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(recvmsg));
     allowSyscall(ctx, SCMP_SYS(remap_file_pages));
     allowSyscall(ctx, SCMP_SYS(removexattr));
+    allowSyscall(ctx, SCMP_SYS(removexattrat));
     allowSyscall(ctx, SCMP_SYS(rename));
     allowSyscall(ctx, SCMP_SYS(renameat));
     allowSyscall(ctx, SCMP_SYS(renameat2));
@@ -898,6 +901,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(setuid));
     allowSyscall(ctx, SCMP_SYS(setuid32));
     // skip setxattr (dangerous)
+    // skip setxattrat (dangerous)
     allowSyscall(ctx, SCMP_SYS(sgetmask));
     allowSyscall(ctx, SCMP_SYS(shmat));
     allowSyscall(ctx, SCMP_SYS(shmctl));
