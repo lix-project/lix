@@ -30,3 +30,14 @@ opt-level = 1
 debug = "full"
 debug-assertions = true
 overflow-checks = true
+
+[workspace.lints.clippy]
+complexity = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+
+# some restrictions we want
+clone-on-ref-ptr = "deny"
+rc-mutex = "deny"
+todo = "deny"
+unwrap-used = "deny"

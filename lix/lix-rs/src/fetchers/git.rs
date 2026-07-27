@@ -31,12 +31,14 @@ pub struct LsRemoteRefLine {
     pub reference: Option<String>,
 }
 
-static LS_REMOTE_REF_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(ref: *)?([^\s]+)(?:\t+(.*))?$").unwrap());
+static LS_REMOTE_REF_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::unwrap_used)]
+    Regex::new(r"^(ref: *)?([^\s]+)(?:\t+(.*))?$").unwrap()
+});
 
 impl LsRemoteRefLine {
     pub fn matches_ref_uri(&self, uri: &str) -> bool {
-        let uri_regex = Regex::new(uri).unwrap();
+        let uri_regex = Regex::new(uri).expect("bad uri regex");
         match &self.reference {
             None => false,
             Some(r) => uri_regex.is_match(r.as_str()),

@@ -1,6 +1,7 @@
 extern crate lix_doc;
 
 #[allow(clippy::all)]
+#[allow(clippy::restriction)]
 mod generated {
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }
