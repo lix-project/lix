@@ -688,6 +688,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(link));
     allowSyscall(ctx, SCMP_SYS(linkat));
     allowSyscall(ctx, SCMP_SYS(listen));
+    allowSyscall(ctx, SCMP_SYS(listmount));
     allowSyscall(ctx, SCMP_SYS(listxattr));
     allowSyscall(ctx, SCMP_SYS(listxattrat));
     allowSyscall(ctx, SCMP_SYS(llistxattr));
@@ -928,6 +929,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(stat64));
     allowSyscall(ctx, SCMP_SYS(statfs));
     allowSyscall(ctx, SCMP_SYS(statfs64));
+    allowSyscall(ctx, SCMP_SYS(statmount));
     allowSyscall(ctx, SCMP_SYS(statx));
     allowSyscall(ctx, SCMP_SYS(stime));
     allowSyscall(ctx, SCMP_SYS(stty));
