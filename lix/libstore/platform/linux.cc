@@ -972,6 +972,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(unlink));
     allowSyscall(ctx, SCMP_SYS(unlinkat));
     allowSyscall(ctx, SCMP_SYS(unshare));
+    allowSyscall(ctx, SCMP_SYS(uretprobe));
     allowSyscall(ctx, SCMP_SYS(uselib));
     allowSyscall(ctx, SCMP_SYS(userfaultfd));
     allowSyscall(ctx, SCMP_SYS(usr26));
