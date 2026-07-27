@@ -730,6 +730,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(mq_timedsend_time64));
     allowSyscall(ctx, SCMP_SYS(mq_unlink));
     allowSyscall(ctx, SCMP_SYS(mremap));
+    allowSyscall(ctx, SCMP_SYS(mseal));
     allowSyscall(ctx, SCMP_SYS(msgctl));
     allowSyscall(ctx, SCMP_SYS(msgget));
     allowSyscall(ctx, SCMP_SYS(msgrcv));
