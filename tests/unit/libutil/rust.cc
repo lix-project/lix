@@ -6,6 +6,7 @@
 #include "lix/lix-rs/utils.hh"
 #include "zngur.gen.hh"
 #include "gtest/gtest.h"
+#include <barrier>
 #include <cstdint>
 #include <exception>
 #include <gtest/gtest.h>
@@ -180,6 +181,25 @@ TEST(rustAsync, asyncWakeupFromThread)
     // rust requires wakers to be Send + Sync. this is a sanity check for that
     AsyncIoRoot aio;
     ASSERT_EQ(to_kj(ffi_test::wakes_from_thread()).wait(aio.kj.waitScope), 9001);
+}
+
+TEST(rustAsync, asyncWakeupOnDeadExecutor)
+{
+    std::barrier b{2};
+    std::thread t;
+
+    {
+        AsyncIoRoot aio;
+        auto paf = kj::newPromiseAndFulfiller<void>();
+        auto waker = futures::Waker::build(std::move(paf.fulfiller));
+        t = std::thread{[&, waker = std::move(waker)] {
+            b.arrive_and_wait();
+            waker->wake();
+        }};
+    }
+
+    b.arrive_and_wait();
+    t.join();
 }
 
 TEST(rustAsync, rustToCpp)

@@ -343,15 +343,18 @@ class Waker
     Waker(kj::Own<kj::PromiseFulfiller<void>> fulfiller) : fulfiller(::std::move(fulfiller)) {}
 
 public:
+    // if kj destructors throw we're going to be in *so* much trouble here 🙃
+    ~Waker() noexcept(true) = default;
+
     static auto build(kj::Own<kj::PromiseFulfiller<void>> fulfiller)
     {
         using Deleter = decltype([](Waker * w) { w->dropRef(); });
         return ::std::unique_ptr<Waker, Deleter>{new Waker(::std::move(fulfiller))};
     }
 
-    void wake() const;
-    void addRef() const;
-    void dropRef() const;
+    void wake() const noexcept;
+    void addRef() const noexcept;
+    void dropRef() const noexcept;
 };
 
 template<typename... R>

@@ -95,20 +95,35 @@ rootcause::Report lix::errors::current_exception_as_report()
 }
 
 namespace lix::futures {
-void Waker::wake() const
+void Waker::wake() const noexcept
 {
-    executor->executeSync([this] { fulfiller->fulfill(); });
+    try {
+        executor->executeSync([this] { fulfiller->fulfill(); });
+    } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
+        if (e.getType() == kj::Exception::Type::DISCONNECTED) {
+            // ignore. the remote executor exited before out callback ran. this can happen if a
+            // waker is used from another thread during shutdown of the executor it would wake.
+        } else {
+            ::std::terminate();
+        }
+    } catch (...) {
+        ::std::terminate();
+    }
 }
 
-void Waker::addRef() const
+void Waker::addRef() const noexcept
 {
     refs++;
 }
 
-void Waker::dropRef() const
+void Waker::dropRef() const noexcept
 {
-    if (refs.fetch_sub(1) == 1) {
-        delete this;
+    try {
+        if (refs.fetch_sub(1) == 1) {
+            delete this;
+        }
+    } catch (...) {
+        ::std::terminate();
     }
 }
 }
