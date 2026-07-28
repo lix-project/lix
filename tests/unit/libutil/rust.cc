@@ -180,7 +180,7 @@ TEST(rustAsync, asyncWakeupFromThread)
 {
     // rust requires wakers to be Send + Sync. this is a sanity check for that
     AsyncIoRoot aio;
-    ASSERT_EQ(to_kj(ffi_test::wakes_from_thread()).wait(aio.kj.waitScope), 9001);
+    ASSERT_EQ(to_kj(ffi_test::wakes_from_thread(50)).wait(aio.kj.waitScope), 9001);
 }
 
 TEST(rustAsync, asyncWakeupOnDeadExecutor)
@@ -267,5 +267,18 @@ TEST(rustAsync, cppToRustCancel)
     // dropping a wrapping future must also cancel the wrapped promise
     (void) futures::to_rust(std::move(paf.promise));
     ASSERT_FALSE(paf.fulfiller->isWaiting());
+}
+
+TEST(rustAsync, leftoverEventsSmokeTest)
+{
+    // this test is not fully reliably when run once, but running it *a lot* does help
+    for (int i = 0; i < 1'000; i++) {
+        AsyncIoRoot aio;
+
+        to_kj(ffi_test::wakes_from_thread(1))
+            .exclusiveJoin(to_kj(ffi_test::wakes_from_thread(1)))
+            .wait(aio.kj.waitScope);
+        // with a coroutine-based to_kj implementation the loop would not shut down cleanly
+    }
 }
 }

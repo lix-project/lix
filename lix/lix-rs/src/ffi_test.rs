@@ -82,7 +82,7 @@ pub(crate) fn wakes_self() -> RsFuture<i32> {
     .into()
 }
 
-pub(crate) fn wakes_from_thread() -> RsFuture<i32> {
+pub(crate) fn wakes_from_thread(wait: u64) -> RsFuture<i32> {
     let ready = Arc::new(AtomicBool::new(false));
     poll_fn(move |ctx| {
         if ready.load(Ordering::SeqCst) {
@@ -91,7 +91,7 @@ pub(crate) fn wakes_from_thread() -> RsFuture<i32> {
             let waker = ctx.waker().clone();
             let ready = Arc::clone(&ready);
             thread::spawn(move || {
-                thread::sleep(Duration::from_millis(50));
+                thread::sleep(Duration::from_millis(wait));
                 ready.store(true, Ordering::SeqCst);
                 waker.wake();
             });

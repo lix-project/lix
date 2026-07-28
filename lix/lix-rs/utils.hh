@@ -365,17 +365,24 @@ template<typename...>
 struct CxxFutureState;
 struct CxxPromise;
 
-template<typename... R>
-auto to_kj(RsFuture<R...> f) -> kj::Promise<decltype(f.poll(::std::declval<futures::Waker &>()).unwrap())>
+template<typename R>
+kj::Promise<R> to_kj(rust::lix::futures::RsFuture<R> f)
 {
-    while (true) {
-        auto paf = kj::newPromiseAndFulfiller<void>();
-        auto waker = futures::Waker::build(::std::move(paf.fulfiller));
-        if (auto r = to_std(f.poll(*waker))) {
-            co_return ::std::move(*r);
-        } else {
-            co_await paf.promise;
-        }
+    // kj throws when cleaning up an event loop that has "events still in the queue",
+    // which should be impossible when all promises have been properly destroyed. the
+    // kj coroutine implementation seems to have some corner cases that make them not
+    // entirely suitable for this implementation. this *must* be a continuation chain
+    // to work, if it's not we run into aforementioned exception during loop shutdown
+    // if other threads are signalling any of our wakers during that time. we are not
+    // sure why this happens, but it's likely that internal kj state is being cleaned
+    // up by creating new events that themselves require processing by the event loop
+
+    auto paf = kj::newPromiseAndFulfiller<void>();
+    auto waker = futures::Waker::build(::std::move(paf.fulfiller));
+    if (auto r = to_std(f.poll(*waker))) {
+        return {::std::move(*r)};
+    } else {
+        return paf.promise.then([f = ::std::move(f)] mutable { return to_kj(::std::move(f)); });
     }
 }
 

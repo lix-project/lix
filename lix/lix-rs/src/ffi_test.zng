@@ -35,7 +35,7 @@ mod crate::ffi_test {
     fn test_exceptions(Box<dyn Fn() -> Result<(), crate::ffi::Error>>) -> String;
 
     fn wakes_self() -> crate::futures::RsFuture<i32>;
-    fn wakes_from_thread() -> crate::futures::RsFuture<i32>;
+    fn wakes_from_thread(u64) -> crate::futures::RsFuture<i32>;
 
     type crate::futures::RsFuture<i32> {}
     type ::std::option::Option<i32> {
