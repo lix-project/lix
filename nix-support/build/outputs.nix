@@ -106,8 +106,8 @@ lib.fix (self: {
           touch $out
         '';
 
-      # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin
-      clang-tidy = forAllSystems (
+      # clang-tidy run against the Lix codebase using the Lix clang-tidy plugin, and clippy
+      lint = forAllSystems (
         system:
         let
           pkgs = nixpkgsFor.${system}.native;

@@ -32,7 +32,7 @@ lixrs_zngur_bridge = custom_target(
 
 liblix_generated_headers += [ lixrs_zngur_bridge[0], lixrs_zngur_bridge[1] ]
 liblix_sources += lixrs_zngur_bridge[2]
-lix_rs_files += lixrs_zngur_bridge[3]
+lix_rs_generated_files += lixrs_zngur_bridge[3]
 
 liblix_sources += files('utils.cc')
 

@@ -98,10 +98,13 @@ lix_rs_files = files(
   '../Cargo.toml',
   '../Cargo.lock',
 )
+lix_rs_generated_files = []
 subdir('lix-rs')
 
 # Subcomponents: these link into artifacts themselves, and have interdependencies.
 subdir('lix-doc')
+
+lix_rs_files += lix_rs_generated_files
 
 subdir('libutil')
 subdir('libstore')
@@ -174,6 +177,19 @@ lixrs = custom_target(
   ],
   console : true,
   env : lixrs_cargo_env,
+)
+
+run_target(
+  'clippy',
+  command : ['cargo', 'clippy', '--no-deps'],
+  env : lixrs_cargo_env,
+  depends : lix_rs_generated_files,
+)
+run_target(
+  'clippy-fix',
+  command : ['cargo', 'clippy', '--no-deps', '--fix'],
+  env : lixrs_cargo_env,
+  depends : lix_rs_generated_files,
 )
 
 liblix_cpp_static = static_library(

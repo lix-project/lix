@@ -52,6 +52,7 @@
   rustPlatform,
   rustc,
   cargo,
+  clippy,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
   toml11,
@@ -528,6 +529,8 @@ stdenv.mkDerivation (finalAttrs: {
     stdenv.cc
     # required for run-clang-tidy
     llvmPackages.clang-unwrapped
+    # 📎
+    clippy
   ];
 
   buildInputs = [
@@ -678,7 +681,7 @@ stdenv.mkDerivation (finalAttrs: {
     '')
     # evil, but like above, we do not want to run an actual build phase
     + lib.optionalString lintInsteadOfBuild ''
-      ninja clang-tidy
+      ninja clippy clang-tidy
     '';
 
   installPhase = lib.optionalString lintInsteadOfBuild ''
