@@ -36,6 +36,11 @@ String to_string(::std::string_view sv)
     return String::from_utf8_lossy(slice).into_owned();
 }
 
+Ref<std::ffi::OsStr> to_os_str(::std::string_view sv)
+{
+    return lix::ffi::to_os_str(::nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());
+}
+
 std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s)
 {
     auto hs = std::collections::hash_set::HashSet<String>::new_();

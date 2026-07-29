@@ -10,6 +10,7 @@ mod crate::ffi {
     use ::std::string::String as String;
 
     fn from_raw_parts_u8(*const u8, usize) -> &[u8];
+    fn to_os_str(*const u8, usize) -> &::std::ffi::OsStr;
 
     type Error {
         #layout_conservative(size = 16, align = 8);

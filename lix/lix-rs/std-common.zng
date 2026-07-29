@@ -173,3 +173,9 @@ mod ::std::collections::hash_set {
 
     type Iter<String> {}
 }
+
+mod ::std::ffi {
+    type OsStr {
+        wellknown_traits(?Sized);
+    }
+}

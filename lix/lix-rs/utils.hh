@@ -33,6 +33,10 @@ struct Ref;
 
 struct Str;
 
+namespace std::ffi {
+struct OsStr;
+}
+
 namespace std::option {
 template<typename...>
 struct Option;
@@ -164,6 +168,12 @@ std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s);
 
 String to_string(::std::string_view sv);
+
+namespace lix::ffi {
+Ref<std::ffi::OsStr> to_os_str(const uint8_t * raw, size_t size) noexcept;
+}
+
+Ref<std::ffi::OsStr> to_os_str(::std::string_view sv);
 
 // enum type matching
 namespace matches {

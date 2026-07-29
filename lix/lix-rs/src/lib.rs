@@ -9,12 +9,18 @@ mod generated {
 mod ffi {
     use std::{
         error,
+        ffi::OsStr,
         fmt::{Debug, Display},
+        os::unix::ffi::OsStrExt,
         slice::from_raw_parts,
     };
 
     pub unsafe fn from_raw_parts_u8<'a>(data: *const u8, length: usize) -> &'a [u8] {
         from_raw_parts(data, length)
+    }
+
+    pub unsafe fn to_os_str<'a>(data: *const u8, length: usize) -> &'a OsStr {
+        OsStrExt::from_bytes(from_raw_parts(data, length))
     }
 
     pub(crate) use crate::generated::cpp::Error;
