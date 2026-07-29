@@ -64,9 +64,9 @@ pub(crate) mod log {
     #[allow(unused)]
     pub const LVL_VOMIT: i32 = 7;
 
-    pub struct Colorize<T: Display + Debug>(pub T);
+    pub struct Colorize<T>(pub T);
 
-    impl<T: Display + Debug> Display for Colorize<T> {
+    impl<T: Display> Display for Colorize<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("\x1b[35;1m")?;
             Display::fmt(&self.0, f)?;
@@ -74,7 +74,7 @@ pub(crate) mod log {
         }
     }
 
-    impl<T: Display + Debug> Debug for Colorize<T> {
+    impl<T: Debug> Debug for Colorize<T> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("\x1b[35;1m")?;
             Debug::fmt(&self.0, f)?;
@@ -82,67 +82,98 @@ pub(crate) mod log {
         }
     }
 
+    /// log a message at a given level with a given message and arguments.
+    ///
+    /// this macro is variadic and has a signature of `(i32, &str, impl Display
+    /// ...)`. the string will be passed to `format!`, with each displayed item
+    /// being passed in turn. all items passed will be colorized for display by
+    /// default unless they are tagged with `@plain` *or* they are given inline
+    /// in the format string (since we cannot inspect format string arguments).
+    ///
+    /// example:
+    ///
+    /// ```
+    /// log_message!(0, "test");
+    /// // yields a single message "test"
+    /// log_message!(0, "{it} happened");
+    /// // yields "it happened", fully uncolored
+    /// log_message!(0, "arguments: {} {} {}", 1, @plain (|| 2)(), 3);
+    /// // yields "arguments: 1 2 3", with the "1" and "3" colorized
+    /// ```
     macro_rules! log_message {
-        ( __format plain: $e:expr ) => {
-            $e
+        // during processing we hold an intermediate argument state of ($level, $str; __args [ ... ]; __format $infos).
+        // infos are pulled out of the __format bit piece by piece to convert them into __args, all of which are passed
+        // to `format!` once all infos have been processed. $infos itself is a comma-separated list of expressions that
+        // may each be preceded by an `@plain` tag. `@plain` expressions are copied to __args as they were given, other
+        // expressions are wrapped for colorization. once all infos are processed we format the message and pass it on.
+        ( $level:expr, $str:expr $(, $($info:tt)* )? ) => {
+            log_message!($level, $str ; __args []; __format $($($info)*)? )
         };
-        ( __format: $e:expr ) => {
-            crate::log::Colorize($e)
+
+        ( $level:expr, $str:expr ; __args [ $($args:expr),* ]; __format $(,)? ) => {
+            crate::generated::log_message($level, &format!($str, $($args),*));
         };
-        ( $level:expr, $str:expr $(, $(plain)? $item:tt)* $(,)? ) => {
-            crate::generated::log_message(
-                $level,
-                &format!(
-                    $str,
-                    $( log_message!( __format: $item ) ),*
-                )
-            );
+        ( $level:expr, $str:expr ; __args [ $($args:expr),* ]; __format @plain $e:expr $(, $($rest:tt)* )? ) => {
+            log_message!($level, $str ; __args [ $($args,)* $e ]; __format $($($rest)*)* )
+        };
+        ( $level:expr, $str:expr ; __args [ $($args:expr),* ]; __format $e:expr $(, $($rest:tt)* )? ) => {
+            log_message!($level, $str ; __args [ $($args,)* crate::log::Colorize($e) ]; __format $($($rest)*)? )
         };
     }
 
+    /// forwards its arguments to `log_message!` at the `LVL_ERROR` level.
     #[macro_export]
     macro_rules! print_error {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_ERROR, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_ERROR, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_WARN` level.
     #[macro_export]
     macro_rules! print_warning {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_WARN, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_WARN, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_NOTICE` level.
     #[macro_export]
     macro_rules! print_notice {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_NOTICE, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_NOTICE, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_INFO` level.
     #[macro_export]
     macro_rules! print_info {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_INFO, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_INFO, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_TALKATIVE` level.
     #[macro_export]
     macro_rules! print_talkative {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_TALKATIVE, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_TALKATIVE, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_CHATTY` level.
     #[macro_export]
     macro_rules! print_chatty {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_CHATTY, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_CHATTY, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_DEBUG` level.
     #[macro_export]
     macro_rules! print_debug {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_DEBUG, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_DEBUG, $str, $($($rest)*)?) }
     }
+    /// forwards its arguments to `log_message!` at the `LVL_VOMIT` level.
     #[macro_export]
     macro_rules! print_vomit {
-        ( $str:expr $(, $( $rest:tt )* )? ) => { log_message!($crate::log::LVL_VOMIT, $str $($($rest)*)*) }
+        ( $str:expr $(, $( $rest:tt )*)? ) => { log_message!($crate::log::LVL_VOMIT, $str, $($($rest)*)?) }
     }
 
+    /// forwards its arguments to `print_error!` with a bold red `error: ` prepended to the message.
     #[macro_export]
     macro_rules! log_error {
         ( $str:literal $($rest:tt)* ) => {
-            print_error!(concat!("\x1b[31;1merror:\x1b[0m ", $str), $($rest)*)
+            print_error!(concat!("\x1b[31;1merror:\x1b[0m ", $str) $($rest)*)
         }
     }
+    /// forwards its arguments to `print_warning!` with a bold purple `warning: ` prepended to the message.
     #[macro_export]
     macro_rules! log_warning {
         ( $str:literal $($rest:tt)* ) => {
-            print_warning!(concat!("\x1b[35;1mwarning:\x1b[0m ", $str), $($rest)*)
+            print_warning!(concat!("\x1b[35;1mwarning:\x1b[0m ", $str) $($rest)*)
         }
     }
 
@@ -159,3 +190,74 @@ mod ffi_test;
 pub mod futures;
 mod machines;
 mod repl;
+
+#[cfg(test)]
+mod test {
+    #[test]
+    #[allow(unreachable_code)]
+    fn loggers_compile() {
+        // we only want loggers to *compile*, we don't actually want to run them
+        return;
+
+        log_message!(0, "message");
+        log_message!(0, "message",);
+        log_message!(0, "message {}", "info");
+        log_message!(0, "message {}", @plain "info");
+        log_message!(0, "message {}", "info",);
+        log_message!(0, "message {}", @plain "info",);
+        log_message!(0, "message {} {}", "info", "info 2");
+        log_message!(0, "message {} {}", "info", @plain "info 2");
+        log_message!(0, "message {} {}", "info", "info 2",);
+        log_message!(0, "message {} {}", "info", @plain "info 2",);
+        log_message!(0, "message {} {} {}", "info", "info 1", "info 2");
+        log_message!(0, "message {} {} {}", "info", "info 1", @plain "info 2");
+        log_message!(0, "message {} {} {}", "info", "info 1", "info 2",);
+        log_message!(0, "message {} {} {}", "info", "info 1", @plain "info 2",);
+
+        log_error!("message");
+        log_error!("message",);
+        log_error!("message {}", "info");
+        log_error!("message {}", @plain "info");
+        log_error!("message {}", "info",);
+        log_error!("message {}", @plain "info",);
+        log_error!("message {} {}", "info", "info 2");
+        log_error!("message {} {}", "info", @plain "info 2");
+        log_error!("message {} {}", "info", "info 2",);
+        log_error!("message {} {}", "info", @plain "info 2",);
+        log_error!("message {} {} {}", "info", "info 1", "info 2");
+        log_error!("message {} {} {}", "info", "info 1", @plain "info 2");
+        log_error!("message {} {} {}", "info", "info 1", "info 2",);
+        log_error!("message {} {} {}", "info", "info 1", @plain "info 2",);
+
+        log_warning!("message");
+        log_warning!("message",);
+        log_warning!("message {}", "info");
+        log_warning!("message {}", @plain "info");
+        log_warning!("message {}", "info",);
+        log_warning!("message {}", @plain "info",);
+        log_warning!("message {} {}", "info", "info 2");
+        log_warning!("message {} {}", "info", @plain "info 2");
+        log_warning!("message {} {}", "info", "info 2",);
+        log_warning!("message {} {}", "info", @plain "info 2",);
+        log_warning!("message {} {} {}", "info", "info 1", "info 2");
+        log_warning!("message {} {} {}", "info", "info 1", @plain "info 2");
+        log_warning!("message {} {} {}", "info", "info 1", "info 2",);
+        log_warning!("message {} {} {}", "info", "info 1", @plain "info 2",);
+
+        // we'll just do one of these since they're all the same. Should Be Fine™
+        print_error!("message");
+        print_error!("message",);
+        print_error!("message {}", "info");
+        print_error!("message {}", @plain "info");
+        print_error!("message {}", "info",);
+        print_error!("message {}", @plain "info",);
+        print_error!("message {} {}", "info", "info 2");
+        print_error!("message {} {}", "info", @plain "info 2");
+        print_error!("message {} {}", "info", "info 2",);
+        print_error!("message {} {}", "info", @plain "info 2",);
+        print_error!("message {} {} {}", "info", "info 1", "info 2");
+        print_error!("message {} {} {}", "info", "info 1", @plain "info 2");
+        print_error!("message {} {} {}", "info", "info 1", "info 2",);
+        print_error!("message {} {} {}", "info", "info 1", @plain "info 2",);
+    }
+}
