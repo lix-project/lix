@@ -79,5 +79,5 @@ clippy:
     ninja -C build clippy
 
 # lint with clippy and fix stuff
-clippy:
+clippy-fix:
     ninja -C build clippy-fix
