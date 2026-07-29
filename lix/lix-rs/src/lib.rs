@@ -42,9 +42,12 @@ mod ffi {
 
 #[macro_use]
 pub(crate) mod log {
-    use std::fmt::{Debug, Display};
+    use std::{
+        fmt::{Debug, Display},
+        sync::atomic::AtomicI32,
+    };
 
-    static mut VERBOSITY: i32 = 99;
+    pub(crate) static VERBOSITY: AtomicI32 = AtomicI32::new(99);
 
     // these MUST match the c++ struct exactly or log messages will be filtered incorrectly
     #[allow(unused)]
@@ -111,7 +114,9 @@ pub(crate) mod log {
         };
 
         ( $level:expr, $str:expr ; __args [ $($args:expr),* ]; __format $(,)? ) => {
-            crate::generated::log_message($level, &format!($str, $($args),*));
+            if $level <= crate::log::VERBOSITY.load(std::sync::atomic::Ordering::Relaxed) {
+                crate::generated::log_message($level, &format!($str, $($args),*));
+            }
         };
         ( $level:expr, $str:expr ; __args [ $($args:expr),* ]; __format @plain $e:expr $(, $($rest:tt)* )? ) => {
             log_message!($level, $str ; __args [ $($args,)* $e ]; __format $($($rest)*)* )
@@ -179,7 +184,7 @@ pub(crate) mod log {
 
     pub(crate) mod ffi {
         pub unsafe fn set_verbosity(level: i32) {
-            super::VERBOSITY = level;
+            super::VERBOSITY.store(level, std::sync::atomic::Ordering::Relaxed)
         }
     }
 }
