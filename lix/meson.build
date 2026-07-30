@@ -170,6 +170,7 @@ lixrs = custom_target(
     '-Z', 'unstable-options',
     'build',
     '--artifact-dir=@0@'.format(meson.current_build_dir()),
+    '--manifest-path=@0@/Cargo.toml'.format(meson.project_source_root()),
     '-p',
     'lix',
     f'--target=@host_triple@',
