@@ -22,7 +22,10 @@ toml = "1.1.2"
 # post-0.10 with some very nice features and fixes
 zngur = { git = "https://github.com/hkalbasi/zngur.git", rev = "d729a4d3839fe6d21eaa5e74207d8c332128e2a2" }
 pkg-config = "0.3.33"
+temp_testdir = "0.2.3"
 nix = { version = "0.31.3", features = [ "pthread" ] }
+futures = "0.3.33"
+assert_matches = "1.5"
 
 [profile.dev]
 opt-level = 1

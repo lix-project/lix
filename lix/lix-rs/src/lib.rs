@@ -1,5 +1,9 @@
 extern crate lix_doc;
 
+#[cfg(test)]
+#[macro_use]
+extern crate assert_matches;
+
 #[allow(clippy::all)]
 #[allow(clippy::restriction)]
 mod generated {
@@ -196,6 +200,7 @@ pub(crate) mod log {
 mod errors;
 pub mod fetchers;
 mod ffi_test;
+pub mod fs;
 pub mod futures;
 mod machines;
 mod repl;

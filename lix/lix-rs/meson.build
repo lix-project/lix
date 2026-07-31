@@ -5,6 +5,7 @@ lix_rs_files += files(
   'src/fetchers/git.rs',
   'src/fetchers/mod.rs',
   'src/ffi_test.rs',
+  'src/fs.rs',
   'src/futures.rs',
   'src/lib.rs',
   'src/machines.rs',

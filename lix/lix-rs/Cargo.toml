@@ -21,6 +21,11 @@ rustyline-derive.workspace = true
 serde.workspace = true
 toml.workspace = true
 nix.workspace = true
+futures.workspace = true
+
+[dev-dependencies]
+temp_testdir.workspace = true
+assert_matches.workspace = true
 
 [build-dependencies]
 zngur.workspace = true
