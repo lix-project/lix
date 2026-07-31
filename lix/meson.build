@@ -161,6 +161,8 @@ lixrs_cargo_env = {
   'MESON_BUILD_DIR': meson.project_build_root(),
 }
 
+cargo_features = [ '--features', 'unsafe_cancel_with_usr1' ]
+
 lixrs = custom_target(
   'liblixrs',
   input : lix_rs_files,
@@ -175,6 +177,7 @@ lixrs = custom_target(
     'lix',
     f'--target=@host_triple@',
     cargo_jobs_args,
+    cargo_features,
   ],
   console : true,
   env : lixrs_cargo_env,
@@ -182,13 +185,13 @@ lixrs = custom_target(
 
 run_target(
   'clippy',
-  command : ['cargo', 'clippy', '--no-deps'],
+  command : ['cargo', 'clippy', '--no-deps', cargo_features],
   env : lixrs_cargo_env,
   depends : lix_rs_generated_files,
 )
 run_target(
   'clippy-fix',
-  command : ['cargo', 'clippy', '--no-deps', '--fix'],
+  command : ['cargo', 'clippy', '--no-deps', '--fix', cargo_features],
   env : lixrs_cargo_env,
   depends : lix_rs_generated_files,
 )
@@ -219,6 +222,7 @@ if meson.can_run_host_binaries()
       '--all', '--all-targets',
       '--no-fail-fast',
       cargo_jobs_args,
+      cargo_features,
     ],
     depends : [
       liblix_cpp_static,

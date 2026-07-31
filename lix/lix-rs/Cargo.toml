@@ -9,6 +9,7 @@ crate-type = ["staticlib"]
 
 [features]
 default = []
+unsafe_cancel_with_usr1 = []
 
 [dependencies]
 base64.workspace = true
@@ -19,6 +20,7 @@ rustyline.workspace = true
 rustyline-derive.workspace = true
 serde.workspace = true
 toml.workspace = true
+nix.workspace = true
 
 [build-dependencies]
 zngur.workspace = true

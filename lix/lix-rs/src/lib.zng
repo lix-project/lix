@@ -11,6 +11,7 @@ mod crate::ffi {
 
     fn from_raw_parts_u8(*const u8, usize) -> &[u8];
     fn to_os_str(*const u8, usize) -> &::std::ffi::OsStr;
+    fn get_cancel_signal() -> i32;
 
     type Error {
         #layout_conservative(size = 16, align = 8);

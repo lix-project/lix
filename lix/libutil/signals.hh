@@ -30,7 +30,7 @@ namespace nix {
 /// reserved signal used to notify threads of interruption requests, e.g. users
 /// pressing Control-C on the terminal. we purposely do not use SIGINT handlers
 /// provided by the OS to allow for more orderly cleanup of running operations.
-static inline constexpr int INTERRUPT_NOTIFY_SIGNAL = SIGUSR1;
+extern const int INTERRUPT_NOTIFY_SIGNAL;
 /// kj needs a signal for internal use. no system lix habitually runs on causes
 /// kj to actually *use* this signal, but better safe than sorry—and since some
 /// OSes (*cough* macos) don't support realtime signals we must use SIGUSR2 for

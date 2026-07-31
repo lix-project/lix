@@ -23,6 +23,10 @@ mod ffi {
         OsStrExt::from_bytes(from_raw_parts(data, length))
     }
 
+    pub(crate) fn get_cancel_signal() -> i32 {
+        crate::UNSAFE_CANCELATION_SIGNAL as i32
+    }
+
     pub(crate) use crate::generated::cpp::Error;
 
     impl Display for Error {
@@ -266,3 +270,15 @@ mod test {
         print_error!("message {} {} {}", "info", "info 1", @plain "info 2",);
     }
 }
+
+/// lix requires a reserved signal to cancel blocking syscalls in worker threads.
+/// this signal **MUST NOT** be used by the application for *anything* other than
+/// causing syscalls in threads to return with `EINTR`. your application *should*
+/// configure this signal with an empty handler with the `SA_RESTART` flag unset.
+/// lix will replace the handler each time it wants to cancel some operation, but
+/// setting the handler early avoids surprises. the signal **MUST NOT** be masked
+/// for cancelations to function as expected, however lixrs doesn't enforce this.
+pub const UNSAFE_CANCELATION_SIGNAL: nix::sys::signal::Signal = cfg_select! {
+    feature = "unsafe_cancel_with_usr1" => nix::sys::signal::Signal::SIGUSR1,
+    _ => compile_error!("no cancel signal set!"),
+};

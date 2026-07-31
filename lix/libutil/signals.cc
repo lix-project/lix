@@ -4,6 +4,7 @@
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/thread-name.hh"
 #include "logging.hh"
+#include "lix-rs/main.gen.hh"
 #include <atomic>
 
 #include <chrono>
@@ -20,6 +21,8 @@ std::atomic_unsigned_lock_free _interruptSequence{0};
 static std::atomic_unsigned_lock_free printMessageForSeq{0}, allowInterruptsAfter{0};
 thread_local std::atomic_unsigned_lock_free::value_type threadInterruptSeq{_interruptSequence.load()
 };
+
+const int INTERRUPT_NOTIFY_SIGNAL = rust::lix::ffi::get_cancel_signal();
 
 thread_local std::function<bool()> interruptCheck;
 
