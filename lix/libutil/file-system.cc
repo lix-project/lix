@@ -1,3 +1,4 @@
+#include <chrono>
 #include <sys/mount.h>
 #include <sys/time.h>
 #include <cstdlib>
@@ -845,5 +846,16 @@ void moveFile(const Path & oldName, const Path & newName)
             throw SysError(e.code().value(), "failed to move %s to %s", oldName, newName);
         }
     }
+}
+
+std::optional<std::chrono::file_clock::time_point> getModifiedTime(const Path &path) {
+    std::error_code err;
+    auto result = std::filesystem::last_write_time(path, err);
+    if (err == std::errc::no_such_file_or_directory) {
+        return std::nullopt;
+    } else if (err) {
+        throw SysError(err.value(), "failed to get mtime for %s: %s", path, err.message());
+    }
+    return result;
 }
 }

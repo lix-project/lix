@@ -1,8 +1,7 @@
 #include "libfetchers/attrs.hh"
+#include "libutil/file-system.hh"
 #include "lix/libutil/archive.hh"
-#include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
-#include "lix/libutil/c-calls.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libfetchers/cache.hh"
@@ -23,9 +22,10 @@
 
 #include "lix/libfetchers/fetch-settings.hh"
 
+#include <chrono>
+#include <filesystem>
 #include <optional>
 #include <regex>
-#include <string.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -42,20 +42,13 @@ namespace {
 // old version of git, which will ignore unrecognized `-c` options.
 const std::string gitInitialBranch = "__nix_dummy_branch";
 
-bool isCacheFileWithinTtl(time_t now, const struct stat & st)
-{
-    return st.st_mtime + settings.tarballTtl > now;
-}
 
-bool touchCacheFile(const Path & path, time_t touch_time)
-{
-    struct timeval times[2];
-    times[0].tv_sec = touch_time;
-    times[0].tv_usec = 0;
-    times[1].tv_sec = touch_time;
-    times[1].tv_usec = 0;
-
-    return sys::lutimes(path, times) == 0;
+bool isCacheFileWithinTtl(const Path &path, const std::filesystem::file_time_type &now) {
+    auto modified = getModifiedTime(path);
+    if (!modified) {
+        return false;
+    }
+    return (*modified + std::chrono::seconds(settings.tarballTtl)) > now;
 }
 
 Path getCachePath(std::string_view key)
@@ -129,14 +122,13 @@ try {
     Path cacheDir = getCachePath(actualUrl);
     Path headRefFile = cacheDir + "/HEAD";
 
-    time_t now = time(0);
-    struct stat st;
     std::optional<std::string> cachedRef;
-    if (sys::stat(headRefFile, &st) == 0) {
+    auto head_modified_at = getModifiedTime(headRefFile);
+    if (head_modified_at) {
         cachedRef = TRY_AWAIT(readHead(cacheDir));
         if (cachedRef != std::nullopt &&
             *cachedRef != gitInitialBranch &&
-            isCacheFileWithinTtl(now, st))
+            isCacheFileWithinTtl(headRefFile, std::chrono::file_clock::now()))
         {
             debug("using cached HEAD ref '%s' for repo '%s'", *cachedRef, actualUrl);
             co_return cachedRef;
@@ -722,7 +714,7 @@ struct GitInputScheme : InputScheme
             Path localRefFile;
 
             bool doFetch;
-            time_t now = time(0);
+            auto now = std::chrono::file_clock::now();
 
             /* If a rev was specified, we need to fetch if it's not in the
                repo. */
@@ -755,8 +747,7 @@ struct GitInputScheme : InputScheme
                     condition = [&now](const Path & path) {
                         /* If the local ref is older than ‘tarball-ttl’ seconds, do a
                            git fetch to update the local ref to the remote ref. */
-                        struct stat st;
-                        return sys::stat(path, &st) == 0 && isCacheFileWithinTtl(now, st);
+                        return isCacheFileWithinTtl(path, now);
                     };
                     if (auto result = resolveRefToCachePath(
                         input,
@@ -832,10 +823,13 @@ struct GitInputScheme : InputScheme
                     );
                 }
 
-                if (!touchCacheFile(localRefFile, now))
+                std::error_code err;
+                std::filesystem::last_write_time(localRefFile, now, err);
+                if (err) {
                     printTaggedWarning(
-                        "could not update mtime for file '%s': %s", localRefFile, strerror(errno)
+                        "could not update mtime for file '%s': %s", localRefFile, err.message()
                     );
+                }
                 if (useHeadRef && !TRY_AWAIT(storeCachedHead(actualUrl, *input.getRef()))) {
                     printTaggedWarning(
                         "could not update cached head '%s' for '%s'", *input.getRef(), actualUrl

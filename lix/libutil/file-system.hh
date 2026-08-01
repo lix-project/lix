@@ -15,6 +15,7 @@
 #include <dirent.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <functional>
 #include <optional>
 
@@ -334,5 +335,10 @@ Path makeTempSiblingPath(const Path & path);
 typedef std::function<bool(const Path & path)> PathFilter;
 
 extern PathFilter defaultPathFilter;
+
+/**
+ * Return the mtime of the given path, if it exists, else nullopt.
+ */
+std::optional<std::chrono::file_clock::time_point> getModifiedTime(const Path &path);
 
 }
