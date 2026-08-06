@@ -257,7 +257,10 @@ let
 
   # The internal API docs need these for the build, but if we're not building
   # Nix itself, then these don't need to be propagated.
-  maybePropagatedInputs = lib.optional enableGC boehmgc-nix ++ [ nlohmann_json ];
+  maybePropagatedInputs = lib.optional enableGC boehmgc-nix ++ [
+    nlohmann_json
+    boost
+  ];
 
   # .gitignore has already been processed, so any changes in it are irrelevant
   # at this point. It is not represented verbatim for test purposes because
