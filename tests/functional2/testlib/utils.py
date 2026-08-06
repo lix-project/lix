@@ -177,6 +177,8 @@ def get_global_asset_pack(name: str) -> FileDeclaration:
                     [user]
                         email = "tests+functional2@lix.systems"
                         name = "functional2"
+                    [init]
+                        defaultbranch = main
                 """)
                     ),
                     "description": File(
