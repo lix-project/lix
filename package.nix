@@ -903,6 +903,20 @@ stdenv.mkDerivation (finalAttrs: {
               export out="$PWD/outputs/out"
             fi
 
+            function dedupList() {
+              local -A seen
+              local result item
+
+              for item in "$@"; do
+                if [[ "$item" != "-L"* ]] || ! [[ "''${seen[$item]}" ]]; then
+                  result="''${result}''${result:+ }''${item}"
+                fi
+                seen[$item]=1
+              done
+
+              printf "%s" "$result"
+            }
+
             # don't re-run the hook in (other) nested nix-shells
             function lixShellHook() {
               # n.b. how the heck does this become -env-env? well, `nix develop` does it:
@@ -942,6 +956,10 @@ stdenv.mkDerivation (finalAttrs: {
                 chmod u+x "$gitcommondir/hooks/commit-msg"
               fi
               unset gitcommondir
+
+              # workaround for nixpkgs bug #545973 (bintools wrapper perf regressions)
+              NIX_LDFLAGS="$(dedupList $NIX_LDFLAGS)"
+              NIX_LDFLAGS_FOR_BUILD="$(dedupList $NIX_LDFLAGS_FOR_BUILD)"
             }
 
             lixShellHook
