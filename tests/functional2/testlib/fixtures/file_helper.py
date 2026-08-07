@@ -168,7 +168,7 @@ def merge_file_declaration(a: FileDeclaration, b: FileDeclaration) -> FileDeclar
     result = {}
     for key in a.keys() | b.keys():
         if (key in a) ^ (key in b):
-            result[key] = a.get(key) or b.get(key)
+            result[key] = a.get(key, {}) or b.get(key, {})
             continue
         if isinstance(a[key], Fileish) or isinstance(b[key], Fileish):
             msg = "Cannot merge files; got two different values for the same path"

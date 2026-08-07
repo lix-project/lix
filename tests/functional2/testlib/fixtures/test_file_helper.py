@@ -253,3 +253,14 @@ def test_merge_fd_throws_on_conflict_with_full_path():
         match=r"\('Cannot merge files; got two different values for the same path', 'a/b/c/d'\)",
     ):
         merge_file_declaration(fd1, fd2)
+
+
+def test_merge_empty_dir():
+    f = File("")
+    fd1 = {"a": {}, "b": {"c": f}}
+    fd2 = {"d": {}}
+
+    expected = {"a": {}, "b": {"c": f}, "d": {}}
+
+    result = merge_file_declaration(fd1, fd2)
+    assert result == expected
