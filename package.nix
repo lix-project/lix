@@ -406,6 +406,7 @@ stdenv.mkDerivation (finalAttrs: {
   ++ lib.optionals (!finalAttrs.dontBuild) [
     "dev"
     "doc"
+    "devdoc"
   ];
 
   dontBuild = lintInsteadOfBuild;
@@ -675,6 +676,14 @@ stdenv.mkDerivation (finalAttrs: {
   # the tests access localhost.
   __darwinAllowLocalNetworking = true;
 
+  postBuild = lib.optionalString (!finalAttrs.dontBuild) ''
+    env \
+      RUSTC_BOOTSTRAP=1 \
+      MESON_BUILD_DIR=$NIX_BUILD_TOP/$sourceRoot/build \
+      RUSTDOCFLAGS="--enable-index-page -Zunstable-options --document-private-items" \
+      cargo doc --workspace --no-deps --target ${hostPlatform.rust.rustcTarget} --features unsafe_cancel_with_usr1
+  '';
+
   # Make sure the internal API docs are already built, because mesonInstallPhase
   # won't let us build them there. They would normally be built in buildPhase,
   # but the internal API docs are conventionally built with doBuild = false.
@@ -697,6 +706,9 @@ stdenv.mkDerivation (finalAttrs: {
     lib.optionalString (!finalAttrs.dontBuild) ''
       mkdir -p $doc/nix-support
       echo "doc manual $doc/share/doc/nix/manual" >> $doc/nix-support/hydra-build-products
+
+      mkdir -p $devdoc/share/rustdoc
+      cp -r $NIX_BUILD_TOP/$sourceRoot/target/${hostPlatform.rust.rustcTarget}/doc $devdoc/share/rustdoc
     ''
     + lib.optionalString ciBuildAndDeleteBothLibraries ''
       rm -f $out/lib/liblix{cmd,expr,fetchers,main,store,util}${hostPlatform.extensions.staticLibrary}
