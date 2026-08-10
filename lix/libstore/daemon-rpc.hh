@@ -5,6 +5,7 @@
 #include "lix/libstore/derived-path.hh"
 #include "lix/libstore/content-address.hh"
 #include "lix/libstore/daemon.capnp.h"
+#include "lix/libstore/gc-store.hh"
 #include "lix/libstore/path-info.hh"
 #include "lix/libstore/types-rpc.hh"
 #include "lix/libutil/error.hh"
