@@ -34,6 +34,8 @@ foreach rpc_file : libstore_rpc_files
       '@PLAINNAME@.h',
       '@PLAINNAME@.c++',
     ],
+    install : true,
+    install_dir : [includedir / 'lix/libstore', false],
     depfile : '@PLAINNAME@.d',
   )
 endforeach
