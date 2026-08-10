@@ -514,6 +514,8 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(arch_prctl));
     allowSyscall(ctx, SCMP_SYS(arm_fadvise64_64));
     allowSyscall(ctx, SCMP_SYS(arm_sync_file_range));
+    // skip atomic_barrier (unsupported architecture)
+    // skip atomic_cmpxchg_32 (unsupported architecture)
     allowSyscall(ctx, SCMP_SYS(bdflush));
     allowSyscall(ctx, SCMP_SYS(bind));
     allowSyscall(ctx, SCMP_SYS(bpf));
@@ -625,6 +627,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(getitimer));
     allowSyscall(ctx, SCMP_SYS(get_kernel_syms));
     allowSyscall(ctx, SCMP_SYS(get_mempolicy));
+    // skip getpagesize (unsupported architecture)
     allowSyscall(ctx, SCMP_SYS(getpeername));
     allowSyscall(ctx, SCMP_SYS(getpgid));
     allowSyscall(ctx, SCMP_SYS(getpgrp));
