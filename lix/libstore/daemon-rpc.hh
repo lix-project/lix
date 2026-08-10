@@ -1,8 +1,8 @@
 #pragma once
 ///@file RPC helper functions for the daemon protocol
 
-#include "libstore/build-result.hh"
-#include "libstore/derived-path.hh"
+#include "lix/libstore/build-result.hh"
+#include "lix/libstore/derived-path.hh"
 #include "lix/libstore/content-address.hh"
 #include "lix/libstore/daemon.capnp.h"
 #include "lix/libstore/path-info.hh"
