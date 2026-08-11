@@ -177,5 +177,13 @@ mod ::std::collections::hash_set {
 mod ::std::ffi {
     type OsStr {
         wellknown_traits(?Sized);
+
+        fn as_encoded_bytes(&self) -> &[u8];
+    }
+
+    type OsString {
+        #layout_conservative(size = 24, align = 8);
+
+        fn as_encoded_bytes(&self) -> &[u8] deref OsStr;
     }
 }

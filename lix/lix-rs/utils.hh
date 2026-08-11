@@ -157,11 +157,24 @@ auto make_box_fn(Fn fn)
 
 ::std::string_view to_std_string_view(Ref<Str> s);
 ::std::string to_std_string(Ref<Str> s);
+::std::string_view to_std_string_view(Ref<String> s);
+::std::string to_std_string(Ref<String> s);
 
 namespace std::string {
 ::std::string_view to_std_string_view(const String & s);
 ::std::string to_std_string(const String & s);
 }
+
+namespace std::ffi {
+struct OsStr;
+struct OsString;
+}
+
+::std::string_view to_std_string_view(Ref<std::ffi::OsStr> s);
+::std::string to_std_string(Ref<std::ffi::OsStr> s);
+
+::std::string_view to_std_string_view(Ref<std::ffi::OsString> s);
+::std::string to_std_string(Ref<std::ffi::OsString> s);
 
 std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);

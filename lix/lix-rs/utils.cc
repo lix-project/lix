@@ -16,6 +16,11 @@ namespace rust {
 
 ::std::string_view std::string::to_std_string_view(const String & s)
 {
+    return to_std_string_view(Ref<String>(s));
+}
+
+::std::string_view to_std_string_view(Ref<String> s)
+{
     auto data = s.as_bytes();
     return {nix::charptr_cast<const char *>(data.as_ptr()), data.len()};
 }
@@ -25,7 +30,34 @@ namespace rust {
     return ::std::string(to_std_string_view(s));
 }
 
+::std::string to_std_string(Ref<String> s)
+{
+    return ::std::string(to_std_string_view(s));
+}
+
 ::std::string std::string::to_std_string(const String & s)
+{
+    return to_std_string(Ref<String>(s));
+}
+
+::std::string_view to_std_string_view(Ref<std::ffi::OsStr> s)
+{
+    auto data = s.as_encoded_bytes();
+    return {nix::charptr_cast<const char *>(data.as_ptr()), data.len()};
+}
+
+::std::string to_std_string(Ref<std::ffi::OsStr> s)
+{
+    return ::std::string(to_std_string_view(s));
+}
+
+::std::string_view to_std_string_view(Ref<std::ffi::OsString> s)
+{
+    auto data = s.as_encoded_bytes();
+    return {nix::charptr_cast<const char *>(data.as_ptr()), data.len()};
+}
+
+::std::string to_std_string(Ref<std::ffi::OsString> s)
 {
     return ::std::string(to_std_string_view(s));
 }
