@@ -410,6 +410,23 @@ kj::Promise<R> to_kj(rust::lix::futures::RsFuture<R> f)
 }
 
 template<typename R>
+kj::Promise<::nix::Result<R>> to_kj_unwrap(rust::lix::futures::RsFuture<Result<R, rootcause::Report>> f)
+{
+    return to_kj(::std::move(f)).then([](auto result) -> ::nix::Result<R> {
+        try {
+            return unwrap(::std::move(result));
+        } catch (...) {
+            return ::nix::result::current_exception();
+        }
+    });
+}
+
+#define LIX_TRY_AWAIT_RS(_lix_f) LIX_TRY_AWAIT(::rust::lix::futures::to_kj_unwrap(_lix_f))
+#ifdef LIX_UR_COMPILER_UWU
+#define TRY_AWAIT_RS LIX_TRY_AWAIT_RS
+#endif
+
+template<typename R>
 CxxFuture<R> to_rust(kj::Promise<::nix::Result<R>> p)
 {
     // anything in this function that looks like it's completely pointless and

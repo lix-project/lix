@@ -161,11 +161,10 @@ inline ErrorInfo wrap_exception_as_lix(
                 ::nix::detail::rethrow_async_exception_as_lix(_l_ctx()); \
             }                                                            \
         }                                                                \
-        ::nix::detail::materializeResult(std::move(_lix_awaited));       \
+        ::nix::detail::materializeResult(::std::move(_lix_awaited));     \
     })
 
-#define LIX_TRY_AWAIT_CONTEXT(_l_ctx, ...) \
-    LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, (std::identity{}), __VA_ARGS__)
+#define LIX_TRY_AWAIT_CONTEXT(_l_ctx, ...) LIX_TRY_AWAIT_CONTEXT_MAP(_l_ctx, (::std::identity{}), __VA_ARGS__)
 
 /**
  * Magic name used by `LIX_TRY_AWAIT` to insert additional context into an
