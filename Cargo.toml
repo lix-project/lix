@@ -26,6 +26,7 @@ temp_testdir = "0.2.3"
 nix = { version = "0.31.3", features = [ "pthread" ] }
 futures = "0.3.33"
 assert_matches = "1.5"
+either = "1.17"
 
 [profile.dev]
 opt-level = 1

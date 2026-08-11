@@ -22,6 +22,7 @@ serde.workspace = true
 toml.workspace = true
 nix.workspace = true
 futures.workspace = true
+either.workspace = true
 
 [dev-dependencies]
 temp_testdir.workspace = true
