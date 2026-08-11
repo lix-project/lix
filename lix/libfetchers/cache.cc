@@ -1,6 +1,7 @@
 #include "lix/libfetchers/cache.hh"
 #include "libstore/pathlocks.hh"
 #include "libutil/hash.hh"
+#include "libutil/result.hh"
 #include "lix/libstore/sqlite.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/sync.hh"
@@ -62,19 +63,22 @@ struct CacheImpl : Cache
             "select info, path, immutable, timestamp from Cache where input = ?");
     }
 
-    void add(
-        ref<Store> store,
+    kj::Promise<Result<void>>
+    add(ref<Store> store,
         const Attrs & inAttrs,
         const Attrs & infoAttrs,
         const StorePath & storePath,
         bool locked) override
-    {
+    try {
         _state.lock()->add.use()
             (attrsToJSON(inAttrs).dump())
             (attrsToJSON(infoAttrs).dump())
             (store->printStorePath(storePath))
             (locked)
             (time(0)).exec();
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
     }
 
     kj::Promise<Result<std::optional<std::pair<Attrs, StorePath>>>> lookup(
@@ -153,10 +157,11 @@ struct CacheImpl : Cache
     }
 };
 
-ref<Cache> getCache()
-{
+kj::Promise<Result<ref<Cache>>> getCache()
+try {
     static auto cache = make_ref<CacheImpl>();
-    return cache;
+    co_return cache;
+} catch (...) {
+    co_return result::current_exception();
 }
-
 }

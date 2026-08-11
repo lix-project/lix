@@ -604,7 +604,7 @@ struct GitInputScheme : InputScheme
         // fetching, so we keep it in this scope.
         std::optional<PathLock> fetchLock;
         if (input.getRev()) {
-            auto resOrLock = TRY_AWAIT(getCache()->lookupOrLock(store, getLockedAttrs()));
+            auto resOrLock = TRY_AWAIT(TRY_AWAIT(getCache())->lookupOrLock(store, getLockedAttrs()));
 
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resOrLock))
                 co_return makeResult(res->first, std::move(res->second));
@@ -681,7 +681,7 @@ struct GitInputScheme : InputScheme
 
             // If the input isn't in the cache, we get a lock for fetching it.
             // Make sure to keep this until we're done fetching!
-            auto cached = TRY_AWAIT(getCache()->lookupOrLock(store, unlockedAttrs));
+            auto cached = TRY_AWAIT(TRY_AWAIT(getCache())->lookupOrLock(store, unlockedAttrs));
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&cached)) {
                 auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
                 if (!input.getRev() || input.getRev() == rev2) {
@@ -868,12 +868,12 @@ struct GitInputScheme : InputScheme
            the store. */
         // If we already have a lock for fetching this path, we can't use lookupOrLock because it would deadlock.
         if (fetchLock) {
-            if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs()))) {
+            if (auto res = TRY_AWAIT(TRY_AWAIT(getCache())->lookup(store, getLockedAttrs()))) {
                 co_return makeResult(res->first, std::move(res->second));
             }
         } else {
             // If we don't have the lock, we need to acquire it by using lookupOrLock.
-            auto resultOrLock = TRY_AWAIT(getCache()->lookupOrLock(store, getLockedAttrs()));
+            auto resultOrLock = TRY_AWAIT(TRY_AWAIT(getCache())->lookupOrLock(store, getLockedAttrs()));
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resultOrLock)) {
                 co_return makeResult(res->first, std::move(res->second));
             }
@@ -1038,19 +1038,9 @@ struct GitInputScheme : InputScheme
             );
 
         if (!_input.getRev())
-            getCache()->add(
-                store,
-                unlockedAttrs,
-                infoAttrs,
-                storePath,
-                false);
+            TRY_AWAIT(TRY_AWAIT(getCache())->add(store, unlockedAttrs, infoAttrs, storePath, false));
 
-        getCache()->add(
-            store,
-            getLockedAttrs(),
-            infoAttrs,
-            storePath,
-            true);
+        TRY_AWAIT(TRY_AWAIT(getCache())->add(store, getLockedAttrs(), infoAttrs, storePath, true));
 
         co_return makeResult(infoAttrs, std::move(storePath));
     } catch (...) {

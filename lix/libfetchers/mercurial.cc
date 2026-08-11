@@ -278,8 +278,9 @@ struct MercurialInputScheme : InputScheme
         };
 
         if (input.getRev()) {
-            if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
+            if (auto res = TRY_AWAIT(TRY_AWAIT(getCache())->lookup(store, getLockedAttrs()))) {
                 co_return makeResult(res->first, std::move(res->second));
+            }
         }
 
         auto revOrRef = input.getRev() ? fmt("id(%s)", input.getRev()->gitRev()) : *input.getRef();
@@ -291,7 +292,7 @@ struct MercurialInputScheme : InputScheme
             {"ref", *input.getRef()},
         });
 
-        if (auto res = TRY_AWAIT(getCache()->lookup(store, unlockedAttrs))) {
+        if (auto res = TRY_AWAIT(TRY_AWAIT(getCache())->lookup(store, unlockedAttrs))) {
             auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
             if (!input.getRev() || input.getRev() == rev2) {
                 input.attrs.insert_or_assign("rev", rev2.gitRev());
@@ -356,8 +357,9 @@ struct MercurialInputScheme : InputScheme
         auto revCount = std::stoull(tokens[1]);
         input.attrs.insert_or_assign("ref", tokens[2]);
 
-        if (auto res = TRY_AWAIT(getCache()->lookup(store, getLockedAttrs())))
+        if (auto res = TRY_AWAIT(TRY_AWAIT(getCache())->lookup(store, getLockedAttrs()))) {
             co_return makeResult(res->first, std::move(res->second));
+        }
 
         Path tmpDir = createTempDir();
         AutoDelete delTmpDir(tmpDir, true);
@@ -376,19 +378,9 @@ struct MercurialInputScheme : InputScheme
         });
 
         if (!_input.getRev())
-            getCache()->add(
-                store,
-                unlockedAttrs,
-                infoAttrs,
-                storePath,
-                false);
+            TRY_AWAIT(TRY_AWAIT(getCache())->add(store, unlockedAttrs, infoAttrs, storePath, false));
 
-        getCache()->add(
-            store,
-            getLockedAttrs(),
-            infoAttrs,
-            storePath,
-            true);
+        TRY_AWAIT(TRY_AWAIT(getCache())->add(store, getLockedAttrs(), infoAttrs, storePath, true));
 
         co_return makeResult(infoAttrs, std::move(storePath));
     } catch (...) {

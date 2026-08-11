@@ -65,7 +65,7 @@ try {
         {"ingestionMethod", uint64_t(ingestionMethod)},
     });
 
-    auto cached = TRY_AWAIT(getCache()->lookupExpired(store, inAttrs));
+    auto cached = TRY_AWAIT(TRY_AWAIT(getCache())->lookupExpired(store, inAttrs));
 
     auto useCached = [&]() -> DownloadFileResult
     {
@@ -133,24 +133,21 @@ try {
         storePath = std::move(info.path);
     }
 
-    getCache()->add(
-        store,
-        inAttrs,
-        infoAttrs,
-        *storePath,
-        locked);
+    TRY_AWAIT(TRY_AWAIT(getCache())->add(store, inAttrs, infoAttrs, *storePath, locked));
 
     if (url != res.effectiveUri)
-        getCache()->add(
-            store,
-            {
-                {"type", "file"},
-                {"url", res.effectiveUri},
-                {"name", name},
-            },
-            infoAttrs,
-            *storePath,
-            locked);
+        TRY_AWAIT(TRY_AWAIT(getCache())
+                      ->add(
+                          store,
+                          {
+                              {"type", "file"},
+                              {"url", res.effectiveUri},
+                              {"name", name},
+                          },
+                          infoAttrs,
+                          *storePath,
+                          locked
+                      ));
 
     co_return DownloadFileResult{
         .storePath = std::move(*storePath),
@@ -175,7 +172,7 @@ try {
         {"name", name},
     });
 
-    auto cached = TRY_AWAIT(getCache()->lookupExpired(store, inAttrs));
+    auto cached = TRY_AWAIT(TRY_AWAIT(getCache())->lookupExpired(store, inAttrs));
 
     if (cached && !cached->expired)
         co_return DownloadTarballResult{
@@ -214,12 +211,7 @@ try {
     if (res.immutableUrl)
         infoAttrs.emplace("immutableUrl", *res.immutableUrl);
 
-    getCache()->add(
-        store,
-        inAttrs,
-        infoAttrs,
-        *unpackedStorePath,
-        locked);
+    TRY_AWAIT(TRY_AWAIT(getCache())->add(store, inAttrs, infoAttrs, *unpackedStorePath, locked));
 
     co_return DownloadTarballResult{
         .tree = Tree { .actualPath = store->toRealPath(*unpackedStorePath), .storePath = std::move(*unpackedStorePath) },

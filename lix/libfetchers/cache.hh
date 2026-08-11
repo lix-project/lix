@@ -11,8 +11,8 @@ struct Cache
 {
     virtual ~Cache() { }
 
-    virtual void add(
-        ref<Store> store,
+    virtual kj::Promise<Result<void>>
+    add(ref<Store> store,
         const Attrs & inAttrs,
         const Attrs & infoAttrs,
         const StorePath & storePath,
@@ -38,6 +38,5 @@ struct Cache
         const Attrs & inAttrs) = 0;
 };
 
-ref<Cache> getCache();
-
+kj::Promise<Result<ref<Cache>>> getCache();
 }
