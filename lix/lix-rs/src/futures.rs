@@ -25,15 +25,15 @@ const VTABLE: RawWakerVTable = RawWakerVTable::new(
 /// as per rust requirements. try to *not* use this though, wakeups sent across
 /// thread boundaries are extremely expensive in kj: wakeups sent from the same
 /// thread take about 60 ns each whereas wakeups sent across threads take 8 µs.
-pub struct RsFuture<R>(Pin<Box<dyn Future<Output = R>>>);
+pub struct RsFuture<'a, R>(Pin<Box<dyn Future<Output = R> + 'a>>);
 
-impl<R, Fut: Future<Output = R> + 'static> From<Fut> for RsFuture<R> {
+impl<'a, R, Fut: Future<Output = R> + 'a> From<Fut> for RsFuture<'a, R> {
     fn from(f: Fut) -> Self {
         Self(Box::pin(f))
     }
 }
 
-impl<R> RsFuture<R> {
+impl<'a, R> RsFuture<'a, R> {
     /// poll the future and return its status.
     ///
     /// for c++ interop reasons this does not return [`std::task::Poll`] values

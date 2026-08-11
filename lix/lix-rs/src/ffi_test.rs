@@ -68,7 +68,7 @@ pub(crate) fn test_exceptions(f: Box<dyn Fn() -> Result<(), ffi::Error>>) -> Str
     }
 }
 
-pub(crate) fn wakes_self() -> RsFuture<i32> {
+pub(crate) fn wakes_self() -> RsFuture<'static, i32> {
     let mut called = false;
     poll_fn(move |ctx| {
         if called {
@@ -82,7 +82,7 @@ pub(crate) fn wakes_self() -> RsFuture<i32> {
     .into()
 }
 
-pub(crate) fn wakes_from_thread(wait: u64) -> RsFuture<i32> {
+pub(crate) fn wakes_from_thread(wait: u64) -> RsFuture<'static, i32> {
     let ready = Arc::new(AtomicBool::new(false));
     poll_fn(move |ctx| {
         if ready.load(Ordering::SeqCst) {
@@ -101,6 +101,6 @@ pub(crate) fn wakes_from_thread(wait: u64) -> RsFuture<i32> {
     .into()
 }
 
-pub(crate) fn await_add_one(f: CxxFuture<i32>) -> RsFuture<Result<i32, Report>> {
+pub(crate) fn await_add_one(f: CxxFuture<i32>) -> RsFuture<'static, Result<i32, Report>> {
     async move { Ok(f.await? + 1) }.into()
 }
