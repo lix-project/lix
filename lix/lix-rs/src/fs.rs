@@ -1,11 +1,12 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     future::Future,
     io,
     os::{
         fd::{AsFd, AsRawFd, BorrowedFd, OwnedFd},
         unix::thread::JoinHandleExt,
     },
+    path::{Path, PathBuf},
     thread::{self, JoinHandle},
 };
 
@@ -14,6 +15,7 @@ use nix::{
     fcntl::FlockArg::{self, *},
     sys::{pthread::pthread_kill, signal::*},
 };
+use rootcause::prelude::*;
 
 mod seal {
     pub trait Seal {}
@@ -111,6 +113,44 @@ impl AsyncFileExt for File {
 
     fn lock_shared_async(&self) -> impl Future<Output = io::Result<()>> {
         lock_async(self.as_fd(), LockSharedNonblock, LockShared)
+    }
+}
+
+/// a lock file in some file system.
+///
+/// lock files are created with [`File::create`], locked for exclusive access, and
+/// are deleted when the `LockFile` instance is dropped. lock files are identified
+/// by path rather than by inode, and thus moving or deleting lock files will have
+/// unintended consequences, such as multiple lock files existing concurrently for
+/// the given path. *do not* move or delete locked lock files to guarantee safety.
+#[derive(Debug)]
+pub struct LockFile(#[allow(unused)] File, PathBuf);
+
+impl LockFile {
+    /// lock the file given by `path`. if it does not exist yet it will be created
+    /// by [`File::create`]. successful returns of this functions guarantee that a
+    /// file at `path`, locked as if by [`File::lock`], was visible for at least a
+    /// brief moment. it does *not* guarantee that the file was visible at `path`,
+    /// only that it was visible *at all*, by checking the `stat::st_nlink` count.
+    pub async fn lock(path: impl AsRef<Path>) -> Result<Self, Report<io::Error>> {
+        loop {
+            let file = File::create(path.as_ref())?;
+            file.lock_async().await?;
+            let stat = nix::sys::stat::fstat(&file).map_err(io::Error::from)?;
+            if stat.st_nlink > 0 {
+                break Ok(Self(file, path.as_ref().to_owned()));
+            }
+        }
+    }
+
+    fn unlink(this: &Self) -> Result<(), Report<io::Error>> {
+        fs::remove_file(&this.1).into_report()
+    }
+}
+
+impl Drop for LockFile {
+    fn drop(&mut self) {
+        let _ = Self::unlink(self);
     }
 }
 
@@ -297,5 +337,44 @@ mod test {
         );
         super::lock_fd(&file2, FlockArg::LockSharedNonblock).unwrap();
         file.unlock().unwrap();
+    }
+
+    #[tokio::test]
+    async fn lock_file_unlock_deletes() {
+        let dir = temp_testdir::TempDir::default();
+        let path = dir.join("foo");
+        let f = LockFile::lock(&path).await.unwrap();
+        assert!(fs::exists(&path).unwrap());
+        drop(f);
+        assert!(!fs::exists(&path).unwrap());
+    }
+
+    #[tokio::test]
+    async fn lock_file_deleted_retries() {
+        let dir = temp_testdir::TempDir::default();
+        let path = dir.join("foo");
+
+        let f1 = LockFile::lock(&path).await.unwrap();
+        let mut f2 = pin!(LockFile::lock(path.to_owned()));
+
+        assert_matches!(futures::poll!(&mut f2), Poll::Pending);
+
+        drop(f1);
+
+        let f2 = f2.await.unwrap();
+        let stat2 = nix::sys::stat::fstat(&f2.0).unwrap();
+        assert_ne!(stat2.st_nlink, 0);
+    }
+
+    #[tokio::test]
+    async fn lock_file_deletion_releases_lock() {
+        let dir = temp_testdir::TempDir::default();
+        let path = dir.join("foo");
+
+        let _f1 = LockFile::lock(&path).await.unwrap();
+        fs::remove_file(&path).unwrap();
+        let mut f2 = pin!(LockFile::lock(path.to_owned()));
+
+        assert_matches!(futures::poll!(&mut f2), Poll::Ready(Ok(_)));
     }
 }

@@ -1,0 +1,5 @@
+mod crate::fs {
+    type LockFile {
+        #layout_conservative(size = 32, align = 8);
+    }
+}
