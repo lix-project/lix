@@ -258,7 +258,8 @@ try {
         auto supportedProtos = supported.getProtocols();
         debug("remote advertised %s", supported.toString().flatten().cStr());
         if (supportedProtos.size() != 1
-            && rpc::to<std::string_view>(supportedProtos[0].getId()) != rpc::daemon::UNSTABLE_LEGACY_TUNNELED)
+            || rpc::to<std::string_view>(supportedProtos[0].getId())
+                != rpc::daemon::UNSTABLE_LEGACY_TUNNELED)
         {
             co_return false;
         }
