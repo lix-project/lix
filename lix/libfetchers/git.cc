@@ -602,13 +602,13 @@ struct GitInputScheme : InputScheme
         // If the input isn't present in the fetcher cache, we get a lock for
         // fetching the given input. We want to hold this lock until we're done
         // fetching, so we keep it in this scope.
-        std::optional<PathLock> fetchLock;
+        std::optional<Cache::Lock> fetchLock;
         if (input.getRev()) {
             auto resOrLock = TRY_AWAIT(TRY_AWAIT(getCache())->lookupOrLock(store, getLockedAttrs()));
 
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resOrLock))
                 co_return makeResult(res->first, std::move(res->second));
-            auto lock = std::get_if<PathLock>(&resOrLock);
+            auto lock = std::get_if<Cache::Lock>(&resOrLock);
             assert(lock);
             fetchLock = std::move(*lock);
         }
@@ -877,7 +877,7 @@ struct GitInputScheme : InputScheme
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&resultOrLock)) {
                 co_return makeResult(res->first, std::move(res->second));
             }
-            auto lock = std::get_if<PathLock>(&resultOrLock);
+            auto lock = std::get_if<Cache::Lock>(&resultOrLock);
             assert(lock);
             fetchLock = std::move(*lock);
         }

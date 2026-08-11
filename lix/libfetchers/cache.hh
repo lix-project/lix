@@ -1,14 +1,22 @@
 #pragma once
 ///@file
 
-#include "libstore/pathlocks.hh"
 #include "lix/libfetchers/fetchers.hh"
 #include "lix/libstore/path.hh"
+#include <memory>
 
 namespace nix::fetchers {
 
 struct Cache
 {
+    class Lock
+    {
+        std::shared_ptr<void> impl;
+
+    public:
+        Lock(kj::Badge<Cache>, std::shared_ptr<void> impl) : impl(std::move(impl)) {}
+    };
+
     virtual ~Cache() { }
 
     virtual kj::Promise<Result<void>>
@@ -22,9 +30,8 @@ struct Cache
         ref<Store> store,
         const Attrs & inAttrs) = 0;
 
-    virtual kj::Promise<Result<std::variant<std::pair<Attrs, StorePath>, PathLock>>> lookupOrLock(
-        ref<Store> store,
-        const Attrs & inAttrs) = 0;
+    virtual kj::Promise<Result<std::variant<std::pair<Attrs, StorePath>, Lock>>>
+    lookupOrLock(ref<Store> store, const Attrs & inAttrs) = 0;
 
     struct LookupResult
     {
@@ -36,6 +43,12 @@ struct Cache
     virtual kj::Promise<Result<std::optional<LookupResult>>> lookupExpired(
         ref<Store> store,
         const Attrs & inAttrs) = 0;
+
+protected:
+    static kj::Badge<Cache> badge()
+    {
+        return {};
+    }
 };
 
 kj::Promise<Result<ref<Cache>>> getCache();

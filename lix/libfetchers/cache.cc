@@ -96,7 +96,9 @@ struct CacheImpl : Cache
         co_return result::current_exception();
     }
 
-    kj::Promise<Result<std::variant<std::pair<Attrs, StorePath>, PathLock>>> lookupOrLock(ref<Store> store, const Attrs & inAttrs) override try {
+    kj::Promise<Result<std::variant<std::pair<Attrs, StorePath>, Lock>>>
+    lookupOrLock(ref<Store> store, const Attrs & inAttrs) override
+    try {
         // In order to avoid fetching the same input multiple times
         // concurrently, we first acquire a lock based on the input attributes.
         auto hashResult = hashString(HashType::SHA256, attrsToJSON(inAttrs).dump());
@@ -108,7 +110,9 @@ struct CacheImpl : Cache
         // We return either the cache hit or the lock; this allows fetchers to
         // keep a lock on fetching the input in question if it's not already in
         // the cache, and otherwise frees the cache db up again.
-        std::variant<std::pair<Attrs, StorePath>, PathLock> result(std::move(pathLock));
+        std::variant<std::pair<Attrs, StorePath>, Lock> result(
+            Lock(badge(), std::make_shared<PathLock>(std::move(pathLock)))
+        );
         if (lookedUp) {
             // Reassigning the variant frees the lock
             result = *lookedUp;
