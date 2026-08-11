@@ -20,13 +20,18 @@ rustyline.workspace = true
 rustyline-derive.workspace = true
 serde.workspace = true
 toml.workspace = true
+rusqlite.workspace = true
 nix.workspace = true
 futures.workspace = true
+percent-encoding.workspace = true
+thiserror.workspace = true
 either.workspace = true
 
 [dev-dependencies]
 temp_testdir.workspace = true
 assert_matches.workspace = true
+tokio = { workspace = true, features = [ "macros", "rt-multi-thread" ] }
+rstest.workspace = true
 
 [build-dependencies]
 zngur.workspace = true

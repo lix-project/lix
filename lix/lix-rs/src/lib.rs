@@ -204,6 +204,7 @@ pub mod fs;
 pub mod futures;
 mod machines;
 mod repl;
+pub mod sqlite;
 
 #[cfg(test)]
 mod test {
