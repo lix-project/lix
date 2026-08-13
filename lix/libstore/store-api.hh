@@ -407,6 +407,8 @@ public:
 
 protected:
 
+    kj::Promise<Result<bool>> isValidPathInner(const StorePath & path, const Activity * context = nullptr);
+
     virtual kj::Promise<Result<bool>>
     isValidPathUncached(const StorePath & path, const Activity * context = nullptr);
 
@@ -463,6 +465,9 @@ public:
     }
 
 protected:
+
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoInner(const StorePath & path, const Activity * context = nullptr);
 
     /**
      * Queries the path info without caching.

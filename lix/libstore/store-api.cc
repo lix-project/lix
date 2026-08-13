@@ -637,6 +637,13 @@ try {
         }
     }
 
+    co_return TRY_AWAIT(isValidPathInner(storePath, context));
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<bool>> Store::isValidPathInner(const StorePath & storePath, const Activity * context)
+try {
     if (diskCache) {
         auto res = diskCache->lookupNarInfo(getUri(), std::string(storePath.hashPart()));
         if (res.first != NarInfoDiskCache::oUnknown) {
@@ -655,6 +662,8 @@ try {
         diskCache->upsertNarInfo(getUri(), std::string(storePath.hashPart()), 0);
 
     co_return valid;
+} catch (InvalidPath &) {
+    co_return false;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -691,8 +700,6 @@ static void ensureGoodStorePath(Store * store, const StorePath & expected, const
 kj::Promise<Result<ref<const ValidPathInfo>>>
 Store::queryPathInfo(const StorePath & storePath, const Activity * context)
 try {
-    auto hashPart = std::string(storePath.hashPart());
-
     {
         auto res = (co_await state.lock())->pathInfoCache.get(std::string(storePath.to_string()));
         if (res && res->isKnownNow()) {
@@ -704,6 +711,28 @@ try {
             co_return ref<const ValidPathInfo>::unsafeFromPtr(res->value);
         }
     }
+
+    auto info = TRY_AWAIT(queryPathInfoInner(storePath, context));
+
+    {
+        auto state_(co_await state.lock());
+        state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue{.value = info});
+    }
+
+    if (!info) {
+        stats.narInfoMissing++;
+        throw InvalidPath("path '%s' does not exist in the store", toRealPath(printStorePath(storePath)));
+    }
+
+    co_return ref<const ValidPathInfo>::unsafeFromPtr(info);
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+Store::queryPathInfoInner(const StorePath & storePath, const Activity * context)
+try {
+    auto hashPart = std::string(storePath.hashPart());
 
     if (diskCache) {
         auto res = diskCache->lookupNarInfo(getUri(), hashPart);
@@ -719,7 +748,7 @@ try {
                         toRealPath(printStorePath(storePath))
                     );
             }
-            co_return ref<const ValidPathInfo>::unsafeFromPtr(res.second);
+            co_return res.second;
         }
     }
 
@@ -733,19 +762,7 @@ try {
         diskCache->upsertNarInfo(getUri(), hashPart, info);
     }
 
-    {
-        auto state_(co_await state.lock());
-        state_->pathInfoCache.upsert(std::string(storePath.to_string()), PathInfoCacheValue { .value = info });
-    }
-
-    if (!info) {
-        stats.narInfoMissing++;
-        throw InvalidPath(
-            "path '%s' does not exist in the store", toRealPath(printStorePath(storePath))
-        );
-    }
-
-    co_return ref<const ValidPathInfo>::unsafeFromPtr(info);
+    co_return info;
 } catch (...) {
     co_return result::current_exception();
 }
