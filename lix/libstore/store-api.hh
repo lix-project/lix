@@ -90,7 +90,6 @@ MakeError(InvalidStoreURI, Error);
 struct BasicDerivation;
 struct Derivation;
 class FSAccessor;
-class NarInfoDiskCache;
 class Store;
 
 
@@ -259,8 +258,6 @@ protected:
 
     Sync<State, AsyncMutex> state;
 
-    std::shared_ptr<NarInfoDiskCache> diskCache;
-
     Store(const StoreConfig & config);
 
     KJ_DISALLOW_COPY_AND_MOVE(Store);
@@ -407,7 +404,8 @@ public:
 
 protected:
 
-    kj::Promise<Result<bool>> isValidPathInner(const StorePath & path, const Activity * context = nullptr);
+    virtual kj::Promise<Result<bool>>
+    isValidPathInner(const StorePath & path, const Activity * context = nullptr);
 
     virtual kj::Promise<Result<bool>>
     isValidPathUncached(const StorePath & path, const Activity * context = nullptr);
@@ -466,7 +464,7 @@ public:
 
 protected:
 
-    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    virtual kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoInner(const StorePath & path, const Activity * context = nullptr);
 
     /**

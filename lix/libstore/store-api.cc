@@ -644,24 +644,7 @@ try {
 
 kj::Promise<Result<bool>> Store::isValidPathInner(const StorePath & storePath, const Activity * context)
 try {
-    if (diskCache) {
-        auto res = diskCache->lookupNarInfo(getUri(), std::string(storePath.hashPart()));
-        if (res.first != NarInfoDiskCache::oUnknown) {
-            stats.narInfoReadAverted++;
-            auto state_(co_await state.lock());
-            state_->pathInfoCache.upsert(std::string(storePath.to_string()),
-                res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue { .value = res.second });
-            co_return res.first == NarInfoDiskCache::oValid;
-        }
-    }
-
-    bool valid = TRY_AWAIT(isValidPathUncached(storePath, context));
-
-    if (diskCache && !valid)
-        // FIXME: handle valid = true case.
-        diskCache->upsertNarInfo(getUri(), std::string(storePath.hashPart()), 0);
-
-    co_return valid;
+    co_return TRY_AWAIT(isValidPathUncached(storePath, context));
 } catch (InvalidPath &) {
     co_return false;
 } catch (...) {
@@ -732,34 +715,10 @@ try {
 kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
 Store::queryPathInfoInner(const StorePath & storePath, const Activity * context)
 try {
-    auto hashPart = std::string(storePath.hashPart());
-
-    if (diskCache) {
-        auto res = diskCache->lookupNarInfo(getUri(), hashPart);
-        if (res.first != NarInfoDiskCache::oUnknown) {
-            stats.narInfoReadAverted++;
-            {
-                auto state_(co_await state.lock());
-                state_->pathInfoCache.upsert(std::string(storePath.to_string()),
-                    res.first == NarInfoDiskCache::oInvalid ? PathInfoCacheValue{} : PathInfoCacheValue{ .value = res.second });
-                if (res.first == NarInfoDiskCache::oInvalid)
-                    throw InvalidPath(
-                        "path '%s' does not exist in the store",
-                        toRealPath(printStorePath(storePath))
-                    );
-            }
-            co_return res.second;
-        }
-    }
-
     auto info = TRY_AWAIT(queryPathInfoUncached(storePath, context));
     if (info) {
         // first, before we cache anything, check that the store gave us valid data.
         ensureGoodStorePath(this, storePath, info->path);
-    }
-
-    if (diskCache) {
-        diskCache->upsertNarInfo(getUri(), hashPart, info);
     }
 
     co_return info;

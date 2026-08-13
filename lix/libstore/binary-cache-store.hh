@@ -14,6 +14,7 @@
 namespace nix {
 
 struct NarInfo;
+class NarInfoDiskCache;
 
 struct BinaryCacheStoreConfig : virtual StoreConfig
 {
@@ -77,6 +78,8 @@ protected:
     // The prefix under which realisation infos will be stored
     const std::string realisationsPrefix = "realisations";
 
+    std::shared_ptr<NarInfoDiskCache> diskCache;
+
     BinaryCacheStore(MustCallInit &, const BinaryCacheStoreConfig & config);
 
 public:
@@ -114,6 +117,12 @@ public:
 protected:
 
     kj::Promise<Result<void>> init();
+
+    kj::Promise<Result<bool>>
+    isValidPathInner(const StorePath & path, const Activity * context = nullptr) override;
+
+    kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
+    queryPathInfoInner(const StorePath & path, const Activity * context = nullptr) override;
 
 private:
 
