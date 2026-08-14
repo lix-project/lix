@@ -63,7 +63,9 @@ Strings EvalSettings::getDefaultNixPath()
         }
     };
 
-    add(getNixDefExpr() + "/channels");
+    if (auto defExpr = tryGetNixDefExpr()) {
+        add(*defExpr + "/channels");
+    }
     add(rootChannelsDir() + "/nixpkgs", "nixpkgs");
     add(rootChannelsDir());
 
@@ -102,4 +104,13 @@ Path getNixDefExpr()
         : getHome() + "/.nix-defexpr";
 }
 
+std::optional<Path> tryGetNixDefExpr()
+{
+    if (settings.useXDGBaseDirectories) {
+        return getStateDir() + "/nix/defexpr";
+    } else if (auto home = tryGetHome()) {
+        return *home + "/.nix-defexpr";
+    }
+    return std::nullopt;
+}
 }

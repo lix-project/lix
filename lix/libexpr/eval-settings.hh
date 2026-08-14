@@ -30,4 +30,5 @@ extern EvalSettings evalSettings;
  */
 Path getNixDefExpr();
 
+std::optional<Path> tryGetNixDefExpr();
 }
