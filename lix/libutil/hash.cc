@@ -46,6 +46,13 @@ std::string Hash::to_sri() const
     );
 }
 
+std::string Hash::to_base32() const
+{
+    return fmt(
+        "%s:%s", type, base32EncodeStr(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()))
+    );
+}
+
 Hash Hash::dummy(HashType::SHA256);
 
 Hash Hash::parseSRI(std::string_view original) {

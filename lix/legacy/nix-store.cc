@@ -474,7 +474,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                     auto info = aio.blockOn(store->queryPathInfo(j));
                     if (query == qHash) {
                         assert(info->narHash.type == HashType::SHA256);
-                        pager << fmt("%s\n", info->narHash.to_string(HashFormat::Base32));
+                        pager << fmt("%s\n", info->narHash.to_base32());
                     } else if (query == qSize) {
                         pager << fmt("%d\n", info->narSize);
                     }

@@ -158,6 +158,9 @@ public:
     /// @see W3C recommendation [Subresource Intergrity](https://www.w3.org/TR/SRI/).
     std::string to_sri() const;
 
+    /// @brief "<hash algo>:<Base 32 hash>", with Nix-specific base-32 encoding. @see base32Chars
+    std::string to_base32() const;
+
     static Hash dummy;
 };
 

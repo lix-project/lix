@@ -63,7 +63,7 @@ std::string ContentAddress::render() const
                },
                method.raw
            )
-        + this->hash.to_string(HashFormat::Base32);
+        + this->hash.to_base32();
 }
 
 /**
