@@ -227,6 +227,9 @@ std::string base32EncodeStr(std::string_view s);
 std::string base32Encode(std::span<std::byte const> const s);
 std::string base32Decode(std::string_view s);
 
+std::string base16Encode(std::span<const uint8_t> const s);
+std::vector<uint8_t> base16Decode(std::string_view s);
+
 /**
  * Remove common leading whitespace from the lines in the string
  * 's'. For example, if every line is indented by at least 3 spaces,

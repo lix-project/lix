@@ -18,20 +18,6 @@ namespace nix {
 
 const std::set<std::string> hashTypes = {"md5", "sha1", "sha256", "sha512"};
 
-const std::string base16Chars = "0123456789abcdef";
-
-
-static std::string printHash16(const Hash & hash)
-{
-    std::string buf;
-    buf.reserve(hash.hashSize * 2);
-    for (unsigned int i = 0; i < hash.hashSize; i++) {
-        buf.push_back(base16Chars[hash.hash[i] >> 4]);
-        buf.push_back(base16Chars[hash.hash[i] & 0x0f]);
-    }
-    return buf;
-}
-
 std::string Hash::to_string(HashFormat format, bool includeType) const
 {
     std::string s;
@@ -41,7 +27,7 @@ std::string Hash::to_string(HashFormat format, bool includeType) const
     }
     switch (format) {
     case HashFormat::Base16:
-        s += printHash16(*this);
+        s += base16Encode(as_span());
         break;
     case HashFormat::Base32:
         s += base32EncodeStr(std::string_view(charptr_cast<const char *>(hash), hashSize));
@@ -128,17 +114,11 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
     : Hash(type)
 {
     if (!isSRI && rest.size() == base16Len()) {
-
-        auto parseHexDigit = [&](char c) {
-            if (c >= '0' && c <= '9') return c - '0';
-            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        try {
+            auto d = base16Decode(rest);
+            memcpy(hash, d.data(), hashSize);
+        } catch (Error & e) {
             throw BadHash("invalid base-16 hash '%s'", rest);
-        };
-
-        for (unsigned int i = 0; i < hashSize; i++) {
-            const size_t j = i << 1;
-            hash[i] = parseHexDigit(rest[j]) << 4 | parseHexDigit(rest[j + 1]);
         }
     }
 

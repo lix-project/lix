@@ -319,6 +319,44 @@ std::string base32Decode(std::string_view s)
     return res;
 }
 
+static const std::string base16Chars = "0123456789abcdef";
+
+std::string base16Encode(std::span<const uint8_t> bytes)
+{
+    std::string buf;
+    buf.reserve(bytes.size() * 2);
+    for (auto b : bytes) {
+        buf.push_back(base16Chars[b >> 4]);
+        buf.push_back(base16Chars[b & 0x0f]);
+    }
+    return buf;
+}
+
+std::vector<uint8_t> base16Decode(std::string_view s)
+{
+    auto parseHexDigit = [&](char c) {
+        if (c >= '0' && c <= '9') {
+            return c - '0';
+        } else if (c >= 'A' && c <= 'F') {
+            return c - 'A' + 10;
+        } else if (c >= 'a' && c <= 'f') {
+            return c - 'a' + 10;
+        }
+        throw Error("invalid base-16 string '%s'", s);
+    };
+
+    if (s.size() % 2 != 0) {
+        throw Error("invalid base-16 string '%s'", s);
+    }
+
+    std::vector<uint8_t> result(s.size() / 2, 0);
+    for (size_t i = 0; i < result.size(); i++) {
+        result[i] = parseHexDigit(s[2 * i]) << 4 | parseHexDigit(s[2 * i + 1]);
+    }
+
+    return result;
+}
+
 std::string stripIndentation(std::string_view s)
 {
     size_t minIndent = 10000;
