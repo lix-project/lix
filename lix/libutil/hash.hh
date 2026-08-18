@@ -161,6 +161,9 @@ public:
     /// @brief "<hash algo>:<Base 32 hash>", with Nix-specific base-32 encoding. @see base32Chars
     std::string to_base32() const;
 
+    /// @brief "<hash algo>:<Base 16 hash>", with lowercase hexadecimal encoding. @see base16Chars
+    std::string to_base16() const;
+
     static Hash dummy;
 };
 

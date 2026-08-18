@@ -40,7 +40,7 @@ struct DrvOutput {
 
     std::string strHash() const
     {
-        return drvHash.to_string(HashFormat::Base16);
+        return drvHash.to_base16();
     }
 
     static DrvOutput parse(const std::string &);

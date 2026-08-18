@@ -645,7 +645,7 @@ try {
 
     state.stmts->RegisterValidPath.use()
         (printStorePath(info.path))
-        (info.narHash.to_string(HashFormat::Base16))
+        (info.narHash.to_base16())
         (info.registrationTime == 0 ? time(0) : info.registrationTime)
         (info.deriver ? printStorePath(*info.deriver) : "", (bool) info.deriver)
         (info.narSize, info.narSize != 0)
@@ -758,7 +758,7 @@ void LocalStore::updatePathInfo(DBState & state, const ValidPathInfo & info)
 {
     state.stmts->UpdatePathInfo.use()
         (info.narSize, info.narSize != 0)
-        (info.narHash.to_string(HashFormat::Base16))
+        (info.narHash.to_base16())
         (info.ultimate ? 1 : 0, info.ultimate)
         (concatStringsSep(" ", info.sigs), !info.sigs.empty())
         (renderContentAddress(info.ca), (bool) info.ca)

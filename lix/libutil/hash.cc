@@ -53,6 +53,11 @@ std::string Hash::to_base32() const
     );
 }
 
+std::string Hash::to_base16() const
+{
+    return fmt("%s:%s", type, base16Encode(as_span()));
+}
+
 Hash Hash::dummy(HashType::SHA256);
 
 Hash Hash::parseSRI(std::string_view original) {

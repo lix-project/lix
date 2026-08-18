@@ -255,8 +255,7 @@ struct MercurialInputScheme : InputScheme
         {
             if (hash.has_value() && hash->type != HashType::SHA1)
                 throw Error(
-                    "Hash '%s' is not supported by Mercurial. Only sha1 is supported.",
-                    hash->to_string(HashFormat::Base16)
+                    "Hash '%s' is not supported by Mercurial. Only sha1 is supported.", hash->to_base16()
                 );
         };
 
