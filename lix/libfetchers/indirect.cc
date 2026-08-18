@@ -52,7 +52,7 @@ struct IndirectInputScheme : InputScheme
         attrs.emplace("type", "indirect");
         attrs.emplace("id", id);
         if (rev) {
-            attrs.emplace("rev", rev->to_string(HashFormat::Base16, false));
+            attrs.emplace("rev", base16Encode(*rev));
         }
         if (ref) attrs.emplace("ref", *ref);
 
@@ -100,7 +100,7 @@ struct IndirectInputScheme : InputScheme
         if (auto ref = input.getRef()) { url.path += '/'; url.path += *ref; };
         if (auto rev = input.getRev()) {
             url.path += '/';
-            url.path += rev->to_string(HashFormat::Base16, false);
+            url.path += base16Encode(*rev);
         };
         return url;
     }
@@ -119,7 +119,7 @@ struct IndirectInputScheme : InputScheme
     {
         auto input(_input);
         if (rev) {
-            input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+            input.attrs.insert_or_assign("rev", base16Encode(*rev));
         }
         if (ref) input.attrs.insert_or_assign("ref", *ref);
         return input;

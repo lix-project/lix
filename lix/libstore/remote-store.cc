@@ -394,7 +394,7 @@ try {
         WorkerProto::Op::AddToStoreNar,
         printStorePath(info.path),
         (info.deriver ? printStorePath(*info.deriver) : ""),
-        info.narHash.to_string(HashFormat::Base16, false),
+        base16Encode(info.narHash),
         WorkerProto::write(*conn, info.references),
         info.registrationTime,
         info.narSize,

@@ -791,7 +791,7 @@ try {
         auto info = TRY_AWAIT(queryPathInfo(i));
 
         if (showHash) {
-            s += info->narHash.to_string(HashFormat::Base16, false) + "\n";
+            s += base16Encode(info->narHash) + "\n";
             s += fmt("%1%\n", info->narSize);
         }
 

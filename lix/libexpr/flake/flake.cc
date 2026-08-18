@@ -927,8 +927,7 @@ LockedFlake lockFlake(
                             flake.lockedRef.input.getRev() &&
                             prevLockedRef.input.getRev() != flake.lockedRef.input.getRev())
                             printTaggedWarning(
-                                "committed new revision '%s'",
-                                flake.lockedRef.input.getRev()->to_string(HashFormat::Base16, false)
+                                "committed new revision '%s'", base16Encode(*flake.lockedRef.input.getRev())
                             );
 
                         /* Make sure that we picked up the change,

@@ -432,7 +432,7 @@ std::string Derivation::unparse(const Store & store, bool maskOutputs,
                 s += ','; printUnquotedString(s, maskOutputs ? "" : store.printStorePath(dof.path(store, name, i.first)));
                 s += ','; printUnquotedString(s, dof.ca.printMethodAlgo());
                 s += ',';
-                printUnquotedString(s, dof.ca.hash.to_string(HashFormat::Base16, false));
+                printUnquotedString(s, base16Encode(dof.ca.hash));
             },
         }, i.second.raw);
         s += ')';
@@ -593,8 +593,7 @@ try {
             auto & dof = std::get<DerivationOutput::CAFixed>(i.second.raw);
             auto hash = hashString(
                 HashType::SHA256,
-                "fixed:out:" + dof.ca.printMethodAlgo() + ":"
-                    + dof.ca.hash.to_string(HashFormat::Base16, false) + ":"
+                "fixed:out:" + dof.ca.printMethodAlgo() + ":" + base16Encode(dof.ca.hash) + ":"
                     + store.printStorePath(dof.path(store, drv.name, i.first))
             );
             outputHashes.insert_or_assign(i.first, std::move(hash));
@@ -611,7 +610,7 @@ try {
             const auto h = get(res.hashes, outputName);
             if (!h)
                 throw Error("no hash for output '%s' of derivation '%s'", outputName, drv.name);
-            inputs2[h->to_string(HashFormat::Base16, false)].insert(outputName);
+            inputs2[base16Encode(*h)].insert(outputName);
         }
     }
 
@@ -723,7 +722,7 @@ WireFormatGenerator serializeDerivation(const Store & store, const BasicDerivati
                     return {
                         store.printStorePath(dof.path(store, drv.name, i.first)),
                         dof.ca.printMethodAlgo(),
-                        dof.ca.hash.to_string(HashFormat::Base16, false)
+                        base16Encode(dof.ca.hash)
                     };
                 },
             },
@@ -836,7 +835,7 @@ JSON DerivationOutput::toJSON(
         [&](const DerivationOutput::CAFixed & dof) {
             res["path"] = store.printStorePath(dof.path(store, drvName, outputName));
             res["hashAlgo"] = dof.ca.printMethodAlgo();
-            res["hash"] = dof.ca.hash.to_string(HashFormat::Base16, false);
+            res["hash"] = base16Encode(dof.ca.hash);
             // FIXME print refs?
         },
     }, raw);

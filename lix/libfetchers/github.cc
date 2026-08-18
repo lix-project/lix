@@ -178,14 +178,14 @@ struct GitArchiveInputScheme : InputScheme
                 owner,
                 repo,
                 *ref,
-                rev->to_string(HashFormat::Base16, false)
+                base16Encode(*rev)
             );
         }
         if (ref) {
             path += "/" + *ref;
         }
         if (rev) {
-            path += "/" + rev->to_string(HashFormat::Base16, false);
+            path += "/" + base16Encode(*rev);
         }
         return ParsedURL {
             .scheme = schemeType(),
@@ -207,12 +207,12 @@ struct GitArchiveInputScheme : InputScheme
         if (rev && ref)
             throw BadURL(
                 "cannot apply both a commit hash (%s) and a branch/tag name ('%s') to input '%s'",
-                rev->to_string(HashFormat::Base16, false),
+                base16Encode(*rev),
                 *ref,
                 input.to_string()
             );
         if (rev) {
-            input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+            input.attrs.insert_or_assign("rev", base16Encode(*rev));
             input.attrs.erase("ref");
         }
         if (ref) {
@@ -260,7 +260,7 @@ struct GitArchiveInputScheme : InputScheme
         if (!rev) rev = TRY_AWAIT(getRevFromRef(store, input));
 
         input.attrs.erase("ref");
-        input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+        input.attrs.insert_or_assign("rev", base16Encode(*rev));
 
         auto url = getDownloadUrl(input);
 
@@ -321,7 +321,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
         )), "a github API response");
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
-        debug("HEAD revision for '%s' is %s", url, rev.to_string(HashFormat::Base16, false));
+        debug("HEAD revision for '%s' is %s", url, base16Encode(rev));
         co_return rev;
     } catch (...) {
         co_return result::current_exception();
@@ -342,12 +342,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
                     ? "https://%s/%s/%s/archive/%s.tar.gz"
                     : "https://api.%s/repos/%s/%s/tarball/%s";
 
-        const auto url =
-            fmt(urlFmt,
-                host,
-                getOwner(input),
-                getRepo(input),
-                input.getRev()->to_string(HashFormat::Base16, false));
+        const auto url = fmt(urlFmt, host, getOwner(input), getRepo(input), base16Encode(*input.getRev()));
 
         return DownloadUrl { url, headers };
     }
@@ -411,7 +406,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
         )), "a gitlab API response");
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
-            debug("HEAD revision for '%s' is %s", url, rev.to_string(HashFormat::Base16, false));
+            debug("HEAD revision for '%s' is %s", url, base16Encode(rev));
             co_return rev;
         } else if (json.is_array() && json.size() == 0) {
             throw Error("No commits returned by GitLab API -- does the ref really exist?");
@@ -435,7 +430,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
                 host,
                 getStrAttr(input.attrs, "owner"),
                 getStrAttr(input.attrs, "repo"),
-                input.getRev()->to_string(HashFormat::Base16, false));
+                base16Encode(*input.getRev()));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };
@@ -527,11 +522,7 @@ struct SourceHutInputScheme : GitArchiveInputScheme
             throw BadURL("in '%d', couldn't find ref '%d'", input.to_string(), ref);
 
         auto rev = Hash::parseAny(*id, HashType::SHA1);
-        debug(
-            "HEAD revision for '%s' is %s",
-            fmt("%s/%s", base_url, ref),
-            rev.to_string(HashFormat::Base16, false)
-        );
+        debug("HEAD revision for '%s' is %s", fmt("%s/%s", base_url, ref), base16Encode(rev));
         co_return rev;
     } catch (...) {
         co_return result::current_exception();
@@ -545,7 +536,7 @@ struct SourceHutInputScheme : GitArchiveInputScheme
                 host,
                 getStrAttr(input.attrs, "owner"),
                 getStrAttr(input.attrs, "repo"),
-                input.getRev()->to_string(HashFormat::Base16, false));
+                base16Encode(*input.getRev()));
 
         Headers headers = makeHeadersWithAuthTokens(host);
         return DownloadUrl { url, headers };

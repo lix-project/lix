@@ -82,7 +82,7 @@ Value prim_fetchMercurial(EvalState & state, Value ** args)
     attrs.insert_or_assign("name", std::string(name));
     if (ref) attrs.insert_or_assign("ref", *ref);
     if (rev) {
-        attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+        attrs.insert_or_assign("rev", base16Encode(*rev));
     }
     auto input = fetchers::Input::fromAttrs(std::move(attrs));
 
@@ -96,8 +96,8 @@ Value prim_fetchMercurial(EvalState & state, Value ** args)
     // Backward compatibility: set 'rev' to
     // 0000000000000000000000000000000000000000 for a dirty tree.
     auto rev2 = input2.getRev().value_or(Hash(HashType::SHA1));
-    attrs2.insert("rev", {NewValueAs::string, rev2.to_string(HashFormat::Base16, false)});
-    attrs2.insert("shortRev", {NewValueAs::string, rev2.to_string(HashFormat::Base16, false).substr(0, 12)});
+    attrs2.insert("rev", {NewValueAs::string, base16Encode(rev2)});
+    attrs2.insert("shortRev", {NewValueAs::string, base16Encode(rev2.as_span().subspan(0, 6))});
     if (auto revCount = input2.getRevCount())
         attrs2.insert("revCount", {NewValueAs::integer, NixInt::Inner(*revCount)});
 

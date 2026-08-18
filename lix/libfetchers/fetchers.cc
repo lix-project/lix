@@ -203,7 +203,7 @@ try {
             throw Error(
                 "'rev' attribute mismatch in input '%s', expected %s",
                 input.to_string(),
-                prevRev->to_string(HashFormat::Base16, false)
+                base16Encode(*prevRev)
             );
     }
 
@@ -352,9 +352,7 @@ Input InputScheme::applyOverrides(
         throw Error("don't know how to set branch/tag name of input '%s' to '%s'", input.to_string(), *ref);
     if (rev)
         throw Error(
-            "don't know how to set revision of input '%s' to '%s'",
-            input.to_string(),
-            rev->to_string(HashFormat::Base16, false)
+            "don't know how to set revision of input '%s' to '%s'", input.to_string(), base16Encode(*rev)
         );
     return input;
 }

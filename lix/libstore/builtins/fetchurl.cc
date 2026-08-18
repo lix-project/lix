@@ -41,9 +41,7 @@ void BuiltinFetchurl::run(AsyncIoRoot & aio)
                 if (!hashedMirror.ends_with("/")) {
                     hashedMirror += '/';
                 }
-                fetch(
-                    aio, fmt("%s%s/%s", hashedMirror, hash->type, hash->to_string(HashFormat::Base16, false))
-                );
+                fetch(aio, fmt("%s%s/%s", hashedMirror, hash->type, base16Encode(*hash)));
                 return;
             } catch (Error & e) {
                 debug("%1%", Uncolored(e.what()));

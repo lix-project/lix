@@ -409,7 +409,7 @@ struct GitInputScheme : InputScheme
         auto url = parseURL(getStrAttr(input.attrs, "url"));
         if (url.scheme != "git") url.scheme = "git+" + url.scheme;
         if (auto rev = input.getRev()) {
-            url.query.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+            url.query.insert_or_assign("rev", base16Encode(*rev));
         }
         if (auto ref = input.getRef()) url.query.insert_or_assign("ref", *ref);
         if (maybeGetBoolAttr(input.attrs, "shallow").value_or(false))
@@ -433,7 +433,7 @@ struct GitInputScheme : InputScheme
     {
         auto res(input);
         if (rev) {
-            res.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+            res.attrs.insert_or_assign("rev", base16Encode(*rev));
         }
         if (ref) res.attrs.insert_or_assign("ref", *ref);
         if (!res.getRef() && res.getRev())
@@ -587,7 +587,7 @@ struct GitInputScheme : InputScheme
             return Attrs({
                 {"type", cacheType},
                 {"name", name},
-                {"rev", input.getRev()->to_string(HashFormat::Base16, false)},
+                {"rev", base16Encode(*input.getRev())},
             });
         };
 
@@ -652,13 +652,16 @@ struct GitInputScheme : InputScheme
             if (!input.getRev())
                 input.attrs.insert_or_assign(
                     "rev",
-                    Hash::parseAny(
-                        chomp(TRY_AWAIT(runProgram(
-                            "git", true, {"-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef()}
-                        ))),
-                        HashType::SHA1
+                    base16Encode(
+                        Hash::parseAny(
+                            chomp(TRY_AWAIT(runProgram(
+                                "git",
+                                true,
+                                {"-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef()}
+                            ))),
+                            HashType::SHA1
+                        )
                     )
-                        .to_string(HashFormat::Base16, false)
                 );
 
             repoDir = actualUrl;
@@ -686,7 +689,7 @@ struct GitInputScheme : InputScheme
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&cached)) {
                 auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
                 if (!input.getRev() || input.getRev() == rev2) {
-                    input.attrs.insert_or_assign("rev", rev2.to_string(HashFormat::Base16, false));
+                    input.attrs.insert_or_assign("rev", base16Encode(rev2));
                     co_return makeResult(res->first, std::move(res->second));
                 }
             }
@@ -724,13 +727,7 @@ struct GitInputScheme : InputScheme
                     TRY_AWAIT(runProgram(
                         "git",
                         true,
-                        {"-C",
-                         repoDir,
-                         "--git-dir",
-                         gitDir,
-                         "cat-file",
-                         "-e",
-                         input.getRev()->to_string(HashFormat::Base16, false)}
+                        {"-C", repoDir, "--git-dir", gitDir, "cat-file", "-e", base16Encode(*input.getRev())}
                     ));
                     doFetch = false;
                 } catch (ExecError & e) {
@@ -863,9 +860,7 @@ struct GitInputScheme : InputScheme
 
         // FIXME: check whether rev is an ancestor of ref.
 
-        printTalkative(
-            "using revision %s of repo '%s'", input.getRev()->to_string(HashFormat::Base16, false), actualUrl
-        );
+        printTalkative("using revision %s of repo '%s'", base16Encode(*input.getRev()), actualUrl);
 
         /* Now that we know the ref, check again whether we have it in
            the store. */
@@ -893,13 +888,7 @@ struct GitInputScheme : InputScheme
             RunOptions{
                 .program = "git",
                 .args =
-                    {"-C",
-                     repoDir,
-                     "--git-dir",
-                     gitDir,
-                     "cat-file",
-                     "commit",
-                     input.getRev()->to_string(HashFormat::Base16, false)},
+                    {"-C", repoDir, "--git-dir", gitDir, "cat-file", "commit", base16Encode(*input.getRev())},
                 .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
             }
         ));
@@ -911,7 +900,7 @@ struct GitInputScheme : InputScheme
                 "Please make sure that the " ANSI_BOLD "rev" ANSI_NORMAL " exists on the " ANSI_BOLD
                 "ref" ANSI_NORMAL " you've specified or add " ANSI_BOLD "allRefs = true;" ANSI_NORMAL
                 " to " ANSI_BOLD "fetchGit" ANSI_NORMAL ".",
-                input.getRev()->to_string(HashFormat::Base16, false),
+                base16Encode(*input.getRev()),
                 *input.getRef(),
                 actualUrl
             );
@@ -955,11 +944,9 @@ struct GitInputScheme : InputScheme
                 ));
             }
 
-            TRY_AWAIT(runProgram(
-                "git",
-                true,
-                {"-C", tmpDir, "checkout", "--quiet", input.getRev()->to_string(HashFormat::Base16, false)}
-            ));
+            TRY_AWAIT(
+                runProgram("git", true, {"-C", tmpDir, "checkout", "--quiet", base16Encode(*input.getRev())})
+            );
 
             /* Ensure that we use the correct origin for fetching
                submodules. This matters for submodules with relative
@@ -1002,13 +989,7 @@ struct GitInputScheme : InputScheme
         } else {
             auto proc = runProgram2({
                 .program = "git",
-                .args =
-                    {"-C",
-                     repoDir,
-                     "--git-dir",
-                     gitDir,
-                     "archive",
-                     input.getRev()->to_string(HashFormat::Base16, false)},
+                .args = {"-C", repoDir, "--git-dir", gitDir, "archive", base16Encode(*input.getRev())},
                 .captureStdout = true,
             });
             Finally const _wait([&] { proc.waitAndCheck(); });
@@ -1031,11 +1012,11 @@ struct GitInputScheme : InputScheme
              "-1",
              "--format=%ct",
              "--no-show-signature",
-             input.getRev()->to_string(HashFormat::Base16, false)}
+             base16Encode(*input.getRev())}
         )));
 
         Attrs infoAttrs({
-            {"rev", input.getRev()->to_string(HashFormat::Base16, false)},
+            {"rev", base16Encode(*input.getRev())},
             {"lastModified", lastModified},
         });
 
@@ -1045,13 +1026,7 @@ struct GitInputScheme : InputScheme
                 std::stoull(TRY_AWAIT(runProgram(
                     "git",
                     true,
-                    {"-C",
-                     repoDir,
-                     "--git-dir",
-                     gitDir,
-                     "rev-list",
-                     "--count",
-                     input.getRev()->to_string(HashFormat::Base16, false)}
+                    {"-C", repoDir, "--git-dir", gitDir, "rev-list", "--count", base16Encode(*input.getRev())}
                 )))
             );
 
