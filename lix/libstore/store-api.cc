@@ -841,6 +841,27 @@ try {
     co_return result::current_exception();
 }
 
+static JSON basicPathInfoToJSON(Store & store, const ValidPathInfo & info, bool sri)
+{
+    JSON jsonPath;
+
+    jsonPath["path"] = store.printStorePath(info.path);
+    jsonPath["valid"] = true;
+    jsonPath["narHash"] = sri ? info.narHash.to_sri() : info.narHash.to_base32();
+    jsonPath["narSize"] = info.narSize;
+
+    auto & jsonRefs = (jsonPath["references"] = JSON::array());
+    for (auto & ref : info.references) {
+        jsonRefs.emplace_back(store.printStorePath(ref));
+    }
+
+    if (info.ca) {
+        jsonPath["ca"] = renderContentAddress(info.ca);
+    }
+
+    return jsonPath;
+}
+
 kj::Promise<Result<JSON>> Store::pathInfoToJSON(
     const StorePathSet & storePaths,
     bool includeImpureInfo,
@@ -849,6 +870,8 @@ kj::Promise<Result<JSON>> Store::pathInfoToJSON(
     AllowInvalidFlag allowInvalid
 )
 try {
+    assert(hashFormat == HashFormat::Base32 || hashFormat == HashFormat::SRI);
+
     JSON::array_t jsonList = JSON::array();
 
     for (auto & storePath : storePaths) {
@@ -857,19 +880,7 @@ try {
         try {
             auto info = TRY_AWAIT(queryPathInfo(storePath));
 
-            jsonPath["path"] = printStorePath(info->path);
-            jsonPath["valid"] = true;
-            jsonPath["narHash"] = info->narHash.to_string(hashFormat, true);
-            jsonPath["narSize"] = info->narSize;
-
-            {
-                auto& jsonRefs = (jsonPath["references"] = JSON::array());
-                for (auto & ref : info->references)
-                    jsonRefs.emplace_back(printStorePath(ref));
-            }
-
-            if (info->ca)
-                jsonPath["ca"] = renderContentAddress(info->ca);
+            jsonPath = basicPathInfoToJSON(*this, *info, hashFormat == HashFormat::SRI);
 
             std::pair<uint64_t, uint64_t> closureSizes;
 
