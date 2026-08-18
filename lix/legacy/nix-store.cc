@@ -880,8 +880,8 @@ opVerifyPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, S
             printError(
                 "path '%s' was modified! expected hash '%s', got '%s'",
                 store->printStorePath(path),
-                info->narHash.to_string(),
-                current.first.to_string()
+                info->narHash.to_sri(),
+                current.first.to_sri()
             );
             status = 1;
         }

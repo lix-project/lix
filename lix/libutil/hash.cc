@@ -39,6 +39,13 @@ std::string Hash::to_string(HashFormat format, bool includeType) const
     return s;
 }
 
+std::string Hash::to_sri() const
+{
+    return fmt(
+        "%s-%s", type, base64Encode(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()))
+    );
+}
+
 Hash Hash::dummy(HashType::SHA256);
 
 Hash Hash::parseSRI(std::string_view original) {
@@ -138,7 +145,7 @@ Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht)
         if (!ht)
             throw BadHash("empty hash requires explicit hash type");
         Hash h(*ht);
-        printTaggedWarning("found empty hash, assuming '%s'", h.to_string(HashFormat::SRI, true));
+        printTaggedWarning("found empty hash, assuming '%s'", h.to_sri());
         return h;
     } else
         return Hash::parseAny(hashStr, ht);

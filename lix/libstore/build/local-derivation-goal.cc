@@ -1735,8 +1735,8 @@ try {
                         "specified: %s\n           got: %s\n expected path: %s\n      got path: %s",
                         worker.store.printStorePath(drvPath),
                         guessedUrl,
-                        wanted.to_string(),
-                        got.to_string(),
+                        wanted.to_sri(),
+                        got.to_sri(),
                         worker.store.printStorePath(dof.path(worker.store, drv->name, outputName)),
                         worker.store.printStorePath(newInfo0.path)
                     ));

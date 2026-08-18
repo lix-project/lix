@@ -1133,8 +1133,8 @@ try {
                 throw Error(
                     "hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                     printStorePath(info.path),
-                    info.narHash.to_string(),
-                    hashResult.first.to_string()
+                    info.narHash.to_sri(),
+                    hashResult.first.to_sri()
                 );
 
             if (hashResult.second != info.narSize)
@@ -1152,8 +1152,8 @@ try {
                     throw Error(
                         "ca hash mismatch importing path '%s';\n  specified: %s\n  got:       %s",
                         printStorePath(info.path),
-                        specified.hash.to_string(),
-                        actualHash.hash.to_string()
+                        specified.hash.to_sri(),
+                        actualHash.hash.to_sri()
                     );
                 }
             }
@@ -1540,8 +1540,8 @@ try {
                     printError(
                         "path '%s' was modified! expected hash '%s', got '%s'",
                         toRealPath(printStorePath(i)),
-                        info->narHash.to_string(),
-                        current.first.to_string()
+                        info->narHash.to_sri(),
+                        current.first.to_sri()
                     );
                     if (repair) TRY_AWAIT(repairPath(i)); else errors = true;
                 } else {

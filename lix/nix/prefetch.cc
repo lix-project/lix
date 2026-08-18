@@ -339,14 +339,11 @@ struct CmdStorePrefetchFile : StoreCommand, MixJSON
         if (json) {
             auto res = JSON::object();
             res["storePath"] = store->printStorePath(storePath);
-            res["hash"] = hash.to_string();
+            res["hash"] = hash.to_sri();
             logger->cout(res.dump());
         } else {
             notice(
-                "Downloaded '%s' to '%s' (hash '%s').",
-                url,
-                store->printStorePath(storePath),
-                hash.to_string()
+                "Downloaded '%s' to '%s' (hash '%s').", url, store->printStorePath(storePath), hash.to_sri()
             );
         }
     }

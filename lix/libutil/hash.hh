@@ -154,6 +154,10 @@ public:
      */
     std::string to_string(HashFormat format = HashFormat::SRI, bool includeType = true) const;
 
+    /// @brief "<hash algo>-<Base 64 hash>", format of the SRI integrity attribute.
+    /// @see W3C recommendation [Subresource Intergrity](https://www.w3.org/TR/SRI/).
+    std::string to_sri() const;
+
     static Hash dummy;
 };
 

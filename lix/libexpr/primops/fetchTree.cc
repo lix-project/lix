@@ -32,7 +32,7 @@ Value emitTreeAttrs(
 
     auto narHash = input.getNarHash();
     assert(narHash);
-    attrs.insert("narHash", {NewValueAs::string, narHash->to_string()});
+    attrs.insert("narHash", {NewValueAs::string, narHash->to_sri()});
 
     if (input.getType() == "git")
         attrs.insert(
@@ -331,8 +331,8 @@ static Value fetch(
                 .make<EvalError>(
                     "hash mismatch in file downloaded from '%s':\n  specified: %s\n  got:       %s",
                     *url,
-                    expectedHash->to_string(),
-                    hash.to_string()
+                    expectedHash->to_sri(),
+                    hash.to_sri()
                 )
                 .withExitStatus(102)
                 .debugThrow();
