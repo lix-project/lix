@@ -160,6 +160,11 @@ public:
         return {hash, hashSize};
     }
 
+    operator std::span<const uint8_t>() const
+    {
+        return as_span();
+    }
+
     /**
      * Return a string representation of the hash, in base-16, base-32
      * or base-64. By default, this is prefixed by the hash type
