@@ -200,8 +200,11 @@ try {
 
     if (auto prevRev = getRev()) {
         if (input.getRev() != prevRev)
-            throw Error("'rev' attribute mismatch in input '%s', expected %s",
-                input.to_string(), prevRev->gitRev());
+            throw Error(
+                "'rev' attribute mismatch in input '%s', expected %s",
+                input.to_string(),
+                prevRev->to_string(HashFormat::Base16, false)
+            );
     }
 
     if (auto prevRevCount = getRevCount()) {
@@ -348,7 +351,11 @@ Input InputScheme::applyOverrides(
     if (ref)
         throw Error("don't know how to set branch/tag name of input '%s' to '%s'", input.to_string(), *ref);
     if (rev)
-        throw Error("don't know how to set revision of input '%s' to '%s'", input.to_string(), rev->gitRev());
+        throw Error(
+            "don't know how to set revision of input '%s' to '%s'",
+            input.to_string(),
+            rev->to_string(HashFormat::Base16, false)
+        );
     return input;
 }
 

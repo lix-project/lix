@@ -51,7 +51,9 @@ struct IndirectInputScheme : InputScheme
 
         attrs.emplace("type", "indirect");
         attrs.emplace("id", id);
-        if (rev) attrs.emplace("rev", rev->gitRev());
+        if (rev) {
+            attrs.emplace("rev", rev->to_string(HashFormat::Base16, false));
+        }
         if (ref) attrs.emplace("ref", *ref);
 
         emplaceURLQueryIntoAttrs(url, attrs, {}, {});
@@ -96,7 +98,10 @@ struct IndirectInputScheme : InputScheme
         url.scheme = "flake";
         url.path = getStrAttr(input.attrs, "id");
         if (auto ref = input.getRef()) { url.path += '/'; url.path += *ref; };
-        if (auto rev = input.getRev()) { url.path += '/'; url.path += rev->gitRev(); };
+        if (auto rev = input.getRev()) {
+            url.path += '/';
+            url.path += rev->to_string(HashFormat::Base16, false);
+        };
         return url;
     }
 
@@ -113,7 +118,9 @@ struct IndirectInputScheme : InputScheme
         std::optional<Hash> rev) const override
     {
         auto input(_input);
-        if (rev) input.attrs.insert_or_assign("rev", rev->gitRev());
+        if (rev) {
+            input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+        }
         if (ref) input.attrs.insert_or_assign("ref", *ref);
         return input;
     }

@@ -174,7 +174,11 @@ struct GitArchiveInputScheme : InputScheme
         if (ref && rev) {
             throw Error(
                 "input '%s:%s/%s' has both ref (%s) and rev (%s), which is not allowed",
-                schemeType(), owner, repo, *ref, rev->gitRev()
+                schemeType(),
+                owner,
+                repo,
+                *ref,
+                rev->to_string(HashFormat::Base16, false)
             );
         }
         if (ref) {
@@ -201,10 +205,14 @@ struct GitArchiveInputScheme : InputScheme
     {
         auto input(_input);
         if (rev && ref)
-            throw BadURL("cannot apply both a commit hash (%s) and a branch/tag name ('%s') to input '%s'",
-                rev->gitRev(), *ref, input.to_string());
+            throw BadURL(
+                "cannot apply both a commit hash (%s) and a branch/tag name ('%s') to input '%s'",
+                rev->to_string(HashFormat::Base16, false),
+                *ref,
+                input.to_string()
+            );
         if (rev) {
-            input.attrs.insert_or_assign("rev", rev->gitRev());
+            input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
             input.attrs.erase("ref");
         }
         if (ref) {
@@ -252,7 +260,7 @@ struct GitArchiveInputScheme : InputScheme
         if (!rev) rev = TRY_AWAIT(getRevFromRef(store, input));
 
         input.attrs.erase("ref");
-        input.attrs.insert_or_assign("rev", rev->gitRev());
+        input.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
 
         auto url = getDownloadUrl(input);
 
@@ -313,7 +321,7 @@ struct GitHubInputScheme : GitArchiveInputScheme
             TRY_AWAIT(downloadFile(store, url, "source", false, headers)).storePath
         )), "a github API response");
         auto rev = Hash::parseAny(std::string { json["sha"] }, HashType::SHA1);
-        debug("HEAD revision for '%s' is %s", url, rev.gitRev());
+        debug("HEAD revision for '%s' is %s", url, rev.to_string(HashFormat::Base16, false));
         co_return rev;
     } catch (...) {
         co_return result::current_exception();
@@ -403,7 +411,7 @@ struct GitLabInputScheme : GitArchiveInputScheme
         )), "a gitlab API response");
         if (json.is_array() && json.size() >= 1 && json[0]["id"] != nullptr) {
             auto rev = Hash::parseAny(std::string(json[0]["id"]), HashType::SHA1);
-            debug("HEAD revision for '%s' is %s", url, rev.gitRev());
+            debug("HEAD revision for '%s' is %s", url, rev.to_string(HashFormat::Base16, false));
             co_return rev;
         } else if (json.is_array() && json.size() == 0) {
             throw Error("No commits returned by GitLab API -- does the ref really exist?");
@@ -519,7 +527,11 @@ struct SourceHutInputScheme : GitArchiveInputScheme
             throw BadURL("in '%d', couldn't find ref '%d'", input.to_string(), ref);
 
         auto rev = Hash::parseAny(*id, HashType::SHA1);
-        debug("HEAD revision for '%s' is %s", fmt("%s/%s", base_url, ref), rev.gitRev());
+        debug(
+            "HEAD revision for '%s' is %s",
+            fmt("%s/%s", base_url, ref),
+            rev.to_string(HashFormat::Base16, false)
+        );
         co_return rev;
     } catch (...) {
         co_return result::current_exception();

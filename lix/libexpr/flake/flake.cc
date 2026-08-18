@@ -928,7 +928,7 @@ LockedFlake lockFlake(
                             prevLockedRef.input.getRev() != flake.lockedRef.input.getRev())
                             printTaggedWarning(
                                 "committed new revision '%s'",
-                                flake.lockedRef.input.getRev()->gitRev()
+                                flake.lockedRef.input.getRev()->to_string(HashFormat::Base16, false)
                             );
 
                         /* Make sure that we picked up the change,

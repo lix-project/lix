@@ -100,7 +100,9 @@ struct MercurialInputScheme : InputScheme
     {
         auto url = parseURL(getStrAttr(input.attrs, "url"));
         url.scheme = "hg+" + url.scheme;
-        if (auto rev = input.getRev()) url.query.insert_or_assign("rev", rev->gitRev());
+        if (auto rev = input.getRev()) {
+            url.query.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+        }
         if (auto ref = input.getRef()) url.query.insert_or_assign("ref", *ref);
         return url;
     }
@@ -118,7 +120,9 @@ struct MercurialInputScheme : InputScheme
         std::optional<Hash> rev) const override
     {
         auto res(input);
-        if (rev) res.attrs.insert_or_assign("rev", rev->gitRev());
+        if (rev) {
+            res.attrs.insert_or_assign("rev", rev->to_string(HashFormat::Base16, false));
+        }
         if (ref) res.attrs.insert_or_assign("ref", *ref);
         return res;
     }
@@ -264,7 +268,7 @@ struct MercurialInputScheme : InputScheme
             return Attrs({
                 {"type", "hg"},
                 {"name", name},
-                {"rev", input.getRev()->gitRev()},
+                {"rev", input.getRev()->to_string(HashFormat::Base16, false)},
             });
         };
 
@@ -283,7 +287,8 @@ struct MercurialInputScheme : InputScheme
             }
         }
 
-        auto revOrRef = input.getRev() ? fmt("id(%s)", input.getRev()->gitRev()) : *input.getRef();
+        auto revOrRef = input.getRev() ? fmt("id(%s)", input.getRev()->to_string(HashFormat::Base16, false))
+                                       : *input.getRef();
 
         Attrs unlockedAttrs({
             {"type", "hg"},
@@ -295,7 +300,7 @@ struct MercurialInputScheme : InputScheme
         if (auto res = TRY_AWAIT(TRY_AWAIT(getCache())->lookup(store, unlockedAttrs))) {
             auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
             if (!input.getRev() || input.getRev() == rev2) {
-                input.attrs.insert_or_assign("rev", rev2.gitRev());
+                input.attrs.insert_or_assign("rev", rev2.to_string(HashFormat::Base16, false));
                 co_return makeResult(res->first, std::move(res->second));
             }
         }
@@ -353,7 +358,9 @@ struct MercurialInputScheme : InputScheme
         )));
         assert(tokens.size() == 3);
 
-        input.attrs.insert_or_assign("rev", Hash::parseAny(tokens[0], HashType::SHA1).gitRev());
+        input.attrs.insert_or_assign(
+            "rev", Hash::parseAny(tokens[0], HashType::SHA1).to_string(HashFormat::Base16, false)
+        );
         auto revCount = std::stoull(tokens[1]);
         input.attrs.insert_or_assign("ref", tokens[2]);
 
@@ -365,7 +372,12 @@ struct MercurialInputScheme : InputScheme
         AutoDelete delTmpDir(tmpDir, true);
 
         TRY_AWAIT(runHg(
-            {"archive", "-R", cacheDir, "-r", fmt("id(%s)", input.getRev()->gitRev()), tmpDir}
+            {"archive",
+             "-R",
+             cacheDir,
+             "-r",
+             fmt("id(%s)", input.getRev()->to_string(HashFormat::Base16, false)),
+             tmpDir}
         ));
 
         deletePath(tmpDir + "/.hg_archival.txt");
@@ -373,7 +385,7 @@ struct MercurialInputScheme : InputScheme
         auto storePath = TRY_AWAIT(store->addToStoreRecursive(name, *prepareDump(tmpDir)));
 
         Attrs infoAttrs({
-            {"rev", input.getRev()->gitRev()},
+            {"rev", input.getRev()->to_string(HashFormat::Base16, false)},
             {"revCount", (uint64_t) revCount},
         });
 

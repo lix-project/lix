@@ -154,11 +154,6 @@ public:
      */
     std::string to_string(HashFormat format = HashFormat::SRI, bool includeType = true) const;
 
-    std::string gitRev() const
-    {
-        return to_string(HashFormat::Base16, false);
-    }
-
     static Hash dummy;
 };
 
