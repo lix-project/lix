@@ -306,9 +306,7 @@ struct MercurialInputScheme : InputScheme
         }
 
         Path cacheDir =
-            fmt("%s/nix/hg/%s",
-                getCacheDir(),
-                hashString(HashType::SHA256, actualUrl).to_string(HashFormat::Base32, false));
+            fmt("%s/nix/hg/%s", getCacheDir(), base32Encode(hashString(HashType::SHA256, actualUrl)));
 
         /* If this is a commit hash that we already have, we don't
            have to pull again. */

@@ -159,7 +159,7 @@ std::optional<struct ::stat> LocalStore::optimisePath_(
     debug("'%1%' has hash '%2%'", path, hash.to_string(HashFormat::Base32));
 
     /* Check if this is a known hash. */
-    Path linkPath = linksDir + "/" + hash.to_string(HashFormat::Base32, false);
+    Path linkPath = linksDir + "/" + base32Encode(hash);
     auto stLinkOpt = maybeLstat(linkPath);
 
     /* Maybe delete the link, if it has been corrupted. */

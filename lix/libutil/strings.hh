@@ -234,6 +234,10 @@ inline size_t base64Size(std::span<const uint8_t> input)
 extern const std::string base32Chars;
 std::string base32EncodeStr(std::string_view s);
 std::string base32Encode(std::span<std::byte const> const s);
+inline std::string base32Encode(std::span<const uint8_t> const s)
+{
+    return base32Encode(as_bytes(s));
+}
 std::string base32Decode(std::string_view s);
 inline size_t base32Size(size_t input)
 {

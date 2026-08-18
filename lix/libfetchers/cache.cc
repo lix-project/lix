@@ -102,7 +102,7 @@ struct CacheImpl : Cache
         // In order to avoid fetching the same input multiple times
         // concurrently, we first acquire a lock based on the input attributes.
         auto hashResult = hashString(HashType::SHA256, attrsToJSON(inAttrs).dump());
-        auto lockPath = getCacheDir() + "/nix/fetcher-lock-" + hashResult.to_string(HashFormat::Base32, false);
+        auto lockPath = getCacheDir() + "/nix/fetcher-lock-" + base32Encode(hashResult);
         auto pathLock = TRY_AWAIT(lockPathAsync(lockPath));
         // Once this lock is acquired, we check if the input is already present
         // in the cache (which requires locking the cache db)

@@ -1501,8 +1501,7 @@ try {
         for (auto & link : readDirectory(linksDir)) {
             printMsg(lvlTalkative, "checking contents of '%s'", link.name);
             Path linkPath = linksDir + "/" + link.name;
-            std::string hash =
-                hashPath(HashType::SHA256, linkPath).first.to_string(HashFormat::Base32, false);
+            std::string hash = base32Encode(hashPath(HashType::SHA256, linkPath).first);
             if (hash != link.name) {
                 printError("link '%s' was modified! expected hash '%s', got '%s'",
                     linkPath, link.name, hash);

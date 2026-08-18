@@ -1090,7 +1090,7 @@ void LocalDerivationGoal::initTmpDir() {
                 env[i.first] = i.second;
             } else {
                 auto hash = hashString(HashType::SHA256, i.first);
-                std::string fn = ".attr-" + hash.to_string(HashFormat::Base32, false);
+                std::string fn = ".attr-" + base32Encode(hash);
                 Path p = tmpDir + "/" + fn;
                 /* TODO(jade): we should have BorrowedFD instead of OwnedFD. */
                 AutoCloseFD passAsFileFd{sys::openat(
