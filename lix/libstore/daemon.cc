@@ -419,24 +419,31 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             auto hashType = hashType_; // work around clang bug
             FramedSource source(from);
             // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
-            return std::visit(overloaded {
-                [&](const TextIngestionMethod &) {
-                    if (hashType != HashType::SHA256)
-                        throw UnimplementedError("When adding text-hashed data called '%s', only SHA-256 is supported but '%s' was given",
-                            name, printHashType(hashType));
-                    // We could stream this by changing Store
-                    std::string contents = source.drain();
-                    auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
-                    return aio.blockOn(store->queryPathInfo(path));
+            return std::visit(
+                overloaded{
+                    [&](const TextIngestionMethod &) {
+                        if (hashType != HashType::SHA256) {
+                            throw UnimplementedError(
+                                "When adding text-hashed data called '%s', only SHA-256 is supported but "
+                                "'%s' was given",
+                                name,
+                                hashType
+                            );
+                        }
+                        // We could stream this by changing Store
+                        std::string contents = source.drain();
+                        auto path = aio.blockOn(store->addTextToStore(name, contents, refs, repair));
+                        return aio.blockOn(store->queryPathInfo(path));
+                    },
+                    [&](const FileIngestionMethod & fim) {
+                        AsyncSourceInputStream stream{source};
+                        auto path =
+                            aio.blockOn(store->addToStoreFromDump(stream, name, fim, hashType, repair, refs));
+                        return aio.blockOn(store->queryPathInfo(path));
+                    },
                 },
-                [&](const FileIngestionMethod & fim) {
-                    AsyncSourceInputStream stream{source};
-                    auto path = aio.blockOn(
-                        store->addToStoreFromDump(stream, name, fim, hashType, repair, refs)
-                    );
-                    return aio.blockOn(store->queryPathInfo(path));
-                },
-            }, contentAddressMethod.raw);
+                contentAddressMethod.raw
+            );
         }();
         logger->stopWork();
 
@@ -1112,7 +1119,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                                     "When adding text-hashed data called '%s', only SHA-256 is supported "
                                     "but '%s' was given",
                                     name,
-                                    printHashType(hashType)
+                                    hashType
                                 );
                             }
 

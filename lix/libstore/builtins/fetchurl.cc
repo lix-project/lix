@@ -42,9 +42,7 @@ void BuiltinFetchurl::run(AsyncIoRoot & aio)
                     hashedMirror += '/';
                 }
                 fetch(
-                    aio,
-                    hashedMirror + printHashType(hash->type) + "/"
-                        + hash->to_string(HashFormat::Base16, false)
+                    aio, fmt("%s%s/%s", hashedMirror, hash->type, hash->to_string(HashFormat::Base16, false))
                 );
                 return;
             } catch (Error & e) {

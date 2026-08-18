@@ -22,8 +22,7 @@ std::string Hash::to_string(HashFormat format, bool includeType) const
 {
     std::string s;
     if (format == HashFormat::SRI || includeType) {
-        s += printHashType(type);
-        s += format == HashFormat::SRI ? '-' : ':';
+        s = fmt("%s%s", type, format == HashFormat::SRI ? '-' : ':');
     }
     switch (format) {
     case HashFormat::Base16:
@@ -99,7 +98,7 @@ Hash Hash::parseAny(std::string_view original, std::optional<HashType> optType)
     if (!optParsedType && !optType)
         throw BadHash("hash '%s' does not include a type, nor is the type otherwise known from context", rest);
     else if (optParsedType && optType && *optParsedType != *optType)
-        throw BadHash("hash '%s' should have type '%s'", original, printHashType(*optType));
+        throw BadHash("hash '%s' should have type '%s'", original, *optType);
 
     HashType hashType = optParsedType ? *optParsedType : *optType;
     return Hash(rest, hashType, isSRI);
@@ -129,7 +128,7 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
         }
         memcpy(hash.data(), d.data(), hash.size());
     } else {
-        throw BadHash("hash '%s' has wrong length for hash type '%s'", rest, printHashType(this->type));
+        throw BadHash("hash '%s' has wrong length for hash type '%s'", rest, type);
     }
 }
 
@@ -271,17 +270,17 @@ HashType parseHashType(std::string_view s)
     throw UsageError("unknown hash algorithm '%1%'", s);
 }
 
-std::string_view printHashType(HashType type)
+std::ostream & operator<<(std::ostream & os, HashType type)
 {
     switch (type) {
     case HashType::MD5:
-        return "md5";
+        return os << "md5";
     case HashType::SHA1:
-        return "sha1";
+        return os << "sha1";
     case HashType::SHA256:
-        return "sha256";
+        return os << "sha256";
     case HashType::SHA512:
-        return "sha512";
+        return os << "sha512";
     default:
         // illegal hash type enum value internally, as opposed to external input
         // which should be validated with nice error message.

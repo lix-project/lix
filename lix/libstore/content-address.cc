@@ -41,14 +41,15 @@ ContentAddressMethod ContentAddressMethod::parsePrefix(std::string_view & m)
 
 std::string ContentAddressMethod::render(HashType ht) const
 {
-    return std::visit(overloaded {
-        [&](const TextIngestionMethod & th) {
-            return std::string{"text:"} + printHashType(ht);
+    return std::visit(
+        overloaded{
+            [&](const TextIngestionMethod & th) { return fmt("text:%s", ht); },
+            [&](const FileIngestionMethod & fim) {
+                return fmt("fixed:%s%s", makeFileIngestionPrefix(fim), ht);
+            }
         },
-        [&](const FileIngestionMethod & fim) {
-            return "fixed:" + makeFileIngestionPrefix(fim) + printHashType(ht);
-        }
-    }, raw);
+        raw
+    );
 }
 
 std::string ContentAddress::render() const
@@ -144,8 +145,7 @@ std::string renderContentAddress(std::optional<ContentAddress> ca)
 
 std::string ContentAddress::printMethodAlgo() const
 {
-    return method.renderPrefix()
-        + printHashType(hash.type);
+    return fmt("%s%s", method.renderPrefix(), hash.type);
 }
 
 bool StoreReferences::empty() const

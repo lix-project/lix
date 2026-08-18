@@ -20,6 +20,18 @@ MakeError(BadHash, Error);
 
 enum class HashType : char { MD5 = 42, SHA1, SHA256, SHA512 };
 
+/**
+ * Parse a string representing a hash type.
+ */
+HashType parseHashType(std::string_view s);
+
+/**
+ * Will return nothing on parse error
+ */
+std::optional<HashType> parseHashTypeOpt(std::string_view s);
+
+std::ostream & operator<<(std::ostream &, HashType ht);
+
 const size_t md5HashSize = 16;
 const size_t sha1HashSize = 20;
 const size_t sha256HashSize = 32;
@@ -186,21 +198,6 @@ inline HashResult hashPath(HashType ht, Path path)
  * XORing bytes together.
  */
 Hash compressHash(const Hash & hash, size_t newSize);
-
-/**
- * Parse a string representing a hash type.
- */
-HashType parseHashType(std::string_view s);
-
-/**
- * Will return nothing on parse error
- */
-std::optional<HashType> parseHashTypeOpt(std::string_view s);
-
-/**
- * And the reverse.
- */
-std::string_view printHashType(HashType ht);
 
 struct AbstractHashSink : virtual Sink
 {
