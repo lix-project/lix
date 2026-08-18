@@ -52,6 +52,9 @@ md5sum`.
 
   - `--truncate`\
     Truncate hashes longer than 160 bits (such as SHA-256) to 160 bits.
+    Incompatible with `--sri` since that would result in invalid SRI hashes
+    when truncation does occur. Also is not a truncation but an xor-based
+    compression.
 
   - `--type` *hashAlgo*\
     Use the specified cryptographic hash algorithm, which can be one of

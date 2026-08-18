@@ -3,6 +3,7 @@
 #include "lix/libstore/content-address.hh"
 #include "lix/libcmd/legacy.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libutil/error.hh"
 #include "lix/libutil/references.hh"
 #include "lix/libutil/archive.hh"
 #include "hash.hh"
@@ -218,6 +219,10 @@ static int compatNixHash(AsyncIoRoot & aio, std::string programName, Strings arg
         }
         return true;
     }).parseCmdline(argv);
+
+    if (format == HashFormat::SRI && truncate) {
+        throw Error("cannot truncate SRI hashes");
+    }
 
     if (op == opHash) {
         MixAio<CmdHashFormat> cmd(aio, flat ? FileIngestionMethod::Flat : FileIngestionMethod::Recursive);
