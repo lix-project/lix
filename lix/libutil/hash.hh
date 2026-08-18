@@ -159,11 +159,6 @@ public:
         return to_string(HashFormat::Base16, false);
     }
 
-    std::string gitShortRev() const
-    {
-        return std::string(gitRev(), 0, 7);
-    }
-
     static Hash dummy;
 };
 

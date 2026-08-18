@@ -41,15 +41,17 @@ Value emitTreeAttrs(
         );
 
     if (!forceDirty) {
+        // NOTE shortrevs have inherent ambiguity problems and should never have been used here at all.
+        auto shortRev = [&](const Hash & hash) { return hash.gitRev().substr(0, 7); };
 
         if (auto rev = input.getRev()) {
             attrs.insert("rev", {NewValueAs::string, rev->gitRev()});
-            attrs.insert("shortRev", {NewValueAs::string, rev->gitShortRev()});
+            attrs.insert("shortRev", {NewValueAs::string, shortRev(*rev)});
         } else if (emptyRevFallback) {
             // Backwards compat for `builtins.fetchGit`: dirty repos return an empty sha1 as rev
             auto emptyHash = Hash(HashType::SHA1);
             attrs.insert("rev", {NewValueAs::string, emptyHash.gitRev()});
-            attrs.insert("shortRev", {NewValueAs::string, emptyHash.gitShortRev()});
+            attrs.insert("shortRev", {NewValueAs::string, shortRev(emptyHash)});
         }
 
         if (auto revCount = input.getRevCount())
