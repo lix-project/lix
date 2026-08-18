@@ -8,6 +8,7 @@
 #include "lix/libutil/unix-domain-socket.hh"
 #include "tests/test-data.hh"
 
+#include <cstdint>
 #include <gtest/gtest.h>
 
 #include <numeric>
@@ -405,6 +406,22 @@ namespace nix {
         ASSERT_THROW(base64Decode("cXVvZCBlcm_0IGRlbW9uc3RyYW5kdW0="), Error);
     }
 
+TEST(base64Size, works) {
+    uint8_t buf[80];
+    ASSERT_EQ(base64Size(0), 0);
+    ASSERT_EQ(base64Size(std::span{buf, 0}), 0);
+    ASSERT_EQ(base64Size(1), 4);
+    ASSERT_EQ(base64Size(std::span{buf, 1}), 4);
+    ASSERT_EQ(base64Size(2), 4);
+    ASSERT_EQ(base64Size(std::span{buf, 2}), 4);
+    ASSERT_EQ(base64Size(3), 4);
+    ASSERT_EQ(base64Size(std::span{buf, 3}), 4);
+    ASSERT_EQ(base64Size(30), 40);
+    ASSERT_EQ(base64Size(std::span{buf, 30}), 40);
+    ASSERT_EQ(base64Size(31), 44);
+    ASSERT_EQ(base64Size(std::span{buf, 31}), 44);
+}
+
     /* ----------------------------------------------------------------------------
      * base32Encode
      * --------------------------------------------------------------------------*/
@@ -462,6 +479,40 @@ namespace nix {
     TEST(base32Decode, decodeThrowsOnInvalidChar) {
         ASSERT_THROW(base32Decode("6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbe"), Error);
     }
+
+TEST(base32Size, works) {
+    uint8_t buf[80];
+    ASSERT_EQ(base32Size(0), 0);
+    ASSERT_EQ(base32Size(std::span{buf, 0}), 0);
+    ASSERT_EQ(base32Size(1), 2);
+    ASSERT_EQ(base32Size(std::span{buf, 1}), 2);
+    ASSERT_EQ(base32Size(2), 4);
+    ASSERT_EQ(base32Size(std::span{buf, 2}), 4);
+    ASSERT_EQ(base32Size(3), 5);
+    ASSERT_EQ(base32Size(std::span{buf, 3}), 5);
+    ASSERT_EQ(base32Size(4), 7);
+    ASSERT_EQ(base32Size(std::span{buf, 4}), 7);
+    ASSERT_EQ(base32Size(5), 8);
+    ASSERT_EQ(base32Size(std::span{buf, 5}), 8);
+    ASSERT_EQ(base32Size(6), 10);
+    ASSERT_EQ(base32Size(std::span{buf, 6}), 10);
+    ASSERT_EQ(base32Size(60), 96);
+    ASSERT_EQ(base32Size(std::span{buf, 60}), 96);
+    ASSERT_EQ(base32Size(61), 98);
+    ASSERT_EQ(base32Size(std::span{buf, 61}), 98);
+}
+
+TEST(base16Size, works) {
+    uint8_t buf[80];
+    ASSERT_EQ(base16Size(0), 0);
+    ASSERT_EQ(base16Size(std::span{buf, 0}), 0);
+    ASSERT_EQ(base16Size(1), 2);
+    ASSERT_EQ(base16Size(std::span{buf, 1}), 2);
+    ASSERT_EQ(base16Size(2), 4);
+    ASSERT_EQ(base16Size(std::span{buf, 2}), 4);
+    ASSERT_EQ(base16Size(21), 42);
+    ASSERT_EQ(base16Size(std::span{buf, 21}), 42);
+}
 
     /* ----------------------------------------------------------------------------
      * getLine

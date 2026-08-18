@@ -1,3 +1,4 @@
+#include "lix/libutil/strings.hh"
 #include "lix/libstore/store-api.hh"
 
 namespace nix {
@@ -49,7 +50,7 @@ StorePath::StorePath(std::string_view _baseName)
 StorePath::StorePath(const Hash & hash, std::string_view _name)
     : baseName((hash.to_string(HashFormat::Base32, false) + "-").append(std::string(_name)))
 {
-    assert(hash.base32Len() == HASH_PART_LEN);
+    assert(base32Size(hash) == HASH_PART_LEN);
     checkName(baseName, name());
 }
 

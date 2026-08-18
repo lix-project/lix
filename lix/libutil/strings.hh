@@ -218,6 +218,15 @@ std::string bashEscape(const std::string_view s);
  */
 std::string base64Encode(std::string_view s);
 std::string base64Decode(std::string_view s);
+inline size_t base64Size(size_t input)
+{
+    assert(input < std::numeric_limits<size_t>::max() / 4);
+    return ((4 * input / 3) + 3) & ~3;
+}
+inline size_t base64Size(std::span<const uint8_t> input)
+{
+    return base64Size(input.size());
+}
 
 /**
  * Base32 encoding/decoding.
@@ -226,9 +235,27 @@ extern const std::string base32Chars;
 std::string base32EncodeStr(std::string_view s);
 std::string base32Encode(std::span<std::byte const> const s);
 std::string base32Decode(std::string_view s);
+inline size_t base32Size(size_t input)
+{
+    assert(input < std::numeric_limits<size_t>::max() / 8);
+    return input > 0 ? (input * 8 - 1) / 5 + 1 : 0;
+}
+inline size_t base32Size(std::span<const uint8_t> input)
+{
+    return base32Size(input.size());
+}
 
 std::string base16Encode(std::span<const uint8_t> const s);
 std::vector<uint8_t> base16Decode(std::string_view s);
+inline size_t base16Size(size_t input)
+{
+    assert(input < std::numeric_limits<size_t>::max() / 2);
+    return input * 2;
+}
+inline size_t base16Size(std::span<const uint8_t> input)
+{
+    return base16Size(input.size());
+}
 
 /**
  * Remove common leading whitespace from the lines in the string

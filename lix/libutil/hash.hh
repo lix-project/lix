@@ -129,30 +129,6 @@ public:
     }
 
     /**
-     * Returns the length of a base-16 representation of this hash.
-     */
-    size_t base16Len() const
-    {
-        return hashSize * 2;
-    }
-
-    /**
-     * Returns the length of a base-32 representation of this hash.
-     */
-    size_t base32Len() const
-    {
-        return (hashSize * 8 - 1) / 5 + 1;
-    }
-
-    /**
-     * Returns the length of a base-64 representation of this hash.
-     */
-    size_t base64Len() const
-    {
-        return ((4 * hashSize / 3) + 3) & ~3;
-    }
-
-    /**
      * Returns a span of the intrinsic hash
      */
     std::span<const uint8_t> as_span() const

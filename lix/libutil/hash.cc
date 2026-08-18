@@ -113,7 +113,7 @@ Hash Hash::parseNonSRIUnprefixed(std::string_view s, HashType type)
 Hash::Hash(std::string_view rest, HashType type, bool isSRI)
     : Hash(type)
 {
-    if (!isSRI && rest.size() == base16Len()) {
+    if (!isSRI && rest.size() == base16Size(*this)) {
         try {
             auto d = base16Decode(rest);
             memcpy(hash, d.data(), hashSize);
@@ -122,12 +122,14 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
         }
     }
 
-    else if (!isSRI && rest.size() == base32Len()) {
+    else if (!isSRI && rest.size() == base32Size(*this))
+    {
         auto d = base32Decode(rest);
         memcpy(hash, d.data(), hashSize);
     }
 
-    else if (isSRI || rest.size() == base64Len()) {
+    else if (isSRI || rest.size() == base64Size(*this))
+    {
         auto d = base64Decode(rest);
         if (d.size() != hashSize)
             throw BadHash("invalid %s hash '%s'", isSRI ? "SRI" : "base-64", rest);
@@ -135,8 +137,9 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
         memcpy(hash, d.data(), hashSize);
     }
 
-    else
+    else {
         throw BadHash("hash '%s' has wrong length for hash type '%s'", rest, printHashType(this->type));
+    }
 }
 
 Hash newHashAllowEmpty(std::string_view hashStr, std::optional<HashType> ht)
