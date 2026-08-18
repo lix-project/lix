@@ -115,6 +115,6 @@ std::size_t std::hash<nix::StorePath>::operator()(const nix::StorePath & path) c
     auto h = nix::Hash::parseNonSRIUnprefixed(path.hashPart(), nix::HashType::SHA1);
     // This need not be stable across machines, so bit casting the start of it is fine.
     size_t r;
-    memcpy(&r, h.hash, sizeof(r));
+    memcpy(&r, h.hash.data(), sizeof(r));
     return r;
 }

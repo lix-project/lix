@@ -60,20 +60,14 @@ enum class HashFormat : int {
 
 struct Hash
 {
-    constexpr static size_t maxHashSize = 64;
-    size_t hashSize = 0;
-    uint8_t hash[maxHashSize] = {};
+    std::vector<uint8_t> hash;
 
     HashType type;
 
     /**
      * Create a zero-filled hash object.
      */
-    Hash(size_t hashSize, HashType type) : hashSize(hashSize), type(type)
-    {
-        assert(hashSize <= maxHashSize);
-        memset(hash, 0, maxHashSize);
-    }
+    Hash(size_t hashSize, HashType type) : hash(hashSize, 0), type(type) {}
 
     Hash(HashType type) : Hash(regularHashSize(type), type) {}
 
@@ -133,7 +127,7 @@ public:
      */
     std::span<const uint8_t> as_span() const
     {
-        return {hash, hashSize};
+        return hash;
     }
 
     operator std::span<const uint8_t>() const

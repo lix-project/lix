@@ -77,11 +77,12 @@ inline nix::Hash from(const LegacyProtocol::Hash::Reader & h, auto &&... args)
 {
     auto type = from(h.getHashType(), args...);
     auto bytes = h.getHash();
-    if (bytes.size() >= nix::Hash::maxHashSize) {
+    // sha512 is the largest hash we currently support
+    if (bytes.size() >= sha512HashSize) {
         throw nix::Error("oversize hash rejected");
     }
     nix::Hash result(bytes.size(), type);
-    std::memcpy(result.hash, bytes.begin(), bytes.size());
+    std::memcpy(result.hash.data(), bytes.begin(), bytes.size());
     return result;
 }
 }
@@ -92,7 +93,7 @@ struct Fill<daemon::LegacyProtocol::Hash, Hash>
     static void fill(daemon::LegacyProtocol::Hash::Builder hb, const Hash & h, auto &&... args)
     {
         hb.setHashType(daemon::to(h.type, args...));
-        hb.setHash(kj::ArrayPtr<const capnp::byte>{h.hash, h.hashSize});
+        hb.setHash(kj::ArrayPtr<const capnp::byte>{h.hash.data(), h.hash.size()});
     }
 };
 

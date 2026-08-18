@@ -91,7 +91,9 @@ struct CmdHashFormat : Command
             Hash h = modulus
                 ? computeHashModulo(ht, *modulus, source).first
                 : hashSource(ht, source).first;
-            if (truncate && h.hashSize > 20) h = compressHash(h, 20);
+            if (truncate && h.hash.size() > 20) {
+                h = compressHash(h, 20);
+            }
             logger->cout(h.to_string(format, format == HashFormat::SRI));
         }
     }

@@ -30,11 +30,11 @@ std::string Hash::to_string(HashFormat format, bool includeType) const
         s += base16Encode(as_span());
         break;
     case HashFormat::Base32:
-        s += base32EncodeStr(std::string_view(charptr_cast<const char *>(hash), hashSize));
+        s += base32EncodeStr(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()));
         break;
     case HashFormat::Base64:
     case HashFormat::SRI:
-        s += base64Encode(std::string_view(charptr_cast<const char *>(hash), hashSize));
+        s += base64Encode(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()));
         break;
     }
     return s;
@@ -115,29 +115,20 @@ Hash::Hash(std::string_view rest, HashType type, bool isSRI)
 {
     if (!isSRI && rest.size() == base16Size(*this)) {
         try {
-            auto d = base16Decode(rest);
-            memcpy(hash, d.data(), hashSize);
+            hash = base16Decode(rest);
         } catch (Error & e) {
             throw BadHash("invalid base-16 hash '%s'", rest);
         }
-    }
-
-    else if (!isSRI && rest.size() == base32Size(*this))
-    {
+    } else if (!isSRI && rest.size() == base32Size(*this)) {
         auto d = base32Decode(rest);
-        memcpy(hash, d.data(), hashSize);
-    }
-
-    else if (isSRI || rest.size() == base64Size(*this))
-    {
+        memcpy(hash.data(), d.data(), hash.size());
+    } else if (isSRI || rest.size() == base64Size(*this)) {
         auto d = base64Decode(rest);
-        if (d.size() != hashSize)
+        if (d.size() != hash.size()) {
             throw BadHash("invalid %s hash '%s'", isSRI ? "SRI" : "base-64", rest);
-        assert(hashSize);
-        memcpy(hash, d.data(), hashSize);
-    }
-
-    else {
+        }
+        memcpy(hash.data(), d.data(), hash.size());
+    } else {
         throw BadHash("hash '%s' has wrong length for hash type '%s'", rest, printHashType(this->type));
     }
 }
@@ -196,7 +187,7 @@ Hash hashString(HashType ht, std::string_view s)
     Hash hash(ht);
     detail::EvpMdCtxPtr ctx = start(ht);
     update(ctx, s);
-    finish(ctx, hash.hash);
+    finish(ctx, hash.hash.data());
     return hash;
 }
 
@@ -219,7 +210,7 @@ HashResult HashSink::finish()
 {
     flush();
     Hash hash(ht);
-    nix::finish(ctx, hash.hash);
+    nix::finish(ctx, hash.hash.data());
     return HashResult(hash, bytes);
 }
 
@@ -231,7 +222,7 @@ HashResult HashSink::currentHash()
         throw Error("failed to copy message digest");
     }
     Hash hash(ht);
-    nix::finish(ctx2, hash.hash);
+    nix::finish(ctx2, hash.hash.data());
     return HashResult(hash, bytes);
 }
 
