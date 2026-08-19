@@ -1,3 +1,4 @@
+std::string(
 R""(
 
 # Description
@@ -11,9 +12,9 @@ them to be rolled back easily.
 
 )""
 
-#include "doc/files/profiles.md.gen.hh"
++ rust::to_std_string(rust::lix::embeds::profiles_md())
 
-R""(
++ R""(
 
 ### Profile compatibility
 
@@ -43,3 +44,4 @@ To migrate back to `nix-env` you can delete your current profile:
 ```
 
 )""
+)

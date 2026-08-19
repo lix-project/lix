@@ -10,6 +10,7 @@
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/json.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "run.hh"
 #include "lix/libstore/temporary-dir.hh"
 #include "develop.hh"
@@ -215,9 +216,7 @@ struct BuildEnvironment
     }
 };
 
-const static std::string getEnvSh =
-    #include "get-env.sh.gen.hh"
-    ;
+const static std::string getEnvSh = rust::to_std_string(rust::lix::embeds::get_env_sh());
 
 /* Given an existing derivation, return the shell environment as
    initialised by stdenv's setup script. We do this by building a

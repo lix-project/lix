@@ -1,10 +1,10 @@
 error:
        … while evaluating an expression to select 'drvPath' on it
-         at «internal»:1:552:
+         at «internal»:1:551:
        … while evaluating strict
-         at «internal»:1:552:
+         at «internal»:1:551:
        … while calling the 'derivationStrict' builtin
-         at «internal»:1:208:
+         at «internal»:1:207:
        … while evaluating derivation 'foo'
          whose name attribute is located at /test-home/import-derivation.nix:21:3
          at /test-home/import-derivation.nix:21:3:

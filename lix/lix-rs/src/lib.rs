@@ -197,6 +197,44 @@ pub(crate) mod log {
     }
 }
 
+pub(crate) mod embeds {
+    pub fn buildenv_nix() -> &'static str {
+        include_str!("../../legacy/buildenv.nix")
+    }
+
+    pub fn unpack_channel_nix() -> &'static str {
+        include_str!("../../legacy/unpack-channel.nix")
+    }
+
+    pub fn generate_manpage_nix() -> &'static str {
+        include_str!("../../../doc/manual/generate-manpage.nix")
+    }
+
+    pub fn get_env_sh() -> &'static str {
+        include_str!("../../nix/get-env.sh")
+    }
+
+    pub fn profiles_md() -> &'static str {
+        include_str!("../../../doc/manual/src/command-ref/files/profiles.md")
+    }
+
+    pub fn repl_overlays_nix() -> &'static str {
+        include_str!("../../libcmd/repl-overlays.nix")
+    }
+
+    pub fn derivation_nix() -> &'static str {
+        include_str!("../../libexpr/primops/derivation.nix")
+    }
+
+    pub fn imported_drv_to_derivation_nix() -> &'static str {
+        include_str!("../../libexpr/imported-drv-to-derivation.nix")
+    }
+
+    pub fn fetchurl_nix() -> &'static str {
+        include_str!("../../libexpr/fetchurl.nix")
+    }
+}
+
 mod errors;
 pub mod fetchers;
 mod ffi_test;

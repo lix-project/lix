@@ -33,8 +33,4 @@ libcmd_headers = files(
   'repl.hh',
 )
 
-liblix_generated_headers += [
-  gen_header.process('repl-overlays.nix', preserve_path_from: meson.current_source_dir()),
-]
-
 install_headers(libcmd_headers, subdir : 'lix/libcmd', preserve_path : true)

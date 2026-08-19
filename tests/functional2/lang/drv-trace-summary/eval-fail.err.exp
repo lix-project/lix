@@ -1,10 +1,10 @@
 error:
        … while calling the 'getAttr' builtin
-         at «internal»:1:500:
+         at «internal»:1:499:
        … while evaluating the second argument passed to builtins.getAttr
 
        … while calling the 'derivationStrict' builtin
-         at «internal»:1:208:
+         at «internal»:1:207:
        … while evaluating derivation 'package-you-care-about'
          whose name attribute is located at /pwd/in.nix:22:5
          at /pwd/in.nix:22:5:
@@ -23,11 +23,11 @@ error:
        … while evaluating list element at index 0
 
        … while calling the 'getAttr' builtin
-         at «internal»:1:500:
+         at «internal»:1:499:
        … while evaluating the second argument passed to builtins.getAttr
 
        … while calling the 'derivationStrict' builtin
-         at «internal»:1:208:
+         at «internal»:1:207:
        … while evaluating derivation 'direct-dependency'
          whose name attribute is located at /pwd/in.nix:15:5
          at /pwd/in.nix:15:5:
@@ -44,11 +44,11 @@ error:
            19|   };
 
        … while calling the 'getAttr' builtin
-         at «internal»:1:500:
+         at «internal»:1:499:
        … while evaluating the second argument passed to builtins.getAttr
 
        … while calling the 'derivationStrict' builtin
-         at «internal»:1:208:
+         at «internal»:1:207:
        … while evaluating derivation 'transitive-dependency'
          whose name attribute is located at /pwd/in.nix:4:5
          at /pwd/in.nix:4:5:

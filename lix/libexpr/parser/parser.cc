@@ -16,12 +16,13 @@
 namespace nix {
 
 Expr * Evaluator::parse(
-    char * text,
+    const char * text,
     size_t length,
     Pos::Origin origin,
     const SourcePath & basePath,
     std::shared_ptr<StaticEnv> & staticEnv,
-    const FeatureSettings & featureSettings)
+    const FeatureSettings & featureSettings
+)
 {
     parser::State s = {
         symbols,

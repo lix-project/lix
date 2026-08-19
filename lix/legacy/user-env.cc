@@ -8,6 +8,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libexpr/print-ambiguous.hh"
+#include "lix/lix-rs/main.gen.hh"
 
 #include <limits>
 #include <sstream>
@@ -104,10 +105,9 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
         str.str(), references));
 
     /* Get the environment builder expression. */
-    Value envBuilder = state.eval(state.ctx.parseExprFromString(
-#include "buildenv.nix.gen.hh"
-        , CanonPath::root
-    ));
+    Value envBuilder = state.eval(
+        state.ctx.parseExprFromString(rust::to_std_string(rust::lix::embeds::buildenv_nix()), CanonPath::root)
+    );
 
     /* Construct a Nix expression that calls the user environment
        builder with the manifest as argument. */

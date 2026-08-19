@@ -1,16 +1,3 @@
-liblix_generated_headers += [
-  gen_header.process('primops/derivation.nix', preserve_path_from : meson.current_source_dir()),
-]
-foreach header : [ 'imported-drv-to-derivation.nix', 'fetchurl.nix' ]
-  liblix_generated_headers += custom_target(
-    command : [ 'bash', '-c', 'echo \'R"__NIX_STR(\' | cat - @INPUT@ && echo \')__NIX_STR"\'' ],
-    input : header,
-    output : '@PLAINNAME@.gen.hh',
-    capture : true,
-    install : true,
-    install_dir : includedir / 'lix/libexpr',
-  )
-endforeach
 subdir('flake')
 
 libexpr_setting_definitions = files(

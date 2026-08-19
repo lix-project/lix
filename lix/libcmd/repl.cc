@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "libutil/logging.hh"
+#include "lix-rs/main.gen.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libutil/box_ptr.hh"
 #include "lix/libcmd/repl-interacter.hh"
@@ -1536,9 +1537,7 @@ Value NixRepl::getReplOverlaysEvalFunction()
     }
 
     auto evalReplInitFilesPath = CanonPath::root + "repl-overlays.nix";
-    auto code =
-        #include "repl-overlays.nix.gen.hh"
-        ;
+    auto code = rust::to_std_string(rust::lix::embeds::repl_overlays_nix());
     auto & expr = evaluator.parseExprFromString(
         code,
         SourcePath(evalReplInitFilesPath),

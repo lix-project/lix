@@ -36,6 +36,7 @@
 #include "flake.hh"
 #include "fmt.hh"
 #include "hash.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "log.hh"
 #include "ls.hh"
 #include "make-content-addressed.hh"
@@ -361,8 +362,7 @@ static void showHelp(AsyncIoRoot & aio, std::vector<std::string> subcommand, Nix
     auto state = evaluator.begin(aio);
 
     Value vGenerateManpage = state->eval(evaluator.parseExprFromString(
-#include "generate-manpage.nix.gen.hh"
-        , CanonPath::root
+        rust::to_std_string(rust::lix::embeds::generate_manpage_nix()), CanonPath::root
     ));
 
     Value vDump = {NewValueAs::string, toplevel.dumpCli()};

@@ -12,6 +12,7 @@
 #include "lix/libutil/regex.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/users.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "nix-channel.hh"
 
 #include <fcntl.h>
@@ -91,9 +92,7 @@ static void update(AsyncIoRoot & aio, const StringSet & channelNames)
     auto store = aio.blockOn(openStore());
 
     auto [fd, unpackChannelPath] = createTempFile();
-    writeFull(fd.get(),
-        #include "unpack-channel.nix.gen.hh"
-        );
+    writeFull(fd.get(), rust::to_std_string_view(rust::lix::embeds::unpack_channel_nix()));
     fd.reset();
     AutoDelete del(unpackChannelPath, false);
 

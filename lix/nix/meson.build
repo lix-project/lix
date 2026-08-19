@@ -1,27 +1,3 @@
-nix_generated_headers = [
-  gen_header.process(meson.project_source_root() / 'doc/manual/generate-manpage.nix'),
-  gen_header.process('get-env.sh'),
-]
-
-# lix/nix/profile.cc includes lix/nix/profile.md, which includes "doc/files/profiles.md.gen.hh".
-# Unfortunately, https://github.com/mesonbuild/meson/issues/2320.
-# "docs/files" isn't a directory hierarchy that already exists somewhere in this source tree,
-# and Meson refuses to create targets with specific directory paths.
-# So run_command() it is.
-# NOTE(Qyriad): This corresponds to the previous buildsystem's `src/nix/doc/files/%.md` rule,
-# which as far as I can tell was only used for this file.
-run_command(
-  installcmd,
-  '-D',
-  meson.project_source_root() / 'doc/manual/src/command-ref/files/profiles.md',
-  meson.current_build_dir() / 'doc/files/profiles.md',
-  check : true,
-)
-nix_generated_headers += gen_header.process(
-  meson.current_build_dir() / 'doc/files/profiles.md',
-  preserve_path_from : meson.current_build_dir(),
-)
-
 nix_settings_headers = []
 
 daemon_setting_definitions = files(
@@ -161,10 +137,8 @@ nix = executable(
   nix_sources,
   legacy_sources,
   nix_settings_headers,
-  nix_generated_headers,
   nix_headers,
   legacy_headers,
-  legacy_generated_headers,
   include_directories : legacy_include_directories,
   cpp_pch : cpp_pch,
   install : true,

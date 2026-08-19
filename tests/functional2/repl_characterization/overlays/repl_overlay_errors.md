@@ -12,39 +12,38 @@ Type :? for help.
 Loading 'repl-overlays'...
 error:
        … while calling anonymous lambda
-         at «string»:2:16:
-            1|
-            2| info: initial: functions:
+         at «string»:1:16:
+            1| info: initial: functions:
              |                ^
-            3| let
+            2| let
 
        … while evaluating final
-         at «string»:6:1:
-            5| in
-            6| final
+         at «string»:5:1:
+            4| in
+            5| final
              | ^
-            7|
+            6|
 
        … while calling the 'foldl'' builtin
-         at «string»:4:11:
-            3| let
-            4|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
+         at «string»:3:11:
+            2| let
+            3|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
              |           ^
-            5| in
+            4| in
 
        … while calling anonymous lambda
-         at «string»:4:34:
-            3| let
-            4|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
+         at «string»:3:34:
+            2| let
+            3|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
              |                                  ^
-            5| in
+            4| in
 
        … from call site
-         at «string»:4:53:
-            3| let
-            4|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
+         at «string»:3:53:
+            2| let
+            3|   final = builtins.foldl' (prev: function: prev // (function info final prev)) initial functions;
              |                                                     ^
-            5| in
+            4| in
 
        … while calling anonymous lambda
          at /pwd/repl-overlay-fail.nix:1:14:

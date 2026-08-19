@@ -13,6 +13,7 @@
 #include "lix/libstore/profiles.hh"
 #include "lix/libstore/names.hh"
 #include "profile.hh"
+#include "lix/lix-rs/main.gen.hh"
 
 #include <regex>
 #include <iomanip>

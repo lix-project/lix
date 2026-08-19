@@ -1,4 +1,5 @@
 #include "libutil/error-trace.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libexpr/eval.hh"
@@ -215,8 +216,7 @@ static Value import(EvalState & state, Value & vPath, Value * vScope)
         if (!state.ctx.caches.vImportedDrvToDerivation) {
             state.ctx.caches.vImportedDrvToDerivation =
                 allocRootValue(state.eval(state.ctx.parseExprFromString(
-#include "imported-drv-to-derivation.nix.gen.hh"
-                    , CanonPath::root
+                    rust::to_std_string(rust::lix::embeds::imported_drv_to_derivation_nix()), CanonPath::root
                 )));
         }
 
@@ -232,8 +232,7 @@ static Value import(EvalState & state, Value & vPath, Value * vScope)
 
     else if (path2 == corepkgsPrefix + "fetchurl.nix") {
         return state.eval(state.ctx.parseExprFromString(
-#include "fetchurl.nix.gen.hh"
-            , CanonPath::root
+            rust::to_std_string(rust::lix::embeds::fetchurl_nix()), CanonPath::root
         ));
     }
 
@@ -3214,20 +3213,16 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
         }
     }
 
-    static PrimOp prim_initializeDerivation{
-        {
-            .arity = 1,
-            .fun = [](EvalState & state, Value ** args) -> Value {
-                char code[] =
-#include "primops/derivation.nix.gen.hh"
-                    ;
-                auto & expr = *state.ctx.parse(
-                    code, sizeof(code), Pos::Hidden{}, {CanonPath::root}, state.ctx.builtins.staticEnv
-                );
-                return state.eval(expr);
-            },
-        }
-    };
+    static PrimOp prim_initializeDerivation{{
+        .arity = 1,
+        .fun = [](EvalState & state, Value ** args) -> Value {
+            auto code = rust::to_std_string_view(rust::lix::embeds::derivation_nix());
+            auto & expr = *state.ctx.parse(
+                code.data(), code.size(), Pos::Hidden{}, {CanonPath::root}, state.ctx.builtins.staticEnv
+            );
+            return state.eval(expr);
+        },
+    }};
     static Value initializeDerivation{NewValueAs::primop, prim_initializeDerivation};
 
     /* Add a wrapper around the derivation primop that computes the

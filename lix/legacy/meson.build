@@ -28,10 +28,3 @@ legacy_headers = files(
   'nix-instantiate.hh',
   'nix-store.hh',
 )
-
-legacy_generated_headers = [
-  gen_header.process('buildenv.nix', preserve_path_from: meson.current_source_dir()),
-  gen_header.process('unpack-channel.nix', preserve_path_from: meson.current_source_dir()),
-]
-
-fs.copyfile('unpack-channel.nix')

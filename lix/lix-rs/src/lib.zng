@@ -41,3 +41,15 @@ mod crate::log::ffi {
         safe fn log_message(i32, &str);
     }
 }
+
+mod crate::embeds {
+    fn buildenv_nix() -> &str;
+    fn unpack_channel_nix() -> &str;
+    fn generate_manpage_nix() -> &str;
+    fn get_env_sh() -> &str;
+    fn profiles_md() -> &str;
+    fn repl_overlays_nix() -> &str;
+    fn derivation_nix() -> &str;
+    fn imported_drv_to_derivation_nix() -> &str;
+    fn fetchurl_nix() -> &str;
+}

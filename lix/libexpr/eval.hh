@@ -561,12 +561,13 @@ public:
 
 private:
     Expr * parse(
-        char * text,
+        const char * text,
         size_t length,
         Pos::Origin origin,
         const SourcePath & basePath,
         std::shared_ptr<StaticEnv> & staticEnv,
-        const FeatureSettings & xpSettings = featureSettings);
+        const FeatureSettings & xpSettings = featureSettings
+    );
 
     std::variant<std::unique_ptr<Expr>, ExprReplBindings>
     parse_repl(
