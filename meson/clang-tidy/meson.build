@@ -38,22 +38,13 @@ meson.add_postconf_script(
   meson.current_build_dir() / 'compile_commands.json',
 )
 
-# Horrible hack to get around not being able to depend on another target's
-# generated headers in any way in the meson DSL
-# https://github.com/mesonbuild/meson/issues/12817 which was incorrectly
-# closed, if you *actually* need to generate the files once.
-# Also related: https://github.com/mesonbuild/meson/issues/3667
-#
-# Or we could ban meson generators because their design is broken.
 build_all_generated_headers = custom_target(
-  command : [
-    python,
-    meson.current_source_dir() / 'build_required_targets.py',
-    meson.global_build_root(),
+  input : [
+    liblix_generated_headers,
+    nix_settings_headers,
   ],
-  output : 'generated_headers.stamp',
-  build_by_default : false,
-  build_always_stale : true,
+  output : 'tidy-dep-propagator.gen.hh',
+  command : [ 'bash', '-c', 'touch "$1"', 'touch', '@OUTPUT@' ],
 )
 
 if lix_clang_tidy_so_found
