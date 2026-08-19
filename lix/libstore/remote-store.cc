@@ -170,7 +170,7 @@ try {
     }
     co_return result::success();
 } catch (...) {
-    *handle = nullptr;
+    (*handle)->invalidated = true;
     co_return result::current_exception();
 }
 
@@ -856,7 +856,7 @@ try {
             TRY_AWAIT(framed.finish());
             co_return result::success();
         } catch (...) {
-            *handle = nullptr;
+            (*handle)->invalidated = true;
             co_return result::current_exception();
         }
     };

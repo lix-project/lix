@@ -110,6 +110,8 @@ struct RemoteStore::Connection
     {
         return "";
     }
+
+    bool invalidated = false;
 };
 
 /**
@@ -151,13 +153,19 @@ struct RemoteStore::ConnectionHandle
         using AllArgsT = std::tuple<Args &&...>;
         using LastArgT = std::tuple_element_t<LastArgIdx, AllArgsT>;
 
+        KJ_DEFER({
+            if ((*handle)->invalidated) {
+                *handle = nullptr;
+            }
+        });
+
         // invalidate this connection if we're cancelled early, e.g. by a user ^C.
         // regular exceptions must be handled elsewhere due the subframe requests.
         // this also invalidates connections if a request was sent while unwinding
         // the stack, but that's sufficiently suspect to warrant being as careful.
         auto invalidateOnCancel = kj::defer([&] {
             if (std::uncaught_exceptions() == 0) {
-                *handle = nullptr;
+                (*handle)->invalidated = true;
             }
         });
 
@@ -174,7 +182,7 @@ struct RemoteStore::ConnectionHandle
                 ((msg << std::forward<Args>(args)), ...);
                 TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
             } catch (...) {
-                *handle = nullptr;
+                (*handle)->invalidated = true;
                 throw;
             }
             LIX_TRY_AWAIT(processStderr(stream));
@@ -182,21 +190,18 @@ struct RemoteStore::ConnectionHandle
             using ImmediateArgsIdxs = std::make_index_sequence<sizeof...(Args) - 1>;
             AllArgsT allArgs(std::forward<Args>(args)...);
 
-                try {
-                    StringSink msg;
-                    [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
-                        ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(
-                              std::get<Ids>(allArgs)
-                          )),
-                         ...);
-                    }(ImmediateArgsIdxs{});
-                    TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
-                } catch (...) {
-                    *handle = nullptr;
-                    throw;
-                }
+            try {
+                StringSink msg;
+                [&]<size_t... Ids>(std::integer_sequence<size_t, Ids...>) {
+                    ((msg << std::forward<std::tuple_element_t<Ids, AllArgsT>>(std::get<Ids>(allArgs))), ...);
+                }(ImmediateArgsIdxs{});
+                TRY_AWAIT(stream.writeFull(msg.s.data(), msg.s.size()));
+            } catch (...) {
+                (*handle)->invalidated = true;
+                throw;
+            }
 
-                LIX_TRY_AWAIT(withFramedStream(stream, std::get<LastArgIdx>(allArgs)));
+            LIX_TRY_AWAIT(withFramedStream(stream, std::get<LastArgIdx>(allArgs)));
         }
 
         if constexpr (std::is_void_v<R>) {
@@ -213,7 +218,7 @@ struct RemoteStore::ConnectionHandle
                 invalidateOnCancel.cancel();
                 co_return result;
             } catch (...) {
-                *handle = nullptr;
+                (*handle)->invalidated = true;
                 throw;
             }
         }
