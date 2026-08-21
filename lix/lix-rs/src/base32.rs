@@ -85,3 +85,67 @@ pub fn decode(data: &[u8]) -> Result<Vec<u8>, Report> {
 
     Ok(res)
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn empty_string() {
+        assert_eq!(encode(&[]), "");
+        assert_matches!(decode(b"").as_deref(), Ok([]));
+    }
+
+    #[test]
+    fn encode_string() {
+        assert_eq!(
+            encode(b"quod erat demonstrandum"),
+            "6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbi",
+        );
+    }
+
+    #[test]
+    fn decode_string() {
+        assert_eq!(
+            decode(b"6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbi").unwrap(),
+            b"quod erat demonstrandum"
+        );
+    }
+
+    #[test]
+    fn encode_and_decode() {
+        let s = b"quod erat demonstrandum";
+        let encoded = encode(s);
+        let decoded = decode(encoded.as_bytes()).unwrap();
+
+        assert_eq!(decoded, s);
+    }
+
+    #[test]
+    fn encode_and_decode_non_printable() {
+        let s = (0..=257).map(|i| i as u8).collect::<Vec<_>>();
+        let encoded = encode(&s);
+        let decoded = decode(encoded.as_bytes()).unwrap();
+
+        assert_eq!(decoded, s);
+    }
+
+    #[test]
+    fn encode_handles_nul() {
+        // Just throw a NUL in there somewhere.
+        let s = b"cat g\0rls say meow even with NULs";
+
+        let encoded = encode(s);
+        let decoded = decode(encoded.as_bytes()).unwrap();
+
+        assert_eq!(decoded, s);
+    }
+
+    #[test]
+    fn decode_handles_invalid_chars() {
+        assert_matches!(
+            decode(b"6sxb4drhp4x3kdrpnsrb441s62wk541j6yxbe"),
+            Err(e) if e.to_string().contains("invalid base-32 string")
+        );
+    }
+}
