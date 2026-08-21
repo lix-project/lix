@@ -13,7 +13,6 @@ let
         outPath = nixpkgs;
         rev = "0000000000000000000000000000000000000000";
         shortRev = "0000000";
-        lastModifiedDate = "19700101000000";
       };
 in
 let

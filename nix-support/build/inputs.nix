@@ -17,13 +17,7 @@ let
     versionJson = builtins.fromJSON (builtins.readFile ../../version.json);
     officialRelease = self.versionJson.official_release;
 
-    versionSuffix =
-      if self.officialRelease then
-        ""
-      else
-        "pre${
-          builtins.substring 0 8 (lixSrc.lastModifiedDate or lixSrc.lastModified or "19700101")
-        }-dev_${lixSrc.shortRev or "dirty"}";
+    versionSuffix = if self.officialRelease then "" else "${lixSrc.shortRev or "dirty"}";
 
     linux32BitSystems = [ "i686-linux" ];
     linux64BitSystems = [
