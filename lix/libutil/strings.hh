@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/charptr-cast.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/types.hh"
 
@@ -217,6 +218,10 @@ std::string bashEscape(const std::string_view s);
  * Base64 encoding/decoding.
  */
 std::string base64Encode(std::string_view s);
+inline std::string base64Encode(std::span<const uint8_t> const s)
+{
+    return base64Encode(std::string_view{charptr_cast<const char *>(s.data()), s.size()});
+}
 std::string base64Decode(std::string_view s);
 inline size_t base64Size(size_t input)
 {

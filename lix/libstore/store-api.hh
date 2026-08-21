@@ -731,20 +731,21 @@ public:
 
     /**
      * Write a JSON representation of store path metadata, such as the
-     * hash and the references.
-     *
-     * @param includeImpureInfo If true, variable elements such as the
+     * hash and the references. tagged base32 hashes will be used, and
+     * the closure size of each path is included.
+     */
+    kj::Promise<Result<JSON>> pathInfoToJSONPure(const StorePathSet & storePaths);
+
+    /**
+     * Write a JSON representation of store path metadata, such as the
+     * hash and the references. sri hashes will be used, variable elements such as the
      * registration time are included.
      *
      * @param showClosureSize If true, the closure size of each path is
      * included.
      */
-    kj::Promise<Result<JSON>> pathInfoToJSON(
-        const StorePathSet & storePaths,
-        bool includeImpureInfo,
-        bool showClosureSize,
-        HashFormat hashFormat = HashFormat::Base32,
-        AllowInvalidFlag allowInvalid = DisallowInvalid
+    kj::Promise<Result<JSON>> pathInfoToJSONImpure(
+        const StorePathSet & storePaths, bool showClosureSize, AllowInvalidFlag allowInvalid
     );
 
     /**

@@ -150,9 +150,9 @@ try {
             StorePathSet storePaths;
             for (auto & p : *i)
                 storePaths.insert(store.toStorePath(p.get<std::string>()).first);
-            json[i.key()] = TRY_AWAIT(store.pathInfoToJSON(
-                TRY_AWAIT(store.exportReferences(storePaths, inputPaths)), false, true
-            ));
+            json[i.key()] = TRY_AWAIT(
+                store.pathInfoToJSONPure(TRY_AWAIT(store.exportReferences(storePaths, inputPaths)))
+            );
         }
     }
 

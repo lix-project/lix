@@ -144,12 +144,10 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
 
         if (json) {
             std::cout << aio()
-                             .blockOn(store->pathInfoToJSON(
+                             .blockOn(store->pathInfoToJSONImpure(
                                  // FIXME: preserve order?
                                  StorePathSet(storePaths.begin(), storePaths.end()),
-                                 true,
                                  showClosureSize,
-                                 HashFormat::SRI,
                                  AllowInvalid
                              ))
                              .dump();

@@ -862,16 +862,36 @@ static JSON basicPathInfoToJSON(Store & store, const ValidPathInfo & info, bool 
     return jsonPath;
 }
 
-kj::Promise<Result<JSON>> Store::pathInfoToJSON(
-    const StorePathSet & storePaths,
-    bool includeImpureInfo,
-    bool showClosureSize,
-    HashFormat hashFormat,
-    AllowInvalidFlag allowInvalid
+kj::Promise<Result<JSON>> Store::pathInfoToJSONPure(const StorePathSet & storePaths)
+try {
+    JSON::array_t jsonList = JSON::array();
+
+    for (auto & storePath : storePaths) {
+        auto & jsonPath = jsonList.emplace_back(JSON::object());
+
+        try {
+            auto info = TRY_AWAIT(queryPathInfo(storePath));
+
+            jsonPath = basicPathInfoToJSON(*this, *info, false);
+
+            std::pair<uint64_t, uint64_t> closureSizes;
+
+            closureSizes = TRY_AWAIT(getClosureSize(info->path));
+            jsonPath["closureSize"] = closureSizes.first;
+        } catch (InvalidPath &) {
+            jsonPath["path"] = printStorePath(storePath);
+            jsonPath["valid"] = false;
+        }
+    }
+    co_return jsonList;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<JSON>> Store::pathInfoToJSONImpure(
+    const StorePathSet & storePaths, bool showClosureSize, AllowInvalidFlag allowInvalid
 )
 try {
-    assert(hashFormat == HashFormat::Base32 || hashFormat == HashFormat::SRI);
-
     JSON::array_t jsonList = JSON::array();
 
     for (auto & storePath : storePaths) {
@@ -880,7 +900,7 @@ try {
         try {
             auto info = TRY_AWAIT(queryPathInfo(storePath));
 
-            jsonPath = basicPathInfoToJSON(*this, *info, hashFormat == HashFormat::SRI);
+            jsonPath = basicPathInfoToJSON(*this, *info, true);
 
             std::pair<uint64_t, uint64_t> closureSizes;
 
@@ -889,34 +909,39 @@ try {
                 jsonPath["closureSize"] = closureSizes.first;
             }
 
-            if (includeImpureInfo) {
+            if (info->deriver) {
+                jsonPath["deriver"] = printStorePath(*info->deriver);
+            }
 
-                if (info->deriver)
-                    jsonPath["deriver"] = printStorePath(*info->deriver);
+            if (info->registrationTime) {
+                jsonPath["registrationTime"] = info->registrationTime;
+            }
 
-                if (info->registrationTime)
-                    jsonPath["registrationTime"] = info->registrationTime;
+            if (info->ultimate) {
+                jsonPath["ultimate"] = info->ultimate;
+            }
 
-                if (info->ultimate)
-                    jsonPath["ultimate"] = info->ultimate;
-
-                if (!info->sigs.empty()) {
-                    for (auto & sig : info->sigs)
-                        jsonPath["signatures"].push_back(sig);
+            if (!info->sigs.empty()) {
+                for (auto & sig : info->sigs) {
+                    jsonPath["signatures"].push_back(sig);
                 }
+            }
 
-                auto narInfo = std::dynamic_pointer_cast<const NarInfo>(
-                    std::shared_ptr<const ValidPathInfo>(info));
+            auto narInfo =
+                std::dynamic_pointer_cast<const NarInfo>(std::shared_ptr<const ValidPathInfo>(info));
 
-                if (narInfo) {
-                    if (!narInfo->url.empty())
-                        jsonPath["url"] = narInfo->url;
-                    if (narInfo->fileHash)
-                        jsonPath["downloadHash"] = narInfo->fileHash->to_string(hashFormat, true);
-                    if (narInfo->fileSize)
-                        jsonPath["downloadSize"] = narInfo->fileSize;
-                    if (showClosureSize)
-                        jsonPath["closureDownloadSize"] = closureSizes.second;
+            if (narInfo) {
+                if (!narInfo->url.empty()) {
+                    jsonPath["url"] = narInfo->url;
+                }
+                if (narInfo->fileHash) {
+                    jsonPath["downloadHash"] = narInfo->fileHash->to_sri();
+                }
+                if (narInfo->fileSize) {
+                    jsonPath["downloadSize"] = narInfo->fileSize;
+                }
+                if (showClosureSize) {
+                    jsonPath["closureDownloadSize"] = closureSizes.second;
                 }
             }
 
@@ -929,7 +954,6 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
 
 kj::Promise<Result<std::pair<uint64_t, uint64_t>>>
 Store::getClosureSize(const StorePath & storePath)

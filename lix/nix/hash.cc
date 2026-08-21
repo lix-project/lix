@@ -10,6 +10,20 @@
 
 namespace nix {
 
+static std::string formatHash(const Hash & hash, HashFormat format)
+{
+    switch (format) {
+    case HashFormat::Base16:
+        return base16Encode(hash);
+    case HashFormat::Base32:
+        return base32Encode(hash);
+    case HashFormat::Base64:
+        return base64Encode(hash);
+    case HashFormat::SRI:
+        return hash.to_sri();
+    }
+}
+
 struct CmdHashFormat : Command
 {
     FileIngestionMethod mode;
@@ -94,7 +108,7 @@ struct CmdHashFormat : Command
             if (truncate && h.hash.size() > 20) {
                 h = compressHash(h, 20);
             }
-            logger->cout(h.to_string(format, format == HashFormat::SRI));
+            logger->cout(formatHash(h, format));
         }
     }
 };
@@ -125,7 +139,7 @@ struct CmdToHashFormat : Command
     void run() override
     {
         for (auto s : args)
-            logger->cout(Hash::parseAny(s, ht).to_string(format, format == HashFormat::SRI));
+            logger->cout(formatHash(Hash::parseAny(s, ht), format));
     }
 };
 
