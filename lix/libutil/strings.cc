@@ -1,8 +1,10 @@
+#include "lix/lix-rs/utils.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/references.hh"
 #include "lix/lix-rs/main.gen.hh"
 #include <boost/lexical_cast.hpp>
+#include <cstdint>
 #include <ranges>
 #include <stdint.h>
 
@@ -218,70 +220,25 @@ std::string base32EncodeStr(std::string_view s)
 
 std::string base32Encode(std::span<std::byte const> bytes)
 {
-    // log2(32) == 5.
-    constexpr int B32_BITS_PER_DIGIT = 5;
-
-    // We need to do arithmetic.
-    auto const s = std::views::transform(bytes, std::to_integer<std::uint32_t>);
-
-    if (s.empty()) {
-        return "";
-    }
-
-    ssize_t len = (s.size() * CHAR_BIT - 1) / B32_BITS_PER_DIGIT + 1;
-
-    std::string res;
-    res.reserve(len);
-
-    for (ssize_t const n : std::views::iota(0, len) | std::views::reverse) {
-        unsigned int b = n * B32_BITS_PER_DIGIT;
-        unsigned int i = b / CHAR_BIT;
-        unsigned int j = b % CHAR_BIT;
-
-        auto const curChar = s[i];
-        auto const second = i >= s.size() - 1 ? 0 : s[i + 1] << (CHAR_BIT - j);
-        auto const c = (curChar >> j) | second;
-
-        res.push_back(base32Chars[c & 0x1f]);
-    }
-
-    return res;
+    return to_std_string(
+        rust::lix::base32::encode(
+            rust::lix::ffi::from_raw_parts_u8(
+                reinterpret_cast<const uint8_t *>(bytes.data()), bytes.size_bytes()
+            )
+        )
+    );
 }
 
 std::string base32Decode(std::string_view s)
 {
-    if (s.empty()) {
-        return "";
-    }
-
-    std::string res(((s.size() - 1) * 5) / 8 + 1, 0);
-
-    for (unsigned int n = 0; n < s.size(); ++n) {
-        char c = s[s.size() - n - 1];
-        size_t digit;
-        for (digit = 0; digit < base32Chars.size(); ++digit) /* !!! slow */ {
-            if (base32Chars[digit] == c) {
-                break;
-            }
-        }
-        if (digit >= 32) {
-            throw Error("invalid character in base-32 string '%s'", s);
-        }
-        unsigned int b = n * 5;
-        unsigned int i = b / 8;
-        unsigned int j = b % 8;
-        res[i] |= digit << j;
-
-        if (i < res.size() - 1) {
-            res[i + 1] |= digit >> (8 - j);
-        } else {
-            if (digit >> (8 - j)) {
-                throw Error("invalid base-32 string '%s'", s);
-            }
-        }
-    }
-
-    return res;
+    auto vec = unwrap(
+        rust::lix::base32::decode(
+            rust::lix::ffi::from_raw_parts_u8(
+                charptr_cast<const uint8_t *>(s.begin()), std::span(s).size_bytes()
+            )
+        )
+    );
+    return {vec.as_ref().as_ptr(), vec.as_ref().as_ptr() + vec.len()};
 }
 
 static const std::string base16Chars = "0123456789abcdef";
