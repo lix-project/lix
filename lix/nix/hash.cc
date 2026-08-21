@@ -10,6 +10,10 @@
 
 namespace nix {
 
+namespace {
+enum class HashFormat : int { Base64, Base32, Base16, SRI };
+}
+
 static std::string formatHash(const Hash & hash, HashFormat format)
 {
     switch (format) {

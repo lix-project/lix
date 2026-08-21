@@ -18,27 +18,6 @@ namespace nix {
 
 const std::set<std::string> hashTypes = {"md5", "sha1", "sha256", "sha512"};
 
-std::string Hash::to_string(HashFormat format, bool includeType) const
-{
-    std::string s;
-    if (format == HashFormat::SRI || includeType) {
-        s = fmt("%s%s", type, format == HashFormat::SRI ? '-' : ':');
-    }
-    switch (format) {
-    case HashFormat::Base16:
-        s += base16Encode(as_span());
-        break;
-    case HashFormat::Base32:
-        s += base32EncodeStr(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()));
-        break;
-    case HashFormat::Base64:
-    case HashFormat::SRI:
-        s += base64Encode(std::string_view(charptr_cast<const char *>(hash.data()), hash.size()));
-        break;
-    }
-    return s;
-}
-
 std::string Hash::to_sri() const
 {
     return fmt(
