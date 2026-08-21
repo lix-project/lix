@@ -1,6 +1,7 @@
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/references.hh"
+#include "lix/lix-rs/main.gen.hh"
 #include <boost/lexical_cast.hpp>
 #include <ranges>
 #include <stdint.h>
@@ -181,65 +182,29 @@ std::string bashEscape(const std::string_view s)
     return r;
 }
 
-constexpr char base64Chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
 std::string base64Encode(std::string_view s)
 {
-    std::string res;
-    res.reserve((s.size() + 2) / 3 * 4);
-    int data = 0, nbits = 0;
-
-    for (char c : s) {
-        data = data << 8 | (unsigned char) c;
-        nbits += 8;
-        while (nbits >= 6) {
-            nbits -= 6;
-            res.push_back(base64Chars[data >> nbits & 0x3f]);
-        }
-    }
-
-    if (nbits) res.push_back(base64Chars[data << (6 - nbits) & 0x3f]);
-    while (res.size() % 4) res.push_back('=');
-
-    return res;
+    return to_std_string(
+        rust::lix::base64::encode(
+            rust::lix::ffi::from_raw_parts_u8(
+                charptr_cast<const uint8_t *>(s.begin()), std::span(s).size_bytes()
+            )
+        )
+    );
 }
 
 
 std::string base64Decode(std::string_view s)
 {
-    constexpr char npos = -1;
-    constexpr std::array<char, 256> base64DecodeChars = [&]() {
-        std::array<char, 256>  result{};
-        for (auto& c : result)
-            c = npos;
-        for (int i = 0; i < 64; i++)
-            result[base64Chars[i]] = i;
-        return result;
-    }();
-
-    std::string res;
-    // Some sequences are missing the padding consisting of up to two '='.
-    //                    vvv
-    res.reserve((s.size() + 2) / 4 * 3);
-    unsigned int d = 0, bits = 0;
-
-    for (char c : s) {
-        if (c == '=') break;
-        if (c == '\n') continue;
-
-        char digit = base64DecodeChars[(unsigned char) c];
-        if (digit == npos)
-            throw Error("invalid character in Base64 string: '%c'", c);
-
-        bits += 6;
-        d = d << 6 | digit;
-        if (bits >= 8) {
-            res.push_back(d >> (bits - 8) & 0xff);
-            bits -= 8;
-        }
-    }
-
-    return res;
+    auto vec = unwrap(
+        rust::lix::base64::decode(
+            rust::lix::ffi::from_raw_parts_u8(
+                charptr_cast<const uint8_t *>(s.begin()), std::span(s).size_bytes()
+            )
+        ),
+        "decoding base64 string"_rs
+    );
+    return {vec.as_ref().as_ptr(), vec.as_ref().as_ptr() + vec.len()};
 }
 
 // omitted: E O U T

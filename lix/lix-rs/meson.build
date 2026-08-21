@@ -1,6 +1,7 @@
 lix_rs_files += files(
   'Cargo.toml',
   # keep-sorted start
+  'src/base64.rs',
   'src/errors.rs',
   'src/fetchers.rs',
   'src/fetchers/git.rs',

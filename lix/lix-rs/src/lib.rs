@@ -234,6 +234,7 @@ pub(crate) mod embeds {
     }
 }
 
+pub mod base64;
 mod errors;
 pub mod fetchers;
 mod ffi_test;

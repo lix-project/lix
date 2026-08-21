@@ -1,0 +1,11 @@
+mod crate::base64 {
+    use ::std::result::Result as Result;
+    use ::std::string::String as String;
+
+    fn encode(&[u8]) -> String;
+    fn decode(&[u8]) -> Result<::std::vec::Vec<u8>, ::rootcause::Report>;
+
+    type Result<::std::vec::Vec<u8>, ::rootcause::Report> {
+        #layout_conservative(size = 24, align = 8);
+    }
+}
