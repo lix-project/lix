@@ -4,8 +4,7 @@ extern crate lix_doc;
 #[macro_use]
 extern crate assert_matches;
 
-#[allow(clippy::all)]
-#[allow(clippy::restriction)]
+#[allow(clippy::all, clippy::restriction, deprecated)]
 mod generated {
     include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 }

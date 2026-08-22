@@ -232,12 +232,20 @@ void throw_from_report(rootcause::Report & r);
 }
 
 template<typename Ok>
-Ok unwrap(Result<Ok, rootcause::Report> result)
+Ok unwrap(
+    Result<Ok, rootcause::Report> result,
+    ::std::optional<Ref<::std::enable_if_t<((void) sizeof(Ok), true), Str>>> context = ::std::nullopt
+)
 {
     return match_result(
         ::std::move(result),
         [](auto ok) { return ok; },
-        [](auto err) -> Ok { detail::throw_from_report(err); }
+        [=](auto err) -> Ok {
+            if (context) {
+                err = err.context(*context);
+            }
+            detail::throw_from_report(err);
+        }
     );
 }
 }
@@ -410,11 +418,14 @@ kj::Promise<R> to_kj(rust::lix::futures::RsFuture<R> f)
 }
 
 template<typename R>
-kj::Promise<::nix::Result<R>> to_kj_unwrap(rust::lix::futures::RsFuture<Result<R, rootcause::Report>> f)
+kj::Promise<::nix::Result<R>> to_kj_unwrap(
+    rust::lix::futures::RsFuture<Result<R, rootcause::Report>> f,
+    ::std::optional<Ref<::std::enable_if_t<((void) sizeof(R), true), Str>>> context = ::std::nullopt
+)
 {
-    return to_kj(::std::move(f)).then([](auto result) -> ::nix::Result<R> {
+    return to_kj(::std::move(f)).then([context](auto result) -> ::nix::Result<R> {
         try {
-            return unwrap(::std::move(result));
+            return unwrap(::std::move(result), context);
         } catch (...) {
             return ::nix::result::current_exception();
         }

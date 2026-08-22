@@ -1,4 +1,7 @@
-use std::fmt::{Debug, Display};
+use std::{
+    any::TypeId,
+    fmt::{Debug, Display},
+};
 
 use either::Either::{self, Left, Right};
 use rootcause::{
@@ -96,5 +99,32 @@ where
 
     fn factor_report(self) -> Self::Factored {
         self.map_err(|e| e.factor_report())
+    }
+}
+
+#[deprecated(note = "for c++ compatibility only, use Report::context instead")]
+pub(crate) trait DynamicReportExt: seal::Seal {
+    fn context_then_dynamic(self, s: &str) -> Report;
+}
+
+impl<C: ?Sized> seal::Seal for Report<C> {}
+
+#[allow(deprecated)]
+impl<C: ?Sized> DynamicReportExt for Report<C> {
+    fn context_then_dynamic(self, s: &str) -> Report {
+        let mut result = self.context(s.to_string()).into_dynamic();
+        // filter location information from the report we just created. that info would
+        // always point here and thus not be useful, and getting good line number infos
+        // out of c++ into this function is (surprise surprise!) unreasonably difficult
+        let mut filtered_attachments = ReportAttachments::new();
+        while let Some(a) = result.attachments_mut().pop().filter(|a| {
+            a.inner_type_id() != TypeId::of::<rootcause::hooks::builtin_hooks::location::Location>()
+        }) {
+            filtered_attachments.push(a);
+        }
+        while let Some(a) = filtered_attachments.pop() {
+            result.attachments_mut().push(a);
+        }
+        result
     }
 }

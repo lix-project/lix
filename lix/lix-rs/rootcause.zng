@@ -6,5 +6,8 @@ mod ::rootcause {
 		wellknown_traits(Debug);
 
 		fn to_string(&self) -> ::std::string::String;
+        fn context_then_dynamic(self, &str) -> Report
+            use crate::errors::DynamicReportExt
+            as context;
 	}
 }
