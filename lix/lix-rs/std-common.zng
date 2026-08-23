@@ -238,3 +238,19 @@ mod ::std::path {
     #layout_conservative(size = 16, align = 8);
   }
 }
+
+mod ::std::num {
+  use ::std::option::Option as Option;
+
+  type NonZeroU32 {
+    #layout_conservative(size = 4, align = 4);
+
+    fn new(u32) -> Option<NonZeroU32>;
+    fn new_unchecked(u32) -> NonZeroU32;
+    fn get(self) -> u32;
+  }
+
+  type Option<NonZeroU32> {
+    #layout_conservative(size = 4, align = 4);
+  }
+}

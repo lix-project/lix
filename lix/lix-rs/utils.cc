@@ -62,6 +62,16 @@ namespace rust {
     return ::std::string(to_std_string_view(s));
 }
 
+std::num::NonZeroU32 to_nonzero_unchecked(uint32_t value) noexcept
+{
+    return std::num::NonZeroU32::new_unchecked(value);
+}
+
+Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept
+{
+    return std::num::NonZeroU32::new_(value);
+}
+
 String to_string(::std::string_view sv)
 {
     auto slice = lix::ffi::from_raw_parts_u8(nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());

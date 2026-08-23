@@ -177,6 +177,10 @@ struct OsStr;
 struct OsString;
 }
 
+namespace std::num {
+struct NonZeroU32;
+}
+
 ::std::string_view to_std_string_view(Ref<std::ffi::OsStr> s);
 ::std::string to_std_string(Ref<std::ffi::OsStr> s);
 
@@ -186,6 +190,9 @@ struct OsString;
 std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s);
+
+std::num::NonZeroU32 to_nonzero_unchecked(uint32_t value) noexcept;
+Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept;
 
 String to_string(::std::string_view sv);
 
