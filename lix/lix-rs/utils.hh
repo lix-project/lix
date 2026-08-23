@@ -14,11 +14,13 @@
 #include <variant>
 #include <set>
 #include <list>
+#include <filesystem>
 
 // this header requires `std` to mean `::std`
 #include "lix/lix-rs/zngur.gen.hh"
 
 #include "lix/libutil/result.hh"
+#include "lix/libutil/canon-path.hh"
 
 // bunch of forward declarations to avoid including all other headers.
 namespace rust {
@@ -54,6 +56,11 @@ struct String;
 namespace std::vec {
 template<typename...>
 struct Vec;
+}
+
+namespace std::path {
+struct PathBuf;
+struct Path;
 }
 
 namespace std::collections::hash_set {
@@ -181,6 +188,9 @@ std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s);
 
 String to_string(::std::string_view sv);
+
+Ref<std::path::Path> to_path(const nix::CanonPath & path);
+Ref<std::path::Path> to_path(const ::std::filesystem::path & path);
 
 namespace lix::ffi {
 Ref<std::ffi::OsStr> to_os_str(const uint8_t * raw, size_t size) noexcept;

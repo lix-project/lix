@@ -187,3 +187,54 @@ mod ::std::ffi {
         fn as_encoded_bytes(&self) -> &[u8] deref OsStr;
     }
 }
+
+mod ::std::path {
+  use ::std::ffi::OsStr as OsStr;
+  use ::std::ffi::OsString as OsString;
+  use ::std::option::Option as Option;
+  use ::std::result::Result as Result;
+
+  type Path {
+    wellknown_traits(?Sized);
+
+    fn new(&OsStr) -> &Path;
+
+    fn as_os_str(&self) -> &OsStr;
+
+    fn to_str(&self) -> Option<&str>;
+    fn to_path_buf(&self) -> PathBuf;
+
+    fn is_absolute(&self) -> bool;
+    fn is_relative(&self) -> bool;
+    fn has_root(&self) -> bool;
+
+    fn parent(&self) -> Option<&Path>;
+    fn file_name(&self) -> Option<&OsStr>;
+
+    fn to_owned(&self) -> PathBuf use ::std::borrow::ToOwned;
+  }
+
+  type PathBuf {
+    #layout_conservative(size = 32, align = 8);
+    fn as_ref(&self) -> &Path deref Path;
+    fn from(&str) -> PathBuf;
+    fn push(&mut self, &Path);
+    fn into_os_string(self) -> OsString;
+  }
+
+  type Result<String, PathBuf> {
+    #layout_conservative(size = 32, align = 8);
+  }
+
+  type Option<&Path> {
+    #layout_conservative(size = 16, align = 8);
+  }
+
+  type Option<&OsStr> {
+    #layout_conservative(size = 16, align = 8);
+  }
+
+  type Option<&str> {
+    #layout_conservative(size = 16, align = 8);
+  }
+}

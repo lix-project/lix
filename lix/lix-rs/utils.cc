@@ -68,6 +68,16 @@ String to_string(::std::string_view sv)
     return String::from_utf8_lossy(slice).into_owned();
 }
 
+Ref<std::path::Path> to_path(const nix::CanonPath & path)
+{
+    return std::path::Path::new_(to_os_str(path.abs()));
+}
+
+Ref<std::path::Path> to_path(const ::std::filesystem::path & path)
+{
+    return std::path::Path::new_(to_os_str(path.native()));
+}
+
 Ref<std::ffi::OsStr> to_os_str(::std::string_view sv)
 {
     return lix::ffi::to_os_str(::nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());
