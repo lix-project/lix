@@ -108,7 +108,7 @@ TEST_F(ValuePrintingTests, vLambda)
         .values = { }
     };
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
-    auto posIdx = evaluator.positions.add(origin, 0);
+    auto posIdx = origin.add(0);
 
     ExprLambda eLambda(
         posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprInt>(noPos, 0)
@@ -508,7 +508,7 @@ TEST_F(ValuePrintingTests, ansiColorsLambda)
         .values = { }
     };
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
-    auto posIdx = evaluator.positions.add(origin, 0);
+    auto posIdx = origin.add(0);
 
     ExprLambda eLambda(
         posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprInt>(noPos, 0)
@@ -720,7 +720,7 @@ TEST_F(ValuePrintingTests, osc8InAttrSets)
 {
     const auto arbitrarySource = SourcePath(CanonPath("/dev/null")).unsafeIntoChecked();
     auto origin = evaluator.positions.addOrigin(Pos::Origin(arbitrarySource), 0);
-    auto pos = evaluator.positions.add(origin, 0);
+    auto pos = origin.add(0);
     BindingsBuilder builder = evaluator.buildBindings(1);
 
     auto vZero = Value{NewValueAs::integer, NixInt{0}};

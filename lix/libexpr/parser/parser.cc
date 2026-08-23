@@ -42,10 +42,9 @@ Expr * Evaluator::parse(
         return result.release();
     } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)
         auto pos = e.positions().back();
-        throw ParseError({
-            .msg = HintFmt("syntax error, %s", e.message()),
-            .pos = positions[s.positions.add(s.origin, pos.byte)]
-        });
+        throw ParseError(
+            {.msg = HintFmt("syntax error, %s", e.message()), .pos = positions[s.origin.add(pos.byte)]}
+        );
     }
 }
 
@@ -78,10 +77,9 @@ Evaluator::parse_repl(
         return x;
     } catch (p::parse_error & e) { // NOLINT(lix-foreign-exceptions)
         auto pos = e.positions().back();
-        throw ParseError({
-            .msg = HintFmt("syntax error, %s", e.message()),
-            .pos = positions[s.positions.add(s.origin, pos.byte)]
-        });
+        throw ParseError(
+            {.msg = HintFmt("syntax error, %s", e.message()), .pos = positions[s.origin.add(pos.byte)]}
+        );
     }
 }
 

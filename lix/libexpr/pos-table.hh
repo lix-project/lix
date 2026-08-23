@@ -14,31 +14,44 @@ class PosTable
 public:
     class Origin
     {
-        friend PosTable;
+        friend class PosTable;
     private:
-        uint32_t offset;
+        uint32_t base;
 
-        Origin(Pos::Origin origin, uint32_t offset, size_t size):
-            offset(offset), origin(origin), size(size)
-        {}
+        Origin(uint32_t base, uint32_t size) : base(base), size(size) {}
 
     public:
-        const Pos::Origin origin;
-        const size_t size;
+        const uint32_t size;
 
-        uint32_t offsetOf(PosIdx p) const
+        [[gnu::always_inline]]
+        PosIdx add(size_t offset)
         {
-            return p.id - 1 - offset;
+            if (offset > size) [[unlikely]] {
+                return {};
+            }
+            return PosIdx(1 + base + offset);
         }
     };
 
 private:
+    struct Record
+    {
+        Pos::Origin origin;
+        uint32_t base;
+        uint32_t size;
+
+        uint32_t offsetOf(PosIdx p) const
+        {
+            return p.id - 1 - base;
+        }
+    };
+
     using Lines = std::vector<uint32_t>;
 
-    std::map<uint32_t, Origin> origins;
+    std::map<uint32_t, Record> origins;
     mutable Sync<std::map<uint32_t, Lines>> lines;
 
-    const Origin * resolve(PosIdx p) const
+    const Record * resolve(PosIdx p) const
     {
         if (p.id == 0)
             return nullptr;
@@ -54,21 +67,21 @@ private:
 public:
     Origin addOrigin(Pos::Origin origin, size_t size)
     {
-        uint32_t offset = 0;
+        uint32_t base = 0;
         if (auto it = origins.rbegin(); it != origins.rend())
-            offset = it->first + it->second.size;
+            base = it->first + it->second.size;
+
         // +1 because all PosIdx are offset by 1 to begin with (because noPos == 0), and
         // another +1 to ensure that all origins can point to EOF, eg on (invalid) empty inputs.
-        if (2 + offset + size < offset)
-            return Origin{origin, offset, 0};
-        return origins.emplace(offset, Origin{origin, offset, size}).first->second;
-    }
+        bool saturatedTable = size > UINT32_MAX || 2u + base + size < base;
 
-    PosIdx add(const Origin & origin, size_t offset)
-    {
-        if (offset > origin.size)
-            return PosIdx();
-        return PosIdx(1 + origin.offset + offset);
+        if (saturatedTable) {
+            return Origin{base, 0};
+        } else {
+            uint32_t length = static_cast<uint32_t>(size);
+            origins.emplace(base, Record{std::move(origin), base, length});
+            return Origin{base, length};
+        }
     }
 
     Pos operator[](PosIdx p) const;

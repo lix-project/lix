@@ -150,8 +150,8 @@ TEST(WireFormatGenerator, Error)
     auto s = toWire<Error>(Error{ErrorInfo{
         .level = lvlInfo,
         .msg = HintFmt("foo"),
-        .pos = pt[pt.add(o, 1)],
-        .traces = {{.pos = pt[pt.add(o, 2)], .hint = HintFmt("b %1%", "foo")}},
+        .pos = pt[o.add(1)],
+        .traces = {{.pos = pt[o.add(2)], .hint = HintFmt("b %1%", "foo")}},
     }});
     // NOTE position of the error and all traces are ignored
     // by the wire format

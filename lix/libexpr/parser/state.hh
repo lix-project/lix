@@ -60,12 +60,12 @@ struct State
     // but also requires line and column (which is expensive)
     PosIdx at(const auto & in)
     {
-        return positions.add(origin, in.begin() - in.input().begin());
+        return origin.add(in.begin() - in.input().begin());
     }
 
     PosIdx atEnd(const auto & in)
     {
-        return positions.add(origin, in.end() - in.input().begin());
+        return origin.add(in.end() - in.input().begin());
     }
 };
 

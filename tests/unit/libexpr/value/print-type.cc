@@ -100,7 +100,7 @@ TEST_F(TypeValuePrintingTests, vLambda)
     EvalMemory mem;
     Env env{.up = nullptr, .values = {}};
     PosTable::Origin origin = evaluator.positions.addOrigin(std::monostate(), 1);
-    auto posIdx = evaluator.positions.add(origin, 0);
+    auto posIdx = origin.add(0);
 
     ExprLambda eLambda(posIdx, std::make_unique<AttrsPattern>(), std::make_unique<ExprInt>(noPos, 0));
     eLambda.pattern->name = createSymbol("a");

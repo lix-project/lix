@@ -762,15 +762,16 @@ std::string ExprLambda::showNamePos(const EvalState & state) const
 
 Pos PosTable::operator[](PosIdx p) const
 {
-    auto origin = resolve(p);
-    if (!origin)
+    auto record = resolve(p);
+    if (!record) {
         return {};
+    }
 
-    const auto offset = origin->offsetOf(p);
+    const auto offset = record->offsetOf(p);
 
-    Pos result{0, 0, origin->origin};
+    Pos result{0, 0, record->origin};
     auto lines = this->lines.lock();
-    auto & linesForInput = (*lines)[origin->offset];
+    auto & linesForInput = (*lines)[record->base];
 
     if (linesForInput.empty()) {
         auto source = result.getSource().value_or("");
