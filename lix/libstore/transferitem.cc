@@ -358,9 +358,17 @@ size_t TransferItem::headerCallbackWrapper(void * contents, size_t size, size_t 
 
 int TransferItem::progressCallback(curl_off_t dltotal, curl_off_t dlnow)
 {
+    using namespace std::chrono_literals;
+
     try {
-        if (act.progress(dlnow, dltotal) == Logger::BufferState::NeedsFlush) {
-            act.getLogger().waitForSpace(); // NOLINT(lix-never-async)
+        // limit progress reports to 10 Hz. that should be more than enough to keep users up to date
+        // without producing huge amounts of log entries that'll need time (and bandwidth) to flush.
+        if (progress != std::pair{dltotal, dlnow}) {
+            auto now = std::chrono::steady_clock::now();
+            if (now - lastProgressUpdate >= 100ms) {
+                (void) act.progress(dlnow, dltotal);
+                progress = {dltotal, dlnow};
+            }
         }
     } catch (nix::Interrupted &) {
     }
@@ -413,9 +421,7 @@ void TransferItem::finish(CURLcode code)
 
     else if (code == CURLE_OK && successfulStatuses.count(httpStatus))
     {
-        if (act.progress(bodySize, bodySize) == Logger::BufferState::NeedsFlush) {
-            act.getLogger().waitForSpace(); // NOLINT(lix-never-async)
-        }
+        (void) act.progress(bodySize, bodySize);
         auto state = downloadState.lock();
         state->done = true;
         state->signal();

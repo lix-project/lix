@@ -75,6 +75,9 @@ public:
 
     std::exception_ptr callbackException;
 
+    std::pair<curl_off_t, curl_off_t> progress;
+    std::chrono::steady_clock::time_point lastProgressUpdate{std::chrono::seconds{0}};
+
     // Specials.
 public:
     TransferItem(
