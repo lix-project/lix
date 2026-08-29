@@ -20,7 +20,7 @@ def test_success_default_store(nix: Nix):
     store = f"file://{nix.env.dirs.cache_dir}"
     # Succeeds with default store as build remote.
     res = (
-        nix.nix_build(["--store", store, "--builders", "auto - - 1 1", "-j0", "dependencies.nix"])
+        nix.nix_build(["--store", store, "--builders", "auto - - 8 1", "-j0", "dependencies.nix"])
         .run()
         .ok()
     )
