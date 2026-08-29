@@ -841,6 +841,9 @@ DebugState::TraceFrame DebugState::addTrace(DebugTrace t)
 
 Value::List * EvalMemory::newList(size_t size)
 {
+    if (size > (std::numeric_limits<size_t>::max() - sizeof(Value::List)) / sizeof(Value *)) {
+        throw Error("List of size %d too large", size);
+    }
     auto list =
         reinterpret_cast<Value::List *>(allocBytes(sizeof(Value::List) + size * sizeof(Value *)));
     list->size = size;
