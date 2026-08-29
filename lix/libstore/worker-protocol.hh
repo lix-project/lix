@@ -35,6 +35,12 @@ namespace nix {
 #define STDERR_STOP_ACTIVITY  0x53544f50
 #define STDERR_RESULT         0x52534c54
 
+// magic values for obsolete fields in SetOptions. we won't talk to daemons that still use them anyway.
+inline constexpr unsigned WORKER_EXTENDED_OPTIONS_KEY1 = 0xf2ac1b18;
+inline constexpr unsigned WORKER_EXTENDED_OPTIONS_KEY2 = 0x9a1eae1f;
+inline constexpr unsigned WORKER_EXTENDED_OPTIONS_KEY3 = 0xbd22c29a;
+inline constexpr const char * WORKER_EXTENDED_OPTIONS_NAME =
+    "daemon-advertised-extended-options-support-but-does-not-actually-implement-it";
 
 class Store;
 struct Source;

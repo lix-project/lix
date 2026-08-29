@@ -1,5 +1,5 @@
 import pytest
-from testlib.fixtures.nix import Nix, NixDaemon
+from testlib.fixtures.nix import Nix, NixDaemon, NixDaemonProtocol
 
 pytestmark = pytest.mark.no_daemon
 
@@ -27,7 +27,14 @@ def test_ping_daemon(nix: Nix, daemon: NixDaemon):
         assert f"Version: {version}" in info
         info = inner.nix(["store", "ping", "--json"]).run().ok().json()
         assert info["url"] == inner.settings.store
-        assert info["version"] == version
+        # we transport some feature flags after the real version number for non-rpc connections
+        suffix = (
+            " (sshng-extended-options)"
+            if inner.daemon_protocol
+            in [NixDaemonProtocol.LEGACY, NixDaemonProtocol.LEGACY_COMBINED]
+            else ""
+        )
+        assert info["version"] == f"{version}{suffix}"
 
 
 def test_ping_bad_store(nix: Nix):

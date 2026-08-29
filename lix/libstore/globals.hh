@@ -187,6 +187,7 @@ std::vector<Path> getUserConfigFiles();
 std::vector<Path> getHomeConfigFile();
 
 extern const std::string nixVersion;
+inline constexpr std::string_view sshNgExtendedOptionsFeature = "(sshng-extended-options)";
 
 /**
  * NB: This is not sufficient. You need to call initNix()

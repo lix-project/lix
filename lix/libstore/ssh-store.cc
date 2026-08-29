@@ -7,6 +7,7 @@
 #include "lix/libstore/ssh.hh"
 #include "lix/libutil/result.hh"
 #include "lix/libutil/strings.hh"
+#include "lix/libutil/json.hh"
 #include <memory>
 
 namespace nix {
@@ -147,15 +148,59 @@ protected:
     SSH ssh;
 
     kj::Promise<Result<void>> setOptions(RemoteStore::Connection & conn) override
-    {
+    try {
         /* TODO Add a way to explicitly ask for some options to be
            forwarded. One option: A way to query the daemon for its
            settings, and then a series of params to SSHStore like
            forward-cores or forward-overridden-cores that only
            override the requested settings.
         */
-        return {result::success()};
-    };
+        if (!conn.daemonNixVersion || !conn.daemonNixVersion->contains(sshNgExtendedOptionsFeature)) {
+            co_return {result::success()};
+        }
+
+        std::map<std::string, std::string> overrides;
+
+        auto override = [&](const auto & setting) {
+            overrides.insert_or_assign(setting.name, setting.to_string());
+        };
+
+        // we only mirror what the legacy ssh protocol propagated for now
+        override(settings.maxSilentTime);
+        override(settings.buildTimeout);
+        override(settings.keepFailed);
+
+        StringSink command;
+
+        // set unnamed values to something safe just in case the daemon lied to us about extended options
+        // clang-format off
+        command << WorkerProto::Op::SetOptions
+            << false // keepFailed
+            << false // keepGoing
+            << false // tryFallback
+            << lvlError // verbosity
+            << 1 // maxBuildJobs
+            << settings.maxSilentTime
+            << WORKER_EXTENDED_OPTIONS_KEY1
+            << false // verboseBuild
+            << WORKER_EXTENDED_OPTIONS_KEY2
+            << WORKER_EXTENDED_OPTIONS_KEY3
+            << 1 // buildCores
+            << false; // useSubstitutes
+        // clang-format on
+
+        command << 1 << WORKER_EXTENDED_OPTIONS_NAME << to_string(JSON{{"exact", overrides}});
+
+        AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
+        TRY_AWAIT(stream.writeFull(command.s.data(), command.s.size()));
+        auto ex = TRY_AWAIT(conn.processStderr(stream));
+        if (ex.e) {
+            std::rethrow_exception(ex.e);
+        }
+        co_return result::success();
+    } catch (...) {
+        co_return result::current_exception();
+    }
 };
 
 kj::Promise<Result<void>> SSHStore::init()

@@ -28,6 +28,7 @@
 #include "lix/libstore/daemon-rpc.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh"
+#include "lix/libutil/json.hh"
 
 #include <boost/core/demangle.hpp>
 #include <capnp/rpc-twoparty.h>
@@ -677,10 +678,10 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         clientSettings.verbosity = (Verbosity) readNum<unsigned>(from);
         clientSettings.overrides[settings.maxBuildJobs.name] = std::to_string(readNum<unsigned>(from));
         clientSettings.overrides[settings.maxSilentTime.name] = std::to_string(readNum<unsigned>(from));
-        readNum<unsigned>(from); // obsolete useBuildHook
+        const auto obsolete1 = readNum<unsigned>(from); // obsolete useBuildHook
         readNum<unsigned>(from); // obsolete verboseBuild (2026-08-29)
-        readNum<unsigned>(from); // obsolete logType
-        readNum<unsigned>(from); // obsolete printBuildTrace
+        const auto obsolete2 = readNum<unsigned>(from); // obsolete logType
+        const auto obsolete3 = readNum<unsigned>(from); // obsolete printBuildTrace
         clientSettings.overrides[settings.buildCores.name] = std::to_string(readNum<unsigned>(from));
         clientSettings.overrides[settings.useSubstitutes.name] = std::to_string(readNum<unsigned>(from));
 
@@ -692,6 +693,12 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         }
 
         logger->startWork();
+        if (obsolete1 == WORKER_EXTENDED_OPTIONS_KEY1 && obsolete2 == WORKER_EXTENDED_OPTIONS_KEY2
+            && obsolete3 == WORKER_EXTENDED_OPTIONS_KEY3)
+        {
+            clientSettings.overrides =
+                JSON::parse(getOr(clientSettings.overrides, WORKER_EXTENDED_OPTIONS_NAME, "{}"))["exact"];
+        }
         clientSettings.apply(trusted);
         logger->stopWork();
         break;
@@ -957,7 +964,7 @@ void processLegacyConnection(
 
     readNum<unsigned>(from); // obsolete reserveSpace
 
-    to << nixVersion;
+    to << fmt("%s %s", nixVersion, sshNgExtendedOptionsFeature);
 
     // We and the underlying store both need to trust the client for
     // it to be trusted.

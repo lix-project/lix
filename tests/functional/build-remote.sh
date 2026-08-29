@@ -79,6 +79,22 @@ out="$(nix-build 2>&1 failing.nix \
 build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
 [[ "foo" = $(<"$build_dir"/b/bar) ]]
 
+# should work for ssh-ng too
+tmp_builders="$(join_by '; ' "${builders[@]}")"
+tmp_builders="${tmp_builders/ssh:/ssh-ng:}"
+out="$(nix-build 2>&1 failing.nix \
+  --no-out-link \
+  --builders "$tmp_builders"  \
+  --keep-failed \
+  --store $TEST_ROOT/machine0 \
+  -j0 \
+  --arg busybox $busybox)" || true
+
+[[ "$out" =~ .*"note: keeping build directory".* ]]
+
+build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
+[[ "foo" = $(<"$build_dir"/b/bar) ]]
+
 # regression fj#928: --keep-going doesn't keep going with remote builders
 output="$(nix-build 2>&1 \
   --store $TEST_ROOT/machine0 \
