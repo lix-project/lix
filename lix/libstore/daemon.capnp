@@ -221,16 +221,6 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   queryMissing @19 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
   queryPathFromHashPart @8 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
   queryPathInfo @15 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
-  setOptions @14 (
-    keepFailed :Bool,
-    keepGoing :Bool,
-    tryFallback :Bool,
-    verbosity :T.Verbosity,
-    maxBuildJobs :UInt32,
-    maxSilentTime :UInt64,
-    buildCores :UInt32,
-    useSubstitutes :Bool,
-    settingsOverrides :T.Settings
-  );
+  setOptions @14 (verbosity :T.Verbosity, settingsOverrides :T.Settings);
   verifyStore @16 (checkContents :Bool, repair :Bool) -> (result :Bool);
 }

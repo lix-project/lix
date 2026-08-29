@@ -787,25 +787,11 @@ try {
 kj::Promise<Result<void>> RpcRemoteStore::setOptions()
 try {
     auto req = rpc->legacyProtocol.setOptionsRequest();
-    req.setKeepFailed(settings.keepFailed);
-    req.setKeepGoing(settings.keepGoing);
-    req.setTryFallback(settings.tryFallback);
     req.setVerbosity(static_cast<rpc::Verbosity>(getVerbosity()));
-    req.setMaxBuildJobs(settings.maxBuildJobs);
-    req.setMaxSilentTime(settings.maxSilentTime);
-    req.setBuildCores(settings.buildCores);
-    req.setUseSubstitutes(settings.useSubstitutes);
 
     std::map<std::string, Config::SettingInfo> overrides;
     settings.getSettings(overrides, true); // libstore settings
     fileTransferSettings.getSettings(overrides, true);
-    overrides.erase(settings.keepFailed.name);
-    overrides.erase(settings.keepGoing.name);
-    overrides.erase(settings.tryFallback.name);
-    overrides.erase(settings.maxBuildJobs.name);
-    overrides.erase(settings.maxSilentTime.name);
-    overrides.erase(settings.buildCores.name);
-    overrides.erase(settings.useSubstitutes.name);
     overrides.erase(loggerSettings.showTrace.name);
     overrides.erase(experimentalFeatureSettings.experimentalFeatures.name);
     overrides.erase(settings.pluginFiles.name);

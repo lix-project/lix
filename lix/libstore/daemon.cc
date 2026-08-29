@@ -189,27 +189,12 @@ struct TunnelLogger : public Logger
 
 struct ClientSettings
 {
-    bool keepFailed;
-    bool keepGoing;
-    bool tryFallback;
     Verbosity verbosity;
-    unsigned int maxBuildJobs;
-    time_t maxSilentTime;
-    bool verboseBuild;
-    unsigned int buildCores;
-    bool useSubstitutes;
     StringMap overrides;
 
     void apply(TrustedFlag trusted)
     {
-        settings.keepFailed.override(keepFailed);
-        settings.keepGoing.override(keepGoing);
-        settings.tryFallback.override(tryFallback);
         setVerbosity(verbosity);
-        settings.maxBuildJobs.override(maxBuildJobs);
-        settings.maxSilentTime.override(maxSilentTime);
-        settings.buildCores.override(buildCores);
-        settings.useSubstitutes.override(useSubstitutes);
 
         for (auto & i : overrides) {
             auto & name(i.first);
@@ -256,8 +241,10 @@ struct ClientSettings
                             "removed in Nix."
                         );
                 } else if (trusted || name == settings.buildTimeout.name
-                           || name == settings.maxSilentTime.name
-                           || name == settings.pollInterval.name
+                           || name == settings.maxSilentTime.name || name == settings.pollInterval.name
+                           || name == settings.keepFailed.name || name == settings.keepGoing.name
+                           || name == settings.tryFallback.name || name == settings.maxBuildJobs.name
+                           || name == settings.buildCores.name || name == settings.useSubstitutes.name
                            || name == fileTransferSettings.maxConnectTimeout.name
                            || fileTransferSettings.initialConnectTimeout.isNameOrAlias(name)
                            || (name == "builders" && value == ""))
@@ -682,18 +669,20 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         ClientSettings clientSettings;
 
-        clientSettings.keepFailed = readNum<unsigned>(from);
-        clientSettings.keepGoing = readNum<unsigned>(from);
-        clientSettings.tryFallback = readNum<unsigned>(from);
+        // stringifying these settings only to destringify them again later is indeed quite silly.
+        // it makes handling of setting overrides *significantly* simpler though, and so we do it.
+        clientSettings.overrides[settings.keepFailed.name] = std::to_string(readNum<unsigned>(from));
+        clientSettings.overrides[settings.keepGoing.name] = std::to_string(readNum<unsigned>(from));
+        clientSettings.overrides[settings.tryFallback.name] = std::to_string(readNum<unsigned>(from));
         clientSettings.verbosity = (Verbosity) readNum<unsigned>(from);
-        clientSettings.maxBuildJobs = readNum<unsigned>(from);
-        clientSettings.maxSilentTime = readNum<unsigned>(from);
+        clientSettings.overrides[settings.maxBuildJobs.name] = std::to_string(readNum<unsigned>(from));
+        clientSettings.overrides[settings.maxSilentTime.name] = std::to_string(readNum<unsigned>(from));
         readNum<unsigned>(from); // obsolete useBuildHook
         readNum<unsigned>(from); // obsolete verboseBuild (2026-08-29)
         readNum<unsigned>(from); // obsolete logType
         readNum<unsigned>(from); // obsolete printBuildTrace
-        clientSettings.buildCores = readNum<unsigned>(from);
-        clientSettings.useSubstitutes = readNum<unsigned>(from);
+        clientSettings.overrides[settings.buildCores.name] = std::to_string(readNum<unsigned>(from));
+        clientSettings.overrides[settings.useSubstitutes.name] = std::to_string(readNum<unsigned>(from));
 
         unsigned int n = readNum<unsigned>(from);
         for (unsigned int i = 0; i < n; i++) {
@@ -1547,14 +1536,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             auto args = context.getParams();
 
             ClientSettings clientSettings;
-            clientSettings.keepFailed = args.getKeepFailed();
-            clientSettings.keepGoing = args.getKeepGoing();
-            clientSettings.tryFallback = args.getTryFallback();
             clientSettings.verbosity = static_cast<Verbosity>(args.getVerbosity());
-            clientSettings.maxBuildJobs = args.getMaxBuildJobs();
-            clientSettings.maxSilentTime = args.getMaxSilentTime();
-            clientSettings.buildCores = args.getBuildCores();
-            clientSettings.useSubstitutes = args.getUseSubstitutes();
 
             for (auto entry : args.getSettingsOverrides().getMap()) {
                 auto name = rpc::to<std::string>(entry.getName());
