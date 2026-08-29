@@ -228,7 +228,6 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     verbosity :T.Verbosity,
     maxBuildJobs :UInt32,
     maxSilentTime :UInt64,
-    verboseBuild :Bool,
     buildCores :UInt32,
     useSubstitutes :Bool,
     settingsOverrides :T.Settings

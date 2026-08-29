@@ -125,7 +125,7 @@ try {
        << settings.maxBuildJobs
        << settings.maxSilentTime
        << true
-       << (settings.verboseBuild ? lvlError : lvlVomit)
+       << lvlError // obsolete verboseBuild (2026-08-29)
        << 0 // obsolete log type
        << 0 /* obsolete print build trace */
        << settings.buildCores

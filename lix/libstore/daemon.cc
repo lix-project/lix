@@ -208,7 +208,6 @@ struct ClientSettings
         setVerbosity(verbosity);
         settings.maxBuildJobs.override(maxBuildJobs);
         settings.maxSilentTime.override(maxSilentTime);
-        settings.verboseBuild = verboseBuild;
         settings.buildCores.override(buildCores);
         settings.useSubstitutes.override(useSubstitutes);
 
@@ -690,7 +689,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         clientSettings.maxBuildJobs = readNum<unsigned>(from);
         clientSettings.maxSilentTime = readNum<unsigned>(from);
         readNum<unsigned>(from); // obsolete useBuildHook
-        clientSettings.verboseBuild = lvlError == (Verbosity) readNum<unsigned>(from);
+        readNum<unsigned>(from); // obsolete verboseBuild (2026-08-29)
         readNum<unsigned>(from); // obsolete logType
         readNum<unsigned>(from); // obsolete printBuildTrace
         clientSettings.buildCores = readNum<unsigned>(from);
@@ -1554,7 +1553,6 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             clientSettings.verbosity = static_cast<Verbosity>(args.getVerbosity());
             clientSettings.maxBuildJobs = args.getMaxBuildJobs();
             clientSettings.maxSilentTime = args.getMaxSilentTime();
-            clientSettings.verboseBuild = args.getVerboseBuild();
             clientSettings.buildCores = args.getBuildCores();
             clientSettings.useSubstitutes = args.getUseSubstitutes();
 

@@ -163,11 +163,6 @@ public:
     }
 
     /**
-     * Whether to show build log output in real time.
-     */
-    bool verboseBuild = true;
-
-    /**
      * Read-only mode.  Don't copy stuff to the store, don't change
      * the database.
      */

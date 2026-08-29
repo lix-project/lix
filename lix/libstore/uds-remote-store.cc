@@ -793,7 +793,6 @@ try {
     req.setVerbosity(static_cast<rpc::Verbosity>(getVerbosity()));
     req.setMaxBuildJobs(settings.maxBuildJobs);
     req.setMaxSilentTime(settings.maxSilentTime);
-    req.setVerboseBuild(settings.verboseBuild);
     req.setBuildCores(settings.buildCores);
     req.setUseSubstitutes(settings.useSubstitutes);
 
