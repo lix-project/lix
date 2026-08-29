@@ -40,7 +40,7 @@ def test_j0_without_remotes_fails(nix: Nix):
 
 @pytest.mark.nix_settings(trusted_users="*")
 def test_j0_with_mismatched_remotes_fails(nix: Nix):
-    remote = f"ssh://localhost?remote-store={nix.env.dirs.home}/machine1"
+    remote = f"ssh-ng://localhost?remote-store={nix.env.dirs.home}/machine1"
     result = nix.nix_build(["-j0", "--expr", drv, "--builders", remote]).run().expect(1)
     assert (
         "error: unable to start any build; remote machines may not have all required system features."

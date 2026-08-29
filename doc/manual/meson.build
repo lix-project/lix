@@ -126,7 +126,6 @@ nix_nested_manpages = [
       'realise',
       'repair-path',
       'restore',
-      'serve',
       'verify',
       'verify-path',
     ],

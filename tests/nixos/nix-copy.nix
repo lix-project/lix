@@ -53,6 +53,7 @@ in {
         { services.openssh.enable = true;
           services.openssh.settings.PermitRootLogin = "yes";
           users.users.root.hashedPasswordFile = lib.mkForce null;
+          nix.settings.require-sigs = false;
           virtualisation.writableStore = true;
           virtualisation.additionalPaths = [ pkgB pkgC ];
         };
@@ -85,7 +86,7 @@ in {
     # requires some proper cli automation, which we do not have. however, since ssh interacts with
     # /dev/tty directly and the host key message goes there too, we don't even need to check this.
     server.fail("nix-store --check-validity ${pkgA}")
-    client.succeed("echo | script -f /dev/stdout -c 'PATH=\"${fakeSSH}/bin:$PATH\" nix copy --to ssh://server ${pkgA}' | grep 'fake-ssh ran'")
+    client.succeed("echo | script -f /dev/stdout -c 'PATH=\"${fakeSSH}/bin:$PATH\" nix copy --to ssh-ng://server ${pkgA}' | grep 'fake-ssh ran'")
 
     client.copy_from_host("key", "/root/.ssh/id_ed25519.setup")
     client.succeed("chmod 600 /root/.ssh/id_ed25519.setup")
@@ -93,10 +94,10 @@ in {
     server.copy_from_host("key.pub", "/root/.ssh/authorized_keys")
     server.succeed("systemctl restart sshd")
 
-    client.succeed("NIX_SSHOPTS='-oStrictHostKeyChecking=no -i /root/.ssh/id_ed25519.setup' nix copy --to ssh://server ${pkgA}")
+    client.succeed("NIX_SSHOPTS='-oStrictHostKeyChecking=no -i /root/.ssh/id_ed25519.setup' nix copy --to ssh-ng://server ${pkgA}")
     server.succeed("nix-store --check-validity ${pkgA}")
     # Check that ControlMaster is working
-    client.succeed("nix copy --to ssh://server ${pkgA}")
+    client.succeed("nix copy --to ssh-ng://server ${pkgA}")
 
     client.succeed("cp /root/.ssh/id_ed25519.setup /root/.ssh/id_ed25519")
 
@@ -108,7 +109,7 @@ in {
     # Check that an explicit master will work
     client.succeed(f"ssh -MNfS /tmp/master {server.name}")
     client.succeed(f"ssh -S /tmp/master -O check {server.name}")
-    client.succeed("NIX_SSHOPTS='-oControlPath=/tmp/master' nix copy --to ssh://server ${pkgA} >&2")
+    client.succeed("NIX_SSHOPTS='-oControlPath=/tmp/master' nix copy --to ssh-ng://server ${pkgA} >&2")
     client.succeed(f"ssh -S /tmp/master -O exit {server.name}")
 
     # Copy the closure of package B from the server to the client, using ssh-ng.
@@ -120,7 +121,7 @@ in {
 
     # Copy the derivation of package D's derivation from the client to the server.
     server.fail("nix-store --check-validity ${pkgD.drvPath}")
-    client.succeed("nix copy --derivation --to ssh://server ${pkgD.drvPath} >&2")
+    client.succeed("nix copy --derivation --to ssh-ng://server ${pkgD.drvPath} >&2")
     server.succeed("nix-store --check-validity ${pkgD.drvPath}")
   '';
 }

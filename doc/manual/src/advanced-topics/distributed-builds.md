@@ -218,7 +218,7 @@ lix@granite.lix.systems     i686-linux      /home/deepslate/.ssh/id_ed25519     
 ```
 
 #### Special handling of fields
-- `uri`: Due to backward compatibility, the `ssh://` may be omitted for the store-uri.
+- `uri`: Due to backward compatibility, the `ssh://` may be omitted for the store-uri, but this will cause connection errors since `ssh://` URIs are no longer supported.
 - `ssh-public-host-key`: The key must be provided encoded in base64. Specifically calculated via `base64 -w0 /etc/ssh/ssh_host_ed25519_key.pub`
 
 

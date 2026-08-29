@@ -378,6 +378,7 @@ template class BaseSetting<StringSet>;
 template class BaseSetting<StringMap>;
 template class BaseSetting<ExperimentalFeatures>;
 template class BaseSetting<DeprecatedFeatures>;
+template class BaseSetting<std::optional<uint16_t>>;
 template class BaseSetting<std::optional<uint32_t>>;
 
 static Path parsePath(const AbstractSetting & s, const std::string & str, const ApplyConfigOptions & options)

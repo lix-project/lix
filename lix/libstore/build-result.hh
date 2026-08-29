@@ -16,7 +16,7 @@ struct KeyedBuildResult;
 struct BuildResult
 {
     /**
-     * @note This is directly used in the nix-store --serve protocol.
+     * @note This is directly used in the wire protocol.
      * That means we need to worry about compatability across versions.
      * Therefore, don't remove status codes, and only add new status
      * codes at the end of the list.

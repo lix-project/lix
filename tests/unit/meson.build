@@ -145,7 +145,6 @@ libstore_tests_sources = files(
   'libstore/path.cc',
   'libstore/path-tree.cc',
   'libstore/references.cc',
-  'libstore/serve-protocol.cc',
   'libstore/worker-protocol.cc',
 )
 

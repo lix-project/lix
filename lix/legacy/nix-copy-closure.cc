@@ -47,7 +47,7 @@ static int main_nix_copy_closure(AsyncIoRoot & aio, std::string programName, Str
         if (sshHost.empty())
             throw UsageError("no host name specified");
 
-        auto remoteUri = "ssh://" + sshHost + (gzip ? "?compress=true" : "");
+        auto remoteUri = "ssh-ng://" + sshHost + (gzip ? "?compress=true" : "");
         auto to = aio.blockOn(toMode ? openStore(remoteUri) : openStore());
         auto from = aio.blockOn(toMode ? openStore() : openStore(remoteUri));
 

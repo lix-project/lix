@@ -124,15 +124,11 @@ in
     }
   );
 
-  # End remoteBuilds tests
-
-  remoteBuildsSshNg = runNixOSTestFor "x86_64-linux" ./remote-builds-ssh-ng.nix;
-
   # Test building with a non‐`root` user on the remote
 
-  remoteBuildsSshNgNonRoot = runNixOSTestFor "x86_64-linux" {
-    name = "remoteBuildsSshNgNonRoot";
-    imports = [ ./remote-builds-ssh-ng.nix ];
+  remoteBuildsNonRoot = runNixOSTestFor "x86_64-linux" {
+    name = "remoteBuildsNonRoot";
+    imports = [ ./remote-builds.nix ];
     builders.config = {
       users.users.test-user = {
         isNormalUser = true;
@@ -141,18 +137,7 @@ in
     sshUser = "test-user";
   };
 
-  # Test our Nix as a client against remotes that are older
-
-  remoteBuildsSshNg_remote_2_18 = runNixOSTestFor "x86_64-linux" {
-    name = "remoteBuildsSshNg_remote_2_18";
-    imports = [ ./remote-builds-ssh-ng.nix ];
-    builders.config =
-      { lib, pkgs, ... }:
-      {
-        imports = [ checkOverrideNixVersion ];
-        nix.package = lib.mkForce pkgs.nixVersions.nix_2_18;
-      };
-  };
+  # End remoteBuilds tests
 
   # Test our Nix as a builder for clients that are older
 

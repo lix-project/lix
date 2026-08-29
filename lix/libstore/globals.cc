@@ -34,7 +34,6 @@
 // All built-in store implementations.
 #include "lix/libstore/dummy-store.hh"
 #include "lix/libstore/http-binary-cache-store.hh"
-#include "lix/libstore/legacy-ssh-store.hh"
 #include "lix/libstore/local-binary-cache-store.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libstore/s3-binary-cache-store.hh"
@@ -452,7 +451,6 @@ void initPlugins()
 static void registerStoreImplementations() {
   registerDummyStore();
   registerHttpBinaryCacheStore();
-  registerLegacySSHStore();
   registerLocalBinaryCacheStore();
   registerLocalStore();
   registerS3BinaryCacheStore();

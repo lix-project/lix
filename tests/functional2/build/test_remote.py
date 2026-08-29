@@ -50,7 +50,7 @@ def _get_remote_program_path(prog: str, env: ManagedEnv, *, untrusted: bool) -> 
 
 
 def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
-    prog = "nix-store" if proto == "ssh" else "nix-daemon"
+    prog = "nix-daemon"
     path = _get_remote_program_path(prog, env, untrusted=untrusted)
     remote_store = "local?" + urlencode(
         {"system-features": "foo bar baz", "root": str(env.dirs.home / "remote")}, quote_via=quote
@@ -112,9 +112,7 @@ def test_remote_trustless_unsigned(
 
 @pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
-@pytest.mark.parametrize(
-    ("protocol", "untrusted"), [("ssh", False), ("ssh-ng", False), ("ssh-ng", True)]
-)
+@pytest.mark.parametrize(("protocol", "untrusted"), [("ssh-ng", False), ("ssh-ng", True)])
 @with_files(
     {
         "build-hook.nix": CopyFile("assets/build-hook.nix"),
@@ -143,7 +141,7 @@ def test_remote_trustless_ia(
 
 @pytest.mark.nix_settings(trusted_users="*")
 @pytest.mark.full_sandbox
-@pytest.mark.parametrize(("protocol", "untrusted"), [("ssh", False), ("ssh-ng", True)])
+@pytest.mark.parametrize(("protocol", "untrusted"), [("ssh-ng", True)])
 @with_files(
     {
         "build-hook-ca-fixed.nix": CopyFile("assets/build-hook.nix"),
@@ -339,7 +337,7 @@ def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
 
 @pytest.mark.no_daemon
 @pytest.mark.full_sandbox
-@pytest.mark.parametrize("scheme", ["ssh", "ssh-ng"])
+@pytest.mark.parametrize("scheme", ["ssh-ng"])
 def test_keep_failed(nix: Nix, scheme: str):
     expr = """
         derivation {

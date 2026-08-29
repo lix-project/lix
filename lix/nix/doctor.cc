@@ -7,7 +7,6 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libstore/machines.hh"
 #include "lix/libutil/logging.hh"
-#include "lix/libstore/serve-protocol.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
@@ -380,9 +379,7 @@ struct CmdDoctor : StoreCommand
 
     bool checkStoreProtocol(unsigned int storeProto)
     {
-        unsigned int clientProto = GET_PROTOCOL_MAJOR(SERVE_PROTOCOL_VERSION) == GET_PROTOCOL_MAJOR(storeProto)
-            ? SERVE_PROTOCOL_VERSION
-            : PROTOCOL_VERSION;
+        unsigned int clientProto = PROTOCOL_VERSION;
 
         if (clientProto != storeProto) {
             std::stringstream ss;

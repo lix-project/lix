@@ -13,6 +13,8 @@ let
       services.openssh.enable = true;
       virtualisation.writableStore = true;
       nix.settings.sandbox = true;
+      # it's this or turning off require-sigs. trusting the build user is probably the more common case.
+      nix.settings.trusted-users = [ test.config.sshUser ];
 
       # Regression test for use of PID namespaces when /proc has
       # filesystems mounted on top of it
@@ -85,12 +87,14 @@ in
                   sshKey = "${test.config.nodes.builder1.users.users.${test.config.sshUser}.home}/.ssh/id_ed25519";
                   system = "i686-linux";
                   maxJobs = 1;
+                  protocol = "ssh-ng";
                 }
                 { hostName = "builder2";
                   inherit (test.config) sshUser;
                   sshKey = "${test.config.nodes.builder1.users.users.${test.config.sshUser}.home}/.ssh/id_ed25519";
                   system = "i686-linux";
                   maxJobs = 1;
+                  protocol = "ssh-ng";
                 }
               ];
             virtualisation.writableStore = true;
@@ -111,6 +115,7 @@ in
                 sshKey = "${test.config.nodes.builder1.users.users.${test.config.sshUser}.home}/.ssh/id_ed25519";
                 system = "i686-linux";
                 maxJobs = 1;
+                protocol = "ssh-ng";
               }
             ];
           };
@@ -149,7 +154,7 @@ in
 
       out = client.fail("nix-build ${expr nodes.client 1} 2>&1")
       assert "Host key verification failed." in out, f"No host verification error:\n{out}"
-      assert f"'ssh://{ssh_user}@builder" in out, f"No details about which host:\n{out}"
+      assert f"'ssh-ng://{ssh_user}@builder" in out, f"No details about which host:\n{out}"
 
       for builder in [builder1, builder2]:
         client.succeed(f"ssh -o StrictHostKeyChecking=no {ssh_user}@{builder.name} 'echo hello world' >&2")

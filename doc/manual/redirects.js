@@ -130,7 +130,6 @@ const redirects = {
     "rsec-nix-store-gc": "command-ref/nix-store.html#operation---gc",
     "rsec-nix-store-generate-binary-cache-key": "command-ref/nix-store.html#operation---generate-binary-cache-key",
     "rsec-nix-store-realise": "command-ref/nix-store.html#operation---realise",
-    "rsec-nix-store-serve": "command-ref/nix-store.html#operation---serve",
     "sec-nix-store": "command-ref/nix-store.html",
     "opt-I": "command-ref/opt-common.html#opt-I",
     "opt-attr": "command-ref/opt-common.html#opt-attr",

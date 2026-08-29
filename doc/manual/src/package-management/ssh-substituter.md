@@ -46,7 +46,7 @@ to `sshd_config` to restrict the user `nix-ssh`:
       PermitTTY no
       PermitTunnel no
       X11Forwarding no
-      ForceCommand nix-store --serve
+      ForceCommand nix-daemon --stdio
     Match All
 
 On NixOS, you can accomplish the same by adding the following to your
