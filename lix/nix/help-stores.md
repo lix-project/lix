@@ -19,7 +19,7 @@ i.e. by appending `?name1=value1&name2=value2&...` to the URL. For
 instance,
 
 ```
---store ssh://machine.example.org?ssh-key=/path/to/my/key
+--store ssh-ng://machine.example.org?ssh-key=/path/to/my/key
 ```
 
 tells Lix to access the store on a remote machine via the SSH

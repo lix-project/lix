@@ -15,7 +15,7 @@ R""(
   SSH:
 
   ```console
-  # nix copy --substitute-on-destination --to ssh://server /run/current-system
+  # nix copy --substitute-on-destination --to ssh-ng://server /run/current-system
   ```
 
   The `-s` flag causes the remote machine to try to substitute missing
@@ -26,7 +26,7 @@ R""(
 * Copy a closure from another machine via SSH:
 
   ```console
-  # nix copy --from ssh://server /nix/store/a6cnl93nk1wxnq84brbbwr6hxw9gp2w9-blender-2.79-rc2
+  # nix copy --from ssh-ng://server /nix/store/a6cnl93nk1wxnq84brbbwr6hxw9gp2w9-blender-2.79-rc2
   ```
 
 * Copy Hello to a binary cache in an Amazon S3 bucket:

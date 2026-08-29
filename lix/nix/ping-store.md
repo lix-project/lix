@@ -5,7 +5,7 @@ R""(
 * Test whether connecting to a remote Nix store via SSH works:
 
   ```console
-  # nix store ping --store ssh://mac1
+  # nix store ping --store ssh-ng://mac1
   ```
 
 * Test whether a URL is a valid binary cache:

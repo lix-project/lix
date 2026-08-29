@@ -12,14 +12,14 @@ machine is accessible via SSH and that it has Nix installed. You can
 test whether connecting to the remote Nix instance works, e.g.
 
 ```console
-$ nix store ping --store ssh://mac
+$ nix store ping --store ssh-ng://mac
 ```
 
 will try to connect to the machine named `mac`. It is possible to
 specify an SSH identity file as part of the remote store URI, e.g.
 
 ```console
-$ nix store ping --store ssh://mac?ssh-key=/home/alice/my-key
+$ nix store ping --store ssh-ng://mac?ssh-key=/home/alice/my-key
 ```
 
 Since builds should be non-interactive, the key should not have a
@@ -55,7 +55,7 @@ The legacy, "space"-separated format and starting with Lix 2.95.0, a TOML.
 
 Remote builders can also be configured in `nix.conf`, e.g.
 
-    builders = ssh://mac x86_64-darwin ; ssh://beastie x86_64-freebsd
+    builders = ssh-ng://mac x86_64-darwin ; ssh-ng://beastie x86_64-freebsd
 
 Finally, remote builders can be configured in a separate configuration
 file included in `builders` via the syntax `@file`. For example,
@@ -78,7 +78,7 @@ How those are combined within the configuration file differs for the formats, an
 
 1.  `uri` (**required**)
     The URI of the remote store in the format
-    `ssh[-ng]://[username@]hostname[?port=<port>]`, e.g. `ssh://nix@mac` or `ssh://mac`.
+    `ssh-ng://[username@]hostname[?port=<port>]`, e.g. `ssh-ng://nix@mac` or `ssh-ng://mac`.
     If the ssh server is not listening on port 22 (e.g. port 1337 in this case)
     the URI would be `ssh[-ng]://nix@mac?port=1337`. The hostname
     may be an alias defined in your `~/.ssh/config`.
@@ -150,7 +150,7 @@ For example:
 version = 1
 
 [machines.andesite]
-uri = "ssh://lix@andesite.lix.systems" # toml also allows for comments
+uri = "ssh-ng://lix@andesite.lix.systems" # toml also allows for comments
 system-types = ["i686-linux"]
 jobs = 8
 speed-factor = 1.0
@@ -158,14 +158,14 @@ supported-features = ["kvm"]
 ssh-key = "/home/deepslate/.ssh/id_ed25519"
 
 [machines.diorite]
-uri = "ssh://lix@diorite.lix.systems"
+uri = "ssh-ng://lix@diorite.lix.systems"
 system-types = ["i686-linux"]
 jobs = 8
 speed-factor = 2.0
 ssh-key = "/home/deepslate/.ssh/id_ed25519"
 
 [machines.granite]
-uri = "ssh://lix@granite.lix.systems"
+uri = "ssh-ng://lix@granite.lix.systems"
 system-types = ["i686-linux"]
 jobs = 1
 speed-factor = 2.0
@@ -173,7 +173,7 @@ supported-features = ["kvm", "benchmark"]
 ssh-key = "/home/deepslate/.ssh/id_ed25519"
 
 [machines.legacy]
-uri = "ssh://nix@nix-15-11.nixos.org"
+uri = "ssh-ng://nix@nix-15-11.nixos.org"
 enable = false
 
 ```
@@ -184,7 +184,7 @@ enable = false
 > It is strongly recommended to always provide a version tag for configuration within files to avoid breakage.
 
 For testing purposes, one can also define a builder ad hoc on the CLI as follows:
-`--builders 'machines.andesite = {uri = "ssh://lix@andesite.lix.systems", jobs = 8}'`
+`--builders 'machines.andesite = {uri = "ssh-ng://lix@andesite.lix.systems", jobs = 8}'`
 
 
 #### Special handling of fields
@@ -203,7 +203,7 @@ It is possible to specify multiple builders separated by a semicolon or
 a newline, e.g.
 
 ```console
-  --builders 'ssh://mac x86_64-darwin ; ssh://beastie x86_64-freebsd'
+  --builders 'ssh-ng://mac x86_64-darwin ; ssh-ng://beastie x86_64-freebsd'
 ```
 
 Every machine specification consists of the elements listed in the section above, seperated by any amount of spaces or tabs.
