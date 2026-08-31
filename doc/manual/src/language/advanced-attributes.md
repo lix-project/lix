@@ -254,6 +254,29 @@ Derivations can declare some infrequently used optional attributes.
     useful for very trivial derivations (such as `writeText` in Nixpkgs)
     that are cheaper to build than to substitute from a binary cache.
 
+    > **Warning**
+    >
+    > There's one exception where derivations with this attribute set to
+    > `false` will still be substituted. That is, when they're referenced
+    > by a store-path that is substitutable.
+    >
+    > E.g. in
+    >
+    > ```nix
+    > let
+    >   disallowedSubstitutes = runCommandLocal "allowsubstitutes-false" { } ''
+    >     touch $out
+    >   '';
+    > in
+    > runCommand "to-be-substituted" { } ''
+    >   echo "reference to ${disallowedSubstitutes}" > $out
+    > ''
+    > ```
+    >
+    > building `to-be-substituted` with a substituter enabled that has this
+    > store-path will also substituted the path built by derivation
+    > `allowsubstitutes-false`.
+
     You may disable the effects of this attribute by enabling the
     `always-allow-substitutes` configuration option in Lix.
 
