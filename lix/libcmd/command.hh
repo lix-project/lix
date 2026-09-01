@@ -218,7 +218,7 @@ struct MixOperateOnOptions : virtual Args
  * If the argument the user passes is a some sort of recipe for a path
  * not yet built, it must be built first.
  */
-struct BuiltPathsCommand : InstallablesCommand, virtual MixOperateOnOptions
+struct StorePathsCommand : InstallablesCommand, virtual MixOperateOnOptions
 {
 protected:
 
@@ -229,22 +229,13 @@ protected:
 
 public:
 
-    BuiltPathsCommand(bool recursive);
-
-    virtual void run(ref<Store> store, BuiltPaths && paths) = 0;
-
-    void run(ref<Store> store, Installables && installables) override;
-
-    void applyDefaultInstallables(std::vector<std::string> & rawInstallables) override;
-};
-
-struct StorePathsCommand : public BuiltPathsCommand
-{
     StorePathsCommand(bool recursive = false);
 
     virtual void run(ref<Store> store, StorePaths && storePaths) = 0;
 
-    void run(ref<Store> store, BuiltPaths && paths) override;
+    void run(ref<Store> store, Installables && installables) override;
+
+    void applyDefaultInstallables(std::vector<std::string> & rawInstallables) override;
 };
 
 /**

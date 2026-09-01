@@ -1,18 +1,18 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libstore/store-api.hh"
 #include "copy.hh"
 
 namespace nix {
 
-struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
+struct CmdCopy : virtual CopyCommand, StorePathsCommand
 {
     CheckSigsFlag checkSigs = CheckSigs;
 
     SubstituteFlag substitute = NoSubstitute;
 
-    CmdCopy()
-        : BuiltPathsCommand(true)
+    CmdCopy() : StorePathsCommand(true)
     {
         addFlag({
             .longName = "no-check-sigs",
@@ -44,15 +44,14 @@ struct CmdCopy : virtual CopyCommand, BuiltPathsCommand
 
     Category category() override { return catSecondary; }
 
-    void run(ref<Store> srcStore, BuiltPaths && paths) override
+    void run(ref<Store> srcStore, StorePaths && paths) override
     {
         auto dstStore = getDstStore();
 
         RealisedPath::Set stuffToCopy;
 
-        for (auto & builtPath : paths) {
-            auto theseRealisations = builtPath.outPaths();
-            stuffToCopy.insert(theseRealisations.begin(), theseRealisations.end());
+        for (auto & path : paths) {
+            stuffToCopy.emplace(path);
         }
 
         aio().blockOn(copyPaths(

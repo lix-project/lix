@@ -140,8 +140,7 @@ MixOperateOnOptions::MixOperateOnOptions()
     });
 }
 
-BuiltPathsCommand::BuiltPathsCommand(bool recursive)
-    : recursive(recursive)
+StorePathsCommand::StorePathsCommand(bool recursive) : recursive(recursive)
 {
     if (recursive)
         addFlag({
@@ -167,7 +166,7 @@ BuiltPathsCommand::BuiltPathsCommand(bool recursive)
     });
 }
 
-void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
+void StorePathsCommand::run(ref<Store> store, Installables && installables)
 {
     BuiltPaths paths;
     if (all) {
@@ -199,16 +198,6 @@ void BuiltPathsCommand::run(ref<Store> store, Installables && installables)
         }
     }
 
-    run(store, std::move(paths));
-}
-
-StorePathsCommand::StorePathsCommand(bool recursive)
-    : BuiltPathsCommand(recursive)
-{
-}
-
-void StorePathsCommand::run(ref<Store> store, BuiltPaths && paths)
-{
     StorePathSet storePaths;
     for (auto & builtPath : paths)
         for (auto & p : builtPath.outPaths())

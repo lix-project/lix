@@ -841,7 +841,7 @@ void InstallableCommand::run(ref<Store> store)
     run(store, std::move(installable));
 }
 
-void BuiltPathsCommand::applyDefaultInstallables(std::vector<std::string> & rawInstallables)
+void StorePathsCommand::applyDefaultInstallables(std::vector<std::string> & rawInstallables)
 {
     if (rawInstallables.empty() && !all)
         rawInstallables.push_back(".");
