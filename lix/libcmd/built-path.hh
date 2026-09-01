@@ -44,7 +44,6 @@ struct BuiltPath : built_path::detail::BuiltPathRaw {
     }
 
     StorePathSet outPaths() const;
-    kj::Promise<Result<RealisedPath::Set>> toRealisedPaths(Store & store) const;
 };
 
 typedef std::vector<BuiltPath> BuiltPaths;

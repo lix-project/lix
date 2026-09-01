@@ -56,40 +56,4 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
-
-kj::Promise<Result<RealisedPath::Set>> BuiltPath::toRealisedPaths(Store & store) const
-try {
-    RealisedPath::Set res;
-    auto handlers = overloaded{
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](const BuiltPath::Opaque & p) -> kj::Promise<Result<void>> {
-            try {
-                res.insert(p.path);
-                return {result::success()};
-            } catch (...) {
-                return {result::current_exception()};
-            }
-        },
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](const BuiltPath::Built & p) -> kj::Promise<Result<void>> {
-            try {
-                auto drvHashes = TRY_AWAIT(
-                    staticOutputHashes(store, TRY_AWAIT(store.readDerivation(p.drvPath.path)))
-                );
-                for (auto& [outputName, outputPath] : p.outputs) {
-                    res.insert(outputPath);
-                }
-                co_return result::success();
-            } catch (...) {
-                co_return result::current_exception();
-            }
-        },
-    };
-    TRY_AWAIT(std::visit(handlers, raw()));
-    co_return res;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 }
