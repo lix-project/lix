@@ -11,7 +11,6 @@ struct CmdMakeContentAddressed : virtual CopyCommand, virtual StorePathsCommand,
 {
     CmdMakeContentAddressed()
     {
-        realiseMode = Realise::Outputs;
         requireStore = false;
     }
 

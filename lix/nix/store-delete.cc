@@ -37,7 +37,6 @@ struct CmdStoreDelete : StorePathsCommand
             .description = "Unlink specified GC roots before deleting them",
             .handler = {&unlink, true},
         });
-        realiseMode = Realise::Nothing;
     }
 
     std::string description() override

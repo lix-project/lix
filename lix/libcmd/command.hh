@@ -214,9 +214,6 @@ struct MixOperateOnOptions : virtual Args
 
 /**
  * A command that operates on zero or more extant store paths.
- *
- * If the argument the user passes is a some sort of recipe for a path
- * not yet built, it must be built first.
  */
 struct StorePathsCommand : InstallablesCommand, virtual MixOperateOnOptions
 {
@@ -224,8 +221,6 @@ protected:
 
     bool recursive = false;
     bool all = false;
-
-    Realise realiseMode = Realise::Derivation;
 
 public:
 

@@ -168,40 +168,41 @@ StorePathsCommand::StorePathsCommand(bool recursive) : recursive(recursive)
 
 void StorePathsCommand::run(ref<Store> store, Installables && installables)
 {
-    BuiltPaths paths;
+    StorePathSet storePaths;
     if (all) {
         if (installables.size())
             throw UsageError("'--all' does not expect arguments");
         // XXX: Only uses opaque paths, ignores all the realisations
         for (auto & p : aio().blockOn(store->queryAllValidPaths()))
-            paths.emplace_back(BuiltPath::Opaque{p});
+            storePaths.emplace(p);
     } else {
-        paths = Installable::toBuiltPaths(
-            *getEvaluator()->begin(aio()),
-            getEvalStore(),
-            store,
-            realiseMode,
-            operateOn,
-            installables
-        );
+        auto state = getEvaluator()->begin(aio());
+        for (auto & installable : installables) {
+            for (auto & path : installable->toDerivedPaths(*state)) {
+                std::visit(
+                    overloaded{
+                        [&](const DerivedPathBuilt & b) {
+                            auto resolved =
+                                aio().blockOn(resolveDerivedPath(*getStore(), b, &*getEvalStore()));
+                            for (auto & [_0, storePath] : resolved) {
+                                storePaths.emplace(storePath);
+                            }
+                        },
+                        [&](const DerivedPathOpaque & o) { storePaths.emplace(o.path); },
+                    },
+                    path.path.raw()
+                );
+            }
+        }
+
         if (recursive) {
             // XXX: This only computes the store path closure, ignoring
             // intermediate realisations
-            StorePathSet pathsRoots, pathsClosure;
-            for (auto & root : paths) {
-                auto rootFromThis = root.outPaths();
-                pathsRoots.insert(rootFromThis.begin(), rootFromThis.end());
-            }
-            aio().blockOn(store->computeFSClosure(pathsRoots, pathsClosure));
-            for (auto & path : pathsClosure)
-                paths.emplace_back(BuiltPath::Opaque{path});
+            StorePathSet pathsClosure;
+            aio().blockOn(store->computeFSClosure(storePaths, pathsClosure));
+            storePaths.merge(pathsClosure);
         }
     }
-
-    StorePathSet storePaths;
-    for (auto & builtPath : paths)
-        for (auto & p : builtPath.outPaths())
-            storePaths.insert(p);
 
     auto sorted = aio().blockOn(store->topoSortPaths(storePaths));
     std::reverse(sorted.begin(), sorted.end());

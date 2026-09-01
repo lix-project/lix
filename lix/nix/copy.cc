@@ -23,11 +23,10 @@ struct CmdCopy : virtual CopyCommand, StorePathsCommand
         addFlag({
             .longName = "substitute-on-destination",
             .shortName = 's',
-            .description = "Whether to try substitutes on the destination store (only supported by SSH stores).",
+            .description =
+                "Whether to try substitutes on the destination store (only supported by SSH stores).",
             .handler = {&substitute, Substitute},
         });
-
-        realiseMode = Realise::Outputs;
     }
 
     std::string description() override
