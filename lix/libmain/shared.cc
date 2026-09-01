@@ -389,6 +389,8 @@ static std::pair<RunningHelper, AutoCloseFD> startPager()
 
 void withPager(kj::Function<void(Pager &)> fn)
 {
+    MakeError(PagerTerminated, Error);
+
     struct PagerImpl : Pager
     {
         int to;
@@ -397,7 +399,16 @@ void withPager(kj::Function<void(Pager &)> fn)
 
         Pager & operator<<(std::string_view data) override
         {
-            writeFull(to, data);
+            try {
+                writeFull(to, data);
+            } catch (SysError & e) {
+                if (e.errNo == EPIPE) {
+                    // pager terminated behind our tail. have our user terminate early.
+                    throw PagerTerminated("pager exited before reading all input");
+                } else {
+                    throw;
+                }
+            }
             return *this;
         }
     };
@@ -413,7 +424,11 @@ void withPager(kj::Function<void(Pager &)> fn)
     });
 
     PagerImpl pager{pagerProc ? pagerPipe.get() : STDOUT_FILENO};
-    fn(pager);
+    try {
+        fn(pager);
+    } catch (PagerTerminated &) {
+        // do nothing, this is probably just the user exiting the pager early
+    }
     pagerPipe.close();
     if (pagerProc) {
         pagerProc.waitAndCheck();
