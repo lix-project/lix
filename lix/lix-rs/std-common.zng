@@ -36,6 +36,7 @@ mod ::std::option {
         variant None {}
 
         fn unwrap(self) -> T;
+        fn unwrap_or(self, T) -> T;
     }
 
     type<T> Option<&T> {
@@ -45,6 +46,10 @@ mod ::std::option {
 
     type<T> Option<&mut T> {
         #layout_conservative(size = 8, align = 8);
+    }
+
+    type<T> Option<Option<T>> {
+        fn flatten(self) -> Option<T>;
     }
 
     type Option<u64> {
@@ -65,10 +70,27 @@ mod ::std::option {
 
     type Option<String> {
         #layout_conservative(size = 24, align = 8);
+
+        fn clone(&self) -> Option<String>;
     }
 
-    type Option<&String> {}
-    type Option<&mut String> {}
+    type Option<(String, String)> {
+        #layout_conservative(size = 48, align = 8);
+    }
+    type Option<crate::ffi::RefTuple2<String, String>> {
+        #layout_conservative(size = 48, align = 8);
+    }
+
+    type Option<(String, Option<String>)> {
+        #layout_conservative(size = 48, align = 8);
+    }
+    type Option<crate::ffi::RefTuple2<String, Option<String>>> {
+        #layout_conservative(size = 48, align = 8);
+    }
+
+    type Option<Option<String>> {
+        #layout_conservative(size = 24, align = 8);
+    }
 }
 
 mod ::std::result {
@@ -172,6 +194,34 @@ mod ::std::collections::hash_set {
     }
 
     type Iter<String> {}
+}
+
+mod ::std::collections::hash_map {
+    use ::std::option::Option as Option;
+
+    type<K, V> HashMap<K, V> {
+        #layout_conservative(size = 48, align = 8);
+        fn new() -> HashMap<K, V>;
+        fn insert(&mut self, K, V) -> Option<V>;
+        fn len(&self) -> usize;
+        fn iter(&self) -> Iter<K, V>;
+    }
+
+    type<K, V> Iter<K, V> {
+        #layout_conservative(size = 64, align=8);
+        fn next(&mut self) -> Option<crate::ffi::RefTuple2<K, V>>;
+    }
+
+    type HashMap<String, String> {
+        fn clone(&self) -> HashMap<String, String>;
+    }
+
+    type Iter<String, String> {}
+
+    type HashMap<String, Option<String>> {
+        fn clone(&self) -> HashMap<String, Option<String>>;
+    }
+    type Iter<String, Option<String>> {}
 }
 
 mod ::std::ffi {

@@ -9,3 +9,29 @@ type (String, u64) {
     field 0 (offset = 0, type = String);
     field 1 (offset = auto, type = u64);
 }
+
+type (String, String) {
+    #layout_conservative(size = 48, align=8);
+
+    field 0 (offset = auto, type = String);
+    field 1 (offset = auto, type = String);
+}
+type crate::ffi::RefTuple2<String, String> {
+    #layout_conservative(size = 48, align=8);
+
+    field 0 (offset = auto, type = &String);
+    field 1 (offset = auto, type = &String);
+}
+
+type (String, Option<String>) {
+    #layout_conservative(size = 48, align=8);
+
+    field 0 (offset = auto, type = String);
+    field 1 (offset = auto, type = Option<String>);
+}
+type crate::ffi::RefTuple2<String, Option<String>> {
+    #layout_conservative(size = 48, align=8);
+
+    field 0 (offset = auto, type = &String);
+    field 1 (offset = auto, type = &Option<String>);
+}

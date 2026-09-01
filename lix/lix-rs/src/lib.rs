@@ -19,6 +19,11 @@ mod ffi {
         slice::from_raw_parts,
     };
 
+    /// Single-lifetime wrapper for tuples of references. zngur does not handle multiple
+    /// lifetimes very well, but since lifetimes at the interface are lies anyway we can
+    /// force them to the smallest valid combined lifetime to use in the zngur ffi spec.
+    pub type RefTuple2<'a, A, B> = (&'a A, &'a B);
+
     pub unsafe fn from_raw_parts_u8<'a>(data: *const u8, length: usize) -> &'a [u8] {
         from_raw_parts(data, length)
     }

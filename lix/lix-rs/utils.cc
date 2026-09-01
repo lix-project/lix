@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <kj/async.h>
 #include <kj/exception.h>
+#include "lix/libutil/types.hh"
 
 namespace rust {
 ::std::string_view to_std_string_view(Ref<Str> s)
@@ -118,6 +119,45 @@ std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s)
         v.push(to_string(str));
     }
     return v;
+}
+
+std::collections::hash_map::HashMap<String, String>
+to_hash_map(const ::std::map<::std::string, ::std::string> & m)
+{
+    auto hm = std::collections::hash_map::HashMap<String, String>::new_();
+    for (auto & [k, v] : m) {
+        hm.insert(to_string(k), to_string(v));
+    }
+    return hm;
+}
+
+::std::map<::std::string, ::std::string> to_std(const std::collections::hash_map::HashMap<String, String> & m)
+{
+    ::std::map<::std::string, ::std::string> ret;
+    for (const auto & pair : m.iter()) {
+        ret.emplace(to_std_string(pair.f0), to_std_string(pair.f1));
+    }
+    return ret;
+}
+
+::std::map<::std::string, ::std::optional<::std::string>>
+to_std(const std::collections::hash_map::HashMap<String, std::option::Option<String>> & m)
+{
+    ::std::map<::std::string, ::std::optional<::std::string>> ret;
+
+    for (const auto & pair : m.iter()) {
+        auto val = ::std::visit(
+            nix::overloaded{
+                [](Ref<Option<String>::None>) -> ::std::optional<::std::string> { return ::std::nullopt; },
+                [](Ref<Option<String>::Some> s) -> ::std::optional<::std::string> {
+                    return ::std::optional(to_std_string(s.f0));
+                },
+            },
+            Ref<Option<String>>(pair.f1).match_ref()
+        );
+        ret.emplace(to_std_string(pair.f0), ::std::move(val));
+    }
+    return ret;
 }
 
 std::string::String Impl<lix::ffi::Error, Inherent>::to_string(Ref<lix::ffi::Error> ptr)

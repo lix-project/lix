@@ -15,6 +15,7 @@
 #include <set>
 #include <list>
 #include <filesystem>
+#include <map>
 
 // this header requires `std` to mean `::std`
 #include "lix/lix-rs/zngur.gen.hh"
@@ -66,6 +67,10 @@ struct Path;
 namespace std::collections::hash_set {
 template<typename...>
 struct HashSet;
+}
+namespace std::collections::hash_map {
+template<typename...>
+struct HashMap;
 }
 
 namespace rootcause {
@@ -190,6 +195,14 @@ struct NonZeroU32;
 std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s);
 std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s);
+
+std::collections::hash_map::HashMap<String, String>
+to_hash_map(const ::std::map<::std::string, ::std::string> & m);
+::std::map<::std::string, ::std::string>
+to_std(const std::collections::hash_map::HashMap<String, String> & m);
+
+::std::map<::std::string, ::std::optional<::std::string>>
+to_std(const std::collections::hash_map::HashMap<String, std::option::Option<String>> & m);
 
 std::num::NonZeroU32 to_nonzero_unchecked(uint32_t value) noexcept;
 Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept;
@@ -526,3 +539,4 @@ LIX_DECLARE_EQ_OPS(rust::lix::ffi_test)
 LIX_DECLARE_ITERATORS(rust::std::slice)
 LIX_DECLARE_ITERATORS(rust::std::vec)
 LIX_DECLARE_ITERATORS(rust::std::collections::hash_set)
+LIX_DECLARE_ITERATORS(rust::std::collections::hash_map)
