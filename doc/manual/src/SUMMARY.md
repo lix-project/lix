@@ -145,8 +145,6 @@
     - [nix profile rollback](command-ref/new-cli/nix3-profile-rollback.md)
     - [nix profile upgrade](command-ref/new-cli/nix3-profile-upgrade.md)
     - [nix profile wipe-history](command-ref/new-cli/nix3-profile-wipe-history.md)
-    - [nix realisation](command-ref/new-cli/nix3-realisation.md)
-    - [nix realisation info](command-ref/new-cli/nix3-realisation-info.md)
     - [nix registry](command-ref/new-cli/nix3-registry.md)
     - [nix registry add](command-ref/new-cli/nix3-registry-add.md)
     - [nix registry list](command-ref/new-cli/nix3-registry-list.md)

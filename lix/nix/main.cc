@@ -54,7 +54,6 @@
 #include "ping-store.hh"
 #include "prefetch.hh"
 #include "profile.hh"
-#include "realisation.hh"
 #include "registry.hh"
 #include "repl.hh"
 #include "run.hh"
@@ -121,7 +120,6 @@ void registerCommands()
     registerNixNar();
     registerNixPathInfo();
     registerNixProfile();
-    registerNixRealisation();
     registerNixRegistry();
     registerNixRepl();
     registerNixRun();

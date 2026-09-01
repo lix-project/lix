@@ -212,8 +212,6 @@ nix3_manpages = [
   'nix3-profile-rollback',
   'nix3-profile-upgrade',
   'nix3-profile-wipe-history',
-  'nix3-realisation-info',
-  'nix3-realisation',
   'nix3-registry-add',
   'nix3-registry-list',
   'nix3-registry',
