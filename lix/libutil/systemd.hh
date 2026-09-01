@@ -3,7 +3,6 @@
 
 #if __linux__
 
-#include "lix/libutil/types.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/logging.hh"
@@ -16,35 +15,43 @@ namespace systemd {
 struct HostInformation
 {
     std::string hostname;
-    std::string chassis;
+    std::optional<std::string> chassis;
     std::string kernel_release;
     std::string kernel_version;
     std::string os_pretty_name;
-    std::string hardware_vendor;
-    std::string hardware_model;
-    std::string hardware_version;
-    std::string firmware_vendor;
-    std::string firmware_version;
-    std::string firmware_date;
+    std::optional<std::string> hardware_vendor;
+    std::optional<std::string> hardware_model;
+    std::optional<std::string> hardware_version;
+    std::optional<std::string> firmware_vendor;
+    std::optional<std::string> firmware_version;
+    std::optional<std::string> firmware_date;
     std::optional<std::string> build_id;
 };
+
+static void setIfNonNull(const JSON & j, std::optional<std::string> & target, const std::string & key)
+{
+    auto val = valueAt(j, key);
+    if (!val.is_null()) {
+        target = ensureType(val, nlohmann::detail::value_t::string);
+    }
+}
 
 // Internal data structure that systemd returns for hostnamectl.
 // This needs to be kept update with the range of supported versions of systemd for Lix.
 struct SystemdHostname
 {
     std::string Hostname;
-    std::string Chassis;
+    std::optional<std::string> Chassis;
     std::string KernelRelease;
     std::string KernelVersion;
     std::string OperatingSystemPrettyName;
     std::vector<std::string> OperatingSystemReleaseData;
-    std::string HardwareVendor;
-    std::string HardwareModel;
-    std::string HardwareVersion;
-    std::string FirmwareVersion;
-    std::string FirmwareVendor;
-    std::string FirmwareDate;
+    std::optional<std::string> HardwareVendor;
+    std::optional<std::string> HardwareModel;
+    std::optional<std::string> HardwareVersion;
+    std::optional<std::string> FirmwareVersion;
+    std::optional<std::string> FirmwareVendor;
+    std::optional<std::string> FirmwareDate;
 
     static SystemdHostname parse(const JSON & j)
     {
@@ -58,13 +65,16 @@ struct SystemdHostname
         raw.KernelRelease = ensureType(valueAt(j, "KernelRelease"), value_t::string);
         raw.KernelVersion = ensureType(valueAt(j, "KernelVersion"), value_t::string);
         raw.OperatingSystemPrettyName = ensureType(valueAt(j, "OperatingSystemPrettyName"), value_t::string);
-        raw.HardwareVendor = ensureType(valueAt(j, "HardwareVendor"), value_t::string);
-        raw.HardwareModel = ensureType(valueAt(j, "HardwareModel"), value_t::string);
-        raw.HardwareVersion = ensureType(valueAt(j, "HardwareVersion"), value_t::string);
-        raw.FirmwareVersion = ensureType(valueAt(j, "FirmwareVersion"), value_t::string);
-        raw.FirmwareVendor = ensureType(valueAt(j, "FirmwareVendor"), value_t::string);
-        raw.FirmwareDate =
-            std::to_string((uint64_t) ensureType(valueAt(j, "FirmwareDate"), value_t::number_unsigned));
+        setIfNonNull(j, raw.HardwareVendor, "HardwareVendor");
+        setIfNonNull(j, raw.HardwareModel, "HardwareModel");
+        setIfNonNull(j, raw.HardwareVersion, "HardwareVersion");
+        setIfNonNull(j, raw.FirmwareVersion, "FirmwareVersion");
+        setIfNonNull(j, raw.FirmwareVendor, "FirmwareVendor");
+
+        auto version = valueAt(j, "FirmwareDate");
+        if (!version.is_null()) {
+            raw.FirmwareDate = std::to_string((uint64_t) ensureType(version, value_t::number_unsigned));
+        }
         const JSON & osReleaseRaw = valueAt(j, "OperatingSystemReleaseData");
         ensureType(osReleaseRaw, value_t::array);
         std::vector<JSON> osRelease = (std::vector<JSON>) osReleaseRaw;

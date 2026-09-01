@@ -164,15 +164,17 @@ struct CmdDoctor : StoreCommand
                 ss << ", " << hostInfo->os_pretty_name << ", " << hostInfo->build_id.value_or("no build id");
                 checkInfo(fmt("Host OS: %s", ss.str()));
 
-                checkInfo(fmt("Chassis: %s", hostInfo->chassis));
+                checkInfo(fmt("Chassis: %s", hostInfo->chassis.value_or("unknown")));
                 checkInfo(
                     fmt("Hardware: %s (vendor: %s, version: %s)",
-                        hostInfo->hardware_vendor,
-                        hostInfo->hardware_model,
-                        hostInfo->hardware_version)
+                        hostInfo->hardware_vendor.value_or("unknown"),
+                        hostInfo->hardware_model.value_or("unknown"),
+                        hostInfo->hardware_version.value_or("unknown"))
                 );
                 checkInfo(
-                    fmt("Firmware: %s (version: %s)", hostInfo->firmware_vendor, hostInfo->firmware_version)
+                    fmt("Firmware: %s (version: %s)",
+                        hostInfo->firmware_vendor.value_or("unknown"),
+                        hostInfo->firmware_version.value_or("unknown"))
                 );
             }
 #else
