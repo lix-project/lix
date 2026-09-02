@@ -7,7 +7,7 @@ plugin_mtls_store = shared_module(
     liblix.partial_dependency(includes : true, compile_args : true),
     curl,
   ],
-  install : false,
+  install : true,
   build_by_default : true,
   link_args : plugin_link_args,
 )
