@@ -457,8 +457,11 @@ inline nix::BuildResult from(const LegacyProtocol::BuildResult::Reader & r, auto
         .timesBuilt = r.getTimesBuilt(),
         .isNonDeterministic = r.getIsNonDeterministic(),
         .builtOutputs = rpc::to<std::map<std::string, nix::Realisation>>(r.getBuildOutputs(), args...),
-        .startTime = r.getStartTime(),
-        .stopTime = r.getStopTime(),
+        // HACK: on 32 bit systems with 32 bit time_t this will eventually cause problems.
+        // this protocol should not live long enough to see these problems, and if it ever
+        // does it'll crash with ubsan signed overflow errors instead of just misbehaving.
+        .startTime = time_t(r.getStartTime()),
+        .stopTime = time_t(r.getStopTime()),
         .cpuUser =
             rpc::from(r.getCpuUser()).transform([](int64_t v) { return std::chrono::microseconds(v); }),
         .cpuSystem =
