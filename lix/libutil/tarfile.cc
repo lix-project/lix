@@ -145,6 +145,8 @@ try {
     Pipe pipe;
     pipe.create();
 
+    std::atomic_bool finished{false};
+
     auto thr = std::async(
         std::launch::async,
         [&](AutoCloseFD fd) {
@@ -153,12 +155,21 @@ try {
 
             createDirs(destDir);
             extract_archive(archive, destDir);
+            // mark the extraction as finished. if extract_archive does not read the entire stream
+            // we may see an EPIPE error on the other end, but the early exit is not a real error.
+            finished = true;
         },
         std::move(pipe.readSide)
     );
 
     AsyncFdIoStream sink{std::move(pipe.writeSide)};
-    TRY_AWAIT(source.drainInto(sink));
+    try {
+        TRY_AWAIT(source.drainInto(sink));
+    } catch (SysError & e) {
+        if (!(e.errNo == EPIPE && finished.load())) {
+            throw;
+        }
+    }
     thr.get();
     co_return result::success();
 } catch (...) {

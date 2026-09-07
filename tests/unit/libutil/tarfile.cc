@@ -250,4 +250,42 @@ TEST_F(TarFixture, badHardlinkTraversalOverFile)
     ASSERT_THROW(extract(), ArchiveError);
 }
 
+TEST_F(TarFixture, trailingPaddingDoesntCrash)
+{
+    writer->file("snafu", "empty");
+
+    finish();
+
+    AsyncIoRoot aio;
+
+    // generate a large amount of zero padding. this should have the extractor exit
+    // early instead of having it all pass through the pipe to libarchive and crash
+    // when the pipe closes because the extractor exited early as we have expected.
+    struct PaddedStream : AsyncInputStream
+    {
+        std::string_view rest;
+        size_t pad = size_t(1024) * 1024;
+
+        PaddedStream(std::string_view s) : rest(s) {}
+
+        kj::Promise<Result<std::optional<size_t>>> read(void * buffer, size_t size) override
+        {
+            if (!rest.empty()) {
+                size = std::min(size, rest.size());
+                memcpy(buffer, rest.data(), size);
+                rest.remove_prefix(size);
+                co_return size;
+            } else if (pad != 0) {
+                size = std::min(size, pad);
+                memset(buffer, 0, size);
+                pad -= size;
+                co_return size;
+            } else {
+                co_return std::nullopt;
+            }
+        }
+    } stream{sink.s};
+
+    aio.blockOn(unpackTarfile("test", stream, tmpDir));
+}
 }
