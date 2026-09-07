@@ -155,35 +155,46 @@ struct RpcLogger : Logger
         co_return result::current_exception();
     }
 
-    static void fillEventArg(rpc::log::Event::Builder arg, const Event & e)
+    static bool fillEventArg(rpc::log::Event::Builder arg, const Event & e)
     {
         overloaded handlers{
             [&](const Log & l) {
                 arg.initLog().setLevel(rpc::Verbosity(l.level));
                 RPC_FILL(arg.getLog(), setMsg, l.msg);
+                return true;
             },
             [&](const LogEI & l) {
                 auto ei = arg.initLogEI();
                 RPC_FILL(ei, initInfo, l.ei);
+                return true;
             },
             [&](const StartActivity & s) {
                 auto sa = arg.initStartActivity();
                 sa.setLevel(rpc::Verbosity(s.level));
                 sa.setId(s.id);
-                sa.setType(rpc::log::to(s.type));
+                sa.setType(rpc::log::to(s.type).value_or(rpc::log::ActivityType::UNKNOWN));
                 RPC_FILL(sa, setText, s.text);
                 sa.setParent(s.parent);
                 RPC_FILL(sa, initFields, s.fields);
+                return true;
             },
-            [&](const StopActivity & s) { arg.initStopActivity().setId(s.id); },
+            [&](const StopActivity & s) {
+                arg.initStopActivity().setId(s.id);
+                return true;
+            },
             [&](const ActivityResult & r) {
                 auto ar = arg.initResult();
                 ar.setId(r.id);
-                ar.setType(rpc::log::to(r.type));
+                if (auto type = rpc::log::to(r.type)) {
+                    ar.setType(*type);
+                } else {
+                    return false;
+                }
                 RPC_FILL(ar, initFields, r.fields);
+                return true;
             },
         };
-        std::visit(handlers, e);
+        return std::visit(handlers, e);
     }
 
     kj::Promise<void> flushLoop()
@@ -205,8 +216,9 @@ struct RpcLogger : Logger
                 auto buffer = this->buffer.lock()->take();
                 for (auto & e : buffer) {
                     auto req = remote.pushRequest();
-                    fillEventArg(req.initE(), e);
-                    co_await req.send();
+                    if (fillEventArg(req.initE(), e)) {
+                        co_await req.send();
+                    }
                 }
                 co_await remote.synchronizeRequest().send();
                 if (f) {

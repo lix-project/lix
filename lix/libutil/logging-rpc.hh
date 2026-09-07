@@ -29,7 +29,7 @@ inline std::optional<nix::ActivityType> from(ActivityType at)
     // clang-format on
 }
 
-inline ActivityType to(const nix::ActivityType & at)
+inline std::optional<ActivityType> to(const nix::ActivityType & at)
 {
     // clang-format off
     switch (at) {
@@ -48,6 +48,7 @@ inline ActivityType to(const nix::ActivityType & at)
     case actBuildWaiting:  return log::ActivityType::BUILD_WAITING;
     }
     // clang-format on
+    return std::nullopt;
 }
 
 inline std::optional<nix::ResultType> from(ResultType rt)
@@ -67,7 +68,7 @@ inline std::optional<nix::ResultType> from(ResultType rt)
     // clang-format on
 }
 
-inline ResultType to(const nix::ResultType & rt)
+inline std::optional<ResultType> to(const nix::ResultType & rt)
 {
     // clang-format off
     switch (rt) {
@@ -81,6 +82,7 @@ inline ResultType to(const nix::ResultType & rt)
     case resPostBuildLogLine: return ResultType::POST_BUILD_LOG_LINE;
     }
     // clang-format on
+    return std::nullopt;
 }
 }
 
