@@ -4,17 +4,14 @@ requireSandboxSupport
 # Avoid store dir being inside sandbox build-dir
 unset NIX_STORE_DIR
 
-function join_by { local d=$1; shift; echo -n "$1"; shift; printf "%s" "${@/#/$d}"; }
-
-EXTRA_SYSTEM_FEATURES=()
-
-builders=(
-  # system-features will automatically be added to the outer URL, but not inner
-  # remote-store URL.
-  "ssh://localhost?remote-store=$TEST_ROOT/machine1?system-features=$(join_by "%20" foo ${EXTRA_SYSTEM_FEATURES[@]}) - - 1 1 $(join_by "," foo ${EXTRA_SYSTEM_FEATURES[@]})"
-  "$TEST_ROOT/machine2 - - 1 1 $(join_by "," bar ${EXTRA_SYSTEM_FEATURES[@]})"
-  "ssh-ng://localhost?remote-store=$TEST_ROOT/machine3?system-features=$(join_by "%20" baz ${EXTRA_SYSTEM_FEATURES[@]}) - - 1 1 $(join_by "," baz ${EXTRA_SYSTEM_FEATURES[@]})"
-)
+# system-features will automatically be added to the outer URL, but not inner
+# remote-store URL.
+builders="$TEST_HOME/machines.conf"
+cat >"$builders" <<EOF
+ssh://localhost?remote-store=$TEST_ROOT/machine1?system-features=foo - - 1 1 foo
+$TEST_ROOT/machine2 - - 1 1 bar
+ssh-ng://localhost?remote-store=$TEST_ROOT/machine3?system-features=baz - - 1 1 baz
+EOF
 
 chmod -R +w $TEST_ROOT/machine* || true
 rm -rf $TEST_ROOT/machine* || true
@@ -25,7 +22,7 @@ rm -rf $TEST_ROOT/machine* || true
 nix build -L -v -f $file -o $TEST_ROOT/result --max-jobs 0 \
   --arg busybox $busybox \
   --store $TEST_ROOT/machine0 \
-  --builders "$(join_by '; ' "${builders[@]}")"
+  --builders "@$builders"
 
 outPath=$(readlink -f $TEST_ROOT/result)
 
@@ -34,7 +31,7 @@ grep 'FOO BAR BAZ' $TEST_ROOT/machine0/$outPath
 testPrintOutPath=$(nix build -L -v -f $file --no-link --print-out-paths --max-jobs 0 \
   --arg busybox $busybox \
   --store $TEST_ROOT/machine0 \
-  --builders "$(join_by '; ' "${builders[@]}")"
+  --builders "@$builders"
 )
 
 [[ $testPrintOutPath =~ store.*build-remote ]]
@@ -68,7 +65,7 @@ done
 # Behavior of keep-failed
 out="$(nix-build 2>&1 failing.nix \
   --no-out-link \
-  --builders "$(join_by '; ' "${builders[@]}")"  \
+  --builders "@$builders"  \
   --keep-failed \
   --store $TEST_ROOT/machine0 \
   -j0 \
@@ -80,11 +77,11 @@ build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keepin
 [[ "foo" = $(<"$build_dir"/b/bar) ]]
 
 # should work for ssh-ng too
-tmp_builders="$(join_by '; ' "${builders[@]}")"
-tmp_builders="${tmp_builders/ssh:/ssh-ng:}"
+tmp_builders="$TEST_HOME/machines2.conf"
+sed -e 's/ssh:/ssh-ng:/g' <$builders >$tmp_builders
 out="$(nix-build 2>&1 failing.nix \
   --no-out-link \
-  --builders "$tmp_builders"  \
+  --builders "@$tmp_builders"  \
   --keep-failed \
   --store $TEST_ROOT/machine0 \
   -j0 \
