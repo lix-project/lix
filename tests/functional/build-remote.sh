@@ -63,33 +63,3 @@ unset output
 for i in input1 input3; do
 nix log --store $TEST_ROOT/machine0 --file "$file" --arg busybox $busybox --arg useCA $useCA passthru."$i" | grep hi-$i
 done
-
-# Behavior of keep-failed
-out="$(nix-build 2>&1 failing.nix \
-  --no-out-link \
-  --builders "@$builders"  \
-  --keep-failed \
-  --store $TEST_ROOT/machine0 \
-  -j0 \
-  --arg busybox $busybox)" || true
-
-[[ "$out" =~ .*"note: keeping build directory".* ]]
-
-build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
-[[ "foo" = $(<"$build_dir"/b/bar) ]]
-
-# should work for ssh-ng too
-tmp_builders="$TEST_HOME/machines2.conf"
-sed -e 's/ssh:/ssh-ng:/g' <$builders >$tmp_builders
-out="$(nix-build 2>&1 failing.nix \
-  --no-out-link \
-  --builders "@$tmp_builders"  \
-  --keep-failed \
-  --store $TEST_ROOT/machine0 \
-  -j0 \
-  --arg busybox $busybox)" || true
-
-[[ "$out" =~ .*"note: keeping build directory".* ]]
-
-build_dir="$(grep "note: keeping build" <<< "$out" | sed -E "s/^(.*)note: keeping build directory '(.*)'(.*)$/\2/")"
-[[ "foo" = $(<"$build_dir"/b/bar) ]]

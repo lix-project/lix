@@ -260,6 +260,36 @@ def test_post_build_hook(nix: Nix):
 
 
 @pytest.mark.no_daemon
+@pytest.mark.full_sandbox
+@pytest.mark.parametrize("scheme", ["ssh", "ssh-ng"])
+def test_keep_failed(nix: Nix, scheme: str):
+    expr = """
+        derivation {
+            name = "test";
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "echo foo > bar" ];
+        }
+    """
+
+    result = (
+        nix.nix_build(
+            [
+                *["--builders", f"{scheme}://localhost?remote-store={nix.env.dirs.home}/remote"],
+                *["--keep-failed"],
+                *["--max-jobs", "0"],
+                *["--expr", expr],
+            ]
+        )
+        .run()
+        .expect(1)
+    )
+    assert "test.drv' failed on remote builder" in result.stderr_plain
+    assert "keeping build directory" in result.stderr_plain
+    assert next(iter(nix.env.dirs.nix_state_dir.glob("b/**/bar"))).read_text() == "foo\n"
+
+
+@pytest.mark.no_daemon
 def test_keep_going(nix: Nix):
     """
     regression fj#928: --keep-going doesn't keep going with remote builders
