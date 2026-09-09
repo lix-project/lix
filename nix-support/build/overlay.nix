@@ -8,8 +8,46 @@ getStdenv: final: prev:
 let
   currentStdenv = getStdenv final;
   inherit (final) busybox;
+
+  # These packages should receive CppNix since they may link to it or otherwise
+  # cause problems (or even just silly mass-rebuilds) if we give them Lix
+  overridelist_upstream = [
+    "nix-du"
+    "nix-init"
+    "nurl"
+  ];
+
+  # It is not enough to *just* throw whatever the default nix version is at
+  # anything in the "don't give lix" list, we have to *also* ensure that we
+  # give whatever upstream version as specified in the callPackage invocation.
+  #
+  # Unfortunately I don't think there is any actual way to directly query that,
+  # so we instead do something extremely evil and guess which version it
+  # probably was. This code is not generalizable to arbitrary derivations, so
+  # it will hopefully not make us cry, at least.
+  useCppNixOverlay = lib.genAttrs overridelist_upstream (
+    name:
+    if (lib.functionArgs prev.${name}.override ? "nix") then
+      let
+        # Get the two common inputs of a derivation/package.
+        inputs = prev.${name}.buildInputs ++ prev.${name}.nativeBuildInputs;
+        nixDependency =
+          lib.findFirst (drv: (drv.pname or "") == "nix") final.nixVersions.stable_upstream # default to stable nix if nix is not an input
+            inputs;
+        nixMajor = lib.versions.major (nixDependency.version or "");
+        nixMinor = lib.versions.minor (nixDependency.version or "");
+        nixAttr = "nix_${nixMajor}_${nixMinor}";
+        finalNix = final.nixVersions.${nixAttr};
+      in
+      prev.${name}.override {
+        nix = finalNix;
+      }
+    else
+      prev.${name}
+  );
 in
-{
+useCppNixOverlay
+// {
   nixStable = prev.nix;
 
   nixVersions = prev.nixVersions // {
@@ -19,6 +57,9 @@ in
         (_: {
           pname = "nix";
         });
+
+    stable = final.lix;
+    stable_upstream = prev.nixVersions.stable;
   };
 
   __lixInternal = final.makeScopeWithSplicing' {
@@ -118,4 +159,7 @@ in
   };
 
   inherit (final.__lixInternal) nix-eval-jobs nix;
+  lix = final.__lixInternal.nix;
+
+  nix-doc = prev.nix-doc.override { withPlugin = false; };
 }
