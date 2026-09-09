@@ -21,6 +21,7 @@ rm -rf $TEST_ROOT/machine* || true
 # ssh-ng://... likewise allows us to test RemoteStore::buildDerivation().
 nix build -L -v -f $file -o $TEST_ROOT/result --max-jobs 0 \
   --arg busybox $busybox \
+  --arg useCA $useCA \
   --store $TEST_ROOT/machine0 \
   --builders "@$builders"
 
@@ -30,6 +31,7 @@ grep 'FOO BAR BAZ' $TEST_ROOT/machine0/$outPath
 
 testPrintOutPath=$(nix build -L -v -f $file --no-link --print-out-paths --max-jobs 0 \
   --arg busybox $busybox \
+  --arg useCA $useCA \
   --store $TEST_ROOT/machine0 \
   --builders "@$builders"
 )
@@ -59,7 +61,7 @@ unset output
 
 
 for i in input1 input3; do
-nix log --store $TEST_ROOT/machine0 --file "$file" --arg busybox $busybox passthru."$i" | grep hi-$i
+nix log --store $TEST_ROOT/machine0 --file "$file" --arg busybox $busybox --arg useCA $useCA passthru."$i" | grep hi-$i
 done
 
 # Behavior of keep-failed

@@ -1,4 +1,4 @@
-{ busybox }:
+{ busybox, useCA }:
 
 with import ./config.nix;
 
@@ -12,6 +12,8 @@ let
         if [ -e "$NIX_ATTRS_SH_FILE" ]; then source $NIX_ATTRS_SH_FILE; fi;
         eval "$buildCommand"
       '')];
+      ${if useCA then "outputHashMode" else null} = "recursive";
+      ${if useCA then "outputHashAlgo" else null} = "sha256";
     } // removeAttrs args ["builder" "meta" "passthru"])
     // { meta = args.meta or {}; passthru = args.passthru or {}; };
 
@@ -20,6 +22,7 @@ let
     name = "build-remote-input-1";
     buildCommand = "echo hi-input1; echo FOO > $out";
     requiredSystemFeatures = ["foo"];
+    ${if useCA then "outputHash" else null} = "sha256-FePFYIlMuycIXPZbWi7LGEiMmZSX9FMbaQenWBzm1Sc=";
   };
 
   input2 = mkDerivation {
@@ -27,6 +30,7 @@ let
     name = "build-remote-input-2";
     buildCommand = "echo hi; echo BAR > $out";
     requiredSystemFeatures = ["bar"];
+    ${if useCA then "outputHash" else null} = "sha256-XArauVH91AVwP9hBBQNlkX9ccuPpSYx9o0zeIHb6e+Q=";
   };
 
   input3 = mkDerivation {
@@ -39,6 +43,7 @@ let
       echo $x BAZ > $out
     '';
     requiredSystemFeatures = ["baz"];
+    ${if useCA then "outputHash" else null} = "sha256-daKAcPp/+BYMQsVi/YYMlCKoNAxCNDsaivwSHgQqD2s=";
   };
 
 in
@@ -53,4 +58,5 @@ in
         read y < ${input3}
         echo "$x $y" > $out
       '';
+    ${if useCA then "outputHash" else null} = "sha256-5SxbkUw6xe2l9TE1uwCvTtTDysD1vhRor38OtDF0LqQ=";
   }

@@ -1,5 +1,6 @@
 source common.sh
 
-file=build-hook-ca-fixed.nix
+file=build-hook.nix
+useCA=true
 
 source build-remote.sh
