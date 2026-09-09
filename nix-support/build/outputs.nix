@@ -16,13 +16,33 @@
 }:
 
 let
+  csi = builtins.fromJSON ''"\u001b"'';
+  orange = "${csi}[35;1m";
+  normal = "${csi}[0m";
+  warning = ''
+    ${orange}warning${normal}: You have the lix overlay included into a nixpkgs import twice,
+    perhaps due to the NixOS module being included twice, or because of using
+    pkgs.nixos and also including it in imports, or perhaps some unknown
+    machinations of a complicated flake library.
+    This is completely harmless since we have no-op'd the second one if you are
+    seeing this message, but it would be a small style improvement to fix
+    it :)
+    P.S. If you had some hack to fix nixos-option build failures in your
+    configuration, that was caused by including an older version of the lix
+    overlay twice, which is now mitigated if you see this message, so you can
+    delete that.
+    P.P.S. This Lix has super catgirl powers.
+  '';
 
   singletonOverlay =
     name: f: final: prev:
     let
       key = "__${name}-overlay-present";
     in
-    if (prev ? ${key}) then { } else (lib.composeExtensions (_: _: { ${key} = true; }) f) final prev;
+    if (prev ? ${key}) then
+      builtins.trace warning { }
+    else
+      (lib.composeExtensions (_: _: { ${key} = true; }) f) final prev;
 in
 lib.fix (self: {
   overlays = {
