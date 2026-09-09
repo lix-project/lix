@@ -1,14 +1,8 @@
-{ busybox, contentAddressed ? false }:
+{ busybox }:
 
 with import ./config.nix;
 
 let
-
-  caArgs = if contentAddressed then {
-      outputHashMode = "recursive";
-      outputHashAlgo = "sha256";
-      __contentAddressed = true;
-    } else {};
 
   mkDerivation = args:
     derivation ({
@@ -18,8 +12,7 @@ let
         if [ -e "$NIX_ATTRS_SH_FILE" ]; then source $NIX_ATTRS_SH_FILE; fi;
         eval "$buildCommand"
       '')];
-    } // removeAttrs args ["builder" "meta" "passthru"]
-    // caArgs)
+    } // removeAttrs args ["builder" "meta" "passthru"])
     // { meta = args.meta or {}; passthru = args.passthru or {}; };
 
   input1 = mkDerivation {
