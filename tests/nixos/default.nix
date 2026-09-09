@@ -2,6 +2,7 @@
   lib,
   nixpkgs,
   nixpkgsFor,
+  nixosModules,
 }:
 
 let
@@ -16,28 +17,13 @@ let
     (nixos-lib.runTest {
       imports = [ test ];
       hostPkgs = nixpkgsFor.${system}.native;
-      defaults = { config, ... }: {
+      defaults = { ... }: {
+        imports = [ nixosModules.default ];
+        lix.enableOverlay = false;
         nixpkgs.pkgs = nixpkgsFor.${system}.native;
         nix.checkAllErrors = false;
         # nixos-option fails to build with lix and no tests use any of the tools
         system.disableInstallerTools = true;
-        # FIXME: remove this once the nixos module sets these overrides
-        systemd.services =
-          let
-            prev = config.systemd.services.nix-daemon;
-            daemonConfig =
-              {
-                path = prev.path;
-                environment = lib.filterAttrs (n: v: n != "PATH") prev.environment;
-                serviceConfig = prev.serviceConfig;
-                unitConfig = prev.unitConfig;
-              };
-          in
-            {
-              "nix-daemon@" = daemonConfig;
-              "lix-daemon-lix-xp-1@" = daemonConfig;
-            };
-        systemd.sockets."lix-daemon-lix-xp-1".wantedBy = [ "sockets.target" ];
       };
       _module.args.nixpkgs = nixpkgs;
       _module.args.system = system;

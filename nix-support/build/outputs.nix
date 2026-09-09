@@ -85,6 +85,7 @@ lib.fix (self: {
         nixpkgs
         nixpkgsFor
         ;
+      inherit (self) nixosModules;
     }
     // {
       # the n-e-j test suite is unusably slow in darwin ci. disbled until anywho fixes this.
