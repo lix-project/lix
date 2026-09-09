@@ -212,3 +212,48 @@ def test_logging_uses_machine_name(nix: Nix, files: Path):
         assert f"considering building on remote machine '{builder}'" in res.stderr_plain
         assert f"cannot build on '{builder}': error: " in res.stderr_plain
         assert f"connecting to '{builder}'..." in res.stderr_plain
+
+
+@pytest.mark.no_daemon
+@pytest.mark.full_sandbox
+def test_post_build_hook(nix: Nix):
+    """
+    test that remote builds call post-build hooks on the originating end of a remote build
+    """
+
+    hook_count = nix.env.dirs.home / "post-hook-counter"
+
+    hook = nix.env.dirs.home / "hook.sh"
+    hook.write_text(
+        dedent(f"""\
+            #!{nix.env.path.which("bash")}
+
+            echo "Post hook ran successfully"
+            # Add an empty line to a counter file, just to check that this hook ran properly
+            echo "" >> {hook_count}
+        """)
+    )
+    hook.chmod(0o755)
+
+    nix.settings["post-build-hook"] = str(hook)
+
+    expr = """
+        derivation {
+            name = "test";
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "echo foo > $out" ];
+        }
+    """
+
+    nix.nix_build(
+        [
+            *["--builders", f"ssh-ng://localhost?remote-store={nix.env.dirs.home}/remote"],
+            *["--keep-failed"],
+            *["--max-jobs", "0"],
+            *["--expr", expr],
+        ]
+    ).run().ok()
+
+    # the hook will be called twice because the config is shared with the "remote" builder
+    assert hook_count.read_text() == "\n\n"
