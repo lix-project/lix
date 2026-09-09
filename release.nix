@@ -63,7 +63,12 @@ lib.fix (
   self:
   outputs.ciArtifacts
   // {
-    inherit (outputs) tests;
+    inherit (outputs)
+      tests
+      overlays
+      nixosModules
+      darwinModules
+      ;
     inherit (inputs) overlayFor;
 
     # Aggregate job that is finished in Hydra _after_ all constituent jobs (here: grouped by system)

@@ -96,8 +96,6 @@
         forAvailableSystems
         linux64BitSystems
         nixpkgsFor
-        overlayFor
-        systems
         versionSuffix
         ;
 
@@ -105,6 +103,9 @@
         packages
         ciArtifacts
         tests
+        overlays
+        nixosModules
+        darwinModules
         ;
     in
     {
@@ -113,7 +114,11 @@
 
       # A Nixpkgs overlay that overrides the 'nix' and
       # 'nix.perl-bindings' packages.
-      overlays.default = overlayFor (p: p.clangStdenv);
+      inherit overlays;
+
+      # Modules to configure the overlay and add config needed
+      # for Lix on main.
+      inherit nixosModules darwinModules;
 
       hydraJobs = ciArtifacts // {
         devShell = forAllSystems (system: {

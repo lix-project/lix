@@ -12,9 +12,31 @@
   versionSuffix,
   officialRelease,
   buildUnreleasedNotes,
+  overlayFor,
 }:
 
+let
+
+  singletonOverlay =
+    name: f: final: prev:
+    let
+      key = "__${name}-overlay-present";
+    in
+    if (prev ? ${key}) then { } else (lib.composeExtensions (_: _: { ${key} = true; }) f) final prev;
+in
 lib.fix (self: {
+  overlays = {
+    default = singletonOverlay "lix" (overlayFor (p: p.clangStdenv));
+  };
+
+  nixosModules = {
+    default.imports = [ (import ../modules/nixos.nix { lix-overlay = self.overlays.default; }) ];
+  };
+
+  darwinModules = {
+    default.imports = [ (import ../modules/darwin.nix { lix-overlay = self.overlays.default; }) ];
+  };
+
   packages = forAllSystems (
     system:
     rec {
