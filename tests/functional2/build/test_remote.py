@@ -257,3 +257,38 @@ def test_post_build_hook(nix: Nix):
 
     # the hook will be called twice because the config is shared with the "remote" builder
     assert hook_count.read_text() == "\n\n"
+
+
+@pytest.mark.no_daemon
+def test_keep_going(nix: Nix):
+    """
+    regression fj#928: --keep-going doesn't keep going with remote builders
+    """
+    expr = """
+        let
+          fail = n: derivation {
+            name = n;
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "false" ];
+          };
+        in {
+          a = fail "a";
+          b = fail "b";
+        }
+    """
+
+    result = (
+        nix.nix_build(
+            [
+                *["--builders", f"ssh-ng://localhost?remote-store={nix.env.dirs.home}/remote"],
+                *["--keep-going"],
+                *["--max-jobs", "0"],
+                *["--expr", expr],
+            ]
+        )
+        .run()
+        .expect(1)
+    )
+    assert "a.drv' failed on remote builder" in result.stderr_plain
+    assert "b.drv' failed on remote builder" in result.stderr_plain
