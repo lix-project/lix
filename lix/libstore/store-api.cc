@@ -503,7 +503,7 @@ StringSet StoreConfig::getDefaultSystemFeatures()
     return settings.systemFeatures.get();
 }
 
-Store::Store(const StoreConfig & config) : state({(size_t) config.pathInfoCacheSize})
+Store::Store(const StoreConfig & config, Activity * parent) : state({(size_t) config.pathInfoCacheSize})
 {
     assertLibStoreInitialized();
 }
@@ -1447,15 +1447,16 @@ static bool anyDaemonSocketExists()
     });
 }
 
-static kj::Promise<Result<std::optional<ref<Store>>>>
-openFromNonUri(const std::string & uri, const StoreConfig::Params & params, AllowDaemon allowDaemon)
+static kj::Promise<Result<std::optional<ref<Store>>>> openFromNonUri(
+    const std::string & uri, const StoreConfig::Params & params, Activity * parent, AllowDaemon allowDaemon
+)
 try {
     if (uri == "" || uri == "auto") {
         auto stateDir = getOr(params, "state", settings.nixStateDir);
         if (allowDaemon == AllowDaemon::Allow && anyDaemonSocketExists()) {
-            co_return TRY_AWAIT(UDSRemoteStore::open(params));
+            co_return TRY_AWAIT(UDSRemoteStore::open(params, parent));
         } else if (sys::access(stateDir, R_OK | W_OK) == 0) {
-            co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(params, parent));
         }
 #if __linux__
         else if (!pathExists(stateDir) && params.empty() && getuid() != 0
@@ -1473,7 +1474,7 @@ try {
                     threw = true;
                 }
                 if (threw) {
-                    co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
+                    co_return TRY_AWAIT(LocalStore::makeLocalStore(params, parent));
                 }
                 printTaggedWarning(
                     "'%s' does not exist, so Lix will use '%s' as a chroot store", stateDir, chrootStore
@@ -1483,22 +1484,22 @@ try {
             StoreConfig::Params chrootStoreParams;
             chrootStoreParams["root"] = chrootStore;
             // FIXME? this ignores *all* store parameters passed to this function?
-            co_return TRY_AWAIT(LocalStore::makeLocalStore(chrootStoreParams));
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(chrootStoreParams, parent));
         }
 #endif
         else
-            co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
+            co_return TRY_AWAIT(LocalStore::makeLocalStore(params, parent));
     } else if (uri == "daemon") {
         if (allowDaemon == AllowDaemon::Disallow) {
             throw Error("tried to open a daemon store in a context that doesn't support this");
         }
-        co_return TRY_AWAIT(UDSRemoteStore::open(params));
+        co_return TRY_AWAIT(UDSRemoteStore::open(params, parent));
     } else if (uri == "local") {
-        co_return TRY_AWAIT(LocalStore::makeLocalStore(params));
+        co_return TRY_AWAIT(LocalStore::makeLocalStore(params, parent));
     } else if (isNonUriPath(uri)) {
         StoreConfig::Params params2 = params;
         params2["root"] = absPath(uri);
-        co_return TRY_AWAIT(LocalStore::makeLocalStore(params2));
+        co_return TRY_AWAIT(LocalStore::makeLocalStore(params2, parent));
     } else {
         co_return std::nullopt;
     }
@@ -1564,14 +1565,18 @@ parseStoreNonURI(const std::string & uri_, StoreConfig::Params params)
     return {uri, std::move(params)};
 }
 
-kj::Promise<Result<ref<Store>>>
-openStore(const std::string & uri_, const StoreConfig::Params & extraParams, AllowDaemon allowDaemon)
+kj::Promise<Result<ref<Store>>> openStore(
+    const std::string & uri_,
+    const StoreConfig::Params & extraParams,
+    Activity * parent,
+    AllowDaemon allowDaemon
+)
 try {
     try {
         auto [scheme, baseURI, params] = parseStoreURI(uri_, extraParams);
 
         for (auto implem : StoreImplementations::forScheme(scheme)) {
-            auto store = TRY_AWAIT(implem->create(scheme, baseURI, params));
+            auto store = TRY_AWAIT(implem->create(scheme, baseURI, params, parent));
             if (store) {
                 experimentalFeatureSettings.require((*store)->config().experimentalFeature());
                 (*store)->config().warnUnknownSettings();
@@ -1586,7 +1591,7 @@ try {
 
     auto [uri, params] = parseStoreNonURI(uri_, extraParams);
 
-    if (auto store = TRY_AWAIT(openFromNonUri(uri, params, allowDaemon))) {
+    if (auto store = TRY_AWAIT(openFromNonUri(uri, params, parent, allowDaemon))) {
         (*store)->config().warnUnknownSettings();
         co_return *store;
     }

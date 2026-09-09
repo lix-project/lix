@@ -42,7 +42,10 @@
 namespace nix {
 
 /* TODO: Separate these store impls into different files, give them better names */
-RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config) : Store(config) {}
+RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config, Activity * parent)
+    : Store(config, parent)
+{
+}
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {

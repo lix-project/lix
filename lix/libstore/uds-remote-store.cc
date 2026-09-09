@@ -60,21 +60,21 @@ std::string UDSRemoteStoreConfig::doc()
 }
 
 UDSRemoteStore::UDSRemoteStore(
-    MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path
+    MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent
 )
-    : Store(config)
-    , RemoteStore(w, config)
+    : Store(config, parent)
+    , RemoteStore(w, config, parent)
     , config_(std::move(config))
     , path(std::move(path))
 {
 }
 
 RpcRemoteStore::RpcRemoteStore(
-    MustCallInit & w, Badge b, UDSRemoteStoreConfig config, std::optional<std::string> path
+    MustCallInit & w, Badge b, UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent
 )
-    : Store(config)
-    , RemoteStore(w, config)
-    , UDSRemoteStore(w, b, config, path)
+    : Store(config, parent)
+    , RemoteStore(w, config, parent)
+    , UDSRemoteStore(w, b, config, path, parent)
 {
 }
 
@@ -180,7 +180,7 @@ try {
 }
 
 kj::Promise<Result<std::optional<ref<Store>>>>
-UDSRemoteStore::open(UDSRemoteStoreConfig config, std::optional<std::string> path)
+UDSRemoteStore::open(UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent)
 try {
     std::list<daemon::Protocol> candidates = protocolsFor(path, config.protocol.get());
 
@@ -193,14 +193,14 @@ try {
                 case daemon::Protocol::LEGACY_COMBINED:
                 case daemon::Protocol::LEGACY: {
                     MustCallInit init;
-                    auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path);
+                    auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path, parent);
                     TRY_AWAIT(init(store, std::move(fd), socketPath));
                     co_return store;
                 }
 
                 case daemon::Protocol::RPC_V1: {
                     MustCallInit init;
-                    auto store = make_ref<RpcRemoteStore>(init, Badge{}, config, path);
+                    auto store = make_ref<RpcRemoteStore>(init, Badge{}, config, path, parent);
                     TRY_AWAIT(init(store, std::move(fd), socketPath));
                     co_return store;
                 }

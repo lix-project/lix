@@ -15,7 +15,11 @@ namespace nix {
 class LinuxLocalStore : public LocalStore
 {
 public:
-    LinuxLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    LinuxLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config, Activity * parent)
+        : Store(config, parent)
+        , LocalStore(config, parent)
+    {
+    }
 
 private:
 

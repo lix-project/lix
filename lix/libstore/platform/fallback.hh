@@ -13,7 +13,11 @@ namespace nix {
 class FallbackLocalStore : public LocalStore
 {
 public:
-    FallbackLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    FallbackLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config, Activity * parent)
+        : Store(config, parent)
+        , LocalStore(config, parent)
+    {
+    }
 };
 
 /**

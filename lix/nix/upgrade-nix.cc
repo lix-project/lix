@@ -59,7 +59,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
     // here.
     virtual ref<Store> createStore(AsyncIoRoot & aio) override
     {
-        return aio.blockOn(openStore(settings.storeUri.get(), {}, AllowDaemon::Disallow));
+        return aio.blockOn(openStore(settings.storeUri.get(), {}, nullptr, AllowDaemon::Disallow));
     }
 
     /**

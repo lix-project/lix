@@ -13,7 +13,11 @@ namespace nix {
 class DarwinLocalStore : public LocalStore
 {
 public:
-    DarwinLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    DarwinLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config, Activity * parent)
+        : Store(config, parent)
+        , LocalStore(config, parent)
+    {
+    }
 
 private:
 

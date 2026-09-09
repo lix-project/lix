@@ -42,20 +42,25 @@ public:
         MustCallInit & w,
         const std::string scheme,
         const Path & binaryCacheDir,
-        LocalBinaryCacheStoreConfig config
+        LocalBinaryCacheStoreConfig config,
+        Activity * parent
     )
-        : Store(config)
+        : Store(config, parent)
         , BinaryCacheStore(w, config)
         , config_(std::move(config))
         , binaryCacheDir(binaryCacheDir)
     {
     }
 
-    static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & scheme, const Path & binaryCacheDir, LocalBinaryCacheStoreConfig config)
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(
+        const std::string & scheme,
+        const Path & binaryCacheDir,
+        LocalBinaryCacheStoreConfig config,
+        Activity * parent
+    )
     try {
         MustCallInit init;
-        auto store = make_ref<LocalBinaryCacheStore>(init, scheme, binaryCacheDir, std::move(config));
+        auto store = make_ref<LocalBinaryCacheStore>(init, scheme, binaryCacheDir, std::move(config), parent);
         TRY_AWAIT(init(store));
         co_return store;
     } catch (...) {

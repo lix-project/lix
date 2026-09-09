@@ -178,7 +178,7 @@ protected:
      * Protected so that users don't accidentally create a LocalStore
      * instead of a platform's subclass.
      */
-    LocalStore(LocalStoreConfig config);
+    LocalStore(LocalStoreConfig config, Activity * parent);
 
 public:
 
@@ -192,7 +192,8 @@ public:
     /**
      * Create a LocalStore, possibly a platform-specific subclass
      */
-    static kj::Promise<Result<ref<LocalStore>>> makeLocalStore(const StoreConfig::Params & params);
+    static kj::Promise<Result<ref<LocalStore>>>
+    makeLocalStore(const StoreConfig::Params & params, Activity * parent);
 
     /**
      * Implementations of abstract store API methods.

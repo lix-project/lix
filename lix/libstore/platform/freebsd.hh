@@ -13,7 +13,11 @@ namespace nix {
 class FreeBSDLocalStore : public LocalStore
 {
 public:
-    FreeBSDLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config) : Store(config), LocalStore(config) {}
+    FreeBSDLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config, Activity * parent)
+        : Store(config, parent)
+        , LocalStore(config, parent)
+    {
+    }
 
 private:
 

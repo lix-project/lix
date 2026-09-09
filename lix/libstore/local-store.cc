@@ -91,8 +91,8 @@ int getSchema(Path schemaPath)
 // NOTE this constructor uses NeverAsync functions, but they are limited to schema migrations.
 // since these migrations run reasonably quickly *and* approximately never we are not going to
 // bother asyncifying this constructor (especially since it'll propagate to all other stores).
-LocalStore::LocalStore(LocalStoreConfig config)
-    : Store(config)
+LocalStore::LocalStore(LocalStoreConfig config, Activity * parent)
+    : Store(config, parent)
     , config_(std::move(config))
     , dbDir(config_.stateDir + "/db")
     , linksDir(config_.realStoreDir + "/.links")

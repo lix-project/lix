@@ -23,9 +23,10 @@ HttpBinaryCacheStore::HttpBinaryCacheStore(
     Badge,
     const std::string & scheme,
     const Path & _cacheUri,
-    HttpBinaryCacheStoreConfig config
+    HttpBinaryCacheStoreConfig config,
+    Activity * parent
 )
-    : Store(config)
+    : Store(config, parent)
     , BinaryCacheStore(w, config)
     , config_(std::move(config))
     , cacheUri(scheme + "://" + _cacheUri)
@@ -38,11 +39,11 @@ HttpBinaryCacheStore::HttpBinaryCacheStore(
 }
 
 kj::Promise<Result<std::optional<ref<Store>>>> HttpBinaryCacheStore::open(
-    const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config
+    const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config, Activity * parent
 )
 try {
     MustCallInit init;
-    auto store = make_ref<HttpBinaryCacheStore>(init, Badge{}, scheme, cacheUri, std::move(config));
+    auto store = make_ref<HttpBinaryCacheStore>(init, Badge{}, scheme, cacheUri, std::move(config), parent);
     TRY_AWAIT(init(store));
     co_return store;
 } catch (...) {

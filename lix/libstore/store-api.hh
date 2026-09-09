@@ -272,7 +272,7 @@ protected:
 
     Sync<State, AsyncMutex> state;
 
-    Store(const StoreConfig & config);
+    Store(const StoreConfig & config, Activity * parent);
 
     KJ_DISALLOW_COPY_AND_MOVE(Store);
 
@@ -1092,9 +1092,12 @@ enum class AllowDaemon
  * `AllowDaemon::Disallow`, `""` and `"auto"` URIs will only attempt the
  * ‘local’ method, and `"daemon"` URIs will cause a hard error.
  */
-kj::Promise<Result<ref<Store>>> openStore(const std::string & uri = settings.storeUri.get(),
+kj::Promise<Result<ref<Store>>> openStore(
+    const std::string & uri = settings.storeUri.get(),
     const StoreConfig::Params & extraParams = {},
-    AllowDaemon allowDaemon = AllowDaemon::Allow);
+    Activity * parent = nullptr,
+    AllowDaemon allowDaemon = AllowDaemon::Allow
+);
 
 struct StoreProxy
 {
@@ -1121,7 +1124,10 @@ struct StoreFactory
 {
     std::set<std::string> uriSchemes;
     std::function<kj::Promise<Result<std::optional<ref<Store>>>>(
-        const std::string & scheme, const std::string & uri, const StoreConfig::Params & params
+        const std::string & scheme,
+        const std::string & uri,
+        const StoreConfig::Params & params,
+        Activity * parent
     )>
         create = [](const auto &...) -> kj::Promise<Result<std::optional<ref<Store>>>> {
         return {{std::nullopt}};
@@ -1152,9 +1158,12 @@ struct StoreImplementations
     {
         register_({
             .uriSchemes = std::move(uriSchemes),
-            .create =
-                [](const std::string & scheme, const std::string & uri, const StoreConfig::Params & params)
-                -> kj::Promise<Result<std::optional<ref<Store>>>> { return T::open(scheme, uri, params); },
+            .create = [](const std::string & scheme,
+                         const std::string & uri,
+                         const StoreConfig::Params & params,
+                         Activity * parent) -> kj::Promise<Result<std::optional<ref<Store>>>> {
+                return T::open(scheme, uri, params, parent);
+            },
             .getConfig = []() -> std::shared_ptr<StoreConfig> {
                 return std::make_shared<TConfig>(StringMap({}));
             },

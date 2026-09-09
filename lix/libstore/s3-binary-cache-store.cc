@@ -384,9 +384,10 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         MustCallInit & w,
         const std::string & uriScheme,
         const std::string & bucketName,
-        S3BinaryCacheStoreConfig config
+        S3BinaryCacheStoreConfig config,
+        Activity * parent
     )
-        : Store(config)
+        : Store(config, parent)
         , BinaryCacheStore(w, config)
         , S3BinaryCacheStore(w, config)
         , config_(std::move(config))
@@ -402,11 +403,15 @@ struct S3BinaryCacheStoreImpl : public S3BinaryCacheStore
         diskCache = getNarInfoDiskCache();
     }
 
-    static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & uriScheme, const Path & bucketName, S3BinaryCacheStoreConfig config)
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(
+        const std::string & uriScheme,
+        const Path & bucketName,
+        S3BinaryCacheStoreConfig config,
+        Activity * parent
+    )
     try {
         MustCallInit init;
-        auto store = make_ref<S3BinaryCacheStoreImpl>(init, uriScheme, bucketName, std::move(config));
+        auto store = make_ref<S3BinaryCacheStoreImpl>(init, uriScheme, bucketName, std::move(config), parent);
         TRY_AWAIT(init(store));
         co_return store;
     } catch (...) {

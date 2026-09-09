@@ -14,7 +14,8 @@
 
 namespace nix {
 
-kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m, StoreConfig::Params storeParams)
+kj::Promise<Result<ref<Store>>>
+openStore(rust::Ref<Machine> m, StoreConfig::Params storeParams, Activity * parent)
 try {
     auto storeUri = m.uri.as_str();
 
@@ -43,7 +44,7 @@ try {
         append(m.mandatory_features);
     }
 
-    co_return TRY_AWAIT(nix::openStore(to_std_string(storeUri), storeParams));
+    co_return TRY_AWAIT(nix::openStore(to_std_string(storeUri), storeParams, parent));
 } catch (...) {
     co_return result::current_exception();
 }

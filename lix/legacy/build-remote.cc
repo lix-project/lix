@@ -175,7 +175,7 @@ try {
     // versions of the build hook (where we don't need one hook process per
     // build) we should change this to using a daemon connection, ideally a
     // daemon connection provided by the parent via file descriptor passing
-    auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
+    auto store = TRY_AWAIT(openStore(settings.storeUri, {}, nullptr, AllowDaemon::Disallow));
 
     auto drvPath = from(context.getParams().getDrvPath(), *store);
 

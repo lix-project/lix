@@ -72,20 +72,26 @@ protected:
 
 public:
 
-    UDSRemoteStore(MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
+    UDSRemoteStore(
+        MustCallInit & w,
+        Badge,
+        UDSRemoteStoreConfig config,
+        std::optional<std::string> path,
+        Activity * parent
+    );
 
     static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(UDSRemoteStoreConfig config, std::optional<std::string> path);
+    open(UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent);
 
-    static kj::Promise<Result<std::optional<ref<Store>>>> open(UDSRemoteStoreConfig config)
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(UDSRemoteStoreConfig config, Activity * parent)
     {
-        return open(std::move(config), std::nullopt);
+        return open(std::move(config), std::nullopt, parent);
     }
 
     static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & scheme, const Path & uri, UDSRemoteStoreConfig config)
+    open(const std::string & scheme, const Path & uri, UDSRemoteStoreConfig config, Activity * parent)
     {
-        return open(std::move(config), uri);
+        return open(std::move(config), uri, parent);
     }
 
     static kj::Promise<Result<std::shared_ptr<StoreProxy>>>
@@ -147,7 +153,13 @@ class RpcRemoteStore : public UDSRemoteStore
     friend MustCallInit;
 
 public:
-    RpcRemoteStore(MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path);
+    RpcRemoteStore(
+        MustCallInit & w,
+        Badge,
+        UDSRemoteStoreConfig config,
+        std::optional<std::string> path,
+        Activity * parent
+    );
 
     /* Overrides for RPC-aware versions of RemoteStore commands */
 

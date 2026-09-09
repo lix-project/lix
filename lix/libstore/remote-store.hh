@@ -38,7 +38,7 @@ class RemoteStore : public virtual Store,
 protected:
     struct ConnectionHandle;
 
-    RemoteStore(MustCallInit &, const RemoteStoreConfig & config);
+    RemoteStore(MustCallInit &, const RemoteStoreConfig & config, Activity * parent);
 
 public:
     RemoteStoreConfig & config() override = 0;

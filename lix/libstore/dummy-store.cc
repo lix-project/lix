@@ -24,13 +24,15 @@ struct DummyStore final : public Store
     DummyStoreConfig & config() override { return config_; }
     const DummyStoreConfig & config() const override { return config_; }
 
-    DummyStore(DummyStoreConfig config) : Store(config), config_(std::move(config)) {}
+    DummyStore(DummyStoreConfig config, Activity * parent) : Store(config, parent), config_(std::move(config))
+    {
+    }
 
     kj::Promise<Result<std::optional<ref<Store>>>> static open(
-        const std::string &, const Path &, DummyStoreConfig config
+        const std::string &, const Path &, DummyStoreConfig config, Activity * parent
     )
     try {
-        co_return make_ref<DummyStore>(std::move(config));
+        co_return make_ref<DummyStore>(std::move(config), parent);
     } catch (...) {
         co_return result::current_exception();
     }

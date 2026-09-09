@@ -43,10 +43,11 @@ public:
         kj::Badge<SSHStore>,
         const std::string & scheme,
         const std::string & host,
-        SSHStoreConfig config
+        SSHStoreConfig config,
+        Activity * parent
     )
-        : Store(config)
-        , RemoteStore(w, config)
+        : Store(config, parent)
+        , RemoteStore(w, config, parent)
         , config_(std::move(config))
         , host(host)
         , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
@@ -54,10 +55,10 @@ public:
     }
 
     static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & scheme, const Path & host, SSHStoreConfig config)
+    open(const std::string & scheme, const Path & host, SSHStoreConfig config, Activity * parent)
     try {
         MustCallInit init;
-        auto store = make_ref<SSHStore>(init, kj::Badge<SSHStore>{}, scheme, host, std::move(config));
+        auto store = make_ref<SSHStore>(init, kj::Badge<SSHStore>{}, scheme, host, std::move(config), parent);
         TRY_AWAIT(init(store));
         co_return store;
     } catch (...) {

@@ -12,18 +12,19 @@
 #endif
 
 namespace nix {
-kj::Promise<Result<ref<LocalStore>>> LocalStore::makeLocalStore(const StoreConfig::Params & params)
+kj::Promise<Result<ref<LocalStore>>>
+LocalStore::makeLocalStore(const StoreConfig::Params & params, Activity * parent)
 try {
     kj::Badge<LocalStore> badge;
     auto result =
 #if __linux__
-        make_ref<LinuxLocalStore>(badge, params)
+        make_ref<LinuxLocalStore>(badge, params, parent)
 #elif __APPLE__
-        make_ref<DarwinLocalStore>(badge, params)
+        make_ref<DarwinLocalStore>(badge, params, parent)
 #elif __FreeBSD__
-        make_ref<FreeBSDLocalStore>(badge, params)
+        make_ref<FreeBSDLocalStore>(badge, params, parent)
 #else
-        make_ref<FallbackLocalStore>(badge, params)
+        make_ref<FallbackLocalStore>(badge, params, parent)
 #endif
         ;
     co_return result;

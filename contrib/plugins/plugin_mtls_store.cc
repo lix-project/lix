@@ -60,20 +60,25 @@ struct mTLSBinaryCacheStoreImpl : public HttpBinaryCacheStore
         MustCallInit & w,
         const std::string & uriScheme,
         const Path & _cacheUri,
-        mTLSBinaryCacheStoreConfig config
+        mTLSBinaryCacheStoreConfig config,
+        Activity * parent
     )
-        : Store(config)
-        , HttpBinaryCacheStore(w, badge(), "https", _cacheUri, config)
+        : Store(config, parent)
+        , HttpBinaryCacheStore(w, badge(), "https", _cacheUri, config, parent)
         , config_(std::move(config))
         , keyring(std::make_shared<Keyring>(config_.tlsCertificate.get(), config_.tlsKey.get()))
     {
     }
 
-    static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & uriScheme, const Path & cacheUri, mTLSBinaryCacheStoreConfig config)
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(
+        const std::string & uriScheme,
+        const Path & cacheUri,
+        mTLSBinaryCacheStoreConfig config,
+        Activity * parent
+    )
     try {
         MustCallInit init;
-        auto store = make_ref<mTLSBinaryCacheStoreImpl>(init, uriScheme, cacheUri, std::move(config));
+        auto store = make_ref<mTLSBinaryCacheStoreImpl>(init, uriScheme, cacheUri, std::move(config), parent);
         TRY_AWAIT(init(store));
         co_return store;
     } catch (...) {

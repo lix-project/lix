@@ -51,11 +51,16 @@ public:
         Badge,
         const std::string & scheme,
         const Path & _cacheUri,
-        HttpBinaryCacheStoreConfig config
+        HttpBinaryCacheStoreConfig config,
+        Activity * parent
     );
 
-    static kj::Promise<Result<std::optional<ref<Store>>>>
-    open(const std::string & scheme, const Path & cacheUri, HttpBinaryCacheStoreConfig config);
+    static kj::Promise<Result<std::optional<ref<Store>>>> open(
+        const std::string & scheme,
+        const Path & cacheUri,
+        HttpBinaryCacheStoreConfig config,
+        Activity * parent
+    );
 
     HttpBinaryCacheStoreConfig & config() override
     {
