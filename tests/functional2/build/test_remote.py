@@ -58,7 +58,7 @@ def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
 @pytest.mark.full_sandbox
 @with_files(
     {
-        "build-hook.nix": get_global_asset("build-hook.nix"),
+        "build-hook.nix": CopyFile("assets/build-hook.nix"),
         "config.nix": get_global_asset("config.nix"),
     }
 )
@@ -69,7 +69,9 @@ def test_remote_trustless_unsigned(
     nix.settings.system_features = ["foo"]
     nix.settings.store = str(env.dirs.home / "peer")
     # We first build a dependency of the derivation we eventually want to build.
-    nix.nix_build(["build-hook.nix", "-A", "passthru.input1", *busybox_args]).run().ok()
+    nix.nix_build(
+        ["build-hook.nix", "-A", "passthru.input1", *busybox_args, "--arg", "useCA", "false"]
+    ).run().ok()
 
     # Now when we go to build that downstream derivation, Lix will try to
     # copy our already-build `input2` to the remote store. That store object
@@ -84,6 +86,7 @@ def test_remote_trustless_unsigned(
                 *busybox_args,
                 "--builders",
                 f"{inner.settings.store} - - - - foo,bar,baz",
+                *["--arg", "useCA", "false"],
             ]
         ).run()
     result.expect(1)
@@ -100,7 +103,7 @@ def test_remote_trustless_unsigned(
 )
 @with_files(
     {
-        "build-hook.nix": get_global_asset("build-hook.nix"),
+        "build-hook.nix": CopyFile("assets/build-hook.nix"),
         "config.nix": get_global_asset("config.nix"),
     }
 )
@@ -115,6 +118,7 @@ def test_remote_trustless_ia(
             *busybox_args,
             "--builders",
             _builders(protocol, untrusted, env),
+            *["--arg", "useCA", "false"],
         ]
     ).run()
     result.ok()
@@ -128,7 +132,7 @@ def test_remote_trustless_ia(
 @pytest.mark.parametrize(("protocol", "untrusted"), [("ssh", False), ("ssh-ng", True)])
 @with_files(
     {
-        "build-hook-ca-fixed.nix": get_global_asset("build-hook-ca-fixed.nix"),
+        "build-hook-ca-fixed.nix": CopyFile("assets/build-hook.nix"),
         "config.nix": get_global_asset("config.nix"),
     }
 )
@@ -145,6 +149,7 @@ def test_remote_trustless_ca(
             *busybox_args,
             "--builders",
             _builders(protocol, untrusted, env),
+            *["--arg", "useCA", "true"],
         ]
     ).run()
     result.ok()
@@ -156,7 +161,7 @@ def test_remote_trustless_ca(
 @pytest.mark.full_sandbox
 @with_files(
     {
-        "build-hook-ca-fixed.nix": get_global_asset("build-hook-ca-fixed.nix"),
+        "build-hook-ca-fixed.nix": CopyFile("assets/build-hook.nix"),
         "config.nix": get_global_asset("config.nix"),
     }
 )
@@ -174,6 +179,7 @@ def test_remote_trustless_ca_daemon(
                 *["--max-jobs", "0"],
                 *busybox_args,
                 *["--builders", f"daemon?protocol={inner.daemon_protocol} - - - - foo,bar,baz"],
+                *["--arg", "useCA", "true"],
             ]
         ).run()
         result.ok()
