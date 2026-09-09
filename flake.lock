@@ -14,6 +14,21 @@
         "url": "https://git.lix.systems/lix-project/flake-compat/archive/main.tar.gz"
       }
     },
+    "flakey-profile": {
+      "locked": {
+        "lastModified": 1712898590,
+        "narHash": "sha256-FhGIEU93VHAChKEXx905TSiPZKga69bWl1VB37FK//I=",
+        "owner": "lf-",
+        "repo": "flakey-profile",
+        "rev": "243c903fd8eadc0f63d205665a92d4df91d42d9d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "lf-",
+        "repo": "flakey-profile",
+        "type": "github"
+      }
+    },
     "lowdown-src": {
       "flake": false,
       "locked": {
@@ -139,6 +154,7 @@
     "root": {
       "inputs": {
         "flake-compat": "flake-compat",
+        "flakey-profile": "flakey-profile",
         "nix2container": "nix2container",
         "nix_2_18": "nix_2_18",
         "nixpkgs": "nixpkgs_2",

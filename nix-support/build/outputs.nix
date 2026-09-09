@@ -13,6 +13,7 @@
   officialRelease,
   buildUnreleasedNotes,
   overlayFor,
+  flakey-profile,
 }:
 
 let
@@ -64,6 +65,19 @@ lib.fix (self: {
       default = nix;
 
       inherit (nixpkgsFor.${system}.native.__lixInternal) lix-clang-tidy nix-eval-jobs;
+
+      system-profile = (import (flakey-profile + "/lib")).mkProfile {
+        pkgs = nixpkgsFor.${system}.native;
+        paths = with nixpkgsFor.${system}.native; [
+          cacert
+          nix
+        ];
+        name = "system-profile";
+        extraSwitchArgs = [
+          "--profile"
+          "/nix/var/nix/profiles/default"
+        ];
+      };
     }
     // (
       lib.optionalAttrs (builtins.elem system linux64BitSystems) {
@@ -181,6 +195,8 @@ lib.fix (self: {
   ciArtifacts = {
     # Binary package for various platforms.
     build = forAllSystems (system: self.packages.${system}.nix);
+
+    system-profile = forAllSystems (system: self.packages.${system}.system-profile);
 
     buildStatic = lib.genAttrs linux64BitSystems (system: self.packages.${system}.nix-static);
 

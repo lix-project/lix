@@ -27,6 +27,8 @@
       url = "https://git.lix.systems/lix-project/flake-compat/archive/main.tar.gz";
       flake = false;
     };
+
+    flakey-profile.url = "github:lf-/flakey-profile";
   };
 
   outputs =
@@ -38,6 +40,7 @@
       nix2container,
       nix_2_18,
       flake-compat,
+      flakey-profile,
     }:
 
     let
@@ -85,6 +88,7 @@
           nix2container
           lixSrc
           nixpkgs-regression
+          flakey-profile
           ;
       };
 

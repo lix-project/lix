@@ -5,6 +5,7 @@
   nix_2_18,
   nix2container,
   nixpkgs-regression,
+  flakey-profile,
 }:
 
 let
@@ -97,7 +98,12 @@ let
 
     overlayFor = self.callPackage ./overlay.nix { inherit nix_2_18; };
 
-    inherit nix2container nixpkgs nixpkgs-regression;
+    inherit
+      nix2container
+      nixpkgs
+      nixpkgs-regression
+      flakey-profile
+      ;
   });
 in
 sc
