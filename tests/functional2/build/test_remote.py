@@ -259,6 +259,64 @@ def test_post_build_hook(nix: Nix):
     assert hook_count.read_text() == "\n\n"
 
 
+@pytest.mark.full_sandbox
+@pytest.mark.no_daemon
+@with_files(
+    {
+        "build-hook.nix": CopyFile("assets/build-hook.nix"),
+        "config.nix": get_global_asset("config.nix"),
+    }
+)
+@pytest.mark.parametrize("use_ca", ["false", "true"])
+def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
+    # system-features will automatically be added to the outer URL, but not inner
+    # remote-store URL.
+    builders = nix.env.dirs.home / "machines.conf"
+    builders.write_text(
+        dedent(f"""
+            ssh-ng://localhost?remote-store={nix.env.dirs.home}/machine1?system-features=foo - - 1 1 foo
+            {nix.env.dirs.home}/machine2 - - 1 1 bar
+            ssh-ng://localhost?remote-store={nix.env.dirs.home}/machine3?system-features=baz - - 1 1 baz
+        """)
+    )
+
+    nix.settings.add_xp_feature("nix-command")
+    nix.settings["builders"] = f"@{builders}"
+
+    build_args = ["-f", "build-hook.nix", *busybox_args, "--arg", "useCA", use_ca]
+
+    # Note: ssh-ng://localhost bypasses ssh, directly invoking nix-daemon as a
+    # child process. This allows us to test RemoteStore::buildDerivation().
+    result = nix.nix(["build", "-Lv", "-j0", *build_args, "--print-out-paths"]).run().ok()
+
+    out_path = (nix.env.dirs.home / "result").readlink()
+    assert out_path.read_text() == "FOO BAR BAZ\n"
+
+    assert re.findall(r"store.*build-remote", result.stdout_plain)
+
+    # Ensure that input1 was built on store1 due to the required feature.
+    output = nix.nix(["path-info", "--store", f"{nix.env.dirs.home}/machine1", "--all"]).run().ok()
+    assert "builder-build-remote-input-1.sh" in output.stdout_plain
+    assert "builder-build-remote-input-2.sh" not in output.stdout_plain
+    assert "builder-build-remote-input-3.sh" not in output.stdout_plain
+
+    # Ensure that input2 was built on store2 due to the required feature.
+    output = nix.nix(["path-info", "--store", f"{nix.env.dirs.home}/machine2", "--all"]).run().ok()
+    assert "builder-build-remote-input-1.sh" not in output.stdout_plain
+    assert "builder-build-remote-input-2.sh" in output.stdout_plain
+    assert "builder-build-remote-input-3.sh" not in output.stdout_plain
+
+    # Ensure that input3 was built on store3 due to the required feature.
+    output = nix.nix(["path-info", "--store", f"{nix.env.dirs.home}/machine3", "--all"]).run().ok()
+    assert "builder-build-remote-input-1.sh" not in output.stdout_plain
+    assert "builder-build-remote-input-2.sh" not in output.stdout_plain
+    assert "builder-build-remote-input-3.sh" in output.stdout_plain
+
+    for i in ["input1", "input3"]:
+        log = nix.nix(["log", *build_args, f"passthru.{i}"]).run().ok().stdout_plain
+        assert f"hi-{i}" in log
+
+
 @pytest.mark.no_daemon
 @pytest.mark.full_sandbox
 @pytest.mark.parametrize("scheme", ["ssh", "ssh-ng"])
