@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 namespace nix {
+using namespace std::literals;
 
 /* ----------- tests for url.hh --------------------------------------------------*/
 
@@ -253,6 +254,112 @@ namespace nix {
 
     TEST(parseURL, emptyStringIsInvalidURL) {
         ASSERT_THROW(parseURL(""), Error);
+    }
+
+    TEST(parseURL, encodedPathAndQueryAndFragment)
+    {
+        auto url =
+            "https://lix.systems/"
+            "some%20path%2Fwith%2Fpercent?first=%26v1&second=%23v2&third=%3Dv3#fragment-%3F";
+        auto parsed = parseURL(url);
+
+        ParsedURL expected{
+            .url = url,
+            .base = "https://lix.systems/some%20path%2Fwith%2Fpercent",
+            .scheme = "https",
+            .authority = "lix.systems",
+            .path = "/some path/with/percent",
+            .query = (StringMap) {{"first", "&v1"}, {"second", "#v2"}, {"third", "=v3"}},
+            .fragment = "fragment-?"
+        };
+
+        ASSERT_EQ(parsed, expected);
+    }
+
+    TEST(parseURL, missingSlash)
+    {
+        auto url = "ftp://lix.systems";
+        auto parsed = parseURL(url);
+        ASSERT_EQ(parsed.path, "");
+    }
+
+    TEST(parseURL, emptyPath)
+    {
+        auto url = "ftp://lix.systems/";
+        auto parsed = parseURL(url);
+        ASSERT_EQ(parsed.path, "/");
+    }
+
+    TEST(parseURL, plusUrl)
+    {
+        auto url = "git+ssh://lix.systems/test+state?key+more=value+more#fragment+more";
+        auto parsed = parseURL(url);
+
+        ParsedURL expected = {
+            .url = "",
+            .base = "",
+            .scheme = "git+ssh",
+            .authority = "lix.systems",
+            .path = "/test+state",
+            .query = (StringMap) {{"key+more", "value+more"}},
+            .fragment = "fragment+more"
+        };
+
+        ASSERT_EQ(parsed, expected);
+    }
+
+    TEST(parseURL, pathWithNullbyte)
+    {
+        auto url = "git+ssh://lix.systems/some%00path";
+        auto parsed = parseURL(url);
+
+        ParsedURL expected = {
+            .url = "",
+            .base = "",
+            .scheme = "git+ssh",
+            .authority = "lix.systems",
+            .path = "/some\0path"s,
+            .query = (StringMap) {},
+            .fragment = "",
+        };
+
+        ASSERT_EQ(parsed, expected);
+    }
+
+    TEST(parseURL, queryWithNullbyte)
+    {
+        auto url = "https://lix.systems/some?nar%00Hash=asdf%00jkl";
+        auto parsed = parseURL(url);
+
+        ParsedURL expected = {
+            .url = "",
+            .base = "",
+            .scheme = "https",
+            .authority = "lix.systems",
+            .path = "/some",
+            .query = (StringMap) {{"nar\0Hash"s, "asdf\0jkl"s}},
+            .fragment = "",
+        };
+
+        ASSERT_EQ(parsed, expected);
+    }
+
+    TEST(parseURL, fragmentWithNullbyte)
+    {
+        auto url = "https://fops.systems/paw#claw%00ed";
+        auto parsed = parseURL(url);
+
+        ParsedURL expected = {
+            .url = "",
+            .base = "",
+            .scheme = "https",
+            .authority = "fops.systems",
+            .path = "/paw",
+            .query = (StringMap) {},
+            .fragment = "claw\0ed"s,
+        };
+
+        ASSERT_EQ(parsed, expected);
     }
 
     /* ----------------------------------------------------------------------------
