@@ -279,6 +279,12 @@ namespace nix {
         ASSERT_EQ(d, ((StringMap) { { "arg", ""} }));
     }
 
+    TEST(decodeQuery, deocdesKey)
+    {
+        auto d = decodeQuery("key%2F=value");
+        ASSERT_EQ(d, ((StringMap) {{"key/", "value"}}));
+    }
+
     /* ----------------------------------------------------------------------------
      * percentDecode
      * --------------------------------------------------------------------------*/

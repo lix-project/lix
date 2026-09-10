@@ -82,9 +82,7 @@ std::map<std::string, std::string> decodeQuery(const std::string & query)
     for (auto s : tokenizeString<Strings>(query, "&")) {
         auto e = s.find('=');
         if (e != std::string::npos)
-            result.emplace(
-                s.substr(0, e),
-                percentDecode(std::string_view(s).substr(e + 1)));
+            result.emplace(percentDecode(s.substr(0, e)), percentDecode(std::string_view(s).substr(e + 1)));
     }
 
     return result;
