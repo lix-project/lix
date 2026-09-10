@@ -211,13 +211,31 @@ void LocalStore::initDB(DBState & state)
 {
     /* Check the current database schema and if necessary do an
        upgrade.  */
-    int curSchema = getSchema();
-    if (config_.readOnly && curSchema < nixSchemaVersion) {
+    if (config_.readOnly && !pathExists(schemaPath)) {
+        throw Error("database does not exist, and cannot be created in read-only mode");
+    }
+
+    // create the schema file and take a lock, otherwise multiple processes may attempt to create
+    // the database simultaneously (which sqlite guards against) and write the schema file (which
+    // nothing guards against if we don't). we'll also read (not write) via this file descriptor;
+    // in read-only mode we can't open this file for writing when the underlying fs is read-only.
+    AutoCloseFD schemaFile(sys::open(schemaPath, O_RDONLY | O_CREAT | O_CLOEXEC, 0666));
+    if (!schemaFile) {
+        throw Error("could not open %s", schemaPath);
+    }
+    lockFile(schemaFile.get(), ltWrite, always_progresses);
+
+    // curSchema will be 0 when creating a new database, or if the schema file was corrupted.
+    int curSchema = string2Int<int>(readFile(schemaFile.get())).value_or(0);
+
+    // if curSchema *is* 0 and the sqlite file exists we have some kind of corruption, otherwise
+    // we need to either upgrade the database or create it. readonly mode has more requirements.
+    if (curSchema == 0 && pathExists(dbPath())) {
+        throw Error("store corruption detected (schema version file broken)");
+    } else if (config_.readOnly && curSchema < nixSchemaVersion) {
         debug("current schema version: %d", curSchema);
         debug("supported schema version: %d", nixSchemaVersion);
-        throw Error(curSchema == 0 ?
-            "database does not exist, and cannot be created in read-only mode" :
-            "database schema needs migrating, but this cannot be done in read-only mode");
+        throw Error("database schema needs migrating, but this cannot be done in read-only mode");
     }
 
     if (curSchema > nixSchemaVersion)
@@ -254,10 +272,6 @@ void LocalStore::initDB(DBState & state)
             unlockFile(globalLock.get()); // We have acquired a shared lock; release it to prevent deadlocks
             lockFile(globalLock.get(), ltWrite, always_progresses);
         }
-
-        /* Get the schema version again, because another process may
-           have performed the upgrade already. */
-        curSchema = getSchema();
 
         openDB(state, false);
 
@@ -366,6 +380,11 @@ std::string LocalStore::getUri()
 int LocalStore::getSchema()
 { return nix::getSchema(schemaPath); }
 
+Path LocalStore::dbPath() const
+{
+    return dbDir + "/db.sqlite";
+}
+
 void LocalStore::openDB(DBState & state, bool create)
 {
     if (create && config_.readOnly) {
@@ -377,12 +396,11 @@ void LocalStore::openDB(DBState & state, bool create)
     }
 
     /* Open the Nix database. */
-    std::string dbPath = dbDir + "/db.sqlite";
     auto & db(state.db);
     auto openMode = config_.readOnly ? SQLiteOpenMode::Immutable
                   : create ? SQLiteOpenMode::Normal
                   : SQLiteOpenMode::NoCreate;
-    state.db = SQLite(dbPath, openMode);
+    state.db = SQLite(dbPath(), openMode);
 
     /* !!! check whether sqlite has been built with foreign key
        support */

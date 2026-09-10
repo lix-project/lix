@@ -354,6 +354,8 @@ private:
      */
     int getSchema();
 
+    Path dbPath() const;
+
     void initDB(DBState & state);
     void openDB(DBState & state, bool create);
     void prepareStatements(DBState & state);
