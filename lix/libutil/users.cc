@@ -10,15 +10,6 @@
 
 namespace nix {
 
-std::string getUserName()
-{
-    auto pw = getpwuid(geteuid());
-    std::string name = pw ? pw->pw_name : getEnv("USER").value_or("");
-    if (name.empty())
-        throw Error("cannot figure out user name");
-    return name;
-}
-
 static std::optional<Path> tryGetHomeOf(uid_t userId)
 {
     std::vector<char> buf(16384);

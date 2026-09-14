@@ -7,8 +7,6 @@
 
 namespace nix {
 
-std::string getUserName();
-
 /**
  * @return $HOME or the user's home directory from /etc/passwd, if available.
  */
