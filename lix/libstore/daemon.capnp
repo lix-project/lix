@@ -172,7 +172,8 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   addTempRoot @10 (path :Libstore.StorePath);
   addToStore @9 (
     name :T.String,
-    contentAddressMethod :T.String,
+    contentAddressMethod :ContentAddressMethod,
+    hashType :HashType,
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);

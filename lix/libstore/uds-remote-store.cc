@@ -764,7 +764,8 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RpcRemoteStore::addCAToStore(
 try {
     auto req = rpc->legacyProtocol.addToStoreRequest();
     RPC_FILL(req, setName, name);
-    RPC_FILL(req, setContentAddressMethod, caMethod.render(hashType));
+    RPC_FILL(req, setContentAddressMethod, rpc::daemon::to(caMethod));
+    RPC_FILL(req, setHashType, rpc::daemon::to(hashType));
     RPC_FILL(req, initReferences, references, *this);
     RPC_FILL(req, setRepair, repair);
 

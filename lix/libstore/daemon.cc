@@ -1102,8 +1102,8 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             , refs(rpc::to<StorePathSet>(args.getReferences(), *state->store))
             , repair(RepairFlag{args.getRepair()})
         {
-            auto [cam, hashType] =
-                ContentAddressMethod::parse(rpc::to<std::string>(args.getContentAddressMethod()));
+            auto cam = from(args.getContentAddressMethod());
+            auto hashType = from(args.getHashType());
 
             std::tie(writer, finish) = wrapInAsyncPipe([&](auto & reader) {
                 return std::visit(
