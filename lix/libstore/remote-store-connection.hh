@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libutil/logging.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libstore/worker-protocol-impl.hh"
@@ -101,7 +102,7 @@ struct RemoteStore::Connection
         std::exception_ptr e;
     };
 
-    kj::Promise<Result<RemoteError>> processStderr(AsyncFdIoStream & stream);
+    kj::Promise<Result<RemoteError>> processStderr(AsyncFdIoStream & stream, Activity * parent);
 
     /**
      * hook to provide additional error information for a failed connection.
@@ -124,9 +125,11 @@ struct RemoteStore::Connection
 struct RemoteStore::ConnectionHandle
 {
     Sync<std::shared_ptr<Connection>, AsyncMutex>::Lock handle;
+    Activity * parent;
 
-    ConnectionHandle(Sync<std::shared_ptr<Connection>, AsyncMutex>::Lock && handle)
+    ConnectionHandle(Sync<std::shared_ptr<Connection>, AsyncMutex>::Lock && handle, Activity * parent)
         : handle(std::move(handle))
+        , parent(parent)
     {
     }
 

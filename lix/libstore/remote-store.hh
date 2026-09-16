@@ -5,6 +5,7 @@
 #include <string>
 #include <utility>
 
+#include "lix/libutil/logging.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/gc-store.hh"
@@ -37,6 +38,8 @@ class RemoteStore : public virtual Store,
 {
 protected:
     struct ConnectionHandle;
+
+    Activity * parent;
 
     RemoteStore(MustCallInit &, const RemoteStoreConfig & config, Activity * parent);
 

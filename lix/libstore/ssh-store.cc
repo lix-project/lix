@@ -207,7 +207,7 @@ protected:
 
         AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
         TRY_AWAIT(stream.writeFull(command.s.data(), command.s.size()));
-        auto ex = TRY_AWAIT(conn.processStderr(stream));
+        auto ex = TRY_AWAIT(conn.processStderr(stream, parent));
         if (ex.e) {
             std::rethrow_exception(ex.e);
         }

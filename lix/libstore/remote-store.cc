@@ -44,6 +44,7 @@ namespace nix {
 /* TODO: Separate these store impls into different files, give them better names */
 RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config, Activity * parent)
     : Store(config, parent)
+    , parent(parent)
 {
 }
 
@@ -53,7 +54,7 @@ try {
     if (!*conn) {
         *conn = TRY_AWAIT(reconnect());
     }
-    co_return conn;
+    co_return {std::move(conn), parent};
 } catch (...) {
     co_return result::current_exception();
 }
@@ -98,7 +99,7 @@ try {
             WorkerProto::Serialise<std::optional<TrustedFlag>>::read
         ));
 
-        auto ex = TRY_AWAIT(conn.processStderr(stream));
+        auto ex = TRY_AWAIT(conn.processStderr(stream, parent));
         if (ex.e) {
             std::rethrow_exception(ex.e);
         }
@@ -173,7 +174,7 @@ try {
 
     AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
     TRY_AWAIT(stream.writeFull(command.s.data(), command.s.size()));
-    auto ex = TRY_AWAIT(conn.processStderr(stream));
+    auto ex = TRY_AWAIT(conn.processStderr(stream, parent));
     if (ex.e) {
         std::rethrow_exception(ex.e);
     }
@@ -184,7 +185,7 @@ try {
 
 kj::Promise<Result<void>> RemoteStore::ConnectionHandle::processStderr(AsyncFdIoStream & stream)
 try {
-    auto ex = TRY_AWAIT((*handle)->processStderr(stream));
+    auto ex = TRY_AWAIT((*handle)->processStderr(stream, parent));
     if (ex.e) {
         co_return result::failure(ex.e);
     }
@@ -797,7 +798,7 @@ try {
 }
 
 kj::Promise<Result<RemoteStore::Connection::RemoteError>>
-RemoteStore::Connection::processStderr(AsyncFdIoStream & stream)
+RemoteStore::Connection::processStderr(AsyncFdIoStream & stream, Activity * parent)
 try {
     AsyncBufferedInputStream from{stream, fromBuf};
 
@@ -843,7 +844,13 @@ try {
                 );
                 continue;
             }
-            ACTIVITY_RESULT(*act, type, fields);
+            // HACK: dump build logs into our parent if we're parented. ideally we would handle this
+            // at the logger interface, but the logger interface is currently too broken to do that.
+            if (type == resBuildLogLine && parent) {
+                ACTIVITY_RESULT(*parent, type, fields);
+            } else {
+                ACTIVITY_RESULT(*act, type, fields);
+            }
         } else if (msg == STDERR_LAST) {
             break;
         } else {
