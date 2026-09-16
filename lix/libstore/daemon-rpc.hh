@@ -342,8 +342,6 @@ inline daemon::LegacyProtocol::BuildResult::Status from(nix::BuildResult::Status
         return Status::OUTPUT_REJECTED;
     case nix::BuildResult::TransientFailure:
         return Status::TRANSIENT_FAILURE;
-    case nix::BuildResult::CachedFailure:
-        return Status::CACHED_FAILURE;
     case nix::BuildResult::TimedOut:
         return Status::TIMED_OUT;
     case nix::BuildResult::MiscFailure:
@@ -381,8 +379,6 @@ inline nix::BuildResult::Status from(LegacyProtocol::BuildResult::Status s, auto
         return nix::BuildResult::OutputRejected;
     case Status::TRANSIENT_FAILURE:
         return nix::BuildResult::TransientFailure;
-    case Status::CACHED_FAILURE:
-        return nix::BuildResult::CachedFailure;
     case Status::TIMED_OUT:
         return nix::BuildResult::TimedOut;
     case Status::MISC_FAILURE:

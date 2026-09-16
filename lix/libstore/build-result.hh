@@ -30,9 +30,9 @@ struct BuildResult
         OutputRejected,
         /// possibly transient
         TransientFailure,
-        /// no longer used
-        CachedFailure,
-        TimedOut,
+        // CachedFailure existed previously for hydra, but was removed in
+        // d2c58ba60572e4248bd52f82fac57d6e0c79773d.
+        TimedOut = TransientFailure + 2,
         MiscFailure,
         DependencyFailed,
         LogLimitExceeded,
@@ -58,8 +58,8 @@ struct BuildResult
                 case PermanentFailure: return "PermanentFailure";
                 case InputRejected: return "InputRejected";
                 case OutputRejected: return "OutputRejected";
-                case TransientFailure: return "TransientFailure";
-                case CachedFailure: return "CachedFailure";
+                case TransientFailure:
+                    return "TransientFailure";
                 case TimedOut: return "TimedOut";
                 case MiscFailure: return "MiscFailure";
                 case DependencyFailed: return "DependencyFailed";

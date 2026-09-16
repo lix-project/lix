@@ -133,14 +133,13 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
         inputRejected @4;
         outputRejected @5;
         transientFailure @6; # possibly transient
-        cachedFailure @7; # no longer used
-        timedOut @8;
-        miscFailure @9;
-        dependencyFailed @10;
-        logLimitExceeded @11;
-        notDeterministic @12;
-        resolvesToAlreadyValid @13;
-        noSubstituters @14;
+        timedOut @7;
+        miscFailure @8;
+        dependencyFailed @9;
+        logLimitExceeded @10;
+        notDeterministic @11;
+        resolvesToAlreadyValid @12;
+        noSubstituters @13;
     }
 
     status @0 :Status;
