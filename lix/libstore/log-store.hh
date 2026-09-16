@@ -19,8 +19,6 @@ struct LogStore : public virtual Store
     virtual kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) = 0;
 
     virtual kj::Promise<Result<void>> addBuildLog(const StorePath & path, std::string_view log) = 0;
-
-    static LogStore & require(Store & store);
 };
 
 }
