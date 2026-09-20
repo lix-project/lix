@@ -33,18 +33,17 @@ impl<'a> Completer for Helper<'a> {
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
         let line = &line[0..pos];
-        if line.is_empty() {
-            Ok((0, vec![]))
-        } else {
-            let (start, token) = if line.starts_with(':') {
-                (0, line)
-            } else {
-                // Same as editline's SEPS, except for double and single quotes:
-                extract_word(line, pos, None, |c| "#$&()*:;<=>?[\\]^`{,}~\n\t ".contains(c))
-            };
 
-            Ok((start, self.cxx.complete(token)))
+        // Same as editline's SEPS, except for double and single quotes:
+        let (mut start, mut token) =
+            extract_word(line, pos, None, |c| "#$&()*:;<=>?[\\]^`{,}~\n\t ".contains(c));
+
+        // complete :-commands at the start of the line
+        if line.starts_with(':') && start == 1 {
+            (start, token) = (0, &line[0..token.len() + 1]);
         }
+
+        Ok((start, self.cxx.complete(token)))
     }
 }
 
