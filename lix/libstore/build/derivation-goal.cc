@@ -329,8 +329,12 @@ try {
                 retrySubstitution = RetrySubstitution::YesNeed;
             break;
         case RetrySubstitution::YesNeed:
-            // Should not be able to reach this state from here.
-            assert(false);
+            debug(
+                "substitution of %1%^%2% failed while goal-loop was restarted to add more outputs to this "
+                "goal",
+                drvPath.to_string(),
+                wantedOutputs.to_string()
+            );
             break;
         case RetrySubstitution::AlreadyRetried:
             debug(

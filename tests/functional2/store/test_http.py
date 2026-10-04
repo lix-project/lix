@@ -3,10 +3,12 @@ import sqlite3
 
 import aiohttp.web as web
 import pytest
+import sys
 
-from testlib.fixtures.file_helper import File, with_files
+from testlib.fixtures.file_helper import File, with_files, CopyFile
 from testlib.fixtures.http_server import http_server
 from testlib.fixtures.nix import Nix, with_diverted_store
+from testlib.utils import get_global_asset
 
 pytestmark = pytest.mark.no_daemon
 
@@ -78,6 +80,47 @@ class FakeNARBridge(HTTPStore):
         return web.Response(text="")
 
 
+class StoreWithIncompleteClosureAfterGC(HTTPStore):
+    def __init__(self):
+        super().__init__()
+        self.make_hole_in_closure = False
+
+    def simulate_gc(self):
+        self.make_hole_in_closure = True
+
+    async def get_narinfo(self, req: web.Request) -> web.Response:
+        resp = await super().get_narinfo(req)
+        try:
+            store_path = self.uploaded_narinfos[req.match_info["hash"]]["URL"]
+            if (
+                store_path.endswith(("foo-b", "dependency-will-fail-to-substitute"))
+                and self.make_hole_in_closure
+            ):
+                return web.Response(text="", status=404)
+        except KeyError:
+            return resp
+        else:
+            return resp
+
+    async def serve_nar(self, req: web.Request) -> web.Response:
+        uri = f"nar/{req.match_info['narhash']}.nar"
+        try:
+            nar = self.uploaded_nars[uri]
+        except KeyError:
+            return web.Response(text="", status=404)
+
+        store_path = str(
+            next((v["StorePath"] for v in self.uploaded_narinfos.values() if v["URL"] == uri), None)
+        )
+
+        if (
+            store_path.endswith(("foo-b", "dependency-will-fail-to-substitute"))
+            and self.make_hole_in_closure
+        ):
+            return web.Response(text="", status=404)
+        return web.Response(body=nar)
+
+
 @pytest.fixture(params=[HTTPStore, FakeNARBridge])
 def store(request: pytest.FixtureRequest) -> HTTPStore:
     store_class = request.param
@@ -109,6 +152,77 @@ def nars_from_narinfo_cache(db_path: Path) -> list[dict[str, str | bool]]:
         {"present": bool(present), "hashPart": hashPart, "namePart": namePart, "url": url}
         for present, hashPart, namePart, url in rows
     ]
+
+
+@with_files(
+    {
+        "config.nix": get_global_asset("config.nix"),
+        "test-substituter-incomplete-closure.nix": CopyFile(
+            "assets/test-substituter-incomplete-closure.nix"
+        ),
+    }
+)
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="building in diverted store doesn't work on Darwin."
+)
+@with_diverted_store
+def test_substituter_incomplete_closure(nix: Nix):
+    """
+    Regression-test for the first bug of https://git.lix.systems/lix-project/lix/issues/1291
+
+    The case we're essentially having is
+
+    * Multi-out derivation `foo` where output `a` depends on a leaf dependency
+    * Derivation `bar` which depends on output `foo.b`.
+    * Substituter was garbage-collected, i.e. the closure of `foo.a` fails to substitute
+      and `foo.b` also fails to substitute, i.e. it is turned into a wanted output of
+      derivation-goal `foo`.
+    * While the narinfo endpoint serves a 404, narinfos are still in-cache which causes
+      this failure specifically. On a real workload this bug could be prevented by decreasing
+      the narinfo ttl to a low value.
+
+    We get a SIGABRT with a failed assertion out of this when
+    * `foo.a` is scheduled for a retry due to an incomplete closure error
+      from its runtime closure.
+    * `bar` discovers its dependency on `foo.b` in the meantime and causes
+      `foo.b` to be added as wanted output to the derivation goal of `foo`.
+      This has to happen before the retry of `foo.a` is taking place.
+    """
+
+    store = StoreWithIncompleteClosureAfterGC()
+    outs = (
+        nix.nix_build(["test-substituter-incomplete-closure.nix"])
+        .run()
+        .ok()
+        .stdout_plain.splitlines()
+    )
+    app = start_server(store)
+    with http_server(app) as httpd:
+        url = f"http://localhost:{httpd.port}?compression=none&store=/nix/store&trusted=1"
+        nix.nix(cmd=["store", "ping", "--store", url], flake=True).run().ok()
+
+        nix.nix(cmd=["copy", *outs, "--to", url], flake=True).run().ok()
+        assert len(store.known_nar_hashes) == 4
+
+        nix.clear_store()
+        store.simulate_gc()
+
+        nix.nix_build(
+            [
+                "test-substituter-incomplete-closure.nix",
+                "--option",
+                "substituters",
+                f"{url}&trusted=1",
+                "--option",
+                "max-substitution-jobs",
+                "2",
+                "--keep-going",
+                "--option",
+                "fallback",
+                "true",
+                "-vvv",
+            ]
+        ).run().ok()
 
 
 @with_files({"test-file": File("hello world")})
