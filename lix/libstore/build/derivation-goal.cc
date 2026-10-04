@@ -333,7 +333,11 @@ try {
             assert(false);
             break;
         case RetrySubstitution::AlreadyRetried:
-            debug("substitution failed again, but we already retried once. Not retrying again.");
+            debug(
+                "substitution of %1%^%2% failed again, but we already retried once. Not retrying again.",
+                drvPath.to_string(),
+                wantedOutputs.to_string()
+            );
             break;
         }
     }
