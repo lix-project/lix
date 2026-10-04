@@ -108,11 +108,11 @@ def setup(nix: Nix) -> None:
     nix.settings.add_xp_feature("nix-command")
 
 
-async def uwu(_: web.Request) -> web.Response:  # noqa: RUF029
+async def uwu(_: web.Request) -> web.Response:  # ruff: ignore[unused-async]
     return web.Response(text=content)
 
 
-async def mrrp(req: web.Request) -> web.Response:  # noqa: RUF029
+async def mrrp(req: web.Request) -> web.Response:  # ruff: ignore[unused-async]
     if (
         "Authorization" in req.headers
         and req.headers["Authorization"] == "Basic YW5vbnltb3VzOm55YQ=="

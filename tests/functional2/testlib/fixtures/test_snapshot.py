@@ -44,13 +44,13 @@ def _get_f2_snapshot_files(additional_files: FileDeclaration) -> FileDeclaration
 
 def test_snapshot_empty_on_no_file(snapshot: Callable[[str], Snapshot]):
     # no qa here, as we want to exactly check for empty string
-    assert snapshot("this_file_does_not_exist") == ""  # noqa: PLC1901
+    assert snapshot("this_file_does_not_exist") == ""  # ruff: ignore[compare-to-empty-string]
 
 
 @with_files({"empty_file.txt": File("")})
 def test_snapshot_empty_on_empty_file(snapshot: Callable[[str], Snapshot]):
     # no qa here, as we want to exactly check for empty string
-    assert snapshot("empty_file.txt") == ""  # noqa: PLC1901
+    assert snapshot("empty_file.txt") == ""  # ruff: ignore[compare-to-empty-string]
 
 
 @with_files({"out.exp": File("Hell o' World")})

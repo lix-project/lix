@@ -8,7 +8,7 @@ from testlib.fixtures.file_helper import File, with_files
 @with_files({"example.txt": File("example")})
 class TestLocalStore:
     @pytest.fixture(autouse=True)
-    def setup(self, nix: Nix, files: Path):  # noqa: ARG002
+    def setup(self, nix: Nix, files: Path):  # ruff: ignore[unused-method-argument]
         nix.settings.add_xp_feature("nix-command")
 
         store = nix.env.dirs.home / "x"

@@ -1,1 +1,1 @@
-# noqa: N999  # consistency with rest of the codebase
+# ruff: ignore[invalid-module-name]  # consistency with rest of the codebase

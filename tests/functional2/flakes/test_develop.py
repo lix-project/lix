@@ -67,7 +67,7 @@ class TestDevelop:
 
     class TestShell:
         @pytest.fixture(autouse=True)
-        def shell_init(self, nix: Nix, files: Path):  # noqa: ARG002
+        def shell_init(self, nix: Nix, files: Path):  # ruff: ignore[unused-method-argument]
             nix.nix(
                 [
                     "build",

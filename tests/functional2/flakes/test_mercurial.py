@@ -47,7 +47,7 @@ def common_init(nix: Nix, files: Path, hg: Hg):
 
     hg("init", files / "flake-hg2")
 
-    hg("add", *glob.glob(str(files / "flake-hg1/*")))  # noqa PTH207: Path.glob *does the wrong thing*
+    hg("add", *glob.glob(str(files / "flake-hg1/*")))  # ruff: ignore[glob] PTH207: Path.glob *does the wrong thing*
     hg(
         "commit",
         "--config",

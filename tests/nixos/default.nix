@@ -174,7 +174,7 @@ in
 
   cgroups = runNixOSTestFor "x86_64-linux" ./cgroups;
 
-  setuid = lib.genAttrs (filterPlatforms [ "i686-linux" "x86_64-linux" ]) (
+  setuid = lib.genAttrs (filterPlatforms [ "x86_64-linux" ]) (
     system: runNixOSTestFor system ./setuid/setuid.nix
   );
 

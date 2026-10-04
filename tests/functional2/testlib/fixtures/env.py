@@ -172,7 +172,7 @@ class ManagedEnv:
         # Set to the codebase internal output if started standalone
         # This is where the current lix binaries are located.
         # local import to avoid cyclic dependencies
-        from testlib.utils import lix_base_folder  # noqa: PLC0415
+        from testlib.utils import lix_base_folder  # ruff: ignore[import-outside-top-level]
 
         lix_bin = Path(environ.get("NIX_BIN_DIR", lix_base_folder / "outputs/out/bin"))
 

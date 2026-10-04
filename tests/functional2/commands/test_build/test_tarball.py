@@ -74,13 +74,13 @@ def tar_hash(files: Path, nix: Nix) -> str:
 @pytest.mark.parametrize(
     "flags",
     [
-        ["file://{tarball}"],  # noqa: RUF027 # yes, true, but we don't have the variables here
-        ["<foo>", "-I", "foo=file://{tarball}"],  # noqa: RUF027
-        ["-E", 'import (fetchTarball "file://{tarball}")'],  # noqa: RUF027
+        ["file://{tarball}"],  # ruff: ignore[missing-f-string-syntax] # yes, true, but we don't have the variables here
+        ["<foo>", "-I", "foo=file://{tarball}"],  # ruff: ignore[missing-f-string-syntax]
+        ["-E", 'import (fetchTarball "file://{tarball}")'],  # ruff: ignore[missing-f-string-syntax]
         # Do not re-fetch paths already present
         [
             "-E",
-            'import (fetchTarball {{ url = "file:///does-not-exist/must-remain-unused/{tarball}"; sha256 = "{tar_hash}"; }})',  # noqa: RUF027
+            'import (fetchTarball {{ url = "file:///does-not-exist/must-remain-unused/{tarball}"; sha256 = "{tar_hash}"; }})',  # ruff: ignore[missing-f-string-syntax]
         ],
     ],
 )
@@ -120,9 +120,9 @@ def test_tarball_symlink_extraction(nix: Nix, files: Path, tarball: Path):
 @pytest.mark.parametrize(
     "expr",
     [
-        'import (fetchTree "file://{tarball}")',  # noqa: RUF027 # yes, true, but we don't have the variables here
-        'import (fetchTree {{ type = "tarball"; url = "file://{tarball}"; }})',  # noqa: RUF027
-        'import (fetchTree {{ type = "tarball"; url = "file://{tarball}"; narHash = "{tar_hash}"; }})',  # noqa: RUF027
+        'import (fetchTree "file://{tarball}")',  # ruff: ignore[missing-f-string-syntax] # yes, true, but we don't have the variables here
+        'import (fetchTree {{ type = "tarball"; url = "file://{tarball}"; }})',  # ruff: ignore[missing-f-string-syntax]
+        'import (fetchTree {{ type = "tarball"; url = "file://{tarball}"; narHash = "{tar_hash}"; }})',  # ruff: ignore[missing-f-string-syntax]
     ],
 )
 def test_fetch_tree(nix: Nix, tarball: Path, tar_hash: str, expr: str):
@@ -212,7 +212,7 @@ def test_no_accessing_name(nix: Nix, tarball: Path, tar_hash: str):
         .run()
         .expect(1)
     )
-    assert "error: attribute 'name' isn’t supported in call" in res.stderr_plain  # noqa: RUF001 # for some reason, this error message wants to feel special
+    assert "error: attribute 'name' isn’t supported in call" in res.stderr_plain  # ruff: ignore[ambiguous-unicode-character-string] # for some reason, this error message wants to feel special
 
 
 @with_files({"bad.tar.xz": CopyFile("assets/test_tarball/bad.tar.xz")})

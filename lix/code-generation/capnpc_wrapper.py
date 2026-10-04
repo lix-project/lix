@@ -1,5 +1,5 @@
 #!@python@
-# ruff: noqa: SIM112 # ignore lowercase env variable names for capnpc as we have them in lower case as arguments
+# ruff: file-ignore[uncapitalized-environment-variables] # ignore lowercase env variable names for capnpc as we have them in lower case as arguments
 
 import argparse
 import capnp

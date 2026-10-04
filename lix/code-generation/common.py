@@ -51,7 +51,7 @@ def get_experimental_features(
         f"{base_path}/{xp_name}.md" for xp_name in human_names if xp_name is not None
     }
 
-    from build_extra_features import ExtraFeature  # noqa: PLC0415 # Avoid cyclic import
+    from build_extra_features import ExtraFeature  # ruff: ignore[import-outside-top-level] # Avoid cyclic import
 
     experimental_features_data = load_data(list(experimental_feature_files), ExtraFeature)
     experimental_features: dict[str | None, str] = {

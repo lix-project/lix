@@ -57,7 +57,7 @@ def test_type_doesnt_allow_generator():
 
 
 def test_type_doesnt_allow_callable():
-    def foo(a):  # noqa: ANN001, ANN202 # dummy stuff within testing, nothing external
+    def foo(a):  # ruff: ignore[missing-type-function-argument, missing-return-type-private-function] # dummy stuff within testing, nothing external
         return "a" + str(a)
 
     with pytest.raises(ValueError, match=r"Unsupported expected_type.+"):

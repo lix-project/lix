@@ -90,7 +90,7 @@ class RunningCommand(contextlib.AbstractContextManager):
         self.stdin = stdin
         self._proc = proc
 
-    def __exit__(self, exc_type, exc, tb):  # noqa: ANN001
+    def __exit__(self, exc_type, exc, tb):  # ruff: ignore[missing-type-function-argument]
         self.kill()
 
     def kill(self) -> CommandResult | None:

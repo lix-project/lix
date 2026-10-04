@@ -123,7 +123,7 @@ class TestUpgradeProfile:
 
 class ProfileTestBase:
     @pytest.fixture(autouse=True)
-    def setup(self, nix: Nix, configure_system, files):  # noqa: ANN001, ARG002
+    def setup(self, nix: Nix, configure_system, files):  # ruff: ignore[missing-type-function-argument, unused-method-argument]
         nix.nix(["profile", "install", "./flake1", "-L"]).run().ok()
 
 
@@ -216,7 +216,7 @@ class TestBasicOperations(ProfileTestBase):
 @with_files({"flake1": flake})
 class TestProfileContentUpgrade(ProfileTestBase):
     @pytest.fixture(autouse=True)
-    def upgrade(self, nix: Nix, env: ManagedEnv, setup):  # noqa: ANN001, ARG002
+    def upgrade(self, nix: Nix, env: ManagedEnv, setup):  # ruff: ignore[missing-type-function-argument, unused-method-argument]
         (env.dirs.home / "flake1/who").write_text("NixOS")
         (env.dirs.home / "flake1/version").write_text("2.0")
 

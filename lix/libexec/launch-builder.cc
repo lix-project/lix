@@ -11,6 +11,7 @@
 #include <grp.h>
 #include <limits>
 #include <sys/resource.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include <vector>
 

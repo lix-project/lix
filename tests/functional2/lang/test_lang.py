@@ -73,7 +73,7 @@ def test_parse_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[
     # use a custom dumper that produces the correct indentation.
     # Upstream issue (open since 2018): https://github.com/yaml/pyyaml/issues/234
     class CustomFixedIndentationDumper(yaml.Dumper):
-        def increase_indent(self, flow: bool = False, indentless: bool = False):  # noqa: ARG002
+        def increase_indent(self, flow: bool = False, indentless: bool = False):  # ruff: ignore[unused-method-argument]
             super().increase_indent(flow, False)
 
     result_obj = json.loads(stdout)

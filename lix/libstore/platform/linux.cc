@@ -586,6 +586,8 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(fcntl64));
     allowSyscall(ctx, SCMP_SYS(fdatasync));
     allowSyscall(ctx, SCMP_SYS(fgetxattr));
+    allowSyscall(ctx, SCMP_SYS(file_getattr));
+    allowSyscall(ctx, SCMP_SYS(file_setattr));
     allowSyscall(ctx, SCMP_SYS(finit_module));
     allowSyscall(ctx, SCMP_SYS(flistxattr));
     allowSyscall(ctx, SCMP_SYS(flock));
@@ -692,6 +694,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(linkat));
     allowSyscall(ctx, SCMP_SYS(listen));
     allowSyscall(ctx, SCMP_SYS(listmount));
+    allowSyscall(ctx, SCMP_SYS(listns));
     allowSyscall(ctx, SCMP_SYS(listxattr));
     allowSyscall(ctx, SCMP_SYS(listxattrat));
     allowSyscall(ctx, SCMP_SYS(llistxattr));
@@ -765,6 +768,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(openat2));
     allowSyscall(ctx, SCMP_SYS(open_by_handle_at));
     allowSyscall(ctx, SCMP_SYS(open_tree));
+    allowSyscall(ctx, SCMP_SYS(open_tree_attr));
     allowSyscall(ctx, SCMP_SYS(pause));
     allowSyscall(ctx, SCMP_SYS(pciconfig_iobase));
     allowSyscall(ctx, SCMP_SYS(pciconfig_read));
@@ -828,6 +832,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(riscv_hwprobe));
     allowSyscall(ctx, SCMP_SYS(rmdir));
     allowSyscall(ctx, SCMP_SYS(rseq));
+    allowSyscall(ctx, SCMP_SYS(rseq_slice_yield));
     allowSyscall(ctx, SCMP_SYS(rtas));
     allowSyscall(ctx, SCMP_SYS(rt_sigaction));
     allowSyscall(ctx, SCMP_SYS(rt_sigpending));
@@ -984,6 +989,7 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     allowSyscall(ctx, SCMP_SYS(unlink));
     allowSyscall(ctx, SCMP_SYS(unlinkat));
     allowSyscall(ctx, SCMP_SYS(unshare));
+    allowSyscall(ctx, SCMP_SYS(uprobe));
     allowSyscall(ctx, SCMP_SYS(uretprobe));
     allowSyscall(ctx, SCMP_SYS(uselib));
     allowSyscall(ctx, SCMP_SYS(userfaultfd));

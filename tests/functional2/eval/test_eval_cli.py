@@ -109,7 +109,7 @@ def test_valid_nested_error(nix: Nix):
     assert res.stdout_plain == "{ throws = «error: a sample throw message»; }"
 
 
-def test_valid_restricted_toFile(nix: Nix):  # noqa: N802 # builtin name
+def test_valid_restricted_toFile(nix: Nix):  # ruff: ignore[invalid-function-name] # builtin name
     """Check if toFile can be utilized during restricted eval"""
     res = (
         nix.nix(["eval", "--restrict-eval", "--expr", 'import (builtins.toFile "source" "42")'])

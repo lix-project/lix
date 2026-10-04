@@ -37,4 +37,4 @@ class ReadonlyDict(collections.abc.Mapping[str, str]):
 
 
 # SAFETY: wrapped to not allow mutation
-environ = ReadonlyDict(os.environ)  # noqa: TID251
+environ = ReadonlyDict(os.environ)  # ruff: ignore[banned-api]

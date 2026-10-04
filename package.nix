@@ -578,7 +578,10 @@ stdenv.mkDerivation (finalAttrs: {
 
   propagatedBuildInputs = lib.optionals (!finalAttrs.dontBuild) maybePropagatedInputs;
 
-  disallowedReferences = [
+  # NOTE: Sanitizer libraries are too coarse and it's not easy to ensure
+  # that Python 3 does not end up as a reference of Lix itself.
+  # In non-default configurations, closure size is not a goal.
+  disallowedReferences = lib.optionals (!includeSanitizerLibs) [
     boost
     buildPackages.python3
     finalAttrs.lixPythonForBuild

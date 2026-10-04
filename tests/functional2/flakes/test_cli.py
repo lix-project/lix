@@ -11,7 +11,7 @@ from testlib.fixtures.nix import Nix
 from testlib.fixtures.env import ManagedEnv
 from testlib.fixtures.git import Git
 from testlib.utils import get_global_asset_pack, get_global_asset
-from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _init_files  # noqa: PLC2701
+from testlib.fixtures.file_helper import with_files, File, FileDeclaration, _init_files  # ruff: ignore[import-private-name]
 from testlib.environ import environ
 from .common import simple_flake, dependent_flake
 
@@ -101,13 +101,13 @@ def flake3(git: Git, env: ManagedEnv, request: pytest.FixtureRequest) -> Path:
 
 
 @pytest.fixture
-def flake3_locked(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # noqa: ARG001
+def flake3_locked(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # ruff: ignore[unused-function-argument]
     nix.nix(["flake", "lock", flake3, "--commit-lock-file"]).run().ok()
     return flake3
 
 
 @pytest.fixture
-def flake3_medium(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # noqa: ARG001
+def flake3_medium(git: Git, env: ManagedEnv, nix: Nix, flake3: Path, nonflake: Path) -> Path:  # ruff: ignore[unused-function-argument]
     (flake3 / "flake.nix").write_text(f"""{{
       inputs = {{
         nonFlake = {{
@@ -421,7 +421,7 @@ class TestBuild:
 
     class TestLockedFlake2:
         @pytest.fixture(autouse=True)
-        def lock_flake2(self, nix: Nix, flake2: Path, registry: Path):  # noqa: ARG002
+        def lock_flake2(self, nix: Nix, flake2: Path, registry: Path):  # ruff: ignore[unused-method-argument]
             nix.nix(["flake", "lock", flake2, "--commit-lock-file"]).run().ok()
 
         def test_setup_did_commit(self, flake2: Path, git: Git):
@@ -488,7 +488,7 @@ class TestBuild:
 
     class TestIncompleteLockfile:
         @pytest.fixture(autouse=True)
-        def update_flake(self, nix: Nix, flake3: Path, git: Git, registry: Path):  # noqa: ARG002
+        def update_flake(self, nix: Nix, flake3: Path, git: Git, registry: Path):  # ruff: ignore[unused-method-argument]
             nix.nix(["flake", "lock", flake3]).run().ok()
             git(flake3, "add", "flake.lock")
             (flake3 / "flake.nix").write_text(f"""{{
@@ -592,10 +592,10 @@ class TestWithNonFlake:
         def clear_state(
             self,
             nix: Nix,
-            registry: Path,  # noqa: ARG002
-            flake2: Path,  # noqa: ARG002
-            flake3_locked: Path,  # noqa: ARG002
-            nonflake: Path,  # noqa: ARG002
+            registry: Path,  # ruff: ignore[unused-method-argument]
+            flake2: Path,  # ruff: ignore[unused-method-argument]
+            flake3_locked: Path,  # ruff: ignore[unused-method-argument]
+            nonflake: Path,  # ruff: ignore[unused-method-argument]
         ):
             shutil.rmtree(nix.env.dirs.home / ".cache")
             nix.clear_store()
@@ -867,7 +867,7 @@ class TestLegacyCLI:
 
 class TestAlternateLockFiles:
     @pytest.fixture(autouse=True)
-    def init(self, nix: Nix, flake1: Path, flake2: Path, registry: Path, git: Git):  # noqa: ARG002
+    def init(self, nix: Nix, flake1: Path, flake2: Path, registry: Path, git: Git):  # ruff: ignore[unused-method-argument]
         git(flake1, "commit", "--allow-empty", "-m", "to change branch head")
         nix.nix(["flake", "lock", flake2]).run().ok()
 

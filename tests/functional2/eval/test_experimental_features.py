@@ -1,7 +1,7 @@
 from testlib.fixtures.nix import Nix
 
 
-# ruff: noqa: N802
+# ruff: file-ignore[invalid-function-name]
 def test_fetchTree_presence(nix: Nix):
     """Ensures that fetchTree is actually absent if flakes are disabled"""
     nix.settings.add_xp_feature("nix-command")

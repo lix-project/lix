@@ -230,13 +230,13 @@ class Nix:
         return self.nix_cmd([nix_exe, *cmd], flake=flake, cwd=cwd)
 
     # Mark each of these as correct as they are not ClassVars, but we also don't want to turn off RUF045
-    nix_build = partialmethod(nix, nix_exe="nix-build")  # noqa: RUF045
-    nix_shell = partialmethod(nix, nix_exe="nix-shell")  # noqa: RUF045
-    nix_store = partialmethod(nix, nix_exe="nix-store")  # noqa: RUF045
-    nix_env = partialmethod(nix, nix_exe="nix-env")  # noqa: RUF045
-    nix_instantiate = partialmethod(nix, nix_exe="nix-instantiate")  # noqa: RUF045
-    nix_channel = partialmethod(nix, nix_exe="nix-channel")  # noqa: RUF045
-    nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")  # noqa: RUF045
+    nix_build = partialmethod(nix, nix_exe="nix-build")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_shell = partialmethod(nix, nix_exe="nix-shell")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_store = partialmethod(nix, nix_exe="nix-store")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_env = partialmethod(nix, nix_exe="nix-env")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_instantiate = partialmethod(nix, nix_exe="nix-instantiate")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_channel = partialmethod(nix, nix_exe="nix-channel")  # ruff: ignore[implicit-class-var-in-dataclass]
+    nix_prefetch_url = partialmethod(nix, nix_exe="nix-prefetch-url")  # ruff: ignore[implicit-class-var-in-dataclass]
 
     def eval(
         self, expr: str, settings: NixSettings | None = None, flags: list[str] | None = None
