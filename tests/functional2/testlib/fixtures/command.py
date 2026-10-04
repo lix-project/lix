@@ -150,12 +150,12 @@ class Command:
         self.argv = list(argv)
         return self
 
-    def with_wrapper(self, cmd: str | Path, *args: list[str]) -> "Command":
+    def with_wrapper(self, cmd: str | Path, *args: str) -> "Command":
         """
         Wraps the current command in the given wrapper.
         e.g: Command(["nix", "eval", "1+1"]).with_wrapper("strace") => Command(["strace", "nix", "eval", "1+1"])
         """
-        self.argv = [cmd, *args, *self.argv]
+        self.argv = [str(cmd), *args, *self.argv]
         if self.exe:
             self.exe = None if isinstance(cmd, str) else cmd
         return self
