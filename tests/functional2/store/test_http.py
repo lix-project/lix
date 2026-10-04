@@ -13,31 +13,40 @@ pytestmark = pytest.mark.no_daemon
 
 class HTTPStore:
     def __init__(self):
+        self.uploaded_narinfos = {}
         self.uploaded_nars = {}
         self.known_nar_hashes = set()
 
     async def upload_narinfo(self, req: web.Request) -> web.Response:
-        self.uploaded_nars[req.match_info["hash"]] = self._parse_narinfo(await req.text())
+        self.uploaded_narinfos[req.match_info["hash"]] = self._parse_narinfo(await req.text())
         return web.Response(text="")
 
     async def upload_nar(self, req: web.Request) -> web.Response:
-        self.known_nar_hashes.add(req.match_info["narhash"])
+        narhash = req.match_info["narhash"]
+        self.known_nar_hashes.add(narhash)
+        key = f"nar/{narhash}.nar"
+        # This is intended for integration-tests with small data
+        # as this buffers everything in memory.
+        self.uploaded_nars[key] = await req.read()
         return web.Response(text="")
+
+    async def serve_nar(self, req: web.Request) -> web.Response:
+        narhash = req.match_info["narhash"]
+        key = f"nar/{narhash}.nar"
+        if body := self.uploaded_nars.get(key):
+            return web.Response(body=body)
+        return web.Response(text="", status=404)
 
     async def nix_cache_info(self, _: web.Request) -> web.Response:
         return web.Response(text="StoreDir: /nix/store")
 
     async def get_narinfo(self, req: web.Request) -> web.Response:
         narinfo_hash = req.match_info["hash"]
-        if narinfo_hash not in self.uploaded_nars:
+        if narinfo_hash not in self.uploaded_narinfos:
             return web.Response(text="", status=404)
         return web.Response(
-            text="\n".join(f"{k}: {v}" for k, v in self.uploaded_nars[narinfo_hash].items()) + "\n"
-        )
-
-    async def nar_head(self, req: web.Request) -> web.Response:
-        return web.Response(
-            text="", status=200 if req.match_info["narhash"] in self.known_nar_hashes else 404
+            text="\n".join(f"{k}: {v}" for k, v in self.uploaded_narinfos[narinfo_hash].items())
+            + "\n"
         )
 
     def _parse_narinfo(self, text: str) -> dict[str, str]:
@@ -65,7 +74,7 @@ class FakeNARBridge(HTTPStore):
             f"nar/snix-castore/00000000000000000000000000000000000000000000000000000?narsize=f{narinfo['FileSize']}"
         )
 
-        self.uploaded_nars[req.match_info["hash"]] = narinfo
+        self.uploaded_narinfos[req.match_info["hash"]] = narinfo
         return web.Response(text="")
 
 
@@ -83,7 +92,7 @@ def start_server(store: HTTPStore) -> web.Application:
             web.get("/{hash}.narinfo", store.get_narinfo),
             web.put("/nar/{narhash}.nar", store.upload_nar),
             web.get("/nix-cache-info", store.nix_cache_info),
-            web.head("/nar/{narhash}.nar", store.nar_head),
+            web.get("/nar/{narhash}.nar", store.serve_nar),
         ]
     )
 
@@ -130,7 +139,7 @@ def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
         nix.nix(
             cmd=["copy", "--from", nix.settings.store, "--to", url, store_path], flake=True
         ).run().ok()
-        assert hash_part in store.uploaded_nars
+        assert hash_part in store.uploaded_narinfos
 
         # Make sure the negative entry got removed
         cache_entries = nars_from_narinfo_cache(nar_info_cache)
@@ -146,4 +155,4 @@ def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
         assert nar_entries[0]["present"]
         assert nar_entries[0]["hashPart"] == hash_part
         assert nar_entries[0]["namePart"] == "test-file"
-        assert nar_entries[0]["url"] == store.uploaded_nars[hash_part]["URL"]
+        assert nar_entries[0]["url"] == store.uploaded_narinfos[hash_part]["URL"]
