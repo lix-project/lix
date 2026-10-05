@@ -294,6 +294,18 @@ std::optional<std::string> Input::getRef() const
     return maybeGetStrAttr(attrs, "ref");
 }
 
+Hash parseRev(std::string_view s)
+{
+    switch (s.size()) {
+    case 40:
+        return Hash::parseAny(s, HashType::SHA1);
+    case 64:
+        return Hash::parseAny(s, HashType::SHA256);
+    default:
+        throw BadHash("revision '%s' has an unsupported length", s);
+    }
+}
+
 std::optional<Hash> Input::getRev() const
 {
     std::optional<Hash> hash = {};
@@ -302,8 +314,8 @@ std::optional<Hash> Input::getRev() const
         try {
             hash = Hash::parseAnyPrefixed(*s);
         } catch (BadHash &e) {
-            // Default to sha1 for backwards compatibility with existing flakes
-            hash = Hash::parseAny(*s, HashType::SHA1);
+            // Default to sha1 or sha256 for backwards compatibility with existing flakes.
+            hash = parseRev(*s);
         }
     }
 
