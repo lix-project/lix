@@ -113,7 +113,7 @@ try {
     }
 
     if (diskCache) {
-        diskCache->removeNegativeCacheEntry(getUri(), std::string(narInfo->path.hashPart()));
+        diskCache->removeNarInfo(getUri(), std::string(narInfo->path.hashPart()));
     }
     co_return result::success();
 } catch (...) {

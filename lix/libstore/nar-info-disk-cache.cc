@@ -72,7 +72,7 @@ public:
     {
         SQLite db;
         SQLiteStmt insertCache, queryCache, insertNAR, insertMissingNAR, queryNAR, purgeCache,
-            removeNegativeCacheEntry;
+            removeNarInfo;
         std::map<std::string, Cache> caches;
     };
 
@@ -106,8 +106,8 @@ public:
         state->queryNAR = state->db.create(
             "select present, namePart, url, compression, fileHash, fileSize, narHash, narSize, refs, deriver, sigs, ca from NARs where cache = ? and hashPart = ? and ((present = 0 and timestamp > ?) or (present = 1 and timestamp > ?))");
 
-        state->removeNegativeCacheEntry =
-            state->db.create("delete from NARs where present = 0 and hashPart = ? and cache = ?");
+        state->removeNarInfo =
+            state->db.create("delete from NARs where hashPart = ? and cache = ?");
 
         /* Periodically purge expired entries from the database. */
         retrySQLite([&]() {
@@ -255,13 +255,13 @@ public:
         }, always_progresses);
     }
 
-    void removeNegativeCacheEntry(const std::string & uri, const std::string & hashPart) override
+    void removeNarInfo(const std::string & uri, const std::string & hashPart) override
     {
         retrySQLite(
             [&]() {
                 auto state(_state.lock());
                 auto & cache(getCache(*state, uri));
-                state->removeNegativeCacheEntry.use()(hashPart)(cache.id).exec();
+                state->removeNarInfo.use()(hashPart)(cache.id).exec();
             },
             always_progresses
         );
