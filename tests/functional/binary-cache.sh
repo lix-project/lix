@@ -122,18 +122,9 @@ mv $cacheDir/nar2 $cacheDir/nar
 # Test whether building works if the binary cache contains an
 # incomplete closure.
 clearStore
+clearCacheCache
 
 rm -v $(grep -l "StorePath:.*dependencies-input-2" $cacheDir/*.narinfo)
-
-nix-build --substituters "file://$cacheDir" --no-require-sigs dependencies.nix -o $TEST_ROOT/result 2>&1 | tee $TEST_ROOT/log
-grepQuiet "copying path.*input-0" $TEST_ROOT/log
-grepQuiet "copying path.*input-2" $TEST_ROOT/log
-grepQuiet "copying path.*top" $TEST_ROOT/log
-
-
-# Idem, but without cached .narinfo.
-clearStore
-clearCacheCache
 
 nix-build --substituters "file://$cacheDir" --no-require-sigs dependencies.nix -o $TEST_ROOT/result 2>&1 | tee $TEST_ROOT/log
 grepQuiet "don't know how to build" $TEST_ROOT/log

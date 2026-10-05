@@ -276,29 +276,16 @@ public:
 
             auto & cache(getCache(*state, uri));
 
-            if (info) {
+            // Positive cache entries have complicated lifecycle rules
+            // with respect to invalidation Lix do not implement for simplicity reasons.
+            // After a quite study, with all the parallelism work, Lix would gain
+            // meager ~15-30s over a 5000 paths fetch over a 50ms RTT link.
+            // We have deemed the complexity of getting this performance not worth it
+            // in the current architecture.
+            // See https://gerrit.lix.systems/c/lix/+/6514/1
+            // for an historical attempt to introduce invalidation.
 
-                auto narInfo = std::dynamic_pointer_cast<const NarInfo>(info);
-
-                //assert(hashPart == storePathToHash(info->path));
-
-                state->insertNAR.use()
-                    (cache.id)
-                    (hashPart)
-                    (std::string(info->path.name()))
-                    (narInfo ? narInfo->url : "", narInfo != 0)
-                    (narInfo ? narInfo->compression : "", narInfo != 0)
-                    (narInfo && narInfo->fileHash ? narInfo->fileHash->to_base32() : "", narInfo && narInfo->fileHash)
-                    (narInfo ? narInfo->fileSize : 0, narInfo != 0 && narInfo->fileSize)
-                    (info->narHash.to_base32())
-                    (info->narSize)
-                    (concatStringsSep(" ", info->shortRefs()))
-                    (info->deriver ? std::string(info->deriver->to_string()) : "", (bool) info->deriver)
-                    (concatStringsSep(" ", info->sigs))
-                    (renderContentAddress(info->ca))
-                    (time(0)).exec();
-
-            } else {
+            if (!info) {
                 state->insertMissingNAR.use()
                     (cache.id)
                     (hashPart)
