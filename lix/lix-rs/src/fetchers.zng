@@ -1,6 +1,12 @@
 use ::std::string::String as String;
 
 mod crate::fetchers::git {
+	type ObjectFormat {
+	  #layout_conservative(size=1, align=8);
+	  wellknown_traits(Copy);
+	  variant Sha1 {}
+	  variant Sha256 {}
+	}
 	type Kind {
 		#layout_conservative(size=16, align=8);
 		variant Symbolic {}
@@ -25,4 +31,10 @@ mod crate::fetchers::git {
 	type ::std::option::Option<LsRemoteRefLine> {
 		#layout_conservative(size=56, align=8);
 	}
+
+	type ::std::option::Option<ObjectFormat> {
+		#layout_conservative(size=1, align=8);
+	}
+
+	fn detect_object_format(&str) -> ::std::option::Option<ObjectFormat>;
 }
