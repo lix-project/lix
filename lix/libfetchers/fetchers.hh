@@ -249,4 +249,6 @@ kj::Promise<Result<DownloadTarballResult>> downloadTarball(
     bool locked,
     const Headers & headers = {});
 
+// Parse a revision into either SHA-1 or SHA-256 based on its length.
+Hash parseRev(std::string_view s);
 }

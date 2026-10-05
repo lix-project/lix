@@ -18,7 +18,9 @@ attribute with the following attributes (all except `url` optional):
 - `rev` (default: *the tip of `ref`*)
 
   The [Git revision] to fetch.
-  This is typically a commit hash.
+  This is typically a commit hash, i.e. a full length object ID.
+  Both SHA-1 (40 hexadecimal characters) and SHA-256 (64 hexadecimal
+  characters) object IDs are accepted. The type is inferred from the length.
 
   [Git revision]: https://git-scm.com/docs/git-rev-parse#_specifying_revisions
 
@@ -32,6 +34,8 @@ attribute with the following attributes (all except `url` optional):
   By default, the `ref` value is prefixed with `refs/heads/`.
   As of 2.3.0, Nix will not prefix `refs/heads/` if `ref` starts with `refs/` or
   if `ref` looks like a commit hash for backwards compatibility with CppNix 2.3.
+
+  Both SHA-1 and SHA-256 commit hashes are recognised here.
 
 - `submodules` (default: `false`)
 
@@ -95,6 +99,11 @@ The return value is an attrset containing the following keys:
 
   Indicates whether submodules have been fetched.
   If this value is set to `true`, any submodules are already checked out in the resulting `outPath`.
+
+::: {.note}
+Fetching repositories that use the SHA-256 object format requires Git 2.29 or newer.
+This affects both the repository itself and the local cache Lix maintains for remote fetches.
+:::
 
 A full example of the output:
 

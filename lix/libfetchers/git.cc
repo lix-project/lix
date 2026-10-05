@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 using namespace std::string_literals;
+using ObjectFormat = rust::lix::fetchers::git::ObjectFormat;
 
 namespace nix::fetchers {
 
@@ -356,6 +357,79 @@ static const std::set<std::string> allowedGitAttrs = {
     "url",
 };
 
+static void addObjectFormatArg(Strings & args, std::optional<ObjectFormat> fmt)
+{
+    if (fmt) {
+        args.push_back(ObjectFormat::Sha256::check(*fmt) ? "--object-format=sha256" : "--object-format=sha1");
+    }
+}
+
+static kj::Promise<Result<std::optional<ObjectFormat>>> detectLocalObjectFormat(const Path & repoDir)
+try {
+    auto result = TRY_AWAIT(runProgram(
+        RunOptions{
+            .program = "git",
+            .args = {"-C", repoDir, "rev-parse", "--show-object-format"},
+            .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}}
+        }
+    ));
+
+    if (!statusOk(result.first)) {
+        co_return std::nullopt;
+    }
+
+    auto value = chomp(result.second);
+
+    if (value == "sha256") {
+        co_return ObjectFormat(ObjectFormat::Sha256());
+    }
+    if (value == "sha1") {
+        co_return ObjectFormat(ObjectFormat::Sha1());
+    }
+
+    co_return std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+static kj::Promise<Result<std::optional<ObjectFormat>>> detectObjectFormat(const std::string & url)
+try {
+    auto output = TRY_AWAIT(runProgram("git", true, {"ls-remote", "--", url}, true));
+
+    auto opt = to_std(rust::lix::fetchers::git::detect_object_format(rust::to_string(output).as_str()));
+
+    if (!opt) {
+        co_return std::nullopt;
+    }
+
+    co_return *opt;
+} catch (ExecError & e) {
+    debug("could not detect object format for '%s': %s", url, e.what());
+    co_return std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+static kj::Promise<Result<void>> initBareCacheRepo(const Path & repoDir, std::optional<ObjectFormat> format)
+try {
+    Strings args = {"-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare"};
+    addObjectFormatArg(args, format);
+    args.push_back(repoDir);
+    TRY_AWAIT(runProgram("git", true, args));
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
+// Detect whether the remote advertised a different object format than our client one.
+// This happens once cache constructed repositories have changed object formats since we fetched them.
+// The protocol does not always tell you about what is the new format, so we cannot extract this value here.
+static bool isObjectFormatMismatch(std::string_view stderr)
+{
+    return stderr.find("mismatched algorithms") != std::string_view::npos
+        || stderr.find("does not support this repository's object format") != std::string_view::npos;
+}
+
 struct GitInputScheme : InputScheme
 {
     std::string schemeType() const override { return "git"; }
@@ -652,16 +726,9 @@ struct GitInputScheme : InputScheme
             if (!input.getRev())
                 input.attrs.insert_or_assign(
                     "rev",
-                    base16Encode(
-                        Hash::parseAny(
-                            chomp(TRY_AWAIT(runProgram(
-                                "git",
-                                true,
-                                {"-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef()}
-                            ))),
-                            HashType::SHA1
-                        )
-                    )
+                    base16Encode(parseRev(chomp(TRY_AWAIT(runProgram(
+                        "git", true, {"-C", actualUrl, "--git-dir", gitDir, "rev-parse", *input.getRef()}
+                    )))))
                 );
 
             repoDir = actualUrl;
@@ -687,7 +754,7 @@ struct GitInputScheme : InputScheme
             // Make sure to keep this until we're done fetching!
             auto cached = TRY_AWAIT(TRY_AWAIT(getCache())->lookupOrLock(store, unlockedAttrs));
             if (auto res = std::get_if<std::pair<Attrs, StorePath>>(&cached)) {
-                auto rev2 = Hash::parseAny(getStrAttr(res->first, "rev"), HashType::SHA1);
+                auto rev2 = parseRev(getStrAttr(res->first, "rev"));
                 if (!input.getRev() || input.getRev() == rev2) {
                     input.attrs.insert_or_assign("rev", base16Encode(rev2));
                     co_return makeResult(res->first, std::move(res->second));
@@ -702,11 +769,10 @@ struct GitInputScheme : InputScheme
             PathLock cacheDirLock = TRY_AWAIT(lockPathAsync(cacheDir + ".lock"));
 
             if (!pathExists(cacheDir)) {
-                TRY_AWAIT(runProgram(
-                    "git",
-                    true,
-                    {"-c", "init.defaultBranch=" + gitInitialBranch, "init", "--bare", repoDir}
-                ));
+                auto fmt = isLocal ? TRY_AWAIT(detectLocalObjectFormat(actualUrl))
+                                   : TRY_AWAIT(detectObjectFormat(actualUrl));
+
+                TRY_AWAIT(initBareCacheRepo(repoDir, fmt));
             }
 
             std::vector<Path> gitRefFileCandidates;
@@ -783,42 +849,70 @@ struct GitInputScheme : InputScheme
                     fetchRef = "refs/*/" + *ref;
                 }
 
-                try {
-                    Finally finally([&]() {
-                        if (auto p = resolveRefToCachePath(
-                            input,
-                            cacheDir,
-                            gitRefFileCandidates,
-                            pathExists
-                        )) {
-                            localRefFile = *p;
+                // A cache directory is keyed by URL only. If that URL is repointed at a repository
+                // with a different object format, git will refuse to fetch and the cache can never be used
+                // again. In that case, we recreate it once with the remote's format.
+                bool recreatedCache = false;
+                auto env = getEnv();
+                env["LC_ALL"] = "C";
+                for (;;) {
+                    auto [status, output] = TRY_AWAIT(runProgram(
+                        RunOptions{
+                            .program = "git",
+                            // We force C locale so that Git stderr can stay untranslated.
+                            //
+                            .args =
+                                {"-C",
+                                 repoDir,
+                                 "--git-dir",
+                                 gitDir,
+                                 "fetch",
+                                 "--quiet",
+                                 "--force",
+                                 "--",
+                                 actualUrl,
+                                 fmt("%s:%s", fetchRef, fetchRef)},
+                            .environment = {env},
+                            .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
                         }
-                    });
-
-                    // FIXME: git stderr messes up our progress indicator, so
-                    // we're using --quiet for now. Should process its stderr.
-                    TRY_AWAIT(runProgram(
-                        "git",
-                        true,
-                        {"-C",
-                         repoDir,
-                         "--git-dir",
-                         gitDir,
-                         "fetch",
-                         "--quiet",
-                         "--force",
-                         "--",
-                         actualUrl,
-                         fmt("%s:%s", fetchRef, fetchRef)},
-                        true
                     ));
-                } catch (Error & e) {
-                    if (!pathExists(localRefFile)) throw;
+
+                    if (auto p = resolveRefToCachePath(input, cacheDir, gitRefFileCandidates, pathExists)) {
+                        localRefFile = *p;
+                    }
+
+                    if (statusOk(status)) {
+                        break;
+                    }
+
+                    if (!recreatedCache && isObjectFormatMismatch(output)) {
+                        auto fmt = TRY_AWAIT(detectObjectFormat(actualUrl));
+
+                        if (fmt) {
+                            printTaggedWarning(
+                                "recreating Git cache for '%s' after an object format mismatch", actualUrl
+                            );
+
+                            deletePath(cacheDir);
+
+                            TRY_AWAIT(initBareCacheRepo(repoDir, fmt));
+                            localRefFile.clear();
+                            recreatedCache = true;
+                            continue;
+                        }
+                    }
+
+                    if (!pathExists(localRefFile)) {
+                        throw Error("could not fetch Git repository '%s' : %s", actualUrl, chomp(output));
+                    }
+
                     printTaggedWarning(
                         "could not update local clone of Git repository '%s'; continuing with the "
                         "most recent version",
                         actualUrl
                     );
+
+                    break;
                 }
 
                 // If the cache does not contain the ref yet, localRefFile does not exist
@@ -895,9 +989,11 @@ struct GitInputScheme : InputScheme
                 .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
             }
         ));
-        if (WEXITSTATUS(result.first) == 128
-            && result.second.find("bad file") != std::string::npos)
-        {
+        // Any failure to read the commit means the revision is not present in the repository.
+        // Git's message depends on whether the object name is even valid for the repository's
+        // object format ("bad file" vs "Not a valid object name"). Thus, do not introduce screen scraping
+        // here.
+        if (!statusOk(result.first)) {
             throw Error(
                 "Cannot find Git revision '%s' in ref '%s' of repository '%s'! "
                 "Please make sure that the " ANSI_BOLD "rev" ANSI_NORMAL " exists on the " ANSI_BOLD
@@ -913,16 +1009,17 @@ struct GitInputScheme : InputScheme
             Path tmpGitDir = createTempDir();
             AutoDelete delTmpGitDir(tmpGitDir, true);
 
-            TRY_AWAIT(runProgram(
-                "git",
-                true,
-                {"-c",
-                 "init.defaultBranch=" + gitInitialBranch,
-                 "init",
-                 tmpDir,
-                 "--separate-git-dir",
-                 tmpGitDir}
-            ));
+            Strings initArgs = {
+                "-c",
+                "init.defaultBranch=" + gitInitialBranch,
+                "init",
+                tmpDir,
+                "--separate-git-dir",
+                tmpGitDir
+            };
+
+            addObjectFormatArg(initArgs, TRY_AWAIT(detectLocalObjectFormat(repoDir)));
+            TRY_AWAIT(runProgram("git", true, initArgs));
 
             {
                 // TODO: repoDir might lack the ref (it only checks if rev

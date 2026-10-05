@@ -36,8 +36,8 @@ extern std::regex refRegex;
 const static std::string badGitRefRegexS = "//|^[./]|/\\.|\\.\\.|[[:cntrl:][:space:]:?^~\[]|\\\\|\\*|\\.lock$|\\.lock/|@\\{|[/.]$|^@$|^$";
 extern std::regex badGitRefRegex;
 
-/// A Git revision (a SHA-1 commit hash).
-const static std::string revRegexS = "[0-9a-fA-F]{40}";
+/// A Git revision (a SHA-1 or SHA-256 commit hash).
+const static std::string revRegexS = "[0-9a-fA-F]{40}|[0-9a-fA-F]{64}";
 extern std::regex revRegex;
 
 /// A ref or revision, or a ref followed by a revision.
