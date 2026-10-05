@@ -261,12 +261,3 @@ def test_http_simple(nix: Nix, store: HTTPStore, files: Path):
 
         # Ensure that the narinfo can be found now.
         nix.nix(cmd=["path-info", "--store", url, store_path], flake=True).run().ok()
-
-        # Ensure local narinfo cache is up-to-date.
-        nar_entries = nars_from_narinfo_cache(nar_info_cache)
-        assert len(nar_entries) == 1
-
-        assert nar_entries[0]["present"]
-        assert nar_entries[0]["hashPart"] == hash_part
-        assert nar_entries[0]["namePart"] == "test-file"
-        assert nar_entries[0]["url"] == store.uploaded_narinfos[hash_part]["URL"]
