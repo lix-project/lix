@@ -1,13 +1,14 @@
 from pathlib import Path
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 
-from testlib.fixtures.command import CommandResult, Command, RunningCommand
+from testlib.fixtures.command import CommandResult, Command
 from testlib.fixtures.env import ManagedEnv
 
 
-type GitCmd = Callable[[Path | None, *tuple[str | Path, ...]], RunningCommand]
+type GitCmd = Callable[[Path | None, *tuple[str | Path, ...]], CommandResult]
 type Git = Callable[[Path | None, *tuple[str | Path, ...]], CommandResult]
 
 
@@ -25,9 +26,11 @@ def git_cmd(env: ManagedEnv) -> GitCmd:
     env["GIT_AUTHOR_DATE"] = "@42 +0000"
     env["GIT_COMMITTER_DATE"] = "@23 +0000"
 
-    def call(path: Path | None, *args: str | Path, **kwargs: str | Path) -> RunningCommand:
+    def call(path: Path | None, *args: str | Path, **kwargs: Any) -> CommandResult:
         return Command(
-            ["git", *(["-C", path] if path is not None else []), *args], _env=env, **kwargs
+            ["git", *(["-C", str(path)] if path is not None else []), *map(str, args)],
+            _env=env,
+            **kwargs,
         ).run()
 
     return call
