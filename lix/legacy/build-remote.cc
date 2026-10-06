@@ -298,7 +298,7 @@ kj::Promise<void> Instance::init(InitContext context)
 
         /* Read the parent's settings. */
         for (const auto & [name, value] : rpc::to<StringMap>(context.getParams().getSettings())) {
-            settings.set(name, value);
+            globalConfig.set(name, value);
         }
 
         settings.maxBuildJobs.set("1"); // hack to make tests with local?root= work
