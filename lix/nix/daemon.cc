@@ -29,6 +29,7 @@
 #include "lix/libstore/daemon.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/unix-domain-socket.hh"
+#include "lix/libutil/types-rpc.hh"
 #include "daemon.hh"
 
 #include <algorithm>
@@ -379,6 +380,9 @@ try {
             PeerInfo peer = getPeerInfo(remote.get());
             printInfo("accepted connection from %1%", peer.pid ? fmt("pid %1%", *peer.pid) : "unknown peer");
 
+            auto [settingsParent, settingsChild] = SocketPair::stream();
+            auto settingsFd = settingsChild.get();
+
             // Fork a child to handle the connection. make sure it's called with
             // argv0 `nix-daemon` so we don't try to run `nix --for` when called
             // from more modern scripts that assume nix-command being available.
@@ -393,11 +397,31 @@ try {
                         fmt("%1%", int(getVerbosity())),
                         "--protocol",
                         std::string(socket.id()),
+                        "--settings-fd",
+                        std::to_string(settingsFd),
                     },
-                .redirections = {{.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()}}
+                .redirections = {
+                    {.dup = SUBDAEMON_CONNECTION_FD, .from = remote.get()},
+                    // This clears CLOEXEC, keeping the same fd number in the child.
+                    {.dup = settingsFd, .from = settingsFd},
+                }
             };
             auto [pid, _stdout] = runProgram2(options).release();
             pid.release();
+            settingsChild.close();
+
+            std::map<std::string, Config::SettingInfo> overrides;
+            globalConfig.getSettings(overrides, /* overriddenOnly */ true);
+
+            capnp::MallocMessageBuilder builder;
+            auto settings = builder.initRoot<rpc::Settings>();
+            RPC_FILL(settings, initMap, overrides);
+            auto out = AIO().lowLevelProvider.wrapSocketFd(settingsParent.get());
+            try {
+                co_await capnp::writeMessage(*out, builder);
+            } catch (kj::Exception & e) { // NOLINT(lix-foreign-exceptions)
+                printError("failed to hand settings to subdaemon: %s", e.getDescription().cStr());
+            }
         } catch (Error & error) {
             auto ei = error.info();
             // FIXME: add to trace?
@@ -457,7 +481,8 @@ try {
     co_return result::current_exception();
 }
 
-static void daemonInstance(daemon::Protocol protocol, AsyncIoRoot & aio, char * peerPidArg)
+static void
+daemonInstance(daemon::Protocol protocol, AsyncIoRoot & aio, char * peerPidArg, std::optional<int> settingsFd)
 {
     //  Handle socket-based activation by systemd.
     const auto [launchedByManager, connectionFd] = [&]() -> std::pair<bool, int> {
@@ -507,6 +532,24 @@ static void daemonInstance(daemon::Protocol protocol, AsyncIoRoot & aio, char * 
     //  Background the daemon.
     if (!launchedByManager && setsid() == -1) {
         throw SysError("creating a new session");
+    }
+
+    if (settingsFd) {
+        auto in =
+            AIO().lowLevelProvider.wrapInputFd(*settingsFd, kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP);
+        auto msg = aio.blockOn(capnp::readMessage(*in));
+        auto overrides = rpc::to<std::map<std::string, std::string>>(msg->getRoot<rpc::Settings>());
+
+        for (auto setting : {"experimental-features", "deprecated-features"}) {
+            if (auto value = get(overrides, setting)) {
+                globalConfig.set(setting, *value, {});
+            }
+        }
+        for (auto & [n, v] : overrides) {
+            if (n != "experimental-features" && n != "deprecated-features") {
+                globalConfig.set(n, v, {});
+            }
+        }
     }
 
     auto store = aio.blockOn(openUncachedStore(AllowDaemon::Disallow));
@@ -607,6 +650,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
     {
         auto stdio = false;
         bool isInstance = false;
+        std::optional<int> settingsFd = std::nullopt;
         char * peerPidArg = nullptr;
         Verbosity subdaemonLogLevel = lvlInfo;
         std::string protocol = "legacy-combined";
@@ -642,6 +686,12 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
                 } else {
                     throw UsageError("--log-level expects an integer in the range [0..7]");
                 }
+            } else if (*arg == "--settings-fd") {
+                if (auto fd = string2Int<int>(getArg(*arg, arg, end)); fd && *fd >= 0) {
+                    settingsFd = fd;
+                } else {
+                    throw UsageError("--settings-fd expects a positive integer");
+                }
             } else {
                 return false;
             }
@@ -650,7 +700,7 @@ main_nix_daemon(AsyncIoRoot & aio, std::string programName, Strings argv, std::s
 
         if (isInstance) {
             setVerbosity(Verbosity(std::min<uint64_t>(subdaemonLogLevel, lvlVomit)));
-            daemonInstance(daemon::getProtocol(protocol), aio, peerPidArg);
+            daemonInstance(daemon::getProtocol(protocol), aio, peerPidArg, settingsFd);
         } else {
             runDaemon(aio, stdio);
         }
