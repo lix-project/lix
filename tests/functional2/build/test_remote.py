@@ -25,8 +25,7 @@ def _setup_for_remote_builds(env: ManagedEnv):
     env.path.add_program("bash")
 
 
-def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
-    prog = "nix-store" if proto == "ssh" else "nix-daemon"
+def _get_remote_program_path(prog: str, env: ManagedEnv, *, untrusted: bool) -> Path:
     script = f"""\
         #!{sys.executable}
         import os, sys
@@ -37,7 +36,12 @@ def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
     path.parent.mkdir()
     path.write_text(textwrap.dedent(script))
     path.chmod(0o755)
+    return path
 
+
+def _builders(proto: str, untrusted: bool, env: ManagedEnv) -> str:
+    prog = "nix-store" if proto == "ssh" else "nix-daemon"
+    path = _get_remote_program_path(prog, env, untrusted=untrusted)
     remote_store = "local?" + urlencode(
         {"system-features": "foo bar baz", "root": str(env.dirs.home / "remote")}, quote_via=quote
     )
@@ -386,3 +390,46 @@ def test_keep_going(nix: Nix):
     )
     assert "a.drv' failed on remote builder" in result.stderr_plain
     assert "b.drv' failed on remote builder" in result.stderr_plain
+
+
+@pytest.mark.no_daemon
+@pytest.mark.skipif(
+    sys.platform == "darwin", reason="invocation of the right remote daemon does not work"
+)
+def test_sshng_keep_going(nix: Nix, env: ManagedEnv):
+    """
+    regression fj#1295: --keep-going doesn't keep going with ssh-ng
+    """
+    expr = """
+        let
+          fail = n: derivation {
+            name = n;
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "false" ];
+          };
+        in {
+          a = fail "a";
+          b = fail "b";
+        }
+    """
+
+    remote_program_path = _get_remote_program_path("nix-daemon", env, untrusted=True)
+    result = (
+        nix.nix_build(
+            [
+                *[
+                    "--store",
+                    f"ssh-ng://localhost?remote-store={nix.env.dirs.home}/remote&remote-program={remote_program_path!s}",
+                ],
+                *["--eval-store", "auto"],
+                *["--keep-going"],
+                *["--max-jobs", "0"],
+                *["--expr", expr],
+            ]
+        )
+        .run()
+        .expect(1)
+    )
+    assert "a.drv' failed with exit code 1" in result.stderr_plain
+    assert "b.drv' failed with exit code 1" in result.stderr_plain

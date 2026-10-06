@@ -166,10 +166,11 @@ protected:
             overrides.insert_or_assign(setting.name, setting.to_string());
         };
 
-        // we only mirror what the legacy ssh protocol propagated for now
+        // this protocol supports a superset of legacy ssh protocol options
         override(settings.maxSilentTime);
         override(settings.buildTimeout);
         override(settings.keepFailed);
+        override(settings.keepGoing);
 
         StringSink command;
 
