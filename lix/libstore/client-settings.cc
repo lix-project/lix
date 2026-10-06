@@ -71,7 +71,7 @@ void ClientSettings::apply(TrustedFlag trusted)
                        || fileTransferSettings.initialConnectTimeout.isNameOrAlias(name)
                        || (name == "builders" && value == ""))
             {
-                settings.set(name, value);
+                globalConfig.set(name, value);
             } else if (setSubstituters(settings.substituters))
                 ;
             else {
