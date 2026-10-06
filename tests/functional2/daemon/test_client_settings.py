@@ -27,3 +27,14 @@ def test_file_transfer_preference_not_warned(nix: Nix, daemon: NixDaemon):
         result = inner.nix_build(["./fail.nix", "--max-connect-timeout", "10"]).run()
         result.expect(1)
         _assert_not_restricted(result, "max-connect-timeout")
+
+
+@with_files(
+    {"config.nix": get_global_asset("config.nix"), "fail.nix": CopyFile("client-settings/fail.nix")}
+)
+def test_client_only_setting_not_forwarded(nix: Nix, daemon: NixDaemon):
+    with daemon(nix) as inner:
+        result = inner.nix_build(["./fail.nix", "--tarball-ttl", "1"]).run()
+        result.expect(1)
+        assert "tarball-ttl" not in result.stderr_plain
+        _assert_not_restricted(result, "tarball-ttl")

@@ -119,6 +119,22 @@ void ClientSettings::applyExtendedOptions(const JSON & blob)
     }
 }
 
+std::map<std::string, std::string> getClientPreferences()
+{
+    std::map<std::string, std::string> prefs;
+    std::map<std::string, Config::SettingInfo> all;
+
+    globalConfig.getSettings(all, /* overriddenOnly */ true);
+
+    for (auto & [name, setting] : all) {
+        if (isClientPreference(name)) {
+            prefs.emplace(name, setting.value);
+        }
+    }
+
+    return prefs;
+}
+
 bool isClientPreference(std::string_view name)
 {
     static const std::set<std::string, std::less<>> prefs = [] {

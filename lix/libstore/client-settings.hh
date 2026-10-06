@@ -6,6 +6,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/types.hh"
 
+#include <map>
 #include <string_view>
 
 namespace nix {
@@ -33,4 +34,10 @@ struct ClientSettings
  * override for its own connection, cf. `ClientSettings::apply`.
  */
 bool isClientPreference(std::string_view name);
+
+/**
+ * The overridden settings that are safe to forward to a daemon as client
+ * preferences, cf. `isClientPreference`.
+ */
+std::map<std::string, std::string> getClientPreferences();
 }
