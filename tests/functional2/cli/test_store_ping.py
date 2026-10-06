@@ -29,7 +29,7 @@ def test_ping_daemon(nix: Nix, daemon: NixDaemon):
         assert info["url"] == inner.settings.store
         # we transport some feature flags after the real version number for non-rpc connections
         suffix = (
-            " (sshng-extended-options)"
+            " (sshng-extended-options) (client-preferences)"
             if inner.daemon_protocol
             in [NixDaemonProtocol.LEGACY, NixDaemonProtocol.LEGACY_COMBINED]
             else ""

@@ -896,7 +896,7 @@ void processLegacyConnection(
 
     readNum<unsigned>(from); // obsolete reserveSpace
 
-    to << fmt("%s %s", nixVersion, sshNgExtendedOptionsFeature);
+    to << fmt("%s %s %s", nixVersion, sshNgExtendedOptionsFeature, clientPreferencesFeature);
 
     // We and the underlying store both need to trust the client for
     // it to be trusted.
