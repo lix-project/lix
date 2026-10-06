@@ -346,7 +346,7 @@ def pytest_runtest_setup(item: pytest.Item):
             pytest.skip(f"{sys.platform} does not support full sandboxing")
 
 
-type NixDaemon = Callable[..., contextlib.AbstractAsyncContextManager[Nix]]
+type NixDaemon = Callable[..., contextlib.AbstractContextManager[Nix]]
 
 daemon_protocols: list[NixDaemonProtocol] = list(NixDaemonProtocol)
 
@@ -363,7 +363,7 @@ def _daemon_wrapper(
     settings: dict[str, _NixSettingValue] | None = None,
     protocol: NixDaemonProtocol | None = None,
     **kwargs,
-) -> contextlib.AbstractAsyncContextManager[Nix]:
+) -> Generator[Nix]:
     protocol = protocol or default_protocol
 
     daemon = copy.deepcopy(nix)
