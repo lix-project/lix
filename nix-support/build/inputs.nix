@@ -49,7 +49,6 @@ let
       # "gccStdenv"
       "clangStdenv"
       "libcxxStdenv"
-      "ccacheStdenv"
     ];
 
     forAllSystems = lib.genAttrs self.systems;

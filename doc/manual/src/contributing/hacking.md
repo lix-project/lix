@@ -239,11 +239,6 @@ $ nix build
 
 You can also build Lix for one of the [supported platforms](#platforms).
 
-> **Note**
->
-> You can use `native-ccacheStdenvPackages` to drastically improve rebuild time.
-> By default, [ccache](https://ccache.dev) keeps artifacts in `~/.cache/ccache/`.
-
 ## Platforms
 
 Lix can be built for various platforms, as specified in [`flake.nix`]:
@@ -345,25 +340,23 @@ For historic reasons and backward-compatibility, some CPU and OS identifiers are
 Lix can be compiled using multiple environments:
 
 - `stdenv`: default;
-- `gccStdenv`: force the use of `gcc` compiler;
 - `clangStdenv`: force the use of `clang` compiler;
-- `ccacheStdenv`: enable [ccache], a compiler cache to speed up compilation.
 
 To build with one of those environments, you can use
 
 ```console
-$ nix build .#nix-ccacheStdenv
+$ nix build .#nix-clangStdenv
 ```
 
 for <a id="nix-with-flakes">flake-enabled Nix</a>, or
 
 ```console
-$ nix-build --attr nix-ccacheStdenv
+$ nix-build --attr nix-clangStdenv
 ```
 
 for <a id="classic-nix">classic Nix</a>.
 
-You can use any of the other supported environments in place of `nix-ccacheStdenv`.
+You can use any of the other supported environments in place of `nix-clangStdenv`.
 
 ## Editor integration
 
@@ -586,5 +579,4 @@ The following metadata properties are supported for builtin constants:
 * `impure` (optional): whether the constant is considered impure.
   Impure constants are not available when pure evaluation mode is activated.
   Defaults to `false` when not specified.
-
 New builtin constant definition files must be added to `lix/libexpr/builtin-constants` and registered in the `builtin_constant_definitions` list in `lix/libexpr/meson.build`.
