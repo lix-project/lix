@@ -266,6 +266,13 @@ struct ClientSettings
     }
 };
 
+static void requireTrustedRepair(TrustedFlag trusted, RepairFlag repair)
+{
+    if (repair && !trusted) {
+        throw Error("repairing is not allowed because you are not in 'trusted-users'");
+    }
+}
+
 static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store,
     TrustedFlag trusted, WorkerProto::Version clientVersion,
     Source & from, BufferedSink & to, WorkerProto::Op op)
@@ -398,6 +405,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         auto refs = WorkerProto::Serialise<StorePathSet>::read(rconn);
         bool repairBool = readBool(from);
         auto repair = RepairFlag{repairBool};
+        requireTrustedRepair(trusted, repair);
 
         logger->startWork();
         auto pathInfo = [&]() {
@@ -443,6 +451,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         bool dontCheckSigs = readBool(from);
         if (!trusted && dontCheckSigs)
             dontCheckSigs = false;
+        requireTrustedRepair(trusted, RepairFlag{repair});
 
         logger->startWork();
         {
@@ -480,8 +489,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
            need not be getting the UID of the other end of a Unix Domain
            Socket.
           */
-        if (mode == bmRepair && !trusted)
-            throw Error("repairing is not allowed because you are not in 'trusted-users'");
+        requireTrustedRepair(trusted, RepairFlag{mode == bmRepair});
         logger->startWork();
         aio.blockOn(store->buildPaths(drvs, mode));
         logger->stopWork();
@@ -498,8 +506,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
            clients.
 
            FIXME: layer violation; see above. */
-        if (mode == bmRepair && !trusted)
-            throw Error("repairing is not allowed because you are not in 'trusted-users'");
+        requireTrustedRepair(trusted, RepairFlag{mode == bmRepair});
 
         logger->startWork();
         auto results = aio.blockOn(store->buildPathsWithResults(drvs, mode));
@@ -818,6 +825,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             dontCheckSigs = false;
         if (!trusted)
             info.ultimate = false;
+        requireTrustedRepair(trusted, RepairFlag{repair});
 
         logger->startWork();
         {
@@ -1166,6 +1174,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     kj::Promise<void> addToStore(AddToStoreContext context) override
     {
         return RPC_IMPL({
+            requireTrustedRepair(state->trusted, RepairFlag{context.getParams().getRepair()});
             context.initResults().setResult(kj::heap<AddToStoreStream>(state, context.getParams()));
         });
     }
@@ -1226,6 +1235,8 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     kj::Promise<void> addToStoreNar(AddToStoreNarContext context) override
     {
         return RPC_IMPL({
+            requireTrustedRepair(state->trusted, RepairFlag{context.getParams().getRepair()});
+
             context.initResults().setResult(kj::heap<AddToStoreNarStream>(state, context.getParams()));
         });
     }
@@ -1323,9 +1334,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                need not be getting the UID of the other end of a Unix Domain
                Socket.
               */
-            if (mode == bmRepair && !state->trusted) {
-                throw Error("repairing is not allowed because you are not in 'trusted-users'");
-            }
+            requireTrustedRepair(state->trusted, RepairFlag{mode == bmRepair});
             TRY_AWAIT(state->store->buildPaths(paths, mode));
         });
     }
@@ -1339,9 +1348,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                clients.
 
                FIXME: layer violation; see above. */
-            if (mode == bmRepair && !state->trusted) {
-                throw Error("repairing is not allowed because you are not in 'trusted-users'");
-            }
+            requireTrustedRepair(state->trusted, RepairFlag{mode == bmRepair});
             auto results = TRY_AWAIT(state->store->buildPathsWithResults(paths, mode));
             RPC_FILL_LIST(context.initResults(), initResult, results, *state->store);
         });
