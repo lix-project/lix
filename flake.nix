@@ -133,7 +133,7 @@
             }
             ''
               cd $src
-              ${lib.getExe pkgs.check-syscalls} && echo "No new syscalls have appeared." || ( echo "Syscalls needs to be allowed or disallowed, see below."; exit 1 )
+              ${lib.getExe pkgs.buildPackages.__lixInternal.check-syscalls} && echo "No new syscalls have appeared." || ( echo "Syscalls needs to be allowed or disallowed, see below."; exit 1 )
               touch $out
             ''
         );
@@ -188,7 +188,7 @@
           perlBindings = self.hydraJobs.perlBindings.${system};
           nix-eval-jobs = self.hydraJobs.nix-eval-jobs.${system};
           nixpkgsLibTests = self.hydraJobs.tests.nixpkgsLibTests.${system};
-          rl-next = self.hydraJobs.rl-next.${system}.user;
+          rl-next = self.hydraJobs.rl-next.${system};
           # Will be empty attr set on i686-linux, and filtered out by forAvailableSystems.
           pre-commit = self.hydraJobs.pre-commit.${system};
           repl-completion = self.hydraJobs.repl-completion.${system};
@@ -216,7 +216,7 @@
               };
               pre-commit = self.hydraJobs.pre-commit.${pkgs.stdenv.hostPlatform.system} or { };
             in
-            pkgs.callPackage nix.mkDevShell {
+            pkgs.__lixInternal.callPackage nix.mkDevShell {
               pre-commit-checks = pre-commit;
               inherit contribNotice;
             };

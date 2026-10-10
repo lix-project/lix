@@ -21,7 +21,7 @@ lib.fix (self: {
       inherit (nixpkgsFor.${system}.native) nix;
       default = nix;
 
-      inherit (nixpkgsFor.${system}.native) lix-clang-tidy nix-eval-jobs;
+      inherit (nixpkgsFor.${system}.native.__lixInternal) lix-clang-tidy nix-eval-jobs;
     }
     // (
       lib.optionalAttrs (builtins.elem system linux64BitSystems) {
@@ -112,7 +112,7 @@ lib.fix (self: {
         let
           pkgs = nixpkgsFor.${system}.native;
         in
-        pkgs.callPackage ../../package.nix {
+        pkgs.__lixInternal.callPackage ../../package.nix {
           # Required since we don't support gcc stdenv
           stdenv = pkgs.clangStdenv;
           versionSuffix = "";
@@ -150,7 +150,7 @@ lib.fix (self: {
             pkgs = nixpkgsFor.${system}.native;
           in
           pkgs.buildPackages.runCommand "test-${name}-release-notes" { } ''
-            LANG=C.UTF-8 ${lib.getExe pkgs.build-release-notes} --change-authors ${../../doc/manual/change-authors.yml} ${dir} >$out
+            LANG=C.UTF-8 ${lib.getExe pkgs.__lixInternal.build-release-notes} --change-authors ${../../doc/manual/change-authors.yml} ${dir} >$out
           '';
       in
       rl-next-check "rl-next" ../../doc/manual/rl-next
@@ -180,9 +180,8 @@ lib.fix (self: {
         nixpkgs = nixpkgsFor.x86_64-linux.native;
         inherit (nixpkgs) pkgs;
 
-        nix = pkgs.callPackage ../../package.nix {
+        nix = pkgs.__lixInternal.callPackage ../../package.nix {
           inherit versionSuffix officialRelease buildUnreleasedNotes;
-          inherit (pkgs) build-release-notes;
           # Required since we don't support gcc stdenv
           stdenv = pkgs.clangStdenv;
           internalApiDocs = true;

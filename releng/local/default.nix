@@ -50,7 +50,7 @@ in
         environment.systemPackages = [
           this-garage
           pkgs.git
-          pkgs.build-release-notes
+          pkgs.__lixInternal.build-release-notes
           pkgs.jq
           pkgs.nix-eval-jobs
           pkgs.awscli2

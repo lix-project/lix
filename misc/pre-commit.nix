@@ -81,11 +81,11 @@ pre-commit-run {
     };
     release-notes = {
       enable = true;
-      package = pkgs.build-release-notes;
+      package = pkgs.__lixInternal.build-release-notes;
       files = ''^doc/manual/(change-authors\.yml|rl-next(-dev)?)'';
       pass_filenames = false;
       entry = ''
-        ${lib.getExe pkgs.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next
+        ${lib.getExe pkgs.__lixInternal.build-release-notes} --change-authors doc/manual/change-authors.yml doc/manual/rl-next
       '';
     };
     change-authors-sorted = {
@@ -102,7 +102,7 @@ pre-commit-run {
     };
     check-headers = {
       enable = true;
-      package = pkgs.check-headers;
+      package = pkgs.__lixInternal.check-headers;
       files = "^(lix/|tests/)";
       types = [
         "c++"
@@ -116,7 +116,7 @@ pre-commit-run {
         ''(parser|lexer)-tab\.hh$''
         ''\.gen\.hh$''
       ];
-      entry = lib.getExe pkgs.check-headers;
+      entry = lib.getExe pkgs.__lixInternal.check-headers;
     };
     keep-sorted = {
       enable = true;
