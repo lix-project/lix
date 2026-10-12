@@ -821,12 +821,15 @@ struct GitInputScheme : InputScheme
                     );
                 }
 
-                std::error_code err;
-                std::filesystem::last_write_time(localRefFile, now, err);
-                if (err) {
-                    printTaggedWarning(
-                        "could not update mtime for file '%s': %s", localRefFile, err.message()
-                    );
+                // If the cache does not contain the ref yet, localRefFile does not exist
+                if (!localRefFile.empty()) {
+                    std::error_code err;
+                    std::filesystem::last_write_time(localRefFile, now, err);
+                    if (err) {
+                        printTaggedWarning(
+                            "could not update mtime for file '%s': %s", localRefFile, err.message()
+                        );
+                    }
                 }
                 if (useHeadRef && !TRY_AWAIT(storeCachedHead(actualUrl, *input.getRef()))) {
                     printTaggedWarning(
