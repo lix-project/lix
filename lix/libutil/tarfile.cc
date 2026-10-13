@@ -162,12 +162,14 @@ try {
         std::move(pipe.readSide)
     );
 
-    AsyncFdIoStream sink{std::move(pipe.writeSide)};
-    try {
-        TRY_AWAIT(source.drainInto(sink));
-    } catch (SysError & e) {
-        if (!(e.errNo == EPIPE && finished.load())) {
-            throw;
+    {
+        AsyncFdIoStream sink{std::move(pipe.writeSide)};
+        try {
+            TRY_AWAIT(source.drainInto(sink));
+        } catch (SysError & e) {
+            if (!(e.errNo == EPIPE && finished.load())) {
+                throw;
+            }
         }
     }
     thr.get();
