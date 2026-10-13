@@ -1557,10 +1557,6 @@ void LocalDerivationGoal::runChild()
             // We split our allow groups approximately at half the actual limit, 1 << 16
             const size_t breakpoint = sandboxProfile.length() + (1 << 14);
             for (auto & i : pathsInChroot) {
-                if (sandboxProfile.length() >= breakpoint) {
-                    debug("Sandbox break: %d %d", sandboxProfile.length(), breakpoint);
-                    sandboxProfile += ")\n(allow file-read* file-write* process-exec\n";
-                }
                 if (i.first != i.second.source)
                     throw Error(
                         "can't map '%1%' to '%2%': mismatched impure paths not supported on Darwin",
@@ -1573,6 +1569,17 @@ void LocalDerivationGoal::runChild()
                         continue;
                     throw SysError("getting attributes of path '%s", path);
                 }
+
+                /* Only open a new allow form once we know this path will actually
+                 * contribute a selector. Opening it before resolving the path
+                 * leaves an unqualified (allow ...) form behind when an optional
+                 * path is missing, and an unqualified allow form render the sandbox useless. */
+                if (sandboxProfile.length() >= breakpoint) {
+                    debug("Sandbox break: %d %d", sandboxProfile.length(), breakpoint);
+                    sandboxProfile += ")\n(allow file-read* file-write* process-exec\n";
+                }
+
+
                 if (S_ISDIR(st.st_mode))
                     sandboxProfile += fmt("\t(subpath \"%s\")\n", path);
                 else
