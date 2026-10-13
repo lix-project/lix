@@ -2,6 +2,7 @@
   systems ? [ "x86_64-linux" ],
   nixpkgs ? <nixpkgs>,
   lixSrc ? builtins.fetchGit ./.,
+  versionSuffix ? null,
 }:
 
 let
@@ -47,7 +48,12 @@ let
         "flakey-profile"
       ]
       // {
-        inherit lib nixpkgs lixSrc;
+        inherit
+          lib
+          nixpkgs
+          lixSrc
+          versionSuffix
+          ;
       }
     )).overrideScope
       (

@@ -6,6 +6,7 @@
   nix2container,
   nixpkgs-regression,
   flakey-profile,
+  versionSuffix ? null,
 }:
 
 let
@@ -19,7 +20,9 @@ let
     officialRelease = self.versionJson.official_release;
 
     versionSuffix =
-      if self.officialRelease then
+      if versionSuffix != null then
+        versionSuffix
+      else if self.officialRelease then
         ""
       else if lixSrc ? revision then
         # `lixSrc` was fetched via npins which has its own format of exposing
