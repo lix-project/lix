@@ -1,6 +1,6 @@
 ---
 synopsis: "`nix-hash` can no longer truncate SRI hashes"
-cls: []
+cls: [6348]
 category: Fixes
 credits: [horrors]
 ---

@@ -1,6 +1,6 @@
 ---
 synopsis: "Remove `max-connections` store parameters for `ssh://` and `ssh-ng://` stores"
-cls: []
+cls: [5895]
 category: Miscellany
 credits: [horrors]
 ---

@@ -1,6 +1,6 @@
 ---
-synopsis: "Mant nix3 command no longer build their arguments"
-cls: []
+synopsis: "Many nix3 command no longer build their arguments"
+cls: [6424]
 category: Breaking Changes
 credits: [horrors]
 ---

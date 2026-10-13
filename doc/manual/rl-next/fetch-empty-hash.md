@@ -1,6 +1,6 @@
 ---
 synopsis: "don't treat tarball fetches with empty or zero hash as locked"
-cls: []
+cls: [5808]
 category: "Fixes"
 credits: [horrors]
 issues: [fj#1233]

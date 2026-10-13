@@ -1,6 +1,6 @@
 ---
 synopsis: "`nix realisation` command removed"
-cls: []
+cls: [6421]
 category: Miscellany
 credits: [horrors]
 ---
