@@ -1,4 +1,36 @@
 # Lix 2.94 "Açaí na tigela" (2025-11-17)
+# Lix 2.94.3 (2026-10-13)
+## Features
+
+- nix-eval-jobs support `--apply` flag [fj#1214](https://git.lix.systems/lix-project/lix/issues/1214) [cl/5748](https://gerrit.lix.systems/c/lix/+/5748)
+
+  `nix-eval-jobs` now supports the `--apply` flag. With this you can apply the
+  provided function to the each derivation, the result of this function will then
+  be serialized as a JSON value and stored inside `"extraValue"` key of the json
+  line output.
+
+  Many thanks to [isabelroses](https://git.lix.systems/isabelroses), [mic92](https://github.com/mic92), and [ysndr](https://github.com/ysndr) for this.
+
+
+## Fixes
+
+- Forbid unprivileged `repair` through the daemon
+
+  The daemon's `AddToStore`, `AddToStoreNar` and `AddMultipleToStore` operations
+  accepted the client-supplied `repair` flag even from untrusted clients. Because
+  `LocalStore` does not repair paths atomically, an untrusted client could
+  replace the contents of an arbitrary store path with attacker-controlled data
+  while the path remained registered as valid in the database, leading to local
+  privilege escalation.
+
+  `repair` is now rejected for untrusted clients, matching the existing
+  restrictions on `BuildPaths`, `BuildPathsWithResults` and `VerifyStore`.
+
+  Many thanks to [Raito Bezarius](https://git.lix.systems/raito) for this.
+
+
+
+
 # Lix 2.94.2 (2026-05-04)
 ## Fixes
 
