@@ -33,7 +33,8 @@ void finishChildSetup(build::Request::Reader request)
         globalTmpDir.pop_back();
     }
 
-    if (auto env = getenv("_NIX_TEST_NO_SANDBOX"); env && env != std::string_view("1")) {
+    // _NIX_TEST_NO_SANDBOX disables the sandbox if it's set to the literal `1`.
+    if (auto env = getenv("_NIX_TEST_NO_SANDBOX"); !env || env != std::string_view("1")) {
         std::vector<const char *> sandboxArgs;
         sandboxArgs.push_back("_NIX_BUILD_TOP");
         sandboxArgs.push_back(config.getTempDir().cStr());
