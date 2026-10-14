@@ -271,52 +271,6 @@ static Value prim_import(EvalState & state, Value ** args)
     return import(state, *args[0], nullptr);
 }
 
-/* Want reasonable symbol names, so extern C */
-/* !!! Should we pass the Pos or the file name too? */
-extern "C" typedef void (*ValueInitializer)(EvalState & state, Value & v);
-
-/* Load a ValueInitializer from a DSO and return whatever it initializes */
-Value prim_importNative(EvalState & state, Value ** args)
-{
-# if LIX_MAJOR > 2 || (LIX_MAJOR == 2 && LIX_MINOR >= 97)
-#pragma message ("Folks, we need to rip this out since we've reached 2.97 See fj#796 for more details")
-# endif
-    printTaggedWarning("builtins.importNative is deprecated and will be removed in Lix 2.97, please migrate away from it. You can browse issue #795 for more details.");
-
-    auto path = realisePath(state, *args[0]);
-
-    std::string sym(state.forceStringNoCtx(*args[1], noPos, "while evaluating the second argument passed to builtins.importNative"));
-
-    void * handle = dlopen(requireCString(path.canonical().abs()), RTLD_LAZY | RTLD_LOCAL);
-    if (!handle)
-        state.ctx.errors.make<EvalError>("could not open '%1%': %2%", path, dlerror()).debugThrow();
-
-    dlerror();
-    ValueInitializer func = reinterpret_cast<ValueInitializer>(dlsym(handle, requireCString(sym)));
-    if(!func) {
-        char *message = dlerror();
-        if (message)
-            state.ctx.errors.make<EvalError>("could not load symbol '%1%' from '%2%': %3%", sym, path, message).debugThrow();
-        else
-            state.ctx.errors.make<EvalError>("symbol '%1%' from '%2%' resolved to NULL when a function pointer was expected", sym, path).debugThrow();
-    }
-
-    // Default construction of `Value` is deprecated, and uses of `Value&` out parameters
-    // have mostly been removed in favor of returning a `Value` instead. However in this
-    // particular case, this signature (ValueInitializer defined above) is externally visible,
-    // changing it would be an API breaking change, so for this one instance we just suppress
-    // the warning instead.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    Value v;
-    (func)(state, v);
-#pragma clang diagnostic pop
-
-    /* We don't dlclose because v may be a primop referencing a function in the shared object file */
-    return v;
-}
-
-
 /* Execute a program and parse its output */
 Value prim_exec(EvalState & state, Value ** args)
 {
@@ -3190,11 +3144,6 @@ void EvalBuiltins::createBaseEnv(const SearchPath & searchPath, const Path & sto
 
     // Miscellaneous
     if (evalSettings.enableNativeCode) {
-        addPrimOp({
-            .name = "__importNative",
-            .arity = 2,
-            .fun = prim_importNative,
-        });
         addPrimOp({
             .name = "__exec",
             .arity = 1,

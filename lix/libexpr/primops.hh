@@ -46,11 +46,6 @@ public:
    them. */
 
 /**
- * Load a ValueInitializer from a DSO and return whatever it initializes
- */
-Value prim_importNative(EvalState & state, Value ** args);
-
-/**
  * Execute a program and parse its output
  */
 Value prim_exec(EvalState & state, Value ** args);
