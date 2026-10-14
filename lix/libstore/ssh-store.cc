@@ -141,6 +141,7 @@ protected:
         }
     };
 
+    kj::Promise<Result<std::shared_ptr<RemoteStore::Connection>>> reconnect() override;
     kj::Promise<Result<void>> init();
 
     std::string host;
@@ -203,7 +204,7 @@ protected:
     }
 };
 
-kj::Promise<Result<void>> SSHStore::init()
+kj::Promise<Result<std::shared_ptr<RemoteStore::Connection>>> SSHStore::reconnect()
 try {
     auto conn = std::make_shared<Connection>();
 
@@ -214,7 +215,14 @@ try {
     conn->sshConn = ssh.startCommand(command);
     TRY_AWAIT(RemoteStore::initConnection(*conn));
     conn->logHandlerPromise = conn->logHandler(getUri());
-    *(co_await connection.lock()) = conn;
+    co_return conn;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> SSHStore::init()
+try {
+    *(co_await connection.lock()) = TRY_AWAIT(reconnect());
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
