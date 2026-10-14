@@ -51,6 +51,8 @@ extend-select = ["T20"]
 # ignore open() and os.path.join() calls in test_evil_nars, as that file is working with raw bytes
 # which pathlib does not support
 "**/store/test_evil_nars.py" = ["PTH118", "PTH123"]
+# conftest.py implements pytest's own plugin hooks and has a complicated typing story.
+"conftest.py" = ["ANN001", "ANN202", "ARG001", "ARG002", "E402", "PLC2701", "PTH123", "SIM115"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 
