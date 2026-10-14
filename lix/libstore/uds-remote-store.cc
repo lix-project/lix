@@ -193,14 +193,14 @@ try {
                 case daemon::Protocol::LEGACY: {
                     MustCallInit init;
                     auto store = make_ref<UDSRemoteStore>(init, Badge{}, config, path);
-                    TRY_AWAIT(init(store, std::move(fd)));
+                    TRY_AWAIT(init(store, std::move(fd), socketPath));
                     co_return store;
                 }
 
                 case daemon::Protocol::RPC_V1: {
                     MustCallInit init;
                     auto store = make_ref<RpcRemoteStore>(init, Badge{}, config, path);
-                    TRY_AWAIT(init(store, std::move(fd)));
+                    TRY_AWAIT(init(store, std::move(fd), socketPath));
                     co_return store;
                 }
                 }
@@ -217,28 +217,48 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd)
+kj::Promise<Result<std::shared_ptr<RemoteStore::Connection>>> UDSRemoteStore::reconnect()
 try {
-    auto conn = std::make_shared<Connection>();
-    conn->fd = std::move(fd);
-    conn->startTime = std::chrono::steady_clock::now();
-    TRY_AWAIT(RemoteStore::initConnection(*conn));
-    *(co_await connection.lock()) = conn;
+    auto fd = createUnixDomainSocket();
+
+    if (tryToConnect(fd, protocol)) {
+        co_return TRY_AWAIT(openConnection(std::move(fd)));
+    }
+
+    throw Error("could not reconnect to any lix socket %s", protocol.path);
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd, const daemon::Protocol & protocol)
+try {
+    this->protocol = protocol;
+    *(co_await connection.lock()) = TRY_AWAIT(openConnection(std::move(fd)));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RpcRemoteStore::init(AutoCloseFD fd)
+kj::Promise<Result<std::shared_ptr<RemoteStore::Connection>>> UDSRemoteStore::openConnection(AutoCloseFD fd)
+try {
+    auto conn = std::make_shared<Connection>();
+    conn->fd = std::move(fd);
+    conn->startTime = std::chrono::steady_clock::now();
+    TRY_AWAIT(RemoteStore::initConnection(*conn));
+    co_return conn;
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::shared_ptr<RemoteStore::Connection>>> RpcRemoteStore::openConnection(AutoCloseFD fd)
 try {
     auto conn = std::make_shared<Connection>();
     conn->startTime = std::chrono::steady_clock::now();
     if (!TRY_AWAIT(prepareRpcConnection(std::move(fd), *conn))) {
-        throw ProtocolUnavailable("");
+        throw ProtocolUnavailable("RPC socket %s is unavailable", protocol.path);
     }
     TRY_AWAIT(setOptions());
-    *(co_await connection.lock()) = conn;
-    co_return result::success();
+    co_return conn;
 } catch (...) {
     co_return result::current_exception();
 }

@@ -195,6 +195,8 @@ protected:
 
     kj::Promise<Result<ConnectionHandle>> getConnection();
 
+    virtual kj::Promise<Result<std::shared_ptr<Connection>>> reconnect() = 0;
+
     friend struct ConnectionHandle;
 
     virtual ref<FSAccessor> getFSAccessor() override;

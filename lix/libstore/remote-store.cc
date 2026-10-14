@@ -44,7 +44,11 @@ RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config) : Sto
 
 kj::Promise<Result<RemoteStore::ConnectionHandle>> RemoteStore::getConnection()
 try {
-    co_return co_await connection.lock();
+    auto conn = co_await connection.lock();
+    if (!*conn) {
+        *conn = TRY_AWAIT(reconnect());
+    }
+    co_return conn;
 } catch (...) {
     co_return result::current_exception();
 }
