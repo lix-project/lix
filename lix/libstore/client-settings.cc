@@ -85,5 +85,51 @@ void ClientSettings::apply(TrustedFlag trusted)
             printTaggedWarning("%1%", Uncolored(e.what()));
         }
     }
+
+    // Client preferences are allow-listed settings that only affect the
+    // client's own connection, so they are safe to apply for every client.
+    for (auto & [name, value] : clientPreferences) {
+        if (!isClientPreference(name)) {
+            printTaggedWarning(
+                "Ignoring the client-specified preference '%s' because it is not allow-listed.", name
+            );
+            continue;
+        }
+
+        try {
+            if (!globalConfig.set(name, value)) {
+                printTaggedWarning("unknown client preference '%s'", name);
+            }
+        } catch (UsageError & e) {
+            printTaggedWarning("%1%", Uncolored(e.what()));
+        }
+    }
+}
+
+bool isClientPreference(std::string_view name)
+{
+    static const std::set<std::string, std::less<>> prefs = [] {
+        std::set<std::string, std::less<>> s;
+        auto add = [&](const auto & setting) {
+            s.insert(setting.name);
+            s.insert(setting.aliases.begin(), setting.aliases.end());
+        };
+
+        add(settings.logLines);
+
+        add(fileTransferSettings.maxConnectTimeout);
+        add(fileTransferSettings.initialConnectTimeout);
+        add(fileTransferSettings.stalledDownloadTimeout);
+        add(fileTransferSettings.tries);
+        add(fileTransferSettings.enableHttp2);
+        add(fileTransferSettings.enableHttp3);
+
+        add(settings.ttlPositiveNarInfoCache);
+        add(settings.ttlNegativeNarInfoCache);
+
+        return s;
+    }();
+
+    return prefs.contains(name);
 }
 }
