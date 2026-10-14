@@ -144,6 +144,13 @@ pre-commit-run {
         pkgs.ruff
       ];
     };
+    # ruff must not be run as a treefmt formatter because it is a linter and
+    # not a formatter.
+    ruff = {
+      enable = true;
+      files = "^(tests/functional2/.*|meson/clang-tidy/.*|maintainers/.*|lix/code-generation/.*)\\.py$";
+      args = [ "--force-exclude" ];
+    };
     rustfmt = {
       enable = true;
     };
