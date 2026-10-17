@@ -18,7 +18,17 @@ let
     versionJson = builtins.fromJSON (builtins.readFile ../../version.json);
     officialRelease = self.versionJson.official_release;
 
-    versionSuffix = if self.officialRelease then "" else "${lixSrc.shortRev or "dirty"}";
+    versionSuffix =
+      if self.officialRelease then
+        ""
+      else if lixSrc ? revision then
+        # `lixSrc` was fetched via npins which has its own format of exposing
+        # versioning information.
+        # Since npins is the most popular non-flake fetcher, we make an
+        # exception and support their format as well.
+        "${builtins.substring 0 7 lixSrc.revision}"
+      else
+        "${lixSrc.shortRev or "dirty"}";
 
     linux32BitSystems = [ "i686-linux" ];
     linux64BitSystems = [
