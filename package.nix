@@ -404,6 +404,7 @@ stdenv.mkDerivation (finalAttrs: {
     "out"
   ]
   ++ lib.optionals (!finalAttrs.dontBuild) [
+    "man"
     "dev"
     "doc"
     "devdoc"
