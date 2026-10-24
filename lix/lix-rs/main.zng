@@ -15,6 +15,7 @@
 merge "./primitives.zng";
 merge "./rootcause.zng";
 merge "./std-common.zng";
+merge "./toml.zng";
 merge "./tuples.zng";
 
 merge "./src/lib.zng";

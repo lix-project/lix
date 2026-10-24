@@ -5,9 +5,11 @@ error:
              | ^
             2|
 
-       error: while parsing TOML: [error] toml::parse_dec_integer: too large integer: current max digits = 2^63
-        --> fromTOML
-          |
-        1 | attr = 9223372036854775808
-          |                           ^-- must be < 2^63
+       error: while parsing TOML: 
+        ● TOML parse error at line 1, column 8
+        │   |
+        │ 1 | attr = 9223372036854775808
+        │   |        ^^^^^^^^^^^^^^^^^^^
+        │ u64 value was too large
+        ╰ lix/lix-rs/src/toml.rs:5
        

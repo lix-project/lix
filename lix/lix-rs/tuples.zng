@@ -1,4 +1,5 @@
 // tuple types of exclusively stdlib types go here. seems like a good place for them anyway.
+#unstable(template_types)
 
 use ::std::option::Option as Option;
 use ::std::string::String as String;
@@ -16,11 +17,13 @@ type (String, String) {
     field 0 (offset = auto, type = String);
     field 1 (offset = auto, type = String);
 }
+type<A, B> crate::ffi::RefTuple2<A, B> {
+    field 0 (offset = auto, type = &A);
+    field 1 (offset = auto, type = &B);
+}
+
 type crate::ffi::RefTuple2<String, String> {
     #layout_conservative(size = 48, align=8);
-
-    field 0 (offset = auto, type = &String);
-    field 1 (offset = auto, type = &String);
 }
 
 type (String, Option<String>) {
@@ -31,7 +34,4 @@ type (String, Option<String>) {
 }
 type crate::ffi::RefTuple2<String, Option<String>> {
     #layout_conservative(size = 48, align=8);
-
-    field 0 (offset = auto, type = &String);
-    field 1 (offset = auto, type = &Option<String>);
 }

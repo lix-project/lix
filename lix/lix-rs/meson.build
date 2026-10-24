@@ -13,6 +13,7 @@ lix_rs_files += files(
   'src/machines.rs',
   'src/repl.rs',
   'src/sqlite.rs',
+  'src/toml.rs',
   # keep-sorted end
 )
 

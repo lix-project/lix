@@ -1,9 +1,11 @@
+#include "libutil/types.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libexpr/value.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 
 #include <sstream>
-#include <toml.hpp>
 
 namespace nix {
 
@@ -13,60 +15,54 @@ Value prim_fromTOML(EvalState & state, Value ** args)
         *args[0], noPos, "while evaluating the argument passed to builtins.fromTOML"
     );
 
-    std::istringstream tomlStream(std::string{toml});
+    auto visit = [&](this const auto & self, rust::Ref<rust::toml::Value> t) -> Value {
+        return std::visit(
+            overloaded{
+                [&](rust::Ref<rust::toml::Value::String> s) {
+                    return Value{NewValueAs::string, to_std_string_view(s.f0)};
+                },
+                [&](rust::Ref<rust::toml::Value::Integer> s) { return Value{NewValueAs::integer, s.f0}; },
+                [&](rust::Ref<rust::toml::Value::Float> s) { return Value{NewValueAs::floating, s.f0}; },
+                [&](rust::Ref<rust::toml::Value::Boolean> s) {
+                    return Value{NewValueAs::boolean, s.f0.clone()};
+                },
+                [&](rust::Ref<rust::toml::Value::Datetime> s, nix::NeverAsync = {}) -> Value {
+                    state.ctx.errors.make<EvalError>("while parsing TOML: Dates and times are not supported")
+                        .debugThrow();
+                },
+                [&](rust::Ref<rust::toml::Value::Array> a) {
+                    auto & arr = a.f0;
+                    auto list = state.ctx.mem.newList(arr.len());
+                    size_t i = 0;
+                    for (auto & el : arr.iter()) {
+                        list->elems[i] = self(el);
+                        i++;
+                    }
+                    return Value{NewValueAs::list, list};
+                },
+                [&](rust::Ref<rust::toml::Value::Table> t) {
+                    auto & tab = t.f0;
+                    auto attrs = state.ctx.buildBindings(tab.len());
 
-    auto visit = [&](this const auto & self, toml::value t) -> Value {
-        switch (t.type()) {
-        case toml::value_t::table: {
-            auto table = toml::get<toml::table>(t);
-            auto attrs = state.ctx.buildBindings(table.size());
+                    for (auto & elem : tab.iter()) {
+                        attrs.insert(to_std_string(elem.f0), self(elem.f1));
+                    }
 
-            for (auto & elem : table) {
-                attrs.insert(elem.first, self(elem.second));
-            }
-
-            return {NewValueAs::attrs, attrs};
-        }
-        case toml::value_t::array: {
-            auto array = toml::get<std::vector<toml::value>>(t);
-
-            size_t size = array.size();
-            auto list = state.ctx.mem.newList(size);
-            for (size_t i = 0; i < size; ++i) {
-                list->elems[i] = self(array[i]);
-            }
-            return {NewValueAs::list, list};
-        }
-        case toml::value_t::boolean:
-            return {NewValueAs::boolean, toml::get<bool>(t)};
-        case toml::value_t::integer:
-            return {NewValueAs::integer, toml::get<int64_t>(t)};
-        case toml::value_t::floating:
-            return {NewValueAs::floating, toml::get<NixFloat>(t)};
-        case toml::value_t::string:
-            return {NewValueAs::string, toml::get<std::string>(t)};
-        case toml::value_t::local_datetime:
-        case toml::value_t::offset_datetime:
-        case toml::value_t::local_date:
-        case toml::value_t::local_time:
-            // NOLINTNEXTLINE(lix-foreign-exceptions)
-            throw std::runtime_error("Dates and times are not supported");
-        case toml::value_t::empty:
-            return Value::VNULL;
-        }
+                    return Value{NewValueAs::attrs, attrs};
+                }
+            },
+            t.match_ref()
+        );
     };
 
-    try {
-        return visit(
-            toml::parse(
-                tomlStream,
-                "fromTOML", /* the "filename" */
-                toml::spec::v(1, 0, 0) // Be explicit that we are parsing TOML 1.0.0 without extensions
-            )
-        );
-    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions) // TODO: toml::syntax_error
-        state.ctx.errors.make<EvalError>("while parsing TOML: %s", e.what()).debugThrow();
-    }
+    return match_result(
+        rust::lix::toml::from_slice(rust::to_slice(toml)),
+        [&](auto v) { return visit(v); },
+        [&](auto err) -> Value {
+            state.ctx.errors.make<EvalError>("while parsing TOML: %s", to_std_string(err.to_string()))
+                .debugThrow(nix::always_progresses);
+        }
+    );
 }
 
 }

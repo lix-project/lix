@@ -264,6 +264,7 @@ pub mod futures;
 mod machines;
 mod repl;
 pub mod sqlite;
+pub mod toml;
 
 #[cfg(test)]
 mod test {

@@ -35,6 +35,8 @@ template<typename>
 struct Ref;
 
 struct Str;
+template<typename...>
+struct Slice;
 
 namespace std::ffi {
 struct OsStr;
@@ -218,6 +220,8 @@ Ref<std::ffi::OsStr> to_os_str(const uint8_t * raw, size_t size) noexcept;
 }
 
 Ref<std::ffi::OsStr> to_os_str(::std::string_view sv);
+
+Ref<Slice<uint8_t>> to_slice(::std::string_view sv);
 
 // enum type matching
 namespace matches {
@@ -542,3 +546,4 @@ LIX_DECLARE_ITERATORS(rust::std::slice)
 LIX_DECLARE_ITERATORS(rust::std::vec)
 LIX_DECLARE_ITERATORS(rust::std::collections::hash_set)
 LIX_DECLARE_ITERATORS(rust::std::collections::hash_map)
+LIX_DECLARE_ITERATORS(rust::toml::map)

@@ -1,0 +1,82 @@
+use ::std::option::Option as Option;
+use ::std::string::String as String;
+use crate::ffi::RefTuple2 as RefTuple2;
+use ::toml::Value as Value;
+
+mod crate::toml {
+	type ::std::result::Result<Value, ::rootcause::Report> {
+		#layout_conservative(size = 48, align = 8);
+	}
+
+	fn from_slice(&[u8]) -> ::std::result::Result<Value, ::rootcause::Report>;
+}
+mod ::toml {
+
+	type crate::ffi::RefTuple2<String, Value> {
+		#layout_conservative(size = 16, align = 8);
+	}
+
+	type Value {
+		#layout_conservative(size = 32, align = 8);
+
+		variant String {
+			field 0 (offset = auto, type = String);
+		}
+		variant Integer {
+			field 0 (offset = auto, type = i64);
+		}
+		variant Float {
+			field 0 (offset = auto, type = f64);
+		}
+		variant Boolean {
+			field 0 (offset = auto, type = bool);
+		}
+		variant Datetime {
+			field 0 (offset = auto, type = value::Datetime);
+		}
+		variant Array {
+			field 0 (offset = auto, type = ::std::vec::Vec<Value>);
+		}
+		variant Table {
+			field 0 (offset = auto, type = map::Map<String, Value>);
+		}
+	}
+
+	type value::Datetime {
+		#layout_conservative(size = 24, align = 8);
+	}
+
+	mod map {
+		type Map<String, Value> {
+			#layout_conservative(size = 48, align = 8);
+			fn get(&self, &str) -> Option<&Value>;
+			fn contains_key(&self, &str) -> bool;
+			fn len(&self) -> usize;
+			fn is_empty(&self) -> bool;
+			fn iter(&self) -> Iter<String, Value>;
+		}
+
+		type Iter<String, Value> {
+			#layout_conservative(size = 72, align = 8);
+			fn next(&mut self) -> Option<RefTuple2<String, Value>>;
+		}
+	}
+}
+
+type ::std::vec::Vec<Value> {}
+type ::std::vec::IntoIter<Value> {}
+type [Value] {}
+type ::std::slice::Iter<Value> {}
+type ::std::slice::IterMut<Value> {}
+
+mod ::std::option {
+
+	type Option<Value> {
+		#layout_conservative(size = 32, align = 8);
+	}
+	type Option<&Value> {}
+	type Option<&mut Value> {}
+	type Option<RefTuple2<String, Value>> {
+		#layout_conservative(size = 16, align = 8);
+	}
+}

@@ -75,8 +75,12 @@ Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept
 
 String to_string_lossy(::std::string_view sv)
 {
-    auto slice = lix::ffi::from_raw_parts_u8(nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());
-    return String::from_utf8_lossy(slice).into_owned();
+    return String::from_utf8_lossy(to_slice(sv)).into_owned();
+}
+
+Ref<Slice<uint8_t>> to_slice(::std::string_view sv)
+{
+    return lix::ffi::from_raw_parts_u8(nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());
 }
 
 Ref<Str> to_string(::std::string_view sv)

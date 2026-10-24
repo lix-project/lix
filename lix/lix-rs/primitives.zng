@@ -7,6 +7,8 @@
 type bool {
     #layout(size = 1, align = 1);
     wellknown_traits(Copy);
+
+    fn clone(&self) -> bool;
 }
 
 type<T> [T] {
