@@ -152,7 +152,6 @@ dependencies = [
   openssl,
   seccomp,
   sqlite,
-  toml11,
 ]
 
 if host_machine.system() == 'freebsd'

@@ -10,8 +10,6 @@
 #include <numeric>
 #include <algorithm>
 
-#include <toml.hpp>
-
 namespace nix {
 
 kj::Promise<Result<ref<Store>>>

@@ -459,8 +459,6 @@ gtest = [
   dependency('gmock_main', required : enable_tests, include_type : 'system'),
 ]
 
-toml11 = dependency('toml11', version : '>=4.0.0', required : true, method : 'cmake', include_type : 'system')
-
 pegtl = dependency(
   'pegtl',
   version : '>=3.2.7',

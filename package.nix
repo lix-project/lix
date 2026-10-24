@@ -55,7 +55,6 @@
   clippy,
   sqlite,
   systemtap-lix ? __forDefaults.systemtap-lix,
-  toml11,
   util-linuxMinimal ? utillinuxMinimal,
   utillinuxMinimal ? null,
   xz,
@@ -465,9 +464,6 @@ stdenv.mkDerivation (finalAttrs: {
     ++ lib.optional (hostPlatform.isDarwin) "-Db_lto=false"
     ++ sanitizeOpts;
 
-  # We only include CMake so that Meson can locate toml11, which only ships CMake dependency metadata.
-  dontUseCmakeConfigure = true;
-
   # depsBuildBuild is put in PATH before nativeBuildInputs, but clangStdenv.cc's version
   # of clang-tidy doesn't seem to work. Thankfully, if we're linting, we don't need to
   # compile things for the build platform either.
@@ -546,7 +542,6 @@ stdenv.mkDerivation (finalAttrs: {
     libarchive
     boost
     lowdown
-    toml11
     pegtl
     capnproto
     dtrace-headers
