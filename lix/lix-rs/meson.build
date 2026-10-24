@@ -16,6 +16,19 @@ lix_rs_files += files(
   # keep-sorted end
 )
 
+# files included verbatim in src/lib.rs
+lix_rs_files += files(
+  '../legacy/buildenv.nix',
+  '../legacy/unpack-channel.nix',
+  '../libcmd/repl-overlays.nix',
+  '../libexpr/fetchurl.nix',
+  '../libexpr/imported-drv-to-derivation.nix',
+  '../libexpr/primops/derivation.nix',
+  '../nix/get-env.sh',
+  '../../doc/manual/src/command-ref/files/profiles.md',
+  '../../doc/manual/generate-manpage.nix',
+)
+
 lixrs_zngur_bridge = custom_target(
   command : [
     licxxbridge,
