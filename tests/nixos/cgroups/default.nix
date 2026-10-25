@@ -2,13 +2,13 @@
 
 let
   nestedCgroupsExpr = config: pkgs.writeText "nested.nix" ''
-    let utils = builtins.storePath ${config.system.build.extraUtils}; in
+    let utils = builtins.storePath ${config.system.build.toplevel}; in
     derivation {
       name = "nested-cgroups";
       system = builtins.currentSystem;
       requiredSystemFeatures = [ "uid-range" ];
-      PATH = "''${utils}/bin";
-      builder = "''${utils}/bin/sh";
+      PATH = "''${utils}/sw/bin";
+      builder = "''${utils}/sw/bin/sh";
       args = [ "-c" "mount -t cgroup2 none /sys/fs/cgroup; mkdir -p /sys/fs/cgroup/demo; touch $out" ];
     }
   '';
@@ -20,7 +20,7 @@ in
     {
       host =
         { config, pkgs, ... }:
-        { virtualisation.additionalPaths = [ pkgs.stdenvNoCC config.system.build.extraUtils ];
+        { virtualisation.additionalPaths = [ pkgs.stdenvNoCC config.system.build.toplevel ];
           virtualisation.writableStore = true;
           nix.extraOptions =
             ''

@@ -2,12 +2,12 @@
 
 let
   failedNormal = config: pkgs.writeText "failed.nix" ''
-    let utils = builtins.storePath ${config.system.build.extraUtils}; in
+    let utils = builtins.storePath ${config.system.build.toplevel}; in
     derivation {
       name = "failed";
       system = builtins.currentSystem;
-      PATH = "''${utils}/bin";
-      builder = "''${utils}/bin/sh";
+      PATH = "''${utils}/sw/bin";
+      builder = "''${utils}/sw/bin/sh";
       args = [ "-c" "mkdir dir; echo test > dir/file" ];
     }
   '';
@@ -28,7 +28,7 @@ in
   nodes = {
     machine = { config, lib, pkgs, ... }: {
       virtualisation.writableStore = true;
-      virtualisation.additionalPaths = [ config.system.build.extraUtils ];
+      virtualisation.additionalPaths = [ config.system.build.toplevel ];
 
       users.users.test = {
         isNormalUser = true;

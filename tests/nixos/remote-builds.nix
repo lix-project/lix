@@ -23,13 +23,14 @@ let
   # Trivial Nix expression to build remotely.
   expr = config: nr: pkgs.writeText "expr.nix"
     ''
-      let utils = builtins.storePath ${config.system.build.extraUtils}; in
+      let utils = builtins.storePath ${config.nixpkgs.pkgs.pkgsStatic.busybox}; in
       derivation {
         name = "hello-${toString nr}";
         system = "i686-linux";
         PATH = "''${utils}/bin";
         builder = "''${utils}/bin/sh";
         args = [ "-c" '''
+          set -x
           if [ ${toString nr} = 5 ]; then
             echo FAIL
             exit 1
@@ -93,7 +94,7 @@ in
                 }
               ];
             virtualisation.writableStore = true;
-            virtualisation.additionalPaths = [ config.system.build.extraUtils ];
+            virtualisation.additionalPaths = [ config.nixpkgs.pkgs.pkgsStatic.busybox ];
             nix.settings.substituters = lib.mkForce [ ];
             programs.ssh.extraConfig = ''
               ConnectTimeout 30
