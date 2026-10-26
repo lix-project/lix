@@ -12,11 +12,9 @@ import textwrap
 import dataclasses
 from pathlib import Path
 
-flake_args = ["--extra-experimental-features", "nix-command flakes"]
 cases = {
     "search": lambda build: [
         f"{build}/bin/nix",
-        *flake_args,
         "search",
         "--no-eval-cache",
         f"path:{Path('./bench/nixpkgs/').readlink()}",
@@ -24,7 +22,6 @@ cases = {
     ],
     "rebuild": lambda build: [
         f"{build}/bin/nix",
-        *flake_args,
         "eval",
         "--raw",
         "--impure",
@@ -41,7 +38,6 @@ cases = {
     ],
     "parse": lambda build: [
         f"{build}/bin/nix",
-        *flake_args,
         "eval",
         "-f",
         "bench/nixpkgs/pkgs/development/haskell-modules/hackage-packages.nix",
@@ -75,6 +71,11 @@ arg_parser.add_argument(
     action='store_true',
     help='Run a temporary daemon for the benchmark instead of using a local store directly',
 )
+arg_parser.add_argument(
+    '--protocol',
+    type=str,
+    default='legacy',
+)
 args = arg_parser.parse_args()
 if len(args.builds) < 1:
     raise ValueError("need at least one build directory to benchmark")
@@ -92,9 +93,9 @@ def make_full_command(build, case):
     cmd = " ".join(map(shlex.quote, cases[case](build)))
     if args.daemon:
         return " ".join([
-            f"{build}/bin/nix --extra-experimental-features nix-command daemon &",
+            f"{build}/bin/nix daemon &",
             "trap 'kill %1' EXIT;",
-            f"NIX_REMOTE=daemon {cmd}",
+            f"NIX_REMOTE='daemon?protocol={args.protocol}' {cmd}",
         ])
     else:
         return cmd
@@ -106,7 +107,7 @@ def bench_walltime(env):
                 "taskset", "-c", "2,3",
                 "chrt", "-f","50",
                 *[
-                    "hyperfine", "--warmup", "2", "--runs", "10",
+                    "hyperfine", "--warmup", "2", "--runs", "10", "-S",
                     "--export-json", f"bench/bench-{case}-{build}.json",
                     "--export-markdown", f"bench/bench-{case}-{build}.md",
                     "--", make_full_command(build, case),
@@ -122,13 +123,13 @@ def bench_walltime(env):
         for result in results:
             print(result["command"])
             print("-" * min(80,len(result["command"])))
-            def attr_rounded(attr):
-                return f"{result[attr]:.3f}"
+            def attr_rounded(attr, of="wall_clock"):
+                return f"{result["summary"][f"time_{of}"][attr]:.3f}"
             print("  mean:    ", attr_rounded("mean"), "±", attr_rounded("stddev"))
-            print("            user:",  attr_rounded("user"), "| system", attr_rounded("system"))
+            print("            user:",  attr_rounded("mean", "user"), "| system", attr_rounded("mean", "system"))
             print("  median:  ", attr_rounded("median"))
             print("  range:   ", attr_rounded("min") + "s.." + attr_rounded("max")+"s")
-            print("  relative:", f"{result["mean"]/results[0]["mean"]:.3f}")
+            print("  relative:", f"{result["summary"]["time_wall_clock"]["mean"]/results[0]["summary"]["time_wall_clock"]["mean"]:.3f}")
             print("\n")
 
 
@@ -223,11 +224,12 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     ], check=True)
     subenv = os.environ.copy()
     subenv["NIX_CONF_DIR"] = "/var/empty"
+    subenv["NIX_CONFIG"] = "experimental-features = nix-command flakes rpc-sockets\n"
     subenv["NIX_REMOTE"] = tmp_dir
     subenv["NIX_PATH"] = ":".join([
         "nixpkgs=bench/nixpkgs",
     ])
-    subenv["NIX_DAEMON_SOCKET_PATH"] = f"{tmp_dir}/daemon"
+    subenv["LIX_DAEMON_SOCKET_DIR"] = f"{tmp_dir}/daemon"
 
     for mode in args.mode:
         if mode == "walltime":
