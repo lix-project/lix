@@ -109,11 +109,10 @@
 
     versionJson = builtins.fromJSON (builtins.readFile ./version.json);
 
-    boehmgc-nix = (boehmgc.override { enableLargeConfig = true; }).overrideAttrs (oldAttrs: {
-      /*
-        TODO: Use the `initialMarkStackSize` override when
-        https://github.com/NixOS/nixpkgs/pull/439943 hits a stable branch
+    boehmgc-nix = boehmgc.override {
+      enableLargeConfig = true;
 
+      /*
         Increase the initial mark stack size to avoid stack
         overflows, since these inhibit parallel marking (see
         GC_mark_some()). To check whether the mark stack is too
@@ -121,8 +120,8 @@
         such as `Mark stack overflow`, `No room to copy back mark
         stack`, and `Grew mark stack to ... frames`.
       */
-      NIX_CFLAGS_COMPILE = (oldAttrs.NIX_CFLAGS_COMPILE or "") + " -DINITIAL_MARK_STACK_SIZE=1048576";
-    });
+      initialMarkStackSize = 1048576;
+    };
 
     # Avoid a bunch of build closure of the tracer, we just need the dtrace
     # generator.
