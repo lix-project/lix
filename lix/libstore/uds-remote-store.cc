@@ -489,13 +489,7 @@ try {
     auto stream = TRY_AWAIT_RPC(req.send()).getResult();
 
     auto copier = copyNAR(nar);
-    constexpr size_t BUF_SIZE = 65536;
-    auto buf = std::make_unique<char[]>(BUF_SIZE);
-    while (auto r = TRY_AWAIT(copier->read(buf.get(), BUF_SIZE))) {
-        auto feedReq = stream.feedRequest();
-        RPC_FILL(feedReq, setRaw, std::string_view(buf.get(), *r));
-        TRY_AWAIT_RPC(feedReq.send());
-    }
+    TRY_AWAIT(rpc::feedTo(*copier, stream));
 
     TRY_AWAIT_RPC(stream.finalizeRequest().send());
     co_return result::success();
@@ -791,13 +785,7 @@ try {
 
     auto stream = TRY_AWAIT_RPC(req.send()).getResult();
 
-    constexpr size_t BUF_SIZE = 65536;
-    auto buf = std::make_unique<char[]>(BUF_SIZE);
-    while (auto r = TRY_AWAIT(dump.read(buf.get(), BUF_SIZE))) {
-        auto req = stream.feedRequest();
-        RPC_FILL(req, setRaw, std::string_view(buf.get(), *r));
-        TRY_AWAIT_RPC(req.send());
-    }
+    TRY_AWAIT(rpc::feedTo(dump, stream));
 
     auto res = TRY_AWAIT_RPC(stream.finalizeRequest().send());
     co_return make_ref<ValidPathInfo>(from(res.getResult(), *this));

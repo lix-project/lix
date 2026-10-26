@@ -12,6 +12,7 @@
 #include "lix/libutil/hash.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/types-rpc.hh"
+#include <capnp/blob.h>
 
 namespace nix::rpc {
 namespace daemon {
@@ -509,4 +510,34 @@ struct Fill<daemon::LegacyProtocol::KeyedBuildResult, nix::KeyedBuildResult>
         LIX_RPC_FILL_STRUCT(b, initPath, res.path, args...);
     }
 };
+
+inline kj::Promise<Result<void>> feedTo(AsyncInputStream & from, auto & to)
+try {
+    constexpr size_t BUF_SIZE = size_t(64) * 1024; // capnp allocates per-message buffers at around this size
+    while (true) {
+        auto req = to.feedRequest();
+        req.initRaw(BUF_SIZE);
+        auto buf = req.disownRaw();
+        size_t used = 0;
+
+        while (auto r = TRY_AWAIT(from.read(buf.get().begin() + used, BUF_SIZE - used))) {
+            used += *r;
+            if (used == BUF_SIZE) {
+                break;
+            }
+        }
+
+        if (used > 0) {
+            buf.truncate(used);
+            req.adoptRaw(std::move(buf));
+            TRY_AWAIT_RPC(req.send());
+        }
+
+        if (used < BUF_SIZE) {
+            co_return result::success();
+        }
+    }
+} catch (...) {
+    co_return result::current_exception();
+}
 }
