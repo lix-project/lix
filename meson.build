@@ -35,7 +35,7 @@
 project('lix', 'cpp', 'rust',
   # NOTE: when bumping this, remember to also bump meson_version in subprojects.
   meson_version : '>=1.9.0',
-  version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)$VERSION_SUFFIX', check : true).stdout().strip(),
+  version : run_command('bash', '-c', 'echo -n $(jq -r .version < ./version.json)-$VERSION_SUFFIX', check : true).stdout().strip(),
   default_options : [
     'cpp_std=c++23',
     'rust_std=2021',

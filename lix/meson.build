@@ -1,5 +1,5 @@
 # Cursed, but I don't think there's another way to get this environment variable.
-lix_suffix = run_command('bash', '-c', 'echo -n "$VERSION_SUFFIX"', check : true).stdout().strip()
+lix_suffix = run_command('bash', '-c', 'echo -n "-$VERSION_SUFFIX"', check : true).stdout().strip()
 lix_version_parts = meson.project_version().split('.')
 lix_major = lix_version_parts[0]
 lix_minor = lix_version_parts[1]
