@@ -89,6 +89,10 @@ option('profile-dir', type : 'string', value : 'etc/profile.d',
   description : 'the path to install shell profile files',
 )
 
+option('devdata-dir', type : 'string', value: 'share/lix',
+  description : 'Data-dir, but for development artifacts, e.g. RPC descriptions.'
+)
+
 option('libexec-dir', type : 'string', value : 'libexec',
   description : 'path to install helper executables in',
 )

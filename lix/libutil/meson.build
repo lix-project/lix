@@ -325,6 +325,12 @@ libutil_rpc_schemas = files(
   # keep-sorted end
 )
 
+install_data(
+  libutil_rpc_schemas,
+  install_dir : devdata_dir / 'rpc/lix/libutil',
+  preserve_path : true,
+)
+
 foreach rpc : libutil_rpc_schemas
   rpc = custom_target(
     command : [

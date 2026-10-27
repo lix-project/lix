@@ -18,6 +18,12 @@ libstore_rpc_files = files(
   # keep-sorted end
 )
 
+install_data(
+  libstore_rpc_files,
+  install_dir : devdata_dir / 'rpc/lix/libstore',
+  preserve_path : true,
+)
+
 foreach rpc_file : libstore_rpc_files
   libstore_rpc += custom_target(
     command : [

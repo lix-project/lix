@@ -1,6 +1,8 @@
 prefix=@prefix@
 libdir=@libdir@
 includedir=@includedir@
+rpcdir=@rpcdir@
+rpcroot=@rpcroot@
 
 Name: Lix libstore
 Description: Lix Package Manager (libstore)

@@ -127,6 +127,8 @@ foreach lib : [ 'util', 'store', 'fetchers', 'expr', 'main', 'cmd' ]
       'prefix' : prefix,
       'libdir' : libdir,
       'includedir' : includedir,
+      'rpcdir' : devdata_dir / 'rpc/lix' / f'lib@lib@',
+      'rpcroot' : devdata_dir / 'rpc',
       'PACKAGE_VERSION' : meson.project_version(),
     },
   )

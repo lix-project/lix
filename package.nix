@@ -418,7 +418,10 @@ stdenv.mkDerivation (finalAttrs: {
         sanitize != null
       ) "-Db_sanitize=${builtins.concatStringsSep "," sanitize}";
     in
-    lib.optionals hostPlatform.isLinux [
+    [
+      "-Ddevdata-dir=${placeholder "dev"}/share/lix"
+    ]
+    ++ lib.optionals hostPlatform.isLinux [
       # You'd think meson could just find this in PATH, but busybox is in buildInputs,
       # which don't actually get added to PATH. And buildInputs is correct over
       # nativeBuildInputs since this should be a busybox executable on the host.
