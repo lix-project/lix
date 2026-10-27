@@ -22,20 +22,13 @@ in {
       services.gitea.enable = true;
       services.gitea.settings.service.DISABLE_REGISTRATION = true;
       services.gitea.settings.log.LEVEL = "Info";
+      services.gitea.settings.server.ROOT_URL = "http://localhost:3000/";
       services.gitea.settings.database.LOG_SQL = false;
       services.openssh.enable = true;
       networking.firewall.allowedTCPPorts = [ 3000 ];
       environment.systemPackages = [ pkgs.git pkgs.gitea ];
 
       users.users.root.openssh.authorizedKeys.keys = [clientPublicKey];
-
-      # TODO: remove this after updating to nixos-23.11
-      nixpkgs.pkgs = lib.mkForce (import nixpkgs {
-        inherit system;
-        config.permittedInsecurePackages = [
-          "gitea-1.19.4"
-        ];
-      });
     };
     client = { pkgs, ... }: {
       environment.systemPackages = [ pkgs.git ];
