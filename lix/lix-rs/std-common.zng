@@ -112,6 +112,10 @@ mod ::std::result {
     type Result<(), Box<dyn Error>> {
         #layout_conservative(size = 16, align = 8);
     }
+
+    type Result<&str, ::rootcause::Report> {
+        #layout_conservative(size = 16, align = 8);
+    }
 }
 
 mod ::std::slice {

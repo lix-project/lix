@@ -146,15 +146,15 @@ static Machine parseBuilderLine(const std::string & line, const std::string & th
     }
 
     return Machine::new_(
-        rust::to_string(storeUri),
-        rust::to_string(storeUri),
+        rust::to_string(storeUri).to_owned(),
+        rust::to_string(storeUri).to_owned(),
         rust::to_hash_set(systemTypes),
-        rust::to_string(sshKey),
+        rust::to_string(sshKey).to_owned(),
         maxJobs,
         speedFactor,
         rust::to_hash_set(supportedFeatures),
         rust::to_hash_set(mandatoryFeatures),
-        rust::to_string(sshPublicHostKey),
+        rust::to_string(sshPublicHostKey).to_owned(),
         true
     );
 }
@@ -181,8 +181,9 @@ Machines getMachines()
     auto const builders = settings.builders;
     auto const thisSystem = settings.thisSystem;
 
-    auto machinesResult =
-        rust::lix::machines::get_machines(rust::to_string(builders.get()), rust::to_string(thisSystem.get()));
+    auto machinesResult = rust::lix::machines::get_machines(
+        rust::to_string(builders.get()).to_owned(), rust::to_string(thisSystem.get()).to_owned()
+    );
 
     return match_result(
         std::move(machinesResult),
@@ -205,11 +206,11 @@ Result<Vec<lix::machines::Machine>, String> parseBuilderLines(Ref<Str> setting, 
     try {
         return res_t::Ok(nix::machines_legacy_parsing::getMachines(builders, thisSys));
     } catch (nix::FormatError & e) {
-        return res_t::Err(to_string(nix::fmt("FormatError: %s", e.what())));
+        return res_t::Err(to_string_lossy(nix::fmt("FormatError: %s", e.what())));
     } catch (nix::UsageError & e) {
-        return res_t::Err(to_string(nix::fmt("UsageError: %s", e.what())));
+        return res_t::Err(to_string_lossy(nix::fmt("UsageError: %s", e.what())));
     } catch (::std::exception & e) { // NOLINT(lix-foreign-exceptions)
-        return res_t::Err(to_string(nix::fmt("UnknownException: %s", e.what())));
+        return res_t::Err(to_string_lossy(nix::fmt("UnknownException: %s", e.what())));
     }
 }
 

@@ -29,4 +29,5 @@ type str {
     fn len(&self) -> usize;
     fn starts_with(&self, &str) -> bool;
     fn is_empty(&self) -> bool;
+    fn to_owned(&self) -> ::std::string::String;
 }

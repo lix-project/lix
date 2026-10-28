@@ -20,7 +20,9 @@ try {
 
     auto result = std::vec::Vec<std::string::String>::new_();
     for (auto & possible : self.cpp().completePrefix(s)) {
-        result.push(rust::to_string(possible));
+        // rustyline only supports strings (which makes sense). we could probably escape things
+        // somehow, but that seems like a lot of work for something that's probably rarely used
+        result.push(rust::to_string_lossy(possible));
     }
     return result;
 } catch (...) {
@@ -41,7 +43,7 @@ void ReadlineLikeInteracter::init(detail::ReplCompleterMixin * repl)
         logWarning(e.info());
     }
 
-    auto rl = repl::Rustyline::new_(rust::to_string(historyFile).as_str(), *repl);
+    auto rl = repl::Rustyline::new_(rust::to_os_str(historyFile), *repl);
     match_result(
         std::move(rl),
         [&](repl::Rustyline ok) { this->rl = std::make_unique<repl::Rustyline>(std::move(ok)); },

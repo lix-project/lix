@@ -6,6 +6,8 @@
 #include "lix/libutil/types.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/unix-domain-socket.hh"
+#include "lix/lix-rs/main.gen.hh"
+#include "lix/lix-rs/utils.hh"
 #include "tests/test-data.hh"
 
 #include <cstdint>
@@ -884,5 +886,38 @@ TEST(base16Size, works) {
         ASSERT_EQ(unescapeNul("\\a"), "a");
         // escape of end-of-string is dropped silently
         ASSERT_EQ(unescapeNul("a\\"), "a");
+    }
+
+    TEST(rust, toString)
+    {
+        try {
+            rust::to_string(
+                "caaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA"
+                "\xff"
+                "Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbc"
+            );
+            ASSERT_FALSE("unreachable");
+        } catch (Error & e) {
+            ASSERT_TRUE(e.msg().contains("invalid utf-8 sequence"));
+            ASSERT_TRUE(e.msg().contains(
+                "around: "
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaA�Bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                "bbbbbbbb"
+            ));
+        }
+    }
+
+    TEST(rust, toStringLossy)
+    {
+        ASSERT_EQ(
+            to_std_string(
+                rust::to_string_lossy(
+                    "a\xff"
+                    "b"
+                )
+            ),
+            "a\xEF\xBF\xBD"
+            "b"
+        );
     }
 }

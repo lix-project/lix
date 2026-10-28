@@ -490,7 +490,7 @@ std::string formatExceptions(std::string_view global_context, const std::list<st
 {
     return to_std_string(
         rust::lix::errors::format_exception_messages_as_rootcause_report(
-            rust::to_string(global_context), rust::to_vec(messages)
+            rust::to_string_lossy(global_context), rust::to_vec(messages)
         )
             .to_string()
     );

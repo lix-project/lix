@@ -73,10 +73,15 @@ Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept
     return std::num::NonZeroU32::new_(value);
 }
 
-String to_string(::std::string_view sv)
+String to_string_lossy(::std::string_view sv)
 {
     auto slice = lix::ffi::from_raw_parts_u8(nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size());
     return String::from_utf8_lossy(slice).into_owned();
+}
+
+Ref<Str> to_string(::std::string_view sv)
+{
+    return unwrap(lix::ffi::to_string(nix::charptr_cast<const uint8_t *>(sv.begin()), sv.size()));
 }
 
 Ref<std::path::Path> to_path(const nix::CanonPath & path)
@@ -98,7 +103,7 @@ std::collections::hash_set::HashSet<String> to_hash_set(const ::std::set<::std::
 {
     auto hs = std::collections::hash_set::HashSet<String>::new_();
     for (auto & str : s) {
-        hs.insert(to_string(str));
+        hs.insert(to_string(str).to_owned());
     }
     return hs;
 }
@@ -107,7 +112,7 @@ std::vec::Vec<String> to_vec(const ::std::vector<::std::string> & s)
 {
     auto v = std::vec::Vec<String>::with_capacity(s.size());
     for (auto & str : s) {
-        v.push(to_string(str));
+        v.push(to_string(str).to_owned());
     }
     return v;
 }
@@ -116,7 +121,7 @@ std::vec::Vec<String> to_vec(const ::std::list<::std::string> & s)
 {
     auto v = std::vec::Vec<String>::with_capacity(s.size());
     for (auto & str : s) {
-        v.push(to_string(str));
+        v.push(to_string(str).to_owned());
     }
     return v;
 }
@@ -126,7 +131,7 @@ to_hash_map(const ::std::map<::std::string, ::std::string> & m)
 {
     auto hm = std::collections::hash_map::HashMap<String, String>::new_();
     for (auto & [k, v] : m) {
-        hm.insert(to_string(k), to_string(v));
+        hm.insert(to_string(k).to_owned(), to_string(v).to_owned());
     }
     return hm;
 }
@@ -185,9 +190,9 @@ rootcause::Report lix::errors::current_exception_as_report()
     try {
         throw; // NOLINT(lix-foreign-exceptions)
     } catch (::std::exception & e) { // NOLINT(lix-foreign-exceptions)
-        return errors::report_from_string_unhooked(to_string(e.what()));
+        return errors::report_from_string_unhooked(to_string_lossy(e.what()));
     } catch (...) {
-        return errors::report_from_string_unhooked(to_string("unknown exception type"));
+        return errors::report_from_string_unhooked(to_string_lossy("unknown exception type"));
     }
 }
 

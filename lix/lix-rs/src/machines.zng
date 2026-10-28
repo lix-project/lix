@@ -21,10 +21,10 @@ mod crate::machines {
 		field ssh_public_host_key (offset=auto, type=String);
 		field enabled (offset=auto, type=bool);
 
-		fn system_supported(&self, &String) -> bool;
+		fn system_supported(&self, &str) -> bool;
 		fn all_supported(&self, &HashSet<String>) -> bool;
 		fn mandatory_met(&self, &HashSet<String>) -> bool;
-		fn is_eligible(&self, &String, &HashSet<String>) -> bool;
+		fn is_eligible(&self, &str, &HashSet<String>) -> bool;
 
 		fn clone(&self) -> Machine use ::std::clone::Clone;
 

@@ -1,4 +1,5 @@
 mod crate::repl {
+    use ::std::ffi::OsStr as OsStr;
     use ::std::string::String as String;
     use ::std::vec::Vec as Vec;
     use ::std::error::Error as Error;
@@ -37,7 +38,7 @@ mod crate::repl {
     type Rustyline {
         #heap_allocated;
 
-        fn new(&str, &CxxCompleter) -> Result<Rustyline, Box<dyn Error>>;
+        fn new(&OsStr, &CxxCompleter) -> Result<Rustyline, Box<dyn Error>>;
         fn ask(&mut self, &str) -> Result<String, ReadlineError>;
         fn write_history(&mut self);
     }

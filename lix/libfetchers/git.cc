@@ -76,9 +76,7 @@ try {
 
     std::string_view line = output;
     auto line_rs = rust::to_string(line.substr(0, line.find("\n")));
-    if (const auto parseResult =
-            to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(line_rs.as_str()).ok()))
-    {
+    if (const auto parseResult = to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(line_rs).ok())) {
         auto target = to_std_string(parseResult->target.as_str());
         if (rust::lix::fetchers::git::Kind::Object::check(parseResult->kind)) {
             debug("resolved HEAD rev '%s' for repo '%s'", target, path);
@@ -396,7 +394,7 @@ static kj::Promise<Result<std::optional<ObjectFormat>>> detectObjectFormat(const
 try {
     auto output = TRY_AWAIT(runProgram("git", true, {"ls-remote", "--", url}, true));
 
-    auto opt = to_std(rust::lix::fetchers::git::detect_object_format(rust::to_string(output).as_str()));
+    auto opt = to_std(rust::lix::fetchers::git::detect_object_format(rust::to_string(output)));
 
     if (!opt) {
         co_return std::nullopt;

@@ -207,7 +207,8 @@ to_std(const std::collections::hash_map::HashMap<String, std::option::Option<Str
 std::num::NonZeroU32 to_nonzero_unchecked(uint32_t value) noexcept;
 Option<std::num::NonZeroU32> to_nonzero(uint32_t value) noexcept;
 
-String to_string(::std::string_view sv);
+String to_string_lossy(::std::string_view sv);
+Ref<Str> to_string(::std::string_view sv);
 
 Ref<std::path::Path> to_path(const nix::CanonPath & path);
 Ref<std::path::Path> to_path(const ::std::filesystem::path & path);
@@ -478,7 +479,8 @@ CxxFuture<R> to_rust(kj::Promise<::nix::Result<R>> p)
     // in doing so lets us use methods we *cannot even know of* at this point.
     using promise_t = ::std::enable_if_t<((void) sizeof(p), true), CxxPromise>;
     using res_t = Result<R, rootcause::Report>;
-    using to_error_t = decltype([](auto arg) { return errors::report_from_string_unhooked(to_string(arg)); });
+    using to_error_t =
+        decltype([](auto arg) { return errors::report_from_string_unhooked(to_string_lossy(arg)); });
 
     auto state = CxxFutureState<R>::new_();
     auto resolve = [f = state.add_ref()](auto result) {

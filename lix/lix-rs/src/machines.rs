@@ -115,7 +115,7 @@ impl Machine {
     }
     /// Whether `system` is either `"builtin"` or in
     /// `systemTypes`.
-    pub fn system_supported(&self, system: &String) -> bool {
+    pub fn system_supported(&self, system: &str) -> bool {
         system == "builtin" || self.system_types.contains(system)
     }
 
@@ -142,7 +142,7 @@ impl Machine {
         )
     }
 
-    pub fn is_eligible(&self, needed_system: &String, required_features: &HashSet<String>) -> bool {
+    pub fn is_eligible(&self, needed_system: &str, required_features: &HashSet<String>) -> bool {
         self.enabled
             && self.system_supported(needed_system)
             && self.all_supported(required_features)

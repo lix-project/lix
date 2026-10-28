@@ -490,9 +490,8 @@ struct SourceHutInputScheme : GitArchiveInputScheme
             std::string line;
             getline(is, line);
 
-            auto remoteLine = to_std(
-                rust::lix::fetchers::git::LsRemoteRefLine::try_from(rust::to_string(line).as_str()).ok()
-            );
+            auto remoteLine =
+                to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(rust::to_string(line)).ok());
             if (!remoteLine) {
                 throw BadURL("in '%d', couldn't resolve HEAD ref '%d'", input.to_string(), ref);
             }
@@ -510,10 +509,9 @@ struct SourceHutInputScheme : GitArchiveInputScheme
         std::string line;
         std::optional<std::string> id;
         while(!id && getline(is, line)) {
-            auto parsedLine = to_std(
-                rust::lix::fetchers::git::LsRemoteRefLine::try_from(rust::to_string(line).as_str()).ok()
-            );
-            if (parsedLine && (*parsedLine).matches_ref_uri(rust::to_string(refUri).as_str())) {
+            auto parsedLine =
+                to_std(rust::lix::fetchers::git::LsRemoteRefLine::try_from(rust::to_string(line)).ok());
+            if (parsedLine && (*parsedLine).matches_ref_uri(rust::to_string(refUri))) {
                 id = to_std_string(parsedLine->target.as_str());
             }
         }

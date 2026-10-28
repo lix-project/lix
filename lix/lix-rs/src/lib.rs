@@ -19,6 +19,8 @@ mod ffi {
         slice::from_raw_parts,
     };
 
+    use rootcause::{report, Report};
+
     /// Single-lifetime wrapper for tuples of references. zngur does not handle multiple
     /// lifetimes very well, but since lifetimes at the interface are lies anyway we can
     /// force them to the smallest valid combined lifetime to use in the zngur ffi spec.
@@ -26,6 +28,18 @@ mod ffi {
 
     pub unsafe fn from_raw_parts_u8<'a>(data: *const u8, length: usize) -> &'a [u8] {
         from_raw_parts(data, length)
+    }
+
+    pub unsafe fn to_string<'a>(data: *const u8, length: usize) -> Result<&'a str, Report> {
+        str::from_utf8(from_raw_parts(data, length)).map_err(|e| {
+            report!(e)
+                .attach({
+                    let lossy = String::from_utf8_lossy(from_raw_parts(data, length));
+                    let chars = lossy.chars().skip(e.valid_up_to().saturating_sub(50)).take(100);
+                    format!("around: {}", chars.collect::<String>())
+                })
+                .into_dynamic()
+        })
     }
 
     pub unsafe fn to_os_str<'a>(data: *const u8, length: usize) -> &'a OsStr {
