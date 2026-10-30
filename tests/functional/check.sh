@@ -42,8 +42,7 @@ test_custom_build_dir() {
   [ "$status" = "100" ]
   [[ 1 == "$(count "$customBuildDir/"*)" ]]
   local buildDir="$customBuildDir/"*
-  grep $checkBuildId $buildDir/checkBuildId \
-    || grep $checkBuildId $buildDir/b/checkBuildId
+  grep $checkBuildId $buildDir/b/checkBuildId
 }
 test_custom_build_dir
 
