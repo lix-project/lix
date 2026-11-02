@@ -139,14 +139,10 @@ let
   inherit (lib) fileset;
   inherit (stdenv) hostPlatform buildPlatform;
 
+  versionSuffixNoDash = lib.removePrefix "-" versionSuffix;
   version =
     __forDefaults.versionJson.version
-    + (
-      if versionSuffix != "" && !(lib.hasPrefix "-" versionSuffix) then
-        "-${versionSuffix}"
-      else
-        versionSuffix
-    );
+    + (if versionSuffixNoDash != "" then "-${versionSuffixNoDash}" else versionSuffixNoDash);
 
   # This could be the dtrace for macOS, etc, but I have no idea if it is
   # packaged or if it works.
@@ -628,7 +624,7 @@ stdenv.mkDerivation (finalAttrs: {
     # would be in a Cargo registry cache.
     MESON_PACKAGE_CACHE_DIR = finalAttrs.cargoDeps;
 
-    VERSION_SUFFIX = versionSuffix;
+    VERSION_SUFFIX = versionSuffixNoDash;
   }
   # Putting these here means they'll also work in the dev shell.
   // cargoConfigEnv
