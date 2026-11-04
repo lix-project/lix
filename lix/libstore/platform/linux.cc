@@ -441,16 +441,91 @@ try {
 
 #if HAVE_SECCOMP
 
-static void allowSyscall(scmp_filter_ctx ctx, int syscall) {
-    if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, syscall, 0) != 0)
-        throw SysError("unable to add seccomp rule");
+/**
+ * Look up the syscall number of a syscall name.
+ *
+ * The syscall lists below are written in terms of syscall names instead of
+ * SCMP_SYS() constants because the kernel headers we compile against and the
+ * syscall table of the libseccomp we link against are versioned independently.
+ */
+static int syscallNumber(const std::string & name)
+{
+    int nr = seccomp_syscall_resolve_name(requireCString(name));
+    if (nr == __NR_SCMP_ERROR) {
+        throw Error(
+            "libseccomp does not know the syscall '%1%', so Lix cannot set up its "
+            "syscall filter. This build of Lix needs a newer libseccomp.",
+            name
+        );
+    }
+    return nr;
 }
 
-#define ALLOW_CHMOD_IF_SAFE(ctx, syscall, modePos) \
-    if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, syscall, 1, SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISUID | S_ISGID, 0)) != 0 || \
-        seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), syscall, 1, SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISUID, S_ISUID)) != 0 || \
-        seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), syscall, 1, SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISGID, S_ISGID)) != 0) \
-        throw SysError("unable to add seccomp rule");
+static void addRule(
+    scmp_filter_ctx ctx,
+    uint32_t action,
+    const char * name,
+    const struct scmp_arg_cmp * args,
+    unsigned int argsCount
+)
+{
+    int rc = seccomp_rule_add_array(ctx, action, syscallNumber(name), argsCount, args);
+    if (rc != 0) {
+        throw Error(
+            "unable to add a rule for the syscall '%s' to the seccomp filter "
+            "(libseccomp returned %i)",
+            name,
+            rc
+        );
+    }
+}
+
+/*
+ * We do not use SCMP_SYS() because macro arguments are expanded before use.
+ * libc headers define some syscall names as macros, e.g. musl: prlimit64 is prlimit,
+ * stat64 is stat, etc.
+ *
+ * It would therefore check the wrong syscall or fail to compile.
+ *
+ * We do the paste in each of the macros below and not in a helper macro due to that.
+ */
+#define ALLOW_SYSCALL(ctx, name)                         \
+    do {                                                 \
+        static_assert(                                   \
+            __SNR_##name != __NR_SCMP_ERROR,             \
+            #name                                        \
+            " is not known to "                          \
+            "this libseccomp"                            \
+        );                                               \
+        addRule(ctx, SCMP_ACT_ALLOW, #name, nullptr, 0); \
+    } while (0)
+
+#define DENY_SYSCALL(ctx, name, errno_)                          \
+    do {                                                         \
+        static_assert(                                           \
+            __SNR_##name != __NR_SCMP_ERROR,                     \
+            #name                                                \
+            " is not known to "                                  \
+            "this libseccomp"                                    \
+        );                                                       \
+        addRule(ctx, SCMP_ACT_ERRNO(errno_), #name, nullptr, 0); \
+    } while (0)
+
+#define ALLOW_CHMOD_IF_SAFE(ctx, name, modePos)                                                         \
+    do {                                                                                                \
+        const struct scmp_arg_cmp safeMode = SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISUID | S_ISGID, 0); \
+        const struct scmp_arg_cmp setuidMode = SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISUID, S_ISUID);   \
+        const struct scmp_arg_cmp setgidMode = SCMP_A##modePos(SCMP_CMP_MASKED_EQ, S_ISGID, S_ISGID);   \
+        static_assert(                                                                                  \
+            __SNR_##name != __NR_SCMP_ERROR,                                                            \
+            #name                                                                                       \
+            " is not known to "                                                                         \
+            "this libseccomp"                                                                           \
+        );                                                                                              \
+        addRule(ctx, SCMP_ACT_ALLOW, #name, &safeMode, 1);                                              \
+        addRule(ctx, SCMP_ACT_ERRNO(EPERM), #name, &setuidMode, 1);                                     \
+        addRule(ctx, SCMP_ACT_ERRNO(EPERM), #name, &setgidMode, 1);                                     \
+    } while (0)
 
 static std::vector<struct sock_filter> compileSyscallFilter()
 {
@@ -496,538 +571,536 @@ static std::vector<struct sock_filter> compileSyscallFilter()
     // This list is intended for machine consumption.
     // Please keep its format, order and BEGIN/END markers.
     //
-    // Currently, it is up to date with libseccomp 2.5.5 and glibc 2.39.
-    // Run check-syscalls to determine which new syscalls should be added.
+    // The list must stay in sync with the syscall table of the libseccomp we
+    // link against. Run check-syscalls to determine which new syscalls should
+    // be added.
     // New syscalls must be audited and handled in a way that blocks the following dangerous operations:
     // * Creation of non-empty setuid/setgid files
     // * Creation of extended attributes (including ACLs)
     //
     // BEGIN extract-syscalls
-    allowSyscall(ctx, SCMP_SYS(accept));
-    allowSyscall(ctx, SCMP_SYS(accept4));
-    allowSyscall(ctx, SCMP_SYS(access));
-    allowSyscall(ctx, SCMP_SYS(acct));
-    allowSyscall(ctx, SCMP_SYS(add_key));
-    allowSyscall(ctx, SCMP_SYS(adjtimex));
-    allowSyscall(ctx, SCMP_SYS(afs_syscall));
-    allowSyscall(ctx, SCMP_SYS(alarm));
-    allowSyscall(ctx, SCMP_SYS(arch_prctl));
-    allowSyscall(ctx, SCMP_SYS(arm_fadvise64_64));
-    allowSyscall(ctx, SCMP_SYS(arm_sync_file_range));
+    ALLOW_SYSCALL(ctx, accept);
+    ALLOW_SYSCALL(ctx, accept4);
+    ALLOW_SYSCALL(ctx, access);
+    ALLOW_SYSCALL(ctx, acct);
+    ALLOW_SYSCALL(ctx, add_key);
+    ALLOW_SYSCALL(ctx, adjtimex);
+    ALLOW_SYSCALL(ctx, afs_syscall);
+    ALLOW_SYSCALL(ctx, alarm);
+    ALLOW_SYSCALL(ctx, arch_prctl);
+    ALLOW_SYSCALL(ctx, arm_fadvise64_64);
+    ALLOW_SYSCALL(ctx, arm_sync_file_range);
     // skip atomic_barrier (unsupported architecture)
     // skip atomic_cmpxchg_32 (unsupported architecture)
-    allowSyscall(ctx, SCMP_SYS(bdflush));
-    allowSyscall(ctx, SCMP_SYS(bind));
-    allowSyscall(ctx, SCMP_SYS(bpf));
-    allowSyscall(ctx, SCMP_SYS(break));
-    allowSyscall(ctx, SCMP_SYS(breakpoint));
-    allowSyscall(ctx, SCMP_SYS(brk));
-    allowSyscall(ctx, SCMP_SYS(cachectl));
-    allowSyscall(ctx, SCMP_SYS(cacheflush));
-    allowSyscall(ctx, SCMP_SYS(cachestat));
-    allowSyscall(ctx, SCMP_SYS(capget));
-    allowSyscall(ctx, SCMP_SYS(capset));
-    allowSyscall(ctx, SCMP_SYS(chdir));
+    ALLOW_SYSCALL(ctx, bdflush);
+    ALLOW_SYSCALL(ctx, bind);
+    ALLOW_SYSCALL(ctx, bpf);
+    ALLOW_SYSCALL(ctx, break);
+    ALLOW_SYSCALL(ctx, breakpoint);
+    ALLOW_SYSCALL(ctx, brk);
+    ALLOW_SYSCALL(ctx, cachectl);
+    ALLOW_SYSCALL(ctx, cacheflush);
+    ALLOW_SYSCALL(ctx, cachestat);
+    ALLOW_SYSCALL(ctx, capget);
+    ALLOW_SYSCALL(ctx, capset);
+    ALLOW_SYSCALL(ctx, chdir);
     // skip chmod (dangerous)
-    allowSyscall(ctx, SCMP_SYS(chown));
-    allowSyscall(ctx, SCMP_SYS(chown32));
-    allowSyscall(ctx, SCMP_SYS(chroot));
-    allowSyscall(ctx, SCMP_SYS(clock_adjtime));
-    allowSyscall(ctx, SCMP_SYS(clock_adjtime64));
-    allowSyscall(ctx, SCMP_SYS(clock_getres));
-    allowSyscall(ctx, SCMP_SYS(clock_getres_time64));
-    allowSyscall(ctx, SCMP_SYS(clock_gettime));
-    allowSyscall(ctx, SCMP_SYS(clock_gettime64));
-    allowSyscall(ctx, SCMP_SYS(clock_nanosleep));
-    allowSyscall(ctx, SCMP_SYS(clock_nanosleep_time64));
-    allowSyscall(ctx, SCMP_SYS(clock_settime));
-    allowSyscall(ctx, SCMP_SYS(clock_settime64));
-    allowSyscall(ctx, SCMP_SYS(clone));
-    allowSyscall(ctx, SCMP_SYS(clone3));
-    allowSyscall(ctx, SCMP_SYS(close));
-    allowSyscall(ctx, SCMP_SYS(close_range));
-    allowSyscall(ctx, SCMP_SYS(connect));
-    allowSyscall(ctx, SCMP_SYS(copy_file_range));
-    allowSyscall(ctx, SCMP_SYS(creat));
-    allowSyscall(ctx, SCMP_SYS(create_module));
-    allowSyscall(ctx, SCMP_SYS(delete_module));
-    allowSyscall(ctx, SCMP_SYS(dup));
-    allowSyscall(ctx, SCMP_SYS(dup2));
-    allowSyscall(ctx, SCMP_SYS(dup3));
-    allowSyscall(ctx, SCMP_SYS(epoll_create));
-    allowSyscall(ctx, SCMP_SYS(epoll_create1));
-    allowSyscall(ctx, SCMP_SYS(epoll_ctl));
-    allowSyscall(ctx, SCMP_SYS(epoll_ctl_old));
-    allowSyscall(ctx, SCMP_SYS(epoll_pwait));
-    allowSyscall(ctx, SCMP_SYS(epoll_pwait2));
-    allowSyscall(ctx, SCMP_SYS(epoll_wait));
-    allowSyscall(ctx, SCMP_SYS(epoll_wait_old));
-    allowSyscall(ctx, SCMP_SYS(eventfd));
-    allowSyscall(ctx, SCMP_SYS(eventfd2));
-    allowSyscall(ctx, SCMP_SYS(execve));
-    allowSyscall(ctx, SCMP_SYS(execveat));
-    allowSyscall(ctx, SCMP_SYS(exit));
-    allowSyscall(ctx, SCMP_SYS(exit_group));
-    allowSyscall(ctx, SCMP_SYS(faccessat));
-    allowSyscall(ctx, SCMP_SYS(faccessat2));
-    allowSyscall(ctx, SCMP_SYS(fadvise64));
-    allowSyscall(ctx, SCMP_SYS(fadvise64_64));
-    allowSyscall(ctx, SCMP_SYS(fallocate));
-    allowSyscall(ctx, SCMP_SYS(fanotify_init));
-    allowSyscall(ctx, SCMP_SYS(fanotify_mark));
-    allowSyscall(ctx, SCMP_SYS(fchdir));
+    ALLOW_SYSCALL(ctx, chown);
+    ALLOW_SYSCALL(ctx, chown32);
+    ALLOW_SYSCALL(ctx, chroot);
+    ALLOW_SYSCALL(ctx, clock_adjtime);
+    ALLOW_SYSCALL(ctx, clock_adjtime64);
+    ALLOW_SYSCALL(ctx, clock_getres);
+    ALLOW_SYSCALL(ctx, clock_getres_time64);
+    ALLOW_SYSCALL(ctx, clock_gettime);
+    ALLOW_SYSCALL(ctx, clock_gettime64);
+    ALLOW_SYSCALL(ctx, clock_nanosleep);
+    ALLOW_SYSCALL(ctx, clock_nanosleep_time64);
+    ALLOW_SYSCALL(ctx, clock_settime);
+    ALLOW_SYSCALL(ctx, clock_settime64);
+    ALLOW_SYSCALL(ctx, clone);
+    ALLOW_SYSCALL(ctx, clone3);
+    ALLOW_SYSCALL(ctx, close);
+    ALLOW_SYSCALL(ctx, close_range);
+    ALLOW_SYSCALL(ctx, connect);
+    ALLOW_SYSCALL(ctx, copy_file_range);
+    ALLOW_SYSCALL(ctx, creat);
+    ALLOW_SYSCALL(ctx, create_module);
+    ALLOW_SYSCALL(ctx, delete_module);
+    ALLOW_SYSCALL(ctx, dup);
+    ALLOW_SYSCALL(ctx, dup2);
+    ALLOW_SYSCALL(ctx, dup3);
+    ALLOW_SYSCALL(ctx, epoll_create);
+    ALLOW_SYSCALL(ctx, epoll_create1);
+    ALLOW_SYSCALL(ctx, epoll_ctl);
+    ALLOW_SYSCALL(ctx, epoll_ctl_old);
+    ALLOW_SYSCALL(ctx, epoll_pwait);
+    ALLOW_SYSCALL(ctx, epoll_pwait2);
+    ALLOW_SYSCALL(ctx, epoll_wait);
+    ALLOW_SYSCALL(ctx, epoll_wait_old);
+    ALLOW_SYSCALL(ctx, eventfd);
+    ALLOW_SYSCALL(ctx, eventfd2);
+    ALLOW_SYSCALL(ctx, execve);
+    ALLOW_SYSCALL(ctx, execveat);
+    ALLOW_SYSCALL(ctx, exit);
+    ALLOW_SYSCALL(ctx, exit_group);
+    ALLOW_SYSCALL(ctx, faccessat);
+    ALLOW_SYSCALL(ctx, faccessat2);
+    ALLOW_SYSCALL(ctx, fadvise64);
+    ALLOW_SYSCALL(ctx, fadvise64_64);
+    ALLOW_SYSCALL(ctx, fallocate);
+    ALLOW_SYSCALL(ctx, fanotify_init);
+    ALLOW_SYSCALL(ctx, fanotify_mark);
+    ALLOW_SYSCALL(ctx, fchdir);
     // skip fchmod (dangerous)
     // skip fchmodat (dangerous)
     // skip fchmodat2 (dangerous)
-    allowSyscall(ctx, SCMP_SYS(fchown));
-    allowSyscall(ctx, SCMP_SYS(fchown32));
-    allowSyscall(ctx, SCMP_SYS(fchownat));
-    allowSyscall(ctx, SCMP_SYS(fcntl));
-    allowSyscall(ctx, SCMP_SYS(fcntl64));
-    allowSyscall(ctx, SCMP_SYS(fdatasync));
-    allowSyscall(ctx, SCMP_SYS(fgetxattr));
-    allowSyscall(ctx, SCMP_SYS(file_getattr));
-    allowSyscall(ctx, SCMP_SYS(file_setattr));
-    allowSyscall(ctx, SCMP_SYS(finit_module));
-    allowSyscall(ctx, SCMP_SYS(flistxattr));
-    allowSyscall(ctx, SCMP_SYS(flock));
-    allowSyscall(ctx, SCMP_SYS(fork));
-    allowSyscall(ctx, SCMP_SYS(fremovexattr));
-    allowSyscall(ctx, SCMP_SYS(fsconfig));
+    ALLOW_SYSCALL(ctx, fchown);
+    ALLOW_SYSCALL(ctx, fchown32);
+    ALLOW_SYSCALL(ctx, fchownat);
+    ALLOW_SYSCALL(ctx, fcntl);
+    ALLOW_SYSCALL(ctx, fcntl64);
+    ALLOW_SYSCALL(ctx, fdatasync);
+    ALLOW_SYSCALL(ctx, fgetxattr);
+    ALLOW_SYSCALL(ctx, file_getattr);
+    ALLOW_SYSCALL(ctx, file_setattr);
+    ALLOW_SYSCALL(ctx, finit_module);
+    ALLOW_SYSCALL(ctx, flistxattr);
+    ALLOW_SYSCALL(ctx, flock);
+    ALLOW_SYSCALL(ctx, fork);
+    ALLOW_SYSCALL(ctx, fremovexattr);
+    ALLOW_SYSCALL(ctx, fsconfig);
     // skip fsetxattr (dangerous)
-    allowSyscall(ctx, SCMP_SYS(fsmount));
-    allowSyscall(ctx, SCMP_SYS(fsopen));
-    allowSyscall(ctx, SCMP_SYS(fspick));
-    allowSyscall(ctx, SCMP_SYS(fstat));
-    allowSyscall(ctx, SCMP_SYS(fstat64));
-    allowSyscall(ctx, SCMP_SYS(fstatat64));
-    allowSyscall(ctx, SCMP_SYS(fstatfs));
-    allowSyscall(ctx, SCMP_SYS(fstatfs64));
-    allowSyscall(ctx, SCMP_SYS(fsync));
-    allowSyscall(ctx, SCMP_SYS(ftime));
-    allowSyscall(ctx, SCMP_SYS(ftruncate));
-    allowSyscall(ctx, SCMP_SYS(ftruncate64));
-    allowSyscall(ctx, SCMP_SYS(futex));
-    allowSyscall(ctx, SCMP_SYS(futex_requeue));
-    allowSyscall(ctx, SCMP_SYS(futex_time64));
-    allowSyscall(ctx, SCMP_SYS(futex_wait));
-    allowSyscall(ctx, SCMP_SYS(futex_waitv));
-    allowSyscall(ctx, SCMP_SYS(futex_wake));
-    allowSyscall(ctx, SCMP_SYS(futimesat));
-    allowSyscall(ctx, SCMP_SYS(getcpu));
-    allowSyscall(ctx, SCMP_SYS(getcwd));
-    allowSyscall(ctx, SCMP_SYS(getdents));
-    allowSyscall(ctx, SCMP_SYS(getdents64));
-    allowSyscall(ctx, SCMP_SYS(getegid));
-    allowSyscall(ctx, SCMP_SYS(getegid32));
-    allowSyscall(ctx, SCMP_SYS(geteuid));
-    allowSyscall(ctx, SCMP_SYS(geteuid32));
-    allowSyscall(ctx, SCMP_SYS(getgid));
-    allowSyscall(ctx, SCMP_SYS(getgid32));
-    allowSyscall(ctx, SCMP_SYS(getgroups));
-    allowSyscall(ctx, SCMP_SYS(getgroups32));
-    allowSyscall(ctx, SCMP_SYS(getitimer));
-    allowSyscall(ctx, SCMP_SYS(get_kernel_syms));
-    allowSyscall(ctx, SCMP_SYS(get_mempolicy));
+    ALLOW_SYSCALL(ctx, fsmount);
+    ALLOW_SYSCALL(ctx, fsopen);
+    ALLOW_SYSCALL(ctx, fspick);
+    ALLOW_SYSCALL(ctx, fstat);
+    ALLOW_SYSCALL(ctx, fstat64);
+    ALLOW_SYSCALL(ctx, fstatat64);
+    ALLOW_SYSCALL(ctx, fstatfs);
+    ALLOW_SYSCALL(ctx, fstatfs64);
+    ALLOW_SYSCALL(ctx, fsync);
+    ALLOW_SYSCALL(ctx, ftime);
+    ALLOW_SYSCALL(ctx, ftruncate);
+    ALLOW_SYSCALL(ctx, ftruncate64);
+    ALLOW_SYSCALL(ctx, futex);
+    ALLOW_SYSCALL(ctx, futex_requeue);
+    ALLOW_SYSCALL(ctx, futex_time64);
+    ALLOW_SYSCALL(ctx, futex_wait);
+    ALLOW_SYSCALL(ctx, futex_waitv);
+    ALLOW_SYSCALL(ctx, futex_wake);
+    ALLOW_SYSCALL(ctx, futimesat);
+    ALLOW_SYSCALL(ctx, getcpu);
+    ALLOW_SYSCALL(ctx, getcwd);
+    ALLOW_SYSCALL(ctx, getdents);
+    ALLOW_SYSCALL(ctx, getdents64);
+    ALLOW_SYSCALL(ctx, getegid);
+    ALLOW_SYSCALL(ctx, getegid32);
+    ALLOW_SYSCALL(ctx, geteuid);
+    ALLOW_SYSCALL(ctx, geteuid32);
+    ALLOW_SYSCALL(ctx, getgid);
+    ALLOW_SYSCALL(ctx, getgid32);
+    ALLOW_SYSCALL(ctx, getgroups);
+    ALLOW_SYSCALL(ctx, getgroups32);
+    ALLOW_SYSCALL(ctx, getitimer);
+    ALLOW_SYSCALL(ctx, get_kernel_syms);
+    ALLOW_SYSCALL(ctx, get_mempolicy);
     // skip getpagesize (unsupported architecture)
-    allowSyscall(ctx, SCMP_SYS(getpeername));
-    allowSyscall(ctx, SCMP_SYS(getpgid));
-    allowSyscall(ctx, SCMP_SYS(getpgrp));
-    allowSyscall(ctx, SCMP_SYS(getpid));
-    allowSyscall(ctx, SCMP_SYS(getpmsg));
-    allowSyscall(ctx, SCMP_SYS(getppid));
-    allowSyscall(ctx, SCMP_SYS(getpriority));
-    allowSyscall(ctx, SCMP_SYS(getrandom));
-    allowSyscall(ctx, SCMP_SYS(getresgid));
-    allowSyscall(ctx, SCMP_SYS(getresgid32));
-    allowSyscall(ctx, SCMP_SYS(getresuid));
-    allowSyscall(ctx, SCMP_SYS(getresuid32));
-    allowSyscall(ctx, SCMP_SYS(getrlimit));
-    allowSyscall(ctx, SCMP_SYS(get_robust_list));
-    allowSyscall(ctx, SCMP_SYS(getrusage));
-    allowSyscall(ctx, SCMP_SYS(getsid));
-    allowSyscall(ctx, SCMP_SYS(getsockname));
-    allowSyscall(ctx, SCMP_SYS(getsockopt));
-    allowSyscall(ctx, SCMP_SYS(get_thread_area));
-    allowSyscall(ctx, SCMP_SYS(gettid));
-    allowSyscall(ctx, SCMP_SYS(gettimeofday));
-    allowSyscall(ctx, SCMP_SYS(get_tls));
-    allowSyscall(ctx, SCMP_SYS(getuid));
-    allowSyscall(ctx, SCMP_SYS(getuid32));
-    allowSyscall(ctx, SCMP_SYS(getxattr));
-    allowSyscall(ctx, SCMP_SYS(getxattrat));
-    allowSyscall(ctx, SCMP_SYS(gtty));
-    allowSyscall(ctx, SCMP_SYS(idle));
-    allowSyscall(ctx, SCMP_SYS(init_module));
-    allowSyscall(ctx, SCMP_SYS(inotify_add_watch));
-    allowSyscall(ctx, SCMP_SYS(inotify_init));
-    allowSyscall(ctx, SCMP_SYS(inotify_init1));
-    allowSyscall(ctx, SCMP_SYS(inotify_rm_watch));
-    allowSyscall(ctx, SCMP_SYS(io_cancel));
-    allowSyscall(ctx, SCMP_SYS(ioctl));
-    allowSyscall(ctx, SCMP_SYS(io_destroy));
-    allowSyscall(ctx, SCMP_SYS(io_getevents));
-    allowSyscall(ctx, SCMP_SYS(ioperm));
-    allowSyscall(ctx, SCMP_SYS(io_pgetevents));
-    allowSyscall(ctx, SCMP_SYS(io_pgetevents_time64));
-    allowSyscall(ctx, SCMP_SYS(iopl));
-    allowSyscall(ctx, SCMP_SYS(ioprio_get));
-    allowSyscall(ctx, SCMP_SYS(ioprio_set));
-    allowSyscall(ctx, SCMP_SYS(io_setup));
-    allowSyscall(ctx, SCMP_SYS(io_submit));
+    ALLOW_SYSCALL(ctx, getpeername);
+    ALLOW_SYSCALL(ctx, getpgid);
+    ALLOW_SYSCALL(ctx, getpgrp);
+    ALLOW_SYSCALL(ctx, getpid);
+    ALLOW_SYSCALL(ctx, getpmsg);
+    ALLOW_SYSCALL(ctx, getppid);
+    ALLOW_SYSCALL(ctx, getpriority);
+    ALLOW_SYSCALL(ctx, getrandom);
+    ALLOW_SYSCALL(ctx, getresgid);
+    ALLOW_SYSCALL(ctx, getresgid32);
+    ALLOW_SYSCALL(ctx, getresuid);
+    ALLOW_SYSCALL(ctx, getresuid32);
+    ALLOW_SYSCALL(ctx, getrlimit);
+    ALLOW_SYSCALL(ctx, get_robust_list);
+    ALLOW_SYSCALL(ctx, getrusage);
+    ALLOW_SYSCALL(ctx, getsid);
+    ALLOW_SYSCALL(ctx, getsockname);
+    ALLOW_SYSCALL(ctx, getsockopt);
+    ALLOW_SYSCALL(ctx, get_thread_area);
+    ALLOW_SYSCALL(ctx, gettid);
+    ALLOW_SYSCALL(ctx, gettimeofday);
+    ALLOW_SYSCALL(ctx, get_tls);
+    ALLOW_SYSCALL(ctx, getuid);
+    ALLOW_SYSCALL(ctx, getuid32);
+    ALLOW_SYSCALL(ctx, getxattr);
+    ALLOW_SYSCALL(ctx, getxattrat);
+    ALLOW_SYSCALL(ctx, gtty);
+    ALLOW_SYSCALL(ctx, idle);
+    ALLOW_SYSCALL(ctx, init_module);
+    ALLOW_SYSCALL(ctx, inotify_add_watch);
+    ALLOW_SYSCALL(ctx, inotify_init);
+    ALLOW_SYSCALL(ctx, inotify_init1);
+    ALLOW_SYSCALL(ctx, inotify_rm_watch);
+    ALLOW_SYSCALL(ctx, io_cancel);
+    ALLOW_SYSCALL(ctx, ioctl);
+    ALLOW_SYSCALL(ctx, io_destroy);
+    ALLOW_SYSCALL(ctx, io_getevents);
+    ALLOW_SYSCALL(ctx, ioperm);
+    ALLOW_SYSCALL(ctx, io_pgetevents);
+    ALLOW_SYSCALL(ctx, io_pgetevents_time64);
+    ALLOW_SYSCALL(ctx, iopl);
+    ALLOW_SYSCALL(ctx, ioprio_get);
+    ALLOW_SYSCALL(ctx, ioprio_set);
+    ALLOW_SYSCALL(ctx, io_setup);
+    ALLOW_SYSCALL(ctx, io_submit);
     // skip io_uring_enter (may become dangerous)
     // skip io_uring_register (may become dangerous)
     // skip io_uring_setup (may become dangerous)
-    allowSyscall(ctx, SCMP_SYS(ipc));
-    allowSyscall(ctx, SCMP_SYS(kcmp));
-    allowSyscall(ctx, SCMP_SYS(kexec_file_load));
-    allowSyscall(ctx, SCMP_SYS(kexec_load));
-    allowSyscall(ctx, SCMP_SYS(keyctl));
-    allowSyscall(ctx, SCMP_SYS(kill));
-    allowSyscall(ctx, SCMP_SYS(landlock_add_rule));
-    allowSyscall(ctx, SCMP_SYS(landlock_create_ruleset));
-    allowSyscall(ctx, SCMP_SYS(landlock_restrict_self));
-    allowSyscall(ctx, SCMP_SYS(lchown));
-    allowSyscall(ctx, SCMP_SYS(lchown32));
-    allowSyscall(ctx, SCMP_SYS(lgetxattr));
-    allowSyscall(ctx, SCMP_SYS(link));
-    allowSyscall(ctx, SCMP_SYS(linkat));
-    allowSyscall(ctx, SCMP_SYS(listen));
-    allowSyscall(ctx, SCMP_SYS(listmount));
-    allowSyscall(ctx, SCMP_SYS(listns));
-    allowSyscall(ctx, SCMP_SYS(listxattr));
-    allowSyscall(ctx, SCMP_SYS(listxattrat));
-    allowSyscall(ctx, SCMP_SYS(llistxattr));
-    allowSyscall(ctx, SCMP_SYS(_llseek));
-    allowSyscall(ctx, SCMP_SYS(lock));
-    allowSyscall(ctx, SCMP_SYS(lookup_dcookie));
-    allowSyscall(ctx, SCMP_SYS(lremovexattr));
-    allowSyscall(ctx, SCMP_SYS(lseek));
+    ALLOW_SYSCALL(ctx, ipc);
+    ALLOW_SYSCALL(ctx, kcmp);
+    ALLOW_SYSCALL(ctx, kexec_file_load);
+    ALLOW_SYSCALL(ctx, kexec_load);
+    ALLOW_SYSCALL(ctx, keyctl);
+    ALLOW_SYSCALL(ctx, kill);
+    ALLOW_SYSCALL(ctx, landlock_add_rule);
+    ALLOW_SYSCALL(ctx, landlock_create_ruleset);
+    ALLOW_SYSCALL(ctx, landlock_restrict_self);
+    ALLOW_SYSCALL(ctx, lchown);
+    ALLOW_SYSCALL(ctx, lchown32);
+    ALLOW_SYSCALL(ctx, lgetxattr);
+    ALLOW_SYSCALL(ctx, link);
+    ALLOW_SYSCALL(ctx, linkat);
+    ALLOW_SYSCALL(ctx, listen);
+    ALLOW_SYSCALL(ctx, listmount);
+    ALLOW_SYSCALL(ctx, listns);
+    ALLOW_SYSCALL(ctx, listxattr);
+    ALLOW_SYSCALL(ctx, listxattrat);
+    ALLOW_SYSCALL(ctx, llistxattr);
+    ALLOW_SYSCALL(ctx, _llseek);
+    ALLOW_SYSCALL(ctx, lock);
+    ALLOW_SYSCALL(ctx, lookup_dcookie);
+    ALLOW_SYSCALL(ctx, lremovexattr);
+    ALLOW_SYSCALL(ctx, lseek);
     // skip lsetxattr (dangerous)
-    allowSyscall(ctx, SCMP_SYS(lsm_get_self_attr));
-    allowSyscall(ctx, SCMP_SYS(lsm_list_modules));
+    ALLOW_SYSCALL(ctx, lsm_get_self_attr);
+    ALLOW_SYSCALL(ctx, lsm_list_modules);
     // skip lsm_set_self_attr (dangerous)
-    allowSyscall(ctx, SCMP_SYS(lstat));
-    allowSyscall(ctx, SCMP_SYS(lstat64));
-    allowSyscall(ctx, SCMP_SYS(madvise));
-    allowSyscall(ctx, SCMP_SYS(map_shadow_stack));
-    allowSyscall(ctx, SCMP_SYS(mbind));
-    allowSyscall(ctx, SCMP_SYS(membarrier));
-    allowSyscall(ctx, SCMP_SYS(memfd_create));
-    allowSyscall(ctx, SCMP_SYS(memfd_secret));
-    allowSyscall(ctx, SCMP_SYS(migrate_pages));
-    allowSyscall(ctx, SCMP_SYS(mincore));
-    allowSyscall(ctx, SCMP_SYS(mkdir));
-    allowSyscall(ctx, SCMP_SYS(mkdirat));
-    allowSyscall(ctx, SCMP_SYS(mknod));
-    allowSyscall(ctx, SCMP_SYS(mknodat));
-    allowSyscall(ctx, SCMP_SYS(mlock));
-    allowSyscall(ctx, SCMP_SYS(mlock2));
-    allowSyscall(ctx, SCMP_SYS(mlockall));
-    allowSyscall(ctx, SCMP_SYS(mmap));
-    allowSyscall(ctx, SCMP_SYS(mmap2));
-    allowSyscall(ctx, SCMP_SYS(modify_ldt));
-    allowSyscall(ctx, SCMP_SYS(mount));
-    allowSyscall(ctx, SCMP_SYS(mount_setattr));
-    allowSyscall(ctx, SCMP_SYS(move_mount));
-    allowSyscall(ctx, SCMP_SYS(move_pages));
-    allowSyscall(ctx, SCMP_SYS(mprotect));
-    allowSyscall(ctx, SCMP_SYS(mpx));
-    allowSyscall(ctx, SCMP_SYS(mq_getsetattr));
-    allowSyscall(ctx, SCMP_SYS(mq_notify));
-    allowSyscall(ctx, SCMP_SYS(mq_open));
-    allowSyscall(ctx, SCMP_SYS(mq_timedreceive));
-    allowSyscall(ctx, SCMP_SYS(mq_timedreceive_time64));
-    allowSyscall(ctx, SCMP_SYS(mq_timedsend));
-    allowSyscall(ctx, SCMP_SYS(mq_timedsend_time64));
-    allowSyscall(ctx, SCMP_SYS(mq_unlink));
-    allowSyscall(ctx, SCMP_SYS(mremap));
-    allowSyscall(ctx, SCMP_SYS(mseal));
-    allowSyscall(ctx, SCMP_SYS(msgctl));
-    allowSyscall(ctx, SCMP_SYS(msgget));
-    allowSyscall(ctx, SCMP_SYS(msgrcv));
-    allowSyscall(ctx, SCMP_SYS(msgsnd));
-    allowSyscall(ctx, SCMP_SYS(msync));
-    allowSyscall(ctx, SCMP_SYS(multiplexer));
-    allowSyscall(ctx, SCMP_SYS(munlock));
-    allowSyscall(ctx, SCMP_SYS(munlockall));
-    allowSyscall(ctx, SCMP_SYS(munmap));
-    allowSyscall(ctx, SCMP_SYS(name_to_handle_at));
-    allowSyscall(ctx, SCMP_SYS(nanosleep));
-    allowSyscall(ctx, SCMP_SYS(newfstatat));
-    allowSyscall(ctx, SCMP_SYS(_newselect));
-    allowSyscall(ctx, SCMP_SYS(nfsservctl));
-    allowSyscall(ctx, SCMP_SYS(nice));
-    allowSyscall(ctx, SCMP_SYS(oldfstat));
-    allowSyscall(ctx, SCMP_SYS(oldlstat));
-    allowSyscall(ctx, SCMP_SYS(oldolduname));
-    allowSyscall(ctx, SCMP_SYS(oldstat));
-    allowSyscall(ctx, SCMP_SYS(olduname));
-    allowSyscall(ctx, SCMP_SYS(open));
-    allowSyscall(ctx, SCMP_SYS(openat));
-    allowSyscall(ctx, SCMP_SYS(openat2));
-    allowSyscall(ctx, SCMP_SYS(open_by_handle_at));
-    allowSyscall(ctx, SCMP_SYS(open_tree));
-    allowSyscall(ctx, SCMP_SYS(open_tree_attr));
-    allowSyscall(ctx, SCMP_SYS(pause));
-    allowSyscall(ctx, SCMP_SYS(pciconfig_iobase));
-    allowSyscall(ctx, SCMP_SYS(pciconfig_read));
-    allowSyscall(ctx, SCMP_SYS(pciconfig_write));
-    allowSyscall(ctx, SCMP_SYS(perf_event_open));
-    allowSyscall(ctx, SCMP_SYS(personality));
-    allowSyscall(ctx, SCMP_SYS(pidfd_getfd));
-    allowSyscall(ctx, SCMP_SYS(pidfd_open));
-    allowSyscall(ctx, SCMP_SYS(pidfd_send_signal));
-    allowSyscall(ctx, SCMP_SYS(pipe));
-    allowSyscall(ctx, SCMP_SYS(pipe2));
-    allowSyscall(ctx, SCMP_SYS(pivot_root));
-    allowSyscall(ctx, SCMP_SYS(pkey_alloc));
-    allowSyscall(ctx, SCMP_SYS(pkey_free));
-    allowSyscall(ctx, SCMP_SYS(pkey_mprotect));
-    allowSyscall(ctx, SCMP_SYS(poll));
-    allowSyscall(ctx, SCMP_SYS(ppoll));
-    allowSyscall(ctx, SCMP_SYS(ppoll_time64));
-    allowSyscall(ctx, SCMP_SYS(prctl));
-    allowSyscall(ctx, SCMP_SYS(pread64));
-    allowSyscall(ctx, SCMP_SYS(preadv));
-    allowSyscall(ctx, SCMP_SYS(preadv2));
-    allowSyscall(ctx, SCMP_SYS(prlimit64));
-    allowSyscall(ctx, SCMP_SYS(process_madvise));
-    allowSyscall(ctx, SCMP_SYS(process_mrelease));
-    allowSyscall(ctx, SCMP_SYS(process_vm_readv));
-    allowSyscall(ctx, SCMP_SYS(process_vm_writev));
-    allowSyscall(ctx, SCMP_SYS(prof));
-    allowSyscall(ctx, SCMP_SYS(profil));
-    allowSyscall(ctx, SCMP_SYS(pselect6));
-    allowSyscall(ctx, SCMP_SYS(pselect6_time64));
-    allowSyscall(ctx, SCMP_SYS(ptrace));
-    allowSyscall(ctx, SCMP_SYS(putpmsg));
-    allowSyscall(ctx, SCMP_SYS(pwrite64));
-    allowSyscall(ctx, SCMP_SYS(pwritev));
-    allowSyscall(ctx, SCMP_SYS(pwritev2));
-    allowSyscall(ctx, SCMP_SYS(query_module));
-    allowSyscall(ctx, SCMP_SYS(quotactl));
-    allowSyscall(ctx, SCMP_SYS(quotactl_fd));
-    allowSyscall(ctx, SCMP_SYS(read));
-    allowSyscall(ctx, SCMP_SYS(readahead));
-    allowSyscall(ctx, SCMP_SYS(readdir));
-    allowSyscall(ctx, SCMP_SYS(readlink));
-    allowSyscall(ctx, SCMP_SYS(readlinkat));
-    allowSyscall(ctx, SCMP_SYS(readv));
-    allowSyscall(ctx, SCMP_SYS(reboot));
-    allowSyscall(ctx, SCMP_SYS(recv));
-    allowSyscall(ctx, SCMP_SYS(recvfrom));
-    allowSyscall(ctx, SCMP_SYS(recvmmsg));
-    allowSyscall(ctx, SCMP_SYS(recvmmsg_time64));
-    allowSyscall(ctx, SCMP_SYS(recvmsg));
-    allowSyscall(ctx, SCMP_SYS(remap_file_pages));
-    allowSyscall(ctx, SCMP_SYS(removexattr));
-    allowSyscall(ctx, SCMP_SYS(removexattrat));
-    allowSyscall(ctx, SCMP_SYS(rename));
-    allowSyscall(ctx, SCMP_SYS(renameat));
-    allowSyscall(ctx, SCMP_SYS(renameat2));
-    allowSyscall(ctx, SCMP_SYS(request_key));
-    allowSyscall(ctx, SCMP_SYS(restart_syscall));
-    allowSyscall(ctx, SCMP_SYS(riscv_flush_icache));
-    allowSyscall(ctx, SCMP_SYS(riscv_hwprobe));
-    allowSyscall(ctx, SCMP_SYS(rmdir));
-    allowSyscall(ctx, SCMP_SYS(rseq));
-    allowSyscall(ctx, SCMP_SYS(rseq_slice_yield));
-    allowSyscall(ctx, SCMP_SYS(rtas));
-    allowSyscall(ctx, SCMP_SYS(rt_sigaction));
-    allowSyscall(ctx, SCMP_SYS(rt_sigpending));
-    allowSyscall(ctx, SCMP_SYS(rt_sigprocmask));
-    allowSyscall(ctx, SCMP_SYS(rt_sigqueueinfo));
-    allowSyscall(ctx, SCMP_SYS(rt_sigreturn));
-    allowSyscall(ctx, SCMP_SYS(rt_sigsuspend));
-    allowSyscall(ctx, SCMP_SYS(rt_sigtimedwait));
-    allowSyscall(ctx, SCMP_SYS(rt_sigtimedwait_time64));
-    allowSyscall(ctx, SCMP_SYS(rt_tgsigqueueinfo));
-    allowSyscall(ctx, SCMP_SYS(s390_guarded_storage));
-    allowSyscall(ctx, SCMP_SYS(s390_pci_mmio_read));
-    allowSyscall(ctx, SCMP_SYS(s390_pci_mmio_write));
-    allowSyscall(ctx, SCMP_SYS(s390_runtime_instr));
-    allowSyscall(ctx, SCMP_SYS(s390_sthyi));
-    allowSyscall(ctx, SCMP_SYS(sched_getaffinity));
-    allowSyscall(ctx, SCMP_SYS(sched_getattr));
-    allowSyscall(ctx, SCMP_SYS(sched_getparam));
-    allowSyscall(ctx, SCMP_SYS(sched_get_priority_max));
-    allowSyscall(ctx, SCMP_SYS(sched_get_priority_min));
-    allowSyscall(ctx, SCMP_SYS(sched_getscheduler));
-    allowSyscall(ctx, SCMP_SYS(sched_rr_get_interval));
-    allowSyscall(ctx, SCMP_SYS(sched_rr_get_interval_time64));
-    allowSyscall(ctx, SCMP_SYS(sched_setaffinity));
-    allowSyscall(ctx, SCMP_SYS(sched_setattr));
-    allowSyscall(ctx, SCMP_SYS(sched_setparam));
-    allowSyscall(ctx, SCMP_SYS(sched_setscheduler));
-    allowSyscall(ctx, SCMP_SYS(sched_yield));
-    allowSyscall(ctx, SCMP_SYS(seccomp));
-    allowSyscall(ctx, SCMP_SYS(security));
-    allowSyscall(ctx, SCMP_SYS(select));
-    allowSyscall(ctx, SCMP_SYS(semctl));
-    allowSyscall(ctx, SCMP_SYS(semget));
-    allowSyscall(ctx, SCMP_SYS(semop));
-    allowSyscall(ctx, SCMP_SYS(semtimedop));
-    allowSyscall(ctx, SCMP_SYS(semtimedop_time64));
-    allowSyscall(ctx, SCMP_SYS(send));
-    allowSyscall(ctx, SCMP_SYS(sendfile));
-    allowSyscall(ctx, SCMP_SYS(sendfile64));
-    allowSyscall(ctx, SCMP_SYS(sendmmsg));
-    allowSyscall(ctx, SCMP_SYS(sendmsg));
-    allowSyscall(ctx, SCMP_SYS(sendto));
-    allowSyscall(ctx, SCMP_SYS(setdomainname));
-    allowSyscall(ctx, SCMP_SYS(setfsgid));
-    allowSyscall(ctx, SCMP_SYS(setfsgid32));
-    allowSyscall(ctx, SCMP_SYS(setfsuid));
-    allowSyscall(ctx, SCMP_SYS(setfsuid32));
-    allowSyscall(ctx, SCMP_SYS(setgid));
-    allowSyscall(ctx, SCMP_SYS(setgid32));
-    allowSyscall(ctx, SCMP_SYS(setgroups));
-    allowSyscall(ctx, SCMP_SYS(setgroups32));
-    allowSyscall(ctx, SCMP_SYS(sethostname));
-    allowSyscall(ctx, SCMP_SYS(setitimer));
-    allowSyscall(ctx, SCMP_SYS(set_mempolicy));
-    allowSyscall(ctx, SCMP_SYS(set_mempolicy_home_node));
-    allowSyscall(ctx, SCMP_SYS(setns));
-    allowSyscall(ctx, SCMP_SYS(setpgid));
-    allowSyscall(ctx, SCMP_SYS(setpriority));
-    allowSyscall(ctx, SCMP_SYS(setregid));
-    allowSyscall(ctx, SCMP_SYS(setregid32));
-    allowSyscall(ctx, SCMP_SYS(setresgid));
-    allowSyscall(ctx, SCMP_SYS(setresgid32));
-    allowSyscall(ctx, SCMP_SYS(setresuid));
-    allowSyscall(ctx, SCMP_SYS(setresuid32));
-    allowSyscall(ctx, SCMP_SYS(setreuid));
-    allowSyscall(ctx, SCMP_SYS(setreuid32));
-    allowSyscall(ctx, SCMP_SYS(setrlimit));
-    allowSyscall(ctx, SCMP_SYS(set_robust_list));
-    allowSyscall(ctx, SCMP_SYS(setsid));
-    allowSyscall(ctx, SCMP_SYS(setsockopt));
-    allowSyscall(ctx, SCMP_SYS(set_thread_area));
-    allowSyscall(ctx, SCMP_SYS(set_tid_address));
-    allowSyscall(ctx, SCMP_SYS(settimeofday));
-    allowSyscall(ctx, SCMP_SYS(set_tls));
-    allowSyscall(ctx, SCMP_SYS(setuid));
-    allowSyscall(ctx, SCMP_SYS(setuid32));
+    ALLOW_SYSCALL(ctx, lstat);
+    ALLOW_SYSCALL(ctx, lstat64);
+    ALLOW_SYSCALL(ctx, madvise);
+    ALLOW_SYSCALL(ctx, map_shadow_stack);
+    ALLOW_SYSCALL(ctx, mbind);
+    ALLOW_SYSCALL(ctx, membarrier);
+    ALLOW_SYSCALL(ctx, memfd_create);
+    ALLOW_SYSCALL(ctx, memfd_secret);
+    ALLOW_SYSCALL(ctx, migrate_pages);
+    ALLOW_SYSCALL(ctx, mincore);
+    ALLOW_SYSCALL(ctx, mkdir);
+    ALLOW_SYSCALL(ctx, mkdirat);
+    ALLOW_SYSCALL(ctx, mknod);
+    ALLOW_SYSCALL(ctx, mknodat);
+    ALLOW_SYSCALL(ctx, mlock);
+    ALLOW_SYSCALL(ctx, mlock2);
+    ALLOW_SYSCALL(ctx, mlockall);
+    ALLOW_SYSCALL(ctx, mmap);
+    ALLOW_SYSCALL(ctx, mmap2);
+    ALLOW_SYSCALL(ctx, modify_ldt);
+    ALLOW_SYSCALL(ctx, mount);
+    ALLOW_SYSCALL(ctx, mount_setattr);
+    ALLOW_SYSCALL(ctx, move_mount);
+    ALLOW_SYSCALL(ctx, move_pages);
+    ALLOW_SYSCALL(ctx, mprotect);
+    ALLOW_SYSCALL(ctx, mpx);
+    ALLOW_SYSCALL(ctx, mq_getsetattr);
+    ALLOW_SYSCALL(ctx, mq_notify);
+    ALLOW_SYSCALL(ctx, mq_open);
+    ALLOW_SYSCALL(ctx, mq_timedreceive);
+    ALLOW_SYSCALL(ctx, mq_timedreceive_time64);
+    ALLOW_SYSCALL(ctx, mq_timedsend);
+    ALLOW_SYSCALL(ctx, mq_timedsend_time64);
+    ALLOW_SYSCALL(ctx, mq_unlink);
+    ALLOW_SYSCALL(ctx, mremap);
+    ALLOW_SYSCALL(ctx, mseal);
+    ALLOW_SYSCALL(ctx, msgctl);
+    ALLOW_SYSCALL(ctx, msgget);
+    ALLOW_SYSCALL(ctx, msgrcv);
+    ALLOW_SYSCALL(ctx, msgsnd);
+    ALLOW_SYSCALL(ctx, msync);
+    ALLOW_SYSCALL(ctx, multiplexer);
+    ALLOW_SYSCALL(ctx, munlock);
+    ALLOW_SYSCALL(ctx, munlockall);
+    ALLOW_SYSCALL(ctx, munmap);
+    ALLOW_SYSCALL(ctx, name_to_handle_at);
+    ALLOW_SYSCALL(ctx, nanosleep);
+    ALLOW_SYSCALL(ctx, newfstatat);
+    ALLOW_SYSCALL(ctx, _newselect);
+    ALLOW_SYSCALL(ctx, nfsservctl);
+    ALLOW_SYSCALL(ctx, nice);
+    ALLOW_SYSCALL(ctx, oldfstat);
+    ALLOW_SYSCALL(ctx, oldlstat);
+    ALLOW_SYSCALL(ctx, oldolduname);
+    ALLOW_SYSCALL(ctx, oldstat);
+    ALLOW_SYSCALL(ctx, olduname);
+    ALLOW_SYSCALL(ctx, open);
+    ALLOW_SYSCALL(ctx, openat);
+    ALLOW_SYSCALL(ctx, openat2);
+    ALLOW_SYSCALL(ctx, open_by_handle_at);
+    ALLOW_SYSCALL(ctx, open_tree);
+    ALLOW_SYSCALL(ctx, open_tree_attr);
+    ALLOW_SYSCALL(ctx, pause);
+    ALLOW_SYSCALL(ctx, pciconfig_iobase);
+    ALLOW_SYSCALL(ctx, pciconfig_read);
+    ALLOW_SYSCALL(ctx, pciconfig_write);
+    ALLOW_SYSCALL(ctx, perf_event_open);
+    ALLOW_SYSCALL(ctx, personality);
+    ALLOW_SYSCALL(ctx, pidfd_getfd);
+    ALLOW_SYSCALL(ctx, pidfd_open);
+    ALLOW_SYSCALL(ctx, pidfd_send_signal);
+    ALLOW_SYSCALL(ctx, pipe);
+    ALLOW_SYSCALL(ctx, pipe2);
+    ALLOW_SYSCALL(ctx, pivot_root);
+    ALLOW_SYSCALL(ctx, pkey_alloc);
+    ALLOW_SYSCALL(ctx, pkey_free);
+    ALLOW_SYSCALL(ctx, pkey_mprotect);
+    ALLOW_SYSCALL(ctx, poll);
+    ALLOW_SYSCALL(ctx, ppoll);
+    ALLOW_SYSCALL(ctx, ppoll_time64);
+    ALLOW_SYSCALL(ctx, prctl);
+    ALLOW_SYSCALL(ctx, pread64);
+    ALLOW_SYSCALL(ctx, preadv);
+    ALLOW_SYSCALL(ctx, preadv2);
+    ALLOW_SYSCALL(ctx, prlimit64);
+    ALLOW_SYSCALL(ctx, process_madvise);
+    ALLOW_SYSCALL(ctx, process_mrelease);
+    ALLOW_SYSCALL(ctx, process_vm_readv);
+    ALLOW_SYSCALL(ctx, process_vm_writev);
+    ALLOW_SYSCALL(ctx, prof);
+    ALLOW_SYSCALL(ctx, profil);
+    ALLOW_SYSCALL(ctx, pselect6);
+    ALLOW_SYSCALL(ctx, pselect6_time64);
+    ALLOW_SYSCALL(ctx, ptrace);
+    ALLOW_SYSCALL(ctx, putpmsg);
+    ALLOW_SYSCALL(ctx, pwrite64);
+    ALLOW_SYSCALL(ctx, pwritev);
+    ALLOW_SYSCALL(ctx, pwritev2);
+    ALLOW_SYSCALL(ctx, query_module);
+    ALLOW_SYSCALL(ctx, quotactl);
+    ALLOW_SYSCALL(ctx, quotactl_fd);
+    ALLOW_SYSCALL(ctx, read);
+    ALLOW_SYSCALL(ctx, readahead);
+    ALLOW_SYSCALL(ctx, readdir);
+    ALLOW_SYSCALL(ctx, readlink);
+    ALLOW_SYSCALL(ctx, readlinkat);
+    ALLOW_SYSCALL(ctx, readv);
+    ALLOW_SYSCALL(ctx, reboot);
+    ALLOW_SYSCALL(ctx, recv);
+    ALLOW_SYSCALL(ctx, recvfrom);
+    ALLOW_SYSCALL(ctx, recvmmsg);
+    ALLOW_SYSCALL(ctx, recvmmsg_time64);
+    ALLOW_SYSCALL(ctx, recvmsg);
+    ALLOW_SYSCALL(ctx, remap_file_pages);
+    ALLOW_SYSCALL(ctx, removexattr);
+    ALLOW_SYSCALL(ctx, removexattrat);
+    ALLOW_SYSCALL(ctx, rename);
+    ALLOW_SYSCALL(ctx, renameat);
+    ALLOW_SYSCALL(ctx, renameat2);
+    ALLOW_SYSCALL(ctx, request_key);
+    ALLOW_SYSCALL(ctx, restart_syscall);
+    ALLOW_SYSCALL(ctx, riscv_flush_icache);
+    ALLOW_SYSCALL(ctx, riscv_hwprobe);
+    ALLOW_SYSCALL(ctx, rmdir);
+    ALLOW_SYSCALL(ctx, rseq);
+    ALLOW_SYSCALL(ctx, rseq_slice_yield);
+    ALLOW_SYSCALL(ctx, rtas);
+    ALLOW_SYSCALL(ctx, rt_sigaction);
+    ALLOW_SYSCALL(ctx, rt_sigpending);
+    ALLOW_SYSCALL(ctx, rt_sigprocmask);
+    ALLOW_SYSCALL(ctx, rt_sigqueueinfo);
+    ALLOW_SYSCALL(ctx, rt_sigreturn);
+    ALLOW_SYSCALL(ctx, rt_sigsuspend);
+    ALLOW_SYSCALL(ctx, rt_sigtimedwait);
+    ALLOW_SYSCALL(ctx, rt_sigtimedwait_time64);
+    ALLOW_SYSCALL(ctx, rt_tgsigqueueinfo);
+    ALLOW_SYSCALL(ctx, s390_guarded_storage);
+    ALLOW_SYSCALL(ctx, s390_pci_mmio_read);
+    ALLOW_SYSCALL(ctx, s390_pci_mmio_write);
+    ALLOW_SYSCALL(ctx, s390_runtime_instr);
+    ALLOW_SYSCALL(ctx, s390_sthyi);
+    ALLOW_SYSCALL(ctx, sched_getaffinity);
+    ALLOW_SYSCALL(ctx, sched_getattr);
+    ALLOW_SYSCALL(ctx, sched_getparam);
+    ALLOW_SYSCALL(ctx, sched_get_priority_max);
+    ALLOW_SYSCALL(ctx, sched_get_priority_min);
+    ALLOW_SYSCALL(ctx, sched_getscheduler);
+    ALLOW_SYSCALL(ctx, sched_rr_get_interval);
+    ALLOW_SYSCALL(ctx, sched_rr_get_interval_time64);
+    ALLOW_SYSCALL(ctx, sched_setaffinity);
+    ALLOW_SYSCALL(ctx, sched_setattr);
+    ALLOW_SYSCALL(ctx, sched_setparam);
+    ALLOW_SYSCALL(ctx, sched_setscheduler);
+    ALLOW_SYSCALL(ctx, sched_yield);
+    ALLOW_SYSCALL(ctx, seccomp);
+    ALLOW_SYSCALL(ctx, security);
+    ALLOW_SYSCALL(ctx, select);
+    ALLOW_SYSCALL(ctx, semctl);
+    ALLOW_SYSCALL(ctx, semget);
+    ALLOW_SYSCALL(ctx, semop);
+    ALLOW_SYSCALL(ctx, semtimedop);
+    ALLOW_SYSCALL(ctx, semtimedop_time64);
+    ALLOW_SYSCALL(ctx, send);
+    ALLOW_SYSCALL(ctx, sendfile);
+    ALLOW_SYSCALL(ctx, sendfile64);
+    ALLOW_SYSCALL(ctx, sendmmsg);
+    ALLOW_SYSCALL(ctx, sendmsg);
+    ALLOW_SYSCALL(ctx, sendto);
+    ALLOW_SYSCALL(ctx, setdomainname);
+    ALLOW_SYSCALL(ctx, setfsgid);
+    ALLOW_SYSCALL(ctx, setfsgid32);
+    ALLOW_SYSCALL(ctx, setfsuid);
+    ALLOW_SYSCALL(ctx, setfsuid32);
+    ALLOW_SYSCALL(ctx, setgid);
+    ALLOW_SYSCALL(ctx, setgid32);
+    ALLOW_SYSCALL(ctx, setgroups);
+    ALLOW_SYSCALL(ctx, setgroups32);
+    ALLOW_SYSCALL(ctx, sethostname);
+    ALLOW_SYSCALL(ctx, setitimer);
+    ALLOW_SYSCALL(ctx, set_mempolicy);
+    ALLOW_SYSCALL(ctx, set_mempolicy_home_node);
+    ALLOW_SYSCALL(ctx, setns);
+    ALLOW_SYSCALL(ctx, setpgid);
+    ALLOW_SYSCALL(ctx, setpriority);
+    ALLOW_SYSCALL(ctx, setregid);
+    ALLOW_SYSCALL(ctx, setregid32);
+    ALLOW_SYSCALL(ctx, setresgid);
+    ALLOW_SYSCALL(ctx, setresgid32);
+    ALLOW_SYSCALL(ctx, setresuid);
+    ALLOW_SYSCALL(ctx, setresuid32);
+    ALLOW_SYSCALL(ctx, setreuid);
+    ALLOW_SYSCALL(ctx, setreuid32);
+    ALLOW_SYSCALL(ctx, setrlimit);
+    ALLOW_SYSCALL(ctx, set_robust_list);
+    ALLOW_SYSCALL(ctx, setsid);
+    ALLOW_SYSCALL(ctx, setsockopt);
+    ALLOW_SYSCALL(ctx, set_thread_area);
+    ALLOW_SYSCALL(ctx, set_tid_address);
+    ALLOW_SYSCALL(ctx, settimeofday);
+    ALLOW_SYSCALL(ctx, set_tls);
+    ALLOW_SYSCALL(ctx, setuid);
+    ALLOW_SYSCALL(ctx, setuid32);
     // skip setxattr (dangerous)
     // skip setxattrat (dangerous)
-    allowSyscall(ctx, SCMP_SYS(sgetmask));
-    allowSyscall(ctx, SCMP_SYS(shmat));
-    allowSyscall(ctx, SCMP_SYS(shmctl));
-    allowSyscall(ctx, SCMP_SYS(shmdt));
-    allowSyscall(ctx, SCMP_SYS(shmget));
-    allowSyscall(ctx, SCMP_SYS(shutdown));
-    allowSyscall(ctx, SCMP_SYS(sigaction));
-    allowSyscall(ctx, SCMP_SYS(sigaltstack));
-    allowSyscall(ctx, SCMP_SYS(signal));
-    allowSyscall(ctx, SCMP_SYS(signalfd));
-    allowSyscall(ctx, SCMP_SYS(signalfd4));
-    allowSyscall(ctx, SCMP_SYS(sigpending));
-    allowSyscall(ctx, SCMP_SYS(sigprocmask));
-    allowSyscall(ctx, SCMP_SYS(sigreturn));
-    allowSyscall(ctx, SCMP_SYS(sigsuspend));
-    allowSyscall(ctx, SCMP_SYS(socket));
-    allowSyscall(ctx, SCMP_SYS(socketcall));
-    allowSyscall(ctx, SCMP_SYS(socketpair));
-    allowSyscall(ctx, SCMP_SYS(splice));
-    allowSyscall(ctx, SCMP_SYS(spu_create));
-    allowSyscall(ctx, SCMP_SYS(spu_run));
-    allowSyscall(ctx, SCMP_SYS(ssetmask));
-    allowSyscall(ctx, SCMP_SYS(stat));
-    allowSyscall(ctx, SCMP_SYS(stat64));
-    allowSyscall(ctx, SCMP_SYS(statfs));
-    allowSyscall(ctx, SCMP_SYS(statfs64));
-    allowSyscall(ctx, SCMP_SYS(statmount));
-    allowSyscall(ctx, SCMP_SYS(statx));
-    allowSyscall(ctx, SCMP_SYS(stime));
-    allowSyscall(ctx, SCMP_SYS(stty));
-    allowSyscall(ctx, SCMP_SYS(subpage_prot));
-    allowSyscall(ctx, SCMP_SYS(swapcontext));
-    allowSyscall(ctx, SCMP_SYS(swapoff));
-    allowSyscall(ctx, SCMP_SYS(swapon));
-    allowSyscall(ctx, SCMP_SYS(switch_endian));
-    allowSyscall(ctx, SCMP_SYS(symlink));
-    allowSyscall(ctx, SCMP_SYS(symlinkat));
-    allowSyscall(ctx, SCMP_SYS(sync));
-    allowSyscall(ctx, SCMP_SYS(sync_file_range));
-    allowSyscall(ctx, SCMP_SYS(sync_file_range2));
-    allowSyscall(ctx, SCMP_SYS(syncfs));
-    allowSyscall(ctx, SCMP_SYS(syscall));
-    allowSyscall(ctx, SCMP_SYS(_sysctl));
-    allowSyscall(ctx, SCMP_SYS(sys_debug_setcontext));
-    allowSyscall(ctx, SCMP_SYS(sysfs));
-    allowSyscall(ctx, SCMP_SYS(sysinfo));
-    allowSyscall(ctx, SCMP_SYS(syslog));
-    allowSyscall(ctx, SCMP_SYS(sysmips));
-    allowSyscall(ctx, SCMP_SYS(tee));
-    allowSyscall(ctx, SCMP_SYS(tgkill));
-    allowSyscall(ctx, SCMP_SYS(time));
-    allowSyscall(ctx, SCMP_SYS(timer_create));
-    allowSyscall(ctx, SCMP_SYS(timer_delete));
-    allowSyscall(ctx, SCMP_SYS(timerfd));
-    allowSyscall(ctx, SCMP_SYS(timerfd_create));
-    allowSyscall(ctx, SCMP_SYS(timerfd_gettime));
-    allowSyscall(ctx, SCMP_SYS(timerfd_gettime64));
-    allowSyscall(ctx, SCMP_SYS(timerfd_settime));
-    allowSyscall(ctx, SCMP_SYS(timerfd_settime64));
-    allowSyscall(ctx, SCMP_SYS(timer_getoverrun));
-    allowSyscall(ctx, SCMP_SYS(timer_gettime));
-    allowSyscall(ctx, SCMP_SYS(timer_gettime64));
-    allowSyscall(ctx, SCMP_SYS(timer_settime));
-    allowSyscall(ctx, SCMP_SYS(timer_settime64));
-    allowSyscall(ctx, SCMP_SYS(times));
-    allowSyscall(ctx, SCMP_SYS(tkill));
-    allowSyscall(ctx, SCMP_SYS(truncate));
-    allowSyscall(ctx, SCMP_SYS(truncate64));
-    allowSyscall(ctx, SCMP_SYS(tuxcall));
-    allowSyscall(ctx, SCMP_SYS(ugetrlimit));
-    allowSyscall(ctx, SCMP_SYS(ulimit));
-    allowSyscall(ctx, SCMP_SYS(umask));
-    allowSyscall(ctx, SCMP_SYS(umount));
-    allowSyscall(ctx, SCMP_SYS(umount2));
-    allowSyscall(ctx, SCMP_SYS(uname));
-    allowSyscall(ctx, SCMP_SYS(unlink));
-    allowSyscall(ctx, SCMP_SYS(unlinkat));
-    allowSyscall(ctx, SCMP_SYS(unshare));
-    allowSyscall(ctx, SCMP_SYS(uprobe));
-    allowSyscall(ctx, SCMP_SYS(uretprobe));
-    allowSyscall(ctx, SCMP_SYS(uselib));
-    allowSyscall(ctx, SCMP_SYS(userfaultfd));
-    allowSyscall(ctx, SCMP_SYS(usr26));
-    allowSyscall(ctx, SCMP_SYS(usr32));
-    allowSyscall(ctx, SCMP_SYS(ustat));
-    allowSyscall(ctx, SCMP_SYS(utime));
-    allowSyscall(ctx, SCMP_SYS(utimensat));
-    allowSyscall(ctx, SCMP_SYS(utimensat_time64));
-    allowSyscall(ctx, SCMP_SYS(utimes));
-    allowSyscall(ctx, SCMP_SYS(vfork));
-    allowSyscall(ctx, SCMP_SYS(vhangup));
-    allowSyscall(ctx, SCMP_SYS(vm86));
-    allowSyscall(ctx, SCMP_SYS(vm86old));
-    allowSyscall(ctx, SCMP_SYS(vmsplice));
-    allowSyscall(ctx, SCMP_SYS(vserver));
-    allowSyscall(ctx, SCMP_SYS(wait4));
-    allowSyscall(ctx, SCMP_SYS(waitid));
-    allowSyscall(ctx, SCMP_SYS(waitpid));
-    allowSyscall(ctx, SCMP_SYS(write));
-    allowSyscall(ctx, SCMP_SYS(writev));
+    ALLOW_SYSCALL(ctx, sgetmask);
+    ALLOW_SYSCALL(ctx, shmat);
+    ALLOW_SYSCALL(ctx, shmctl);
+    ALLOW_SYSCALL(ctx, shmdt);
+    ALLOW_SYSCALL(ctx, shmget);
+    ALLOW_SYSCALL(ctx, shutdown);
+    ALLOW_SYSCALL(ctx, sigaction);
+    ALLOW_SYSCALL(ctx, sigaltstack);
+    ALLOW_SYSCALL(ctx, signal);
+    ALLOW_SYSCALL(ctx, signalfd);
+    ALLOW_SYSCALL(ctx, signalfd4);
+    ALLOW_SYSCALL(ctx, sigpending);
+    ALLOW_SYSCALL(ctx, sigprocmask);
+    ALLOW_SYSCALL(ctx, sigreturn);
+    ALLOW_SYSCALL(ctx, sigsuspend);
+    ALLOW_SYSCALL(ctx, socket);
+    ALLOW_SYSCALL(ctx, socketcall);
+    ALLOW_SYSCALL(ctx, socketpair);
+    ALLOW_SYSCALL(ctx, splice);
+    ALLOW_SYSCALL(ctx, spu_create);
+    ALLOW_SYSCALL(ctx, spu_run);
+    ALLOW_SYSCALL(ctx, ssetmask);
+    ALLOW_SYSCALL(ctx, stat);
+    ALLOW_SYSCALL(ctx, stat64);
+    ALLOW_SYSCALL(ctx, statfs);
+    ALLOW_SYSCALL(ctx, statfs64);
+    ALLOW_SYSCALL(ctx, statmount);
+    ALLOW_SYSCALL(ctx, statx);
+    ALLOW_SYSCALL(ctx, stime);
+    ALLOW_SYSCALL(ctx, stty);
+    ALLOW_SYSCALL(ctx, subpage_prot);
+    ALLOW_SYSCALL(ctx, swapcontext);
+    ALLOW_SYSCALL(ctx, swapoff);
+    ALLOW_SYSCALL(ctx, swapon);
+    ALLOW_SYSCALL(ctx, switch_endian);
+    ALLOW_SYSCALL(ctx, symlink);
+    ALLOW_SYSCALL(ctx, symlinkat);
+    ALLOW_SYSCALL(ctx, sync);
+    ALLOW_SYSCALL(ctx, sync_file_range);
+    ALLOW_SYSCALL(ctx, sync_file_range2);
+    ALLOW_SYSCALL(ctx, syncfs);
+    ALLOW_SYSCALL(ctx, syscall);
+    ALLOW_SYSCALL(ctx, _sysctl);
+    ALLOW_SYSCALL(ctx, sys_debug_setcontext);
+    ALLOW_SYSCALL(ctx, sysfs);
+    ALLOW_SYSCALL(ctx, sysinfo);
+    ALLOW_SYSCALL(ctx, syslog);
+    ALLOW_SYSCALL(ctx, sysmips);
+    ALLOW_SYSCALL(ctx, tee);
+    ALLOW_SYSCALL(ctx, tgkill);
+    ALLOW_SYSCALL(ctx, time);
+    ALLOW_SYSCALL(ctx, timer_create);
+    ALLOW_SYSCALL(ctx, timer_delete);
+    ALLOW_SYSCALL(ctx, timerfd);
+    ALLOW_SYSCALL(ctx, timerfd_create);
+    ALLOW_SYSCALL(ctx, timerfd_gettime);
+    ALLOW_SYSCALL(ctx, timerfd_gettime64);
+    ALLOW_SYSCALL(ctx, timerfd_settime);
+    ALLOW_SYSCALL(ctx, timerfd_settime64);
+    ALLOW_SYSCALL(ctx, timer_getoverrun);
+    ALLOW_SYSCALL(ctx, timer_gettime);
+    ALLOW_SYSCALL(ctx, timer_gettime64);
+    ALLOW_SYSCALL(ctx, timer_settime);
+    ALLOW_SYSCALL(ctx, timer_settime64);
+    ALLOW_SYSCALL(ctx, times);
+    ALLOW_SYSCALL(ctx, tkill);
+    ALLOW_SYSCALL(ctx, truncate);
+    ALLOW_SYSCALL(ctx, truncate64);
+    ALLOW_SYSCALL(ctx, tuxcall);
+    ALLOW_SYSCALL(ctx, ugetrlimit);
+    ALLOW_SYSCALL(ctx, ulimit);
+    ALLOW_SYSCALL(ctx, umask);
+    ALLOW_SYSCALL(ctx, umount);
+    ALLOW_SYSCALL(ctx, umount2);
+    ALLOW_SYSCALL(ctx, uname);
+    ALLOW_SYSCALL(ctx, unlink);
+    ALLOW_SYSCALL(ctx, unlinkat);
+    ALLOW_SYSCALL(ctx, unshare);
+    ALLOW_SYSCALL(ctx, uprobe);
+    ALLOW_SYSCALL(ctx, uretprobe);
+    ALLOW_SYSCALL(ctx, uselib);
+    ALLOW_SYSCALL(ctx, userfaultfd);
+    ALLOW_SYSCALL(ctx, usr26);
+    ALLOW_SYSCALL(ctx, usr32);
+    ALLOW_SYSCALL(ctx, ustat);
+    ALLOW_SYSCALL(ctx, utime);
+    ALLOW_SYSCALL(ctx, utimensat);
+    ALLOW_SYSCALL(ctx, utimensat_time64);
+    ALLOW_SYSCALL(ctx, utimes);
+    ALLOW_SYSCALL(ctx, vfork);
+    ALLOW_SYSCALL(ctx, vhangup);
+    ALLOW_SYSCALL(ctx, vm86);
+    ALLOW_SYSCALL(ctx, vm86old);
+    ALLOW_SYSCALL(ctx, vmsplice);
+    ALLOW_SYSCALL(ctx, vserver);
+    ALLOW_SYSCALL(ctx, wait4);
+    ALLOW_SYSCALL(ctx, waitid);
+    ALLOW_SYSCALL(ctx, waitpid);
+    ALLOW_SYSCALL(ctx, write);
+    ALLOW_SYSCALL(ctx, writev);
     // END extract-syscalls
 
     // chmod family: prevent adding setuid/setgid bits to existing files.
     // The Nix store does not support setuid/setgid, and even their temporary creation can weaken the security of the sandbox.
-    ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(chmod), 1);
-    ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmod), 1);
-    ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmodat), 2);
-    ALLOW_CHMOD_IF_SAFE(ctx, SCMP_SYS(fchmodat2), 2);
+    ALLOW_CHMOD_IF_SAFE(ctx, chmod, 1);
+    ALLOW_CHMOD_IF_SAFE(ctx, fchmod, 1);
+    ALLOW_CHMOD_IF_SAFE(ctx, fchmodat, 2);
+    ALLOW_CHMOD_IF_SAFE(ctx, fchmodat2, 2);
 
     // setxattr family: prevent creation of extended attributes or ACLs.
     // Not all filesystems support them, and they're incompatible with the NAR format.
-    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(setxattr), 0) != 0
-        || seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(lsetxattr), 0) != 0
-        || seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOTSUP), SCMP_SYS(fsetxattr), 0) != 0)
-    {
-        throw SysError("unable to add seccomp rule");
-    }
+    DENY_SYSCALL(ctx, setxattr, ENOTSUP);
+    DENY_SYSCALL(ctx, lsetxattr, ENOTSUP);
+    DENY_SYSCALL(ctx, fsetxattr, ENOTSUP);
 
     Pipe filterPipe;
     filterPipe.create();
