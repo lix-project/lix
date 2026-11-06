@@ -80,10 +80,13 @@ static AutoCloseFD openSlotLock(const rust::Ref<Machine> m, uint64_t slot)
     );
 }
 
-static std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD> selectBestMachine(
+static kj::Promise<Result<std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD>>> selectBestMachine(
     Machines & machines, const std::string & neededSystem, const std::set<std::string> & requiredFeatures
 )
-{
+try {
+    AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
+    TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
+
     bool rightType = false;
     rust::RefMut<Machine> bestMachine;
     AutoCloseFD bestSlotLock;
@@ -132,7 +135,11 @@ static std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD> selectBestMachine(
         }
     }
 
-    return {rightType, bestMachine, std::move(bestSlotLock)};
+    futimes(bestSlotLock.get(), nullptr);
+
+    co_return {rightType, bestMachine, std::move(bestSlotLock)};
+} catch (...) {
+    co_return result::current_exception();
 }
 
 static void printSelectionFailureMessage(
@@ -219,11 +226,8 @@ try {
     (void) sys::mkdir(currentLoad, 0777);
 
     while (true) {
-        AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
-        TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
-
         auto [rightType, bestMachine, bestSlotLock] =
-            selectBestMachine(machines, neededSystem, requiredFeatures);
+            TRY_AWAIT(selectBestMachine(machines, neededSystem, requiredFeatures));
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
@@ -240,10 +244,6 @@ try {
                 co_return BuildRejected::Permanently;
             }
         }
-
-        futimes(bestSlotLock.get(), nullptr);
-
-        lock.reset();
 
         std::shared_ptr<Store> sshStore;
         auto machineName = to_std_string(bestMachine.name.as_str());
