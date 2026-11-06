@@ -78,9 +78,13 @@ struct TunnelLogger : public Logger
      * Worker protocol version of the other side. May be newer than this daemon.
      */
     const WorkerProto::Version clientVersion;
+    const bool logLevels;
 
-    TunnelLogger(FdSink & to, WorkerProto::Version clientVersion)
-        : to(to), clientVersion(clientVersion) {
+    TunnelLogger(FdSink & to, WorkerProto::Version clientVersion, bool logLevels)
+        : to(to)
+        , clientVersion(clientVersion)
+        , logLevels(logLevels)
+    {
         assert(clientVersion >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
     }
 
@@ -104,15 +108,24 @@ struct TunnelLogger : public Logger
         return BufferState::HasSpace;
     }
 
+    BufferState sendLog(Verbosity lvl, std::string_view s)
+    {
+        StringSink buf;
+        if (logLevels) {
+            buf << STDERR_LOG << lvl << s;
+        } else {
+            buf << STDERR_NEXT << s;
+        }
+        return enqueueMsg(buf.s);
+    }
+
     BufferState log(Verbosity lvl, std::string_view s) override
     {
         if (lvl > getVerbosity()) {
             return BufferState::HasSpace;
         }
 
-        StringSink buf;
-        buf << STDERR_NEXT << (s + "\n");
-        return enqueueMsg(buf.s);
+        return sendLog(lvl, s + "\n");
     }
 
     BufferState logEI(const ErrorInfo & ei) override
@@ -124,9 +137,7 @@ struct TunnelLogger : public Logger
         std::stringstream oss;
         showErrorInfo(oss, ei, false);
 
-        StringSink buf;
-        buf << STDERR_NEXT << oss.str();
-        return enqueueMsg(buf.s);
+        return sendLog(ei.level, oss.str());
     }
 
     /* startWork() means that we're starting an operation for which we
@@ -960,17 +971,16 @@ void processLegacyConnection(
     if (clientVersion < MIN_SUPPORTED_WORKER_PROTO_VERSION)
         throw Error("the Nix client version is too old");
 
-    auto tunnelLogger = new TunnelLogger(to, clientVersion);
-    auto prevLogger = nix::logger;
-    logger = tunnelLogger;
-
     // FIXME: what is *supposed* to be in this even?
     if (readNum<unsigned>(from)) {
         // Obsolete CPU affinity.
         readNum<unsigned>(from);
     }
 
-    readNum<unsigned>(from); // obsolete reserveSpace
+    bool logLevels = readNum<unsigned>(from) == WORKER_LOG_LEVELS;
+    auto tunnelLogger = new TunnelLogger(to, clientVersion, logLevels);
+    auto prevLogger = nix::logger;
+    logger = tunnelLogger;
 
     to << fmt("%s %s", nixVersion, sshNgExtendedOptionsFeature);
 

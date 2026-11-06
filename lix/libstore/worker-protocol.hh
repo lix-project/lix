@@ -29,11 +29,15 @@ namespace nix {
 
 
 #define STDERR_NEXT  0x6f6c6d67
+#define STDERR_LOG 0x6c6f676d
 #define STDERR_LAST  0x616c7473
 #define STDERR_ERROR 0x63787470
 #define STDERR_START_ACTIVITY 0x53545254
 #define STDERR_STOP_ACTIVITY  0x53544f50
 #define STDERR_RESULT         0x52534c54
+
+// Older daemons read and discard this reserveSpace value.
+inline constexpr unsigned WORKER_LOG_LEVELS = 0x6c786c76;
 
 // magic values for obsolete fields in SetOptions. we won't talk to daemons that still use them anyway.
 inline constexpr unsigned WORKER_EXTENDED_OPTIONS_KEY1 = 0xf2ac1b18;

@@ -81,7 +81,7 @@ try {
             StringSink packet;
             packet << PROTOCOL_VERSION;
             packet << 0;     // Obsolete CPU affinity.
-            packet << false; // obsolete reserveSpace
+            packet << WORKER_LOG_LEVELS; // obsolete reserveSpace
             TRY_AWAIT(stream.writeFull(packet.s.data(), packet.s.size()));
         }
 
@@ -794,6 +794,13 @@ try {
             co_return RemoteError{std::make_exception_ptr(TRY_AWAIT(readError(from)))};
         } else if (msg == STDERR_NEXT) {
             printError("%1%", Uncolored(chomp(TRY_AWAIT(readString(from)))));
+        } else if (msg == STDERR_LOG) {
+            auto level = TRY_AWAIT(readNum<unsigned>(from));
+            if (level > lvlVomit) {
+                throw Error("got invalid log level %u from Nix daemon", level);
+            }
+            auto text = TRY_AWAIT(readString(from));
+            printMsg(static_cast<Verbosity>(level), "%1%", Uncolored(chomp(text)));
         } else if (msg == STDERR_START_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));
             auto lvl = (Verbosity) TRY_AWAIT(readNum<unsigned>(from));

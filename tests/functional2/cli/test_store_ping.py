@@ -1,3 +1,4 @@
+import json
 import pytest
 from testlib.fixtures.nix import Nix, NixDaemon, NixDaemonProtocol
 
@@ -41,3 +42,30 @@ def test_ping_bad_store(nix: Nix):
     nix.settings.store = f"unix:{nix.env.dirs.home}"
     error = nix.nix(["store", "ping"]).run().expect(1).stderr_plain
     assert "could not connect" in error
+
+
+def test_ping_daemon_warning_severity(nix: Nix, daemon: NixDaemon):
+    with daemon(nix) as inner:
+        result = (
+            inner.nix(
+                [
+                    "store",
+                    "ping",
+                    "--option",
+                    "substituters",
+                    "https://untrusted.invalid",
+                    "--log-format",
+                    "internal-json",
+                ]
+            )
+            .run()
+            .ok()
+        )
+    events = [
+        json.loads(line[5:]) for line in result.stderr_s.splitlines() if line.startswith("@nix ")
+    ]
+    warnings = [
+        event for event in events if "ignoring untrusted substituter" in event.get("msg", "")
+    ]
+    assert len(warnings) == 1
+    assert warnings[0]["level"] == 1
