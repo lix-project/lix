@@ -1117,37 +1117,45 @@ try {
         lockDir = settings.nixStateDir + currentLoadName;
     }
 
+    createDirs(lockDir);
+
     /* It would be possible to build locally after some builds clear out,
-       the build hook may use this to print machine selection warnings. */
+       we may later use this to print machine selection warnings. */
     const bool couldBuildLocally = settings.maxBuildJobs > 0
         && (drv->platform == settings.thisSystem || settings.extraPlatforms.get().count(drv->platform) > 0)
         && allSupportedLocally(worker.store, parsedDrv->getRequiredSystemFeatures());
     /* It's possible to build this locally right now: */
     const bool canBuildLocally = slotToken.valid() && couldBuildLocally;
 
-    auto buildReq = hook->rpc->buildRequest();
-    RPC_FILL(buildReq, setLockDir, lockDir);
-    RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
-    RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
-    RPC_FILL(buildReq, setNeededSystem, drv->platform);
-    RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
-    RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
-    auto buildRespV = TRY_AWAIT_RPC(buildReq.send());
-    auto buildResp = buildRespV.getResult();
+    std::optional<rpc::build_remote::HookInstance::AcceptedBuild::Client> acceptedBuild;
 
-    debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
+    while (!acceptedBuild) {
+        auto buildReq = hook->rpc->buildRequest();
+        RPC_FILL(buildReq, setLockDir, lockDir);
+        RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
+        RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
+        RPC_FILL(buildReq, setNeededSystem, drv->platform);
+        RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
+        RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
+        auto buildRespV = TRY_AWAIT_RPC(buildReq.send());
+        auto buildResp = buildRespV.getResult();
 
-    if (buildResp.isDecline()) {
-        worker.hook.instances.push_back(std::move(hook));
-        co_return HookResult::Decline{};
-    } else if (buildResp.isDeclinePermanently()) {
-        worker.hook.available = false;
-        co_return HookResult::Decline{};
-    } else if (buildResp.isPostpone()) {
-        worker.hook.instances.push_back(std::move(hook));
-        co_return HookResult::Postpone{};
-    } else if (!buildResp.isAccept()) {
-        throw Error("bad hook reply '%s'", buildResp.which());
+        debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
+
+        if (buildResp.isDecline()) {
+            worker.hook.instances.push_back(std::move(hook));
+            co_return HookResult::Decline{};
+        } else if (buildResp.isDeclinePermanently()) {
+            worker.hook.available = false;
+            co_return HookResult::Decline{};
+        } else if (buildResp.isPostpone()) {
+            worker.hook.instances.push_back(std::move(hook));
+            co_return HookResult::Postpone{};
+        } else if (!buildResp.isAccept()) {
+            throw Error("bad hook reply '%s'", buildResp.which());
+        }
+
+        acceptedBuild = buildResp.getAccept().getMachine();
     }
 
     // the build was accepted by the hook, we can free the slot for another build now
@@ -1156,7 +1164,7 @@ try {
     /* Create the log file and pipe. */
     openLogFile();
 
-    auto runReq = buildResp.getAccept().getMachine().runRequest();
+    auto runReq = acceptedBuild->runRequest();
     /* Tell the hook all the inputs that have to be copied to the
        remote system. */
     runReq.setLogger(

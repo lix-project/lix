@@ -224,9 +224,6 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
     const std::set<std::string> & requiredFeatures
 )
 try {
-    /* Error ignored here, will be caught later */
-    (void) sys::mkdir(lockDir, 0777);
-
     while (true) {
         auto [rightType, bestMachine, bestSlotLock] =
             TRY_AWAIT(selectBestMachine(lockDir, machines, neededSystem, requiredFeatures));
