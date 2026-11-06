@@ -336,10 +336,15 @@ def test_keep_failed(nix: Nix, scheme: str):
         }
     """
 
+    program = nix.env.dirs.nix_bin_dir / ("nix-store" if scheme == "ssh" else "nix-daemon")
+    uri_args = urlencode(
+        {"remote-store": str(nix.env.dirs.home / "remote"), "remote-program": str(program)},
+        quote_via=quote,
+    )
     result = (
         nix.nix_build(
             [
-                *["--builders", f"{scheme}://localhost?remote-store={nix.env.dirs.home}/remote"],
+                *["--builders", f"{scheme}://localhost?{uri_args}"],
                 *["--keep-failed"],
                 *["--max-jobs", "0"],
                 *["--expr", expr],
