@@ -215,18 +215,15 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
     const std::set<std::string> & requiredFeatures
 )
 try {
-    AutoCloseFD bestSlotLock;
-
     /* Error ignored here, will be caught later */
     (void) sys::mkdir(currentLoad, 0777);
 
     while (true) {
-        bestSlotLock.reset();
         AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
         TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
 
-        auto [rightType, bestMachine, slotLock] = selectBestMachine(machines, neededSystem, requiredFeatures);
-        bestSlotLock = std::move(slotLock);
+        auto [rightType, bestMachine, bestSlotLock] =
+            selectBestMachine(machines, neededSystem, requiredFeatures);
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
