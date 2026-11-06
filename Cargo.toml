@@ -47,7 +47,7 @@ perf = { level = "deny", priority = -1 }
 suspicious = { level = "deny", priority = -1 }
 
 # some restrictions we want
-clone-on-ref-ptr = "deny"
-rc-mutex = "deny"
+clone_on_ref_ptr = "deny"
+rc_mutex = "deny"
 todo = "deny"
-unwrap-used = "deny"
+unwrap_used = "deny"
