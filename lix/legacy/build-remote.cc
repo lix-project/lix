@@ -20,9 +20,7 @@
 #include <memory>
 #include <string>
 #include <tuple>
-#if __APPLE__
 #include <sys/time.h>
-#endif
 
 #include "lix/libstore/machines.hh"
 #include "lix/libmain/shared.hh"
@@ -246,11 +244,7 @@ try {
             }
         }
 
-#if __APPLE__
         futimes(bestSlotLock.get(), nullptr);
-#else
-        futimens(bestSlotLock.get(), nullptr);
-#endif
 
         lock.reset();
 
