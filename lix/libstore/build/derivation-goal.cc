@@ -1079,6 +1079,16 @@ struct ActivityTrackingHookLogger final : HookInstance::HookLogger
 };
 }
 
+static bool allSupportedLocally(Store & store, const std::set<std::string> & requiredFeatures)
+{
+    for (auto & feature : requiredFeatures) {
+        if (!store.config().systemFeatures.get().count(feature)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
 try {
     if (!worker.hook.available || !useDerivation) {
@@ -1097,7 +1107,14 @@ try {
 
     KJ_DEFER(hook = nullptr);
 
+    /* It would be possible to build locally after some builds clear out,
+       the build hook may use this to print machine selection warnings. */
+    const bool couldBuildLocally = settings.maxBuildJobs > 0
+        && (drv->platform == settings.thisSystem || settings.extraPlatforms.get().count(drv->platform) > 0)
+        && allSupportedLocally(worker.store, parsedDrv->getRequiredSystemFeatures());
+
     auto buildReq = hook->rpc->buildRequest();
+    RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
     RPC_FILL(buildReq, setAmWilling, slotToken.valid());
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);

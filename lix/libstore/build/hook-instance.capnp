@@ -33,6 +33,7 @@ interface HookInstance $Types.throws(Types.v1Errors) {
     settings :Types.Settings,
   );
   build @1 (
+    couldBuildLocally :Bool,
     amWilling :Bool,
     neededSystem :Data,
     drvPath :StoreTypes.StorePath,

@@ -48,7 +48,6 @@ namespace nix {
 namespace {
 struct Instance final : rpc::build_remote::HookInstance::Server
 {
-    unsigned int maxBuildJobs;
     bool initialized = false, used = false;
 
     kj::Promise<void> init(InitContext context) override;
@@ -81,12 +80,6 @@ static AutoCloseFD openSlotLock(const rust::Ref<Machine> m, uint64_t slot)
     return openLockFile(
         fmt("%s/%s-%d", currentLoad, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
     );
-}
-
-static bool allSupportedLocally(Store & store, const std::set<std::string>& requiredFeatures) {
-    for (auto & feature : requiredFeatures)
-        if (!store.config().systemFeatures.get().count(feature)) return false;
-    return true;
 }
 
 static std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD> selectBestMachine(
@@ -218,7 +211,7 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
     const ref<Store> & store,
     const StorePath & drvPath,
     Machines & machines,
-    const unsigned int maxBuildJobs,
+    const bool couldBuildLocally,
     const bool amWilling,
     const std::string & neededSystem,
     const std::set<std::string> & requiredFeatures
@@ -226,12 +219,6 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
 try {
     AutoCloseFD bestSlotLock;
 
-    /* It would be possible to build locally after some builds clear out,
-       so don't show the warning now: */
-    bool couldBuildLocally = maxBuildJobs > 0
-        && (neededSystem == settings.thisSystem
-            || settings.extraPlatforms.get().count(neededSystem) > 0)
-        && allSupportedLocally(*store, requiredFeatures);
     /* It's possible to build this locally right now: */
     bool canBuildLocally = amWilling && couldBuildLocally;
 
@@ -326,7 +313,6 @@ kj::Promise<void> Instance::init(InitContext context)
             settings.set(name, value);
         }
 
-        maxBuildJobs = settings.maxBuildJobs;
         settings.maxBuildJobs.set("1"); // hack to make tests with local?root= work
 
         initPlugins();
@@ -367,6 +353,7 @@ try {
         co_return result::success();
     }
 
+    auto couldBuildLocally = context.getParams().getCouldBuildLocally();
     auto amWilling = context.getParams().getAmWilling();
     auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
     auto drvPath = from(context.getParams().getDrvPath(), *store);
@@ -374,7 +361,7 @@ try {
         rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
     auto result = TRY_AWAIT(connectToBuilder(
-        store, drvPath, machines, maxBuildJobs, amWilling, neededSystem, requiredFeatures
+        store, drvPath, machines, couldBuildLocally, amWilling, neededSystem, requiredFeatures
     ));
 
     if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
