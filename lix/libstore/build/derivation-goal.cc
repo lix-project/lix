@@ -1112,10 +1112,12 @@ try {
     const bool couldBuildLocally = settings.maxBuildJobs > 0
         && (drv->platform == settings.thisSystem || settings.extraPlatforms.get().count(drv->platform) > 0)
         && allSupportedLocally(worker.store, parsedDrv->getRequiredSystemFeatures());
+    /* It's possible to build this locally right now: */
+    const bool canBuildLocally = slotToken.valid() && couldBuildLocally;
 
     auto buildReq = hook->rpc->buildRequest();
     RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
-    RPC_FILL(buildReq, setAmWilling, slotToken.valid());
+    RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
     RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
     RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());

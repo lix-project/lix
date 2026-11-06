@@ -212,15 +212,12 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
     const StorePath & drvPath,
     Machines & machines,
     const bool couldBuildLocally,
-    const bool amWilling,
+    const bool canBuildLocally,
     const std::string & neededSystem,
     const std::set<std::string> & requiredFeatures
 )
 try {
     AutoCloseFD bestSlotLock;
-
-    /* It's possible to build this locally right now: */
-    bool canBuildLocally = amWilling && couldBuildLocally;
 
     /* Error ignored here, will be caught later */
     (void) sys::mkdir(currentLoad, 0777);
@@ -354,14 +351,14 @@ try {
     }
 
     auto couldBuildLocally = context.getParams().getCouldBuildLocally();
-    auto amWilling = context.getParams().getAmWilling();
+    auto canBuildLocally = context.getParams().getCanBuildLocallyNow();
     auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
     auto drvPath = from(context.getParams().getDrvPath(), *store);
     auto requiredFeatures =
         rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
     auto result = TRY_AWAIT(connectToBuilder(
-        store, drvPath, machines, couldBuildLocally, amWilling, neededSystem, requiredFeatures
+        store, drvPath, machines, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
     ));
 
     if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
