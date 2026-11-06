@@ -832,6 +832,8 @@ stdenv.mkDerivation (finalAttrs: {
 
           name = "lix-shell-env";
 
+          outputs = finalAttrs.outputs;
+
           # finalPackage is necessary to propagate stuff that is set by mkDerivation itself,
           # like doCheck.
           inputsFrom = [ finalAttrs.finalPackage ];
@@ -909,6 +911,14 @@ stdenv.mkDerivation (finalAttrs: {
             ++ lib.optional (!stdenv.isDarwin) gdb
             ++ lib.optional (lib.meta.availableOn buildPlatform rr && hostPlatform == buildPlatform) rr
             ++ finalAttrs.checkInputs;
+
+          buildPhase = ''
+            (
+                for _out in $outputs; do
+                  echo "this path just exists to satisfy CI" > ''${!_out}
+                done
+            )
+          '';
 
           shellHook = ''
             # Make `nix-shell` use a PWD-relative dir for `out`, emulating `nix develop`.
