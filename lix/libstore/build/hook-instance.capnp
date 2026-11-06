@@ -12,6 +12,7 @@ interface HookInstance $Types.throws(Types.v1Errors) {
   interface AcceptedBuild {
     run @0 (
       logger :Log.LogStream,
+      lockDir :Data,
       inputs :List(StoreTypes.StorePath), # actual a set
       wantedOutputs :List(Data), # actually StringSet
     );
@@ -33,6 +34,7 @@ interface HookInstance $Types.throws(Types.v1Errors) {
     settings :Types.Settings,
   );
   build @1 (
+    lockDir :Data,
     couldBuildLocally :Bool,
     canBuildLocallyNow :Bool,
     neededSystem :Data,

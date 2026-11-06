@@ -1107,6 +1107,16 @@ try {
 
     KJ_DEFER(hook = nullptr);
 
+    /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
+       that gets cleared on reboot, but it wouldn't work on macOS. */
+    auto currentLoadName = "/current-load";
+    Path lockDir;
+    if (auto localStore = dynamic_cast<LocalFSStore *>(&worker.store)) {
+        lockDir = std::string{localStore->config().stateDir} + currentLoadName;
+    } else {
+        lockDir = settings.nixStateDir + currentLoadName;
+    }
+
     /* It would be possible to build locally after some builds clear out,
        the build hook may use this to print machine selection warnings. */
     const bool couldBuildLocally = settings.maxBuildJobs > 0
@@ -1116,6 +1126,7 @@ try {
     const bool canBuildLocally = slotToken.valid() && couldBuildLocally;
 
     auto buildReq = hook->rpc->buildRequest();
+    RPC_FILL(buildReq, setLockDir, lockDir);
     RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
     RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
     RPC_FILL(buildReq, setNeededSystem, drv->platform);
@@ -1151,6 +1162,7 @@ try {
     runReq.setLogger(
         kj::heap<ActivityTrackingHookLogger>(worker.act, logSink.get(), lastChildActivity)
     );
+    RPC_FILL(runReq, setLockDir, lockDir);
     RPC_FILL(runReq, initInputs, inputPaths, worker.store);
 
     /* Tell the hooks the missing outputs that have to be copied back

@@ -61,8 +61,6 @@ std::string escapeUri(std::string uri)
     return uri;
 }
 
-static std::string currentLoad;
-
 static std::string makeLockFilename(const std::string & storeUri) {
     // We include 48 bytes of escaped URI to give an idea of what the lock
     // is on, then 16 bytes of hash to disambiguate.
@@ -73,18 +71,21 @@ static std::string makeLockFilename(const std::string & storeUri) {
     return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
 }
 
-static AutoCloseFD openSlotLock(const rust::Ref<Machine> m, uint64_t slot)
+static AutoCloseFD openSlotLock(const Path & lockDir, const rust::Ref<Machine> m, uint64_t slot)
 {
     return openLockFile(
-        fmt("%s/%s-%d", currentLoad, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
+        fmt("%s/%s-%d", lockDir, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
     );
 }
 
 static kj::Promise<Result<std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD>>> selectBestMachine(
-    Machines & machines, const std::string & neededSystem, const std::set<std::string> & requiredFeatures
+    const Path & lockDir,
+    Machines & machines,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
 )
 try {
-    AutoCloseFD lock = openLockFile(currentLoad + "/main-lock", true);
+    AutoCloseFD lock = openLockFile(lockDir + "/main-lock", true);
     TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
 
     bool rightType = false;
@@ -101,7 +102,7 @@ try {
             AutoCloseFD free;
             uint64_t load = 0;
             for (uint64_t slot = 0; slot < m.max_jobs; ++slot) {
-                auto slotLock = openSlotLock(m, slot);
+                auto slotLock = openSlotLock(lockDir, m, slot);
                 if (tryLockFile(slotLock.get(), ltWrite)) {
                     if (!free) {
                         free = std::move(slotLock);
@@ -213,6 +214,7 @@ enum class BuildRejected { Temporarily, Permanently };
 }
 
 static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> connectToBuilder(
+    const Path & lockDir,
     const ref<Store> & store,
     const StorePath & drvPath,
     Machines & machines,
@@ -223,11 +225,11 @@ static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> conne
 )
 try {
     /* Error ignored here, will be caught later */
-    (void) sys::mkdir(currentLoad, 0777);
+    (void) sys::mkdir(lockDir, 0777);
 
     while (true) {
         auto [rightType, bestMachine, bestSlotLock] =
-            TRY_AWAIT(selectBestMachine(machines, neededSystem, requiredFeatures));
+            TRY_AWAIT(selectBestMachine(lockDir, machines, neededSystem, requiredFeatures));
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
@@ -323,15 +325,6 @@ try {
     // daemon connection provided by the parent via file descriptor passing
     auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
-    /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
-       that gets cleared on reboot, but it wouldn't work on macOS. */
-    auto currentLoadName = "/current-load";
-    if (auto localStore = store.try_cast_shared<LocalFSStore>()) {
-        currentLoad = std::string{localStore->config().stateDir} + currentLoadName;
-    } else {
-        currentLoad = settings.nixStateDir + currentLoadName;
-    }
-
     auto machines = getMachines();
     auto machinesCnt = machines.len();
     debug("got %d remote builders", machinesCnt);
@@ -341,6 +334,7 @@ try {
         co_return result::success();
     }
 
+    auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
     auto couldBuildLocally = context.getParams().getCouldBuildLocally();
     auto canBuildLocally = context.getParams().getCanBuildLocallyNow();
     auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
@@ -349,7 +343,7 @@ try {
         rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
     auto result = TRY_AWAIT(connectToBuilder(
-        store, drvPath, machines, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
+        lockDir, store, drvPath, machines, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
     ));
 
     if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
@@ -409,10 +403,11 @@ kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
         auto & sshStore = builder.sshStore;
         auto & storeUri = builder.storeUri;
 
+        auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
         auto inputs = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
         auto wantedOutputs = rpc::to<std::set<std::string>>(context.getParams().getWantedOutputs());
 
-        auto lockFileName = currentLoad + "/" + makeLockFilename(storeUri) + ".upload-lock";
+        auto lockFileName = lockDir + "/" + makeLockFilename(storeUri) + ".upload-lock";
 
         AutoCloseFD uploadLock = openLockFile(lockFileName, true);
 
