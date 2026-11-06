@@ -72,11 +72,11 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
 
     RunOptions options;
 
-    // We specifically spawn bash here, to (hopefully) get
+    // We specifically spawn sh here, to (hopefully) get
     // reasonably POSIX-y semantics for the things we're about
     // to do next.
     if (fakeSSH) {
-        options.program = "bash";
+        options.program = "sh";
         options.args = {"-c", command};
     } else {
         options.program = "ssh";
