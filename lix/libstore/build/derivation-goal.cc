@@ -1303,27 +1303,13 @@ try {
         RPC_FILL(machine, initSupportedFeatures, toVec(bestMachine.supported_features));
         RPC_FILL(machine, initMandatoryFeatures, toVec(bestMachine.mandatory_features));
         RPC_FILL(machine, setSshPublicHostKey, to_std_string(bestMachine.ssh_public_host_key));
-        RPC_FILL(buildReq, setLockDir, lockDir);
-        RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
-        RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
-        RPC_FILL(buildReq, setNeededSystem, drv->platform);
         RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
-        RPC_FILL(buildReq, initRequiredFeatures, parsedDrv->getRequiredSystemFeatures());
         auto buildRespV = TRY_AWAIT_RPC(buildReq.send());
         auto buildResp = buildRespV.getResult();
 
         debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
 
-        if (buildResp.isDecline()) {
-            worker.hook.instances.push_back(std::move(hook));
-            co_return HookResult::Decline{};
-        } else if (buildResp.isDeclinePermanently()) {
-            worker.hook.available = false;
-            co_return HookResult::Decline{};
-        } else if (buildResp.isPostpone()) {
-            worker.hook.instances.push_back(std::move(hook));
-            co_return HookResult::Postpone{};
-        } else if (buildResp.isStoreConnectionFailed()) {
+        if (buildResp.isStoreConnectionFailed()) {
             printError(
                 "cannot build on '%s': %s",
                 to_std_string(bestMachine.name),

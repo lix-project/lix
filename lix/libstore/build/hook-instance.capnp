@@ -23,10 +23,7 @@ interface HookInstance $Types.throws(Types.v1Errors) {
       accept :group {
         machine @0 :AcceptedBuild;
       }
-      postpone @1 :Void;
-      decline @2 :Void;
-      declinePermanently @3 :Void;
-      storeConnectionFailed @4 :Data;
+      storeConnectionFailed @1 :Data;
     }
   }
 
@@ -49,11 +46,6 @@ interface HookInstance $Types.throws(Types.v1Errors) {
   );
   build @1 (
     machine :Machine,
-    lockDir :Data,
-    couldBuildLocally :Bool,
-    canBuildLocallyNow :Bool,
-    neededSystem :Data,
     drvPath :StoreTypes.StorePath,
-    requiredFeatures :List(Data),
   ) -> (result :BuildResponse);
 }

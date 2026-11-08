@@ -108,16 +108,8 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
 };
 }
 
-static kj::Promise<Result<std::variant<std::string, BuilderConnection>>> connectToBuilder(
-    const Path & lockDir,
-    const ref<Store> & store,
-    const StorePath & drvPath,
-    Machine & bestMachine,
-    const bool couldBuildLocally,
-    const bool canBuildLocally,
-    const std::string & neededSystem,
-    const std::set<std::string> & requiredFeatures
-)
+static kj::Promise<Result<std::variant<std::string, BuilderConnection>>>
+connectToBuilder(Machine & bestMachine)
 try {
     std::shared_ptr<Store> sshStore;
     auto machineName = to_std_string(bestMachine.name.as_str());
@@ -192,13 +184,7 @@ try {
     // daemon connection provided by the parent via file descriptor passing
     auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
-    auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
-    auto couldBuildLocally = context.getParams().getCouldBuildLocally();
-    auto canBuildLocally = context.getParams().getCanBuildLocallyNow();
-    auto neededSystem = rpc::to<std::string>(context.getParams().getNeededSystem());
     auto drvPath = from(context.getParams().getDrvPath(), *store);
-    auto requiredFeatures =
-        rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
     auto machine = rust::lix::machines::Machine::new_(
         rust::to_string(rpc::to<std::string>(context.getParams().getMachine().getName())).to_owned(),
@@ -214,9 +200,7 @@ try {
         true
     );
 
-    auto result = TRY_AWAIT(connectToBuilder(
-        lockDir, store, drvPath, machine, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
-    ));
+    auto result = TRY_AWAIT(connectToBuilder(machine));
 
     if (auto immediateResponse = std::get_if<std::string>(&result)) {
         RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, *immediateResponse);
