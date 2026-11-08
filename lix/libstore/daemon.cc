@@ -626,8 +626,9 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (obsolete1 == WORKER_EXTENDED_OPTIONS_KEY1 && obsolete2 == WORKER_EXTENDED_OPTIONS_KEY2
             && obsolete3 == WORKER_EXTENDED_OPTIONS_KEY3)
         {
-            clientSettings.overrides =
-                JSON::parse(getOr(clientSettings.overrides, WORKER_EXTENDED_OPTIONS_NAME, "{}"))["exact"];
+            auto blob = JSON::parse(getOr(clientSettings.overrides, WORKER_EXTENDED_OPTIONS_NAME, "{}"));
+            clientSettings.overrides.erase(WORKER_EXTENDED_OPTIONS_NAME);
+            clientSettings.applyExtendedOptions(blob);
         }
         clientSettings.apply(trusted);
         logger->stopWork();

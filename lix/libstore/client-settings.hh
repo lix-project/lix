@@ -2,6 +2,7 @@
 //@file
 
 #include "lix/libstore/store-api.hh"
+#include "lix/libutil/json.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/types.hh"
 
@@ -16,6 +17,15 @@ struct ClientSettings
     StringMap clientPreferences;
 
     void apply(TrustedFlag trusted);
+
+    /**
+     * Apply the extended options blob sent by a client in `setOptions`.
+     *
+     * `exact` replaces the whole override map (the ssh-ng protocol sends
+     * an allow-listed subset there), while `clientPreferences` are added to
+     * the preference map. Both keys are optional.
+     */
+    void applyExtendedOptions(const JSON & blob);
 };
 
 /**

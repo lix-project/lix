@@ -106,6 +106,19 @@ void ClientSettings::apply(TrustedFlag trusted)
     }
 }
 
+void ClientSettings::applyExtendedOptions(const JSON & blob)
+{
+    ensureType(blob, JSON::value_t::object);
+
+    if (auto exactOverrides = blob.find("exact"); exactOverrides != blob.end()) {
+        overrides = exactOverrides->get<StringMap>();
+    }
+
+    if (auto preferences = blob.find("clientPreferences"); preferences != blob.end()) {
+        clientPreferences = preferences->get<StringMap>();
+    }
+}
+
 bool isClientPreference(std::string_view name)
 {
     static const std::set<std::string, std::less<>> prefs = [] {
