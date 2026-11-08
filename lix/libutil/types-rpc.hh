@@ -84,6 +84,21 @@ struct Fill<Settings, std::map<std::string, Config::SettingInfo>>
 };
 
 template<>
+struct Fill<Settings, std::map<std::string, std::string>>
+{
+    static void fill(Settings::Builder sb, const std::map<std::string, std::string> & s, auto &&... args)
+    {
+        auto list = sb.initMap(s.size());
+        size_t i = 0;
+        for (const auto & [name, value] : s) {
+            LIX_RPC_FILL(list[i], setName, name);
+            LIX_RPC_FILL(list[i], setValue, value);
+            ++i;
+        }
+    }
+};
+
+template<>
 struct Convert<Settings, std::map<std::string, std::string>>
 {
     static std::map<std::string, std::string> convert(const Settings::Reader & t, auto &&...)

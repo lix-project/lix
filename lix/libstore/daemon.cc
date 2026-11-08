@@ -1471,6 +1471,12 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                 clientSettings.overrides.emplace(name, value);
             }
 
+            for (auto entry : args.getClientPreferences().getMap()) {
+                auto name = rpc::to<std::string>(entry.getName());
+                auto value = rpc::to<std::string>(entry.getValue());
+                clientSettings.clientPreferences.emplace(name, value);
+            }
+
             clientSettings.apply(state->trusted);
         });
     }

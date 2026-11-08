@@ -3,6 +3,7 @@
 #include "filetransfer.hh"
 #include "globals.hh"
 #include "libstore/build-result.hh"
+#include "libstore/client-settings.hh"
 #include "libstore/daemon.hh"
 #include "libstore/daemon-rpc.hh"
 #include "libstore/derivations.hh"
@@ -806,7 +807,11 @@ try {
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
+
+    std::erase_if(overrides, [](const auto & kv) { return isClientPreference(kv.first); });
+
     RPC_FILL(req, initSettingsOverrides, overrides);
+    RPC_FILL(req, initClientPreferences, getClientPreferences());
     TRY_AWAIT_RPC(req.send());
 
     co_return result::success();
