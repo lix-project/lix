@@ -2,6 +2,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/remote-store.hh"
 #include "lix/libstore/remote-store-connection.hh"
+#include "lix/libstore/client-settings.hh"
 #include "lix/libstore/worker-protocol.hh"
 #include "lix/libutil/pool.hh"
 #include "lix/libstore/ssh.hh"
@@ -160,6 +161,8 @@ protected:
             co_return {result::success()};
         }
 
+        const bool withPrefs = conn.daemonNixVersion->contains(clientPreferencesFeature);
+
         std::map<std::string, std::string> overrides;
 
         auto override = [&](const auto & setting) {
@@ -171,6 +174,14 @@ protected:
         override(settings.buildTimeout);
         override(settings.keepFailed);
         override(settings.keepGoing);
+
+        JSON blob{{"exact", overrides}};
+
+        if (withPrefs) {
+            if (auto prefs = getClientPreferences(); !prefs.empty()) {
+                blob["clientPreferences"] = prefs;
+            }
+        }
 
         StringSink command;
 
@@ -191,7 +202,7 @@ protected:
             << false; // useSubstitutes
         // clang-format on
 
-        command << 1 << WORKER_EXTENDED_OPTIONS_NAME << to_string(JSON{{"exact", overrides}});
+        command << 1 << WORKER_EXTENDED_OPTIONS_NAME << to_string(blob);
 
         AsyncFdIoStream stream{AsyncFdIoStream::shared_fd{}, conn.getFD()};
         TRY_AWAIT(stream.writeFull(command.s.data(), command.s.size()));

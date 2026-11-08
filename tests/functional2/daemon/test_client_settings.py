@@ -1,8 +1,6 @@
-import pytest
-
 from testlib.fixtures.command import CommandResult
 from testlib.fixtures.file_helper import CopyFile, with_files
-from testlib.fixtures.nix import Nix, NixDaemon, NixDaemonProtocol
+from testlib.fixtures.nix import Nix, NixDaemon
 from testlib.utils import get_global_asset
 
 EXTENDED_OPTIONS_KEY = (
@@ -56,7 +54,6 @@ def test_client_only_setting_not_forwarded(nix: Nix, daemon: NixDaemon):
         _assert_not_restricted(result, "tarball-ttl")
 
 
-@pytest.mark.parametrize("daemon", [NixDaemonProtocol.LIX_XP_1], indirect=True)
 @with_files(
     {"config.nix": get_global_asset("config.nix"), "fail.nix": CopyFile("client-settings/fail.nix")}
 )
@@ -69,7 +66,6 @@ def test_log_lines_untrusted(nix: Nix, daemon: NixDaemon):
         _assert_tail(result, 5)
 
 
-@pytest.mark.parametrize("daemon", [NixDaemonProtocol.LIX_XP_1], indirect=True)
 @with_files(
     {"config.nix": get_global_asset("config.nix"), "fail.nix": CopyFile("client-settings/fail.nix")}
 )
@@ -89,7 +85,6 @@ def test_log_lines_zero(nix: Nix, daemon: NixDaemon):
         _assert_not_restricted(result, "log-lines")
 
 
-@pytest.mark.parametrize("daemon", [NixDaemonProtocol.LIX_XP_1], indirect=True)
 @with_files(
     {"config.nix": get_global_asset("config.nix"), "fail.nix": CopyFile("client-settings/fail.nix")}
 )
@@ -103,7 +98,6 @@ def test_log_lines_over_total(nix: Nix, daemon: NixDaemon):
         _assert_tail(result, 30)
 
 
-@pytest.mark.parametrize("daemon", [NixDaemonProtocol.LIX_XP_1], indirect=True)
 @with_files(
     {"config.nix": get_global_asset("config.nix"), "fail.nix": CopyFile("client-settings/fail.nix")}
 )

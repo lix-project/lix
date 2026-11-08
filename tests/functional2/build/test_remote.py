@@ -9,6 +9,7 @@ from urllib.parse import urlencode, quote
 import sys
 
 from testlib.fixtures.nix import Nix, NixDaemon
+from testlib.fixtures.command import CommandResult
 from testlib.fixtures.file_helper import with_files
 from testlib.utils import get_global_asset
 from testlib.fixtures.env import ManagedEnv
@@ -23,6 +24,15 @@ def busybox_args(env: ManagedEnv) -> list[str]:
 def _setup_for_remote_builds(env: ManagedEnv):
     # always add bash, otherwise lix can't execute the build hook
     env.path.add_program("bash")
+
+
+def _remote_tail(result: CommandResult, n: int) -> list[str]:
+    assert f"last {n} log lines" in result.stderr_plain
+    tail = [
+        line.strip() for line in result.stderr_plain.splitlines() if line.strip().startswith("> ")
+    ]
+    assert len(tail) == n
+    return tail
 
 
 def _get_remote_program_path(prog: str, env: ManagedEnv, *, untrusted: bool) -> Path:
@@ -433,3 +443,53 @@ def test_sshng_keep_going(nix: Nix, env: ManagedEnv):
     )
     assert "a.drv' failed with exit code 1" in result.stderr_plain
     assert "b.drv' failed with exit code 1" in result.stderr_plain
+
+
+@pytest.mark.nix_settings(trusted_users="*")
+@pytest.mark.full_sandbox
+@with_files(
+    {
+        "config.nix": get_global_asset("config.nix"),
+        "remote-fail.nix": CopyFile("assets/remote-fail.nix"),
+    }
+)
+def test_remote_log_lines_untrusted(nix: Nix, env: ManagedEnv):
+    nix.settings["log-format"] = "raw"
+    result = nix.nix_build(
+        [
+            "remote-fail.nix",
+            "--max-jobs",
+            "0",
+            "--builders",
+            _builders("ssh-ng", untrusted=True, env=env),
+            "--log-lines",
+            "5",
+        ]
+    ).run()
+    result.expect(1)
+    assert _remote_tail(result, 5) == [f"> line-{i}" for i in range(26, 31)]
+    assert "Ignoring the client-specified setting 'log-lines'" not in result.stderr_plain
+
+
+@pytest.mark.nix_settings(trusted_users="*")
+@pytest.mark.full_sandbox
+@with_files(
+    {
+        "config.nix": get_global_asset("config.nix"),
+        "remote-fail.nix": CopyFile("assets/remote-fail.nix"),
+    }
+)
+def test_remote_log_lines_default(nix: Nix, env: ManagedEnv):
+    nix.settings["log-format"] = "raw"
+    result = nix.nix_build(
+        [
+            "remote-fail.nix",
+            "--max-jobs",
+            "0",
+            "--builders",
+            _builders("ssh-ng", untrusted=True, env=env),
+        ]
+    ).run()
+    result.expect(1)
+    tail = _remote_tail(result, 25)
+    assert tail[-1] == "> line-30"

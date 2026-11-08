@@ -27,6 +27,8 @@
 #include "lix/libstore/filetransfer.hh"
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/types.hh"
+#include "lix/libutil/json.hh"
+#include "lix/libstore/client-settings.hh"
 #include "path-info.hh"
 
 #include <cstdint>
@@ -120,6 +122,10 @@ kj::Promise<Result<void>> RemoteStore::setOptions(Connection & conn)
 try {
     StringSink command;
 
+    auto prefs = getClientPreferences();
+    bool withBlob =
+        conn.daemonNixVersion && conn.daemonNixVersion->contains(clientPreferencesFeature) && !prefs.empty();
+
     // clang-format off
     command << WorkerProto::Op::SetOptions
        << settings.keepFailed
@@ -128,10 +134,10 @@ try {
        << getVerbosity()
        << settings.maxBuildJobs
        << settings.maxSilentTime
-       << true
+       << (withBlob ? WORKER_EXTENDED_OPTIONS_KEY1 : true)
        << lvlError // obsolete verboseBuild (2026-08-29)
-       << 0 // obsolete log type
-       << 0 /* obsolete print build trace */
+       << (withBlob ? WORKER_EXTENDED_OPTIONS_KEY2 : 0) // obsolete log type
+       << (withBlob ? WORKER_EXTENDED_OPTIONS_KEY3 : 0) /* obsolete print build trace */
        << settings.buildCores
        << settings.useSubstitutes;
     // clang-format on
@@ -151,6 +157,13 @@ try {
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
+
+    if (withBlob) {
+        std::erase_if(overrides, [](const auto & kv) { return isClientPreference(kv.first); });
+        overrides[WORKER_EXTENDED_OPTIONS_NAME] =
+            Config::SettingInfo{to_string(JSON{{"clientPreferences", prefs}}), ""};
+    }
+
     command << overrides.size();
     for (auto & i : overrides)
         command << i.first << i.second.value;
