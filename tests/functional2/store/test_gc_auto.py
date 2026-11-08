@@ -1,12 +1,10 @@
 """
 Tests for automatic garbage collection (min-free/max-free options).
 
-Note for the future creature writing tests here: the garbage collector in Lix
-scans /proc for runtime roots. Under ASAN builds which we test in CI, this scan
-can take a lot of time. It is EXTREMELY NOT RECOMMENDED to add ANY timeout
-here.
+Auto-GC scans /proc for runtime roots, which is very slow under ASan, so these
+tests wait for the collector instead of racing it with a short sleep.
 
-Let the suite timeout handle it.
+There's a 15 minutes timeout on the test suite to detect hanging quickly.
 """
 
 import shlex
@@ -18,7 +16,7 @@ from testlib.fixtures.file_helper import with_files
 from testlib.fixtures.nix import Nix
 from testlib.utils import get_global_asset
 
-pytestmark = pytest.mark.no_daemon
+pytestmark = [pytest.mark.no_daemon, pytest.mark.timeout(900)]
 
 _BASE_FILES = {"config.nix": get_global_asset("config.nix")}
 
