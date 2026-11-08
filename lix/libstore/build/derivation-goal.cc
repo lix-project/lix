@@ -1,4 +1,5 @@
 #include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libstore/machines.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
@@ -20,6 +21,7 @@
 #include "lix/libstore/build/hook-instance.capnp.h"
 #include "lix/libstore/types-rpc.hh"
 #include "lix/libutil/types-rpc.hh"
+#include "lix/lix-rs/main.gen.hh"
 
 #include <boost/outcome/try.hpp>
 #include <capnp/rpc-twoparty.h>
@@ -1089,9 +1091,135 @@ static bool allSupportedLocally(Store & store, const std::set<std::string> & req
     return true;
 }
 
+static std::string escapeUri(std::string uri)
+{
+    std::replace(uri.begin(), uri.end(), '/', '_');
+    return uri;
+}
+
+static std::string makeLockFilename(const std::string & storeUri)
+{
+    // We include 48 bytes of escaped URI to give an idea of what the lock
+    // is on, then 16 bytes of hash to disambiguate.
+    // This avoids issues with the escaped URI being very long and causing
+    // path too long errors, while also avoiding any possibility of collision
+    // caused by simple truncation.
+    auto hash = base32Encode(hashString(HashType::SHA256, storeUri));
+    return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
+}
+
+static AutoCloseFD openSlotLock(const Path & lockDir, const rust::Ref<Machine> m, uint64_t slot)
+{
+    return openLockFile(
+        fmt("%s/%s-%d", lockDir, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
+    );
+}
+
+static kj::Promise<Result<std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD>>> selectBestMachine(
+    const Path & lockDir,
+    Machines & machines,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
+)
+try {
+    AutoCloseFD lock = openLockFile(lockDir + "/main-lock", true);
+    TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
+
+    bool rightType = false;
+    rust::RefMut<rust::lix::machines::Machine> bestMachine;
+    AutoCloseFD bestSlotLock;
+    uint64_t bestLoad = 0;
+    auto needed_system_rust = rust::to_string(neededSystem);
+    auto required_features_rs = rust::to_hash_set(requiredFeatures);
+
+    for (auto m : machines.iter_mut()) {
+        debug("considering building on remote machine '%s'", to_std_string(m.name.as_str()));
+        if (m.is_eligible(needed_system_rust, required_features_rs)) {
+            rightType = true;
+            AutoCloseFD free;
+            uint64_t load = 0;
+            for (uint64_t slot = 0; slot < m.max_jobs; ++slot) {
+                auto slotLock = openSlotLock(lockDir, m, slot);
+                if (tryLockFile(slotLock.get(), ltWrite)) {
+                    if (!free) {
+                        free = std::move(slotLock);
+                    }
+                } else {
+                    ++load;
+                }
+            }
+            if (!free) {
+                continue;
+            }
+            bool best = false;
+            if (!bestSlotLock) {
+                best = true;
+            } else if (load / m.speed_factor < bestLoad / bestMachine.speed_factor) {
+                best = true;
+            } else if (load / m.speed_factor == bestLoad / bestMachine.speed_factor) {
+                if (m.speed_factor > bestMachine.speed_factor) {
+                    best = true;
+                } else if (m.speed_factor == bestMachine.speed_factor) {
+                    if (load < bestLoad) {
+                        best = true;
+                    }
+                }
+            }
+            if (best) {
+                bestLoad = load;
+                bestSlotLock = std::move(free);
+                bestMachine = m;
+            }
+        }
+    }
+
+    futimes(bestSlotLock.get(), nullptr);
+
+    co_return {rightType, bestMachine, std::move(bestSlotLock)};
+} catch (...) {
+    co_return result::current_exception();
+}
+
+static void printSelectionFailureMessage(
+    Verbosity level,
+    const std::string_view drvstr,
+    const Machines & machines,
+    const std::string & neededSystem,
+    const std::set<std::string> & requiredFeatures
+)
+{
+    std::string machinesFormatted;
+
+    for (auto & m : machines.iter()) {
+        machinesFormatted += '\n';
+        machinesFormatted += to_std_string_view(m.format_for_error());
+    }
+
+    printMsg(
+        level,
+        "Failed to find a machine for remote build!\n"
+        "derivation: %s\n"
+        "required (system, features): (%s, [%s])\n"
+        "%s available machines:\n"
+        "(systems, maxjobs, supportedFeatures, mandatoryFeatures)%s",
+        drvstr,
+        neededSystem,
+        concatStringsSep<StringSet>(", ", requiredFeatures),
+        machines.len(),
+        Uncolored(machinesFormatted)
+    );
+}
+
 kj::Promise<Result<HookResult>> DerivationGoal::tryBuildHook()
 try {
     if (!worker.hook.available || !useDerivation) {
+        co_return HookResult::Decline{};
+    }
+
+    auto machines = getMachines();
+    debug("got %d remote builders", machines.len());
+    if (machines.len() == 0) {
+        worker.hook.available = false;
         co_return HookResult::Decline{};
     }
 
@@ -1126,11 +1254,55 @@ try {
         && allSupportedLocally(worker.store, parsedDrv->getRequiredSystemFeatures());
     /* It's possible to build this locally right now: */
     const bool canBuildLocally = slotToken.valid() && couldBuildLocally;
+    const auto & neededSystem = drv->platform;
+    const auto requiredFeatures = parsedDrv->getRequiredSystemFeatures();
 
     std::optional<rpc::build_remote::HookInstance::AcceptedBuild::Client> acceptedBuild;
+    AutoCloseFD slotLock;
 
     while (!acceptedBuild) {
+        slotLock.reset();
+
+        auto [rightType, bestMachine, bestSlotLock] =
+            TRY_AWAIT(selectBestMachine(lockDir, machines, neededSystem, requiredFeatures));
+
+        if (!bestSlotLock) {
+            if (rightType && !canBuildLocally) {
+                worker.hook.instances.push_back(std::move(hook));
+                co_return HookResult::Postpone{};
+            } else {
+                printSelectionFailureMessage(
+                    couldBuildLocally ? lvlChatty : lvlWarn,
+                    drvPath.to_string(),
+                    machines,
+                    neededSystem,
+                    requiredFeatures
+                );
+
+                worker.hook.instances.push_back(std::move(hook));
+                co_return HookResult::Decline{};
+            }
+        }
+
+        auto toVec = [](auto & rs) {
+            std::vector<std::string> cxx;
+            for (auto & s : rs.iter()) {
+                cxx.emplace_back(to_std_string(s));
+            }
+            return cxx;
+        };
+
         auto buildReq = hook->rpc->buildRequest();
+        auto machine = buildReq.initMachine();
+        RPC_FILL(machine, setName, to_std_string(bestMachine.name));
+        RPC_FILL(machine, setUri, to_std_string(bestMachine.uri));
+        RPC_FILL(machine, initSystemTypes, toVec(bestMachine.system_types));
+        RPC_FILL(machine, setSshKey, to_std_string(bestMachine.ssh_key));
+        RPC_FILL(machine, setMaxJobs, bestMachine.max_jobs);
+        RPC_FILL(machine, setSpeedFactor, bestMachine.speed_factor);
+        RPC_FILL(machine, initSupportedFeatures, toVec(bestMachine.supported_features));
+        RPC_FILL(machine, initMandatoryFeatures, toVec(bestMachine.mandatory_features));
+        RPC_FILL(machine, setSshPublicHostKey, to_std_string(bestMachine.ssh_public_host_key));
         RPC_FILL(buildReq, setLockDir, lockDir);
         RPC_FILL(buildReq, setCouldBuildLocally, couldBuildLocally);
         RPC_FILL(buildReq, setCanBuildLocallyNow, canBuildLocally);
@@ -1151,11 +1323,20 @@ try {
         } else if (buildResp.isPostpone()) {
             worker.hook.instances.push_back(std::move(hook));
             co_return HookResult::Postpone{};
+        } else if (buildResp.isStoreConnectionFailed()) {
+            printError(
+                "cannot build on '%s': %s",
+                to_std_string(bestMachine.name),
+                rpc::to<std::string>(buildResp.getStoreConnectionFailed())
+            );
+            bestMachine.disable();
+            continue;
         } else if (!buildResp.isAccept()) {
             throw Error("bad hook reply '%s'", buildResp.which());
         }
 
         acceptedBuild = buildResp.getAccept().getMachine();
+        slotLock = std::move(bestSlotLock);
     }
 
     // the build was accepted by the hook, we can free the slot for another build now

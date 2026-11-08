@@ -26,7 +26,21 @@ interface HookInstance $Types.throws(Types.v1Errors) {
       postpone @1 :Void;
       decline @2 :Void;
       declinePermanently @3 :Void;
+      storeConnectionFailed @4 :Data;
     }
+  }
+
+  struct Machine {
+    name @0 :Data;
+    uri @1 :Data;
+    systemTypes @2 :List(Data);
+    sshKey @3 :Data;
+    maxJobs @4 :UInt32;
+    speedFactor @5 :Float32;
+    supportedFeatures @6 :List(Data);
+    mandatoryFeatures @7 :List(Data);
+    sshPublicHostKey @8 :Data;
+    # enabled is implied true
   }
 
   init @0 (
@@ -34,6 +48,7 @@ interface HookInstance $Types.throws(Types.v1Errors) {
     settings :Types.Settings,
   );
   build @1 (
+    machine :Machine,
     lockDir :Data,
     couldBuildLocally :Bool,
     canBuildLocallyNow :Bool,

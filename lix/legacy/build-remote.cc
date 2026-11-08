@@ -71,112 +71,9 @@ static std::string makeLockFilename(const std::string & storeUri) {
     return escapeUri(storeUri).substr(0, 48) + "-" + hash.substr(0, 16);
 }
 
-static AutoCloseFD openSlotLock(const Path & lockDir, const rust::Ref<Machine> m, uint64_t slot)
-{
-    return openLockFile(
-        fmt("%s/%s-%d", lockDir, makeLockFilename(to_std_string(m.uri.as_str())), slot), true
-    );
-}
-
-static kj::Promise<Result<std::tuple<bool, rust::RefMut<Machine>, AutoCloseFD>>> selectBestMachine(
-    const Path & lockDir,
-    Machines & machines,
-    const std::string & neededSystem,
-    const std::set<std::string> & requiredFeatures
-)
-try {
-    AutoCloseFD lock = openLockFile(lockDir + "/main-lock", true);
-    TRY_AWAIT(lockFileAsync(lock.get(), ltWrite));
-
-    bool rightType = false;
-    rust::RefMut<Machine> bestMachine;
-    AutoCloseFD bestSlotLock;
-    uint64_t bestLoad = 0;
-    auto needed_system_rust = rust::to_string(neededSystem);
-    auto required_features_rs = rust::to_hash_set(requiredFeatures);
-
-    for (auto m : machines.iter_mut()) {
-        debug("considering building on remote machine '%s'", to_std_string(m.name.as_str()));
-        if (m.is_eligible(needed_system_rust, required_features_rs)) {
-            rightType = true;
-            AutoCloseFD free;
-            uint64_t load = 0;
-            for (uint64_t slot = 0; slot < m.max_jobs; ++slot) {
-                auto slotLock = openSlotLock(lockDir, m, slot);
-                if (tryLockFile(slotLock.get(), ltWrite)) {
-                    if (!free) {
-                        free = std::move(slotLock);
-                    }
-                } else {
-                    ++load;
-                }
-            }
-            if (!free) {
-                continue;
-            }
-            bool best = false;
-            if (!bestSlotLock) {
-                best = true;
-            } else if (load / m.speed_factor < bestLoad / bestMachine.speed_factor) {
-                best = true;
-            } else if (load / m.speed_factor == bestLoad / bestMachine.speed_factor) {
-                if (m.speed_factor > bestMachine.speed_factor) {
-                    best = true;
-                } else if (m.speed_factor == bestMachine.speed_factor) {
-                    if (load < bestLoad) {
-                        best = true;
-                    }
-                }
-            }
-            if (best) {
-                bestLoad = load;
-                bestSlotLock = std::move(free);
-                bestMachine = m;
-            }
-        }
-    }
-
-    futimes(bestSlotLock.get(), nullptr);
-
-    co_return {rightType, bestMachine, std::move(bestSlotLock)};
-} catch (...) {
-    co_return result::current_exception();
-}
-
-static void printSelectionFailureMessage(
-    Verbosity level,
-    const std::string_view drvstr,
-    const Machines & machines,
-    const std::string & neededSystem,
-    const std::set<std::string> & requiredFeatures
-)
-{
-    std::string machinesFormatted;
-
-    for (auto & m : machines.iter()) {
-        machinesFormatted += '\n';
-        machinesFormatted += to_std_string_view(m.format_for_error());
-    }
-
-    printMsg(
-        level,
-        "Failed to find a machine for remote build!\n"
-        "derivation: %s\n"
-        "required (system, features): (%s, [%s])\n"
-        "%s available machines:\n"
-        "(systems, maxjobs, supportedFeatures, mandatoryFeatures)%s",
-        drvstr,
-        neededSystem,
-        concatStringsSep<StringSet>(", ", requiredFeatures),
-        machines.len(),
-        Uncolored(machinesFormatted)
-    );
-}
-
 namespace {
 struct BuilderConnection
 {
-    AutoCloseFD slotLock;
     std::shared_ptr<Store> sshStore;
     std::string storeUri;
 };
@@ -209,56 +106,29 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
     kj::Promise<Result<void>> runImpl(RunContext context);
     kj::Promise<void> run(RunContext context) override;
 };
-
-enum class BuildRejected { Temporarily, Permanently };
 }
 
-static kj::Promise<Result<std::variant<BuildRejected, BuilderConnection>>> connectToBuilder(
+static kj::Promise<Result<std::variant<std::string, BuilderConnection>>> connectToBuilder(
     const Path & lockDir,
     const ref<Store> & store,
     const StorePath & drvPath,
-    Machines & machines,
+    Machine & bestMachine,
     const bool couldBuildLocally,
     const bool canBuildLocally,
     const std::string & neededSystem,
     const std::set<std::string> & requiredFeatures
 )
 try {
-    while (true) {
-        auto [rightType, bestMachine, bestSlotLock] =
-            TRY_AWAIT(selectBestMachine(lockDir, machines, neededSystem, requiredFeatures));
+    std::shared_ptr<Store> sshStore;
+    auto machineName = to_std_string(bestMachine.name.as_str());
 
-        if (!bestSlotLock) {
-            if (rightType && !canBuildLocally) {
-                co_return BuildRejected::Temporarily;
-            } else {
-                printSelectionFailureMessage(
-                    couldBuildLocally ? lvlChatty : lvlWarn,
-                    drvPath.to_string(),
-                    machines,
-                    neededSystem,
-                    requiredFeatures
-                );
+    try {
+        auto act = logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", machineName));
 
-                co_return BuildRejected::Permanently;
-            }
-        }
-
-        std::shared_ptr<Store> sshStore;
-        auto machineName = to_std_string(bestMachine.name.as_str());
-
-        try {
-            auto act =
-                logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", machineName));
-
-            sshStore = TRY_AWAIT(openStore(bestMachine));
-            co_return BuilderConnection{
-                std::move(bestSlotLock), sshStore, to_std_string(bestMachine.uri.as_str())
-            };
-        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-            printError("cannot build on '%s': %s", machineName, e.what());
-            bestMachine.disable();
-        }
+        sshStore = TRY_AWAIT(openStore(bestMachine));
+        co_return BuilderConnection{sshStore, to_std_string(bestMachine.uri.as_str())};
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+        co_return e.what();
     }
 } catch (...) {
     co_return result::current_exception();
@@ -322,15 +192,6 @@ try {
     // daemon connection provided by the parent via file descriptor passing
     auto store = TRY_AWAIT(openStore(settings.storeUri, {}, AllowDaemon::Disallow));
 
-    auto machines = getMachines();
-    auto machinesCnt = machines.len();
-    debug("got %d remote builders", machinesCnt);
-
-    if (machinesCnt == 0) {
-        context.getResults().initResult().setDeclinePermanently();
-        co_return result::success();
-    }
-
     auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
     auto couldBuildLocally = context.getParams().getCouldBuildLocally();
     auto canBuildLocally = context.getParams().getCanBuildLocallyNow();
@@ -339,19 +200,27 @@ try {
     auto requiredFeatures =
         rpc::to<std::set<std::string>>(context.getParams().getRequiredFeatures());
 
+    auto machine = rust::lix::machines::Machine::new_(
+        rust::to_string(rpc::to<std::string>(context.getParams().getMachine().getName())).to_owned(),
+        rust::to_string(rpc::to<std::string>(context.getParams().getMachine().getUri())).to_owned(),
+        rust::to_hash_set(rpc::to<StringSet>(context.getParams().getMachine().getSystemTypes())),
+        rust::to_string(rpc::to<std::string>(context.getParams().getMachine().getSshKey())).to_owned(),
+        context.getParams().getMachine().getMaxJobs(),
+        context.getParams().getMachine().getSpeedFactor(),
+        rust::to_hash_set(rpc::to<StringSet>(context.getParams().getMachine().getSupportedFeatures())),
+        rust::to_hash_set(rpc::to<StringSet>(context.getParams().getMachine().getMandatoryFeatures())),
+        rust::to_string(rpc::to<std::string>(context.getParams().getMachine().getSshPublicHostKey()))
+            .to_owned(),
+        true
+    );
+
     auto result = TRY_AWAIT(connectToBuilder(
-        lockDir, store, drvPath, machines, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
+        lockDir, store, drvPath, machine, couldBuildLocally, canBuildLocally, neededSystem, requiredFeatures
     ));
 
-    if (auto immediateResponse = std::get_if<BuildRejected>(&result)) {
-        switch (*immediateResponse) {
-        case BuildRejected::Temporarily:
-            context.getResults().initResult().setPostpone();
-            co_return result::success();
-        case BuildRejected::Permanently:
-            context.getResults().initResult().setDecline();
-            co_return result::success();
-        }
+    if (auto immediateResponse = std::get_if<std::string>(&result)) {
+        RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, *immediateResponse);
+        co_return result::success();
     }
 
     auto builder = std::get_if<BuilderConnection>(&result);
