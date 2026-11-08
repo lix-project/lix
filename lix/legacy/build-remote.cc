@@ -108,24 +108,6 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
 };
 }
 
-static kj::Promise<Result<std::variant<std::string, BuilderConnection>>>
-connectToBuilder(Machine & bestMachine)
-try {
-    std::shared_ptr<Store> sshStore;
-    auto machineName = to_std_string(bestMachine.name.as_str());
-
-    try {
-        auto act = logger->startActivity(lvlTalkative, actUnknown, fmt("connecting to '%s'", machineName));
-
-        sshStore = TRY_AWAIT(openStore(bestMachine));
-        co_return BuilderConnection{sshStore, to_std_string(bestMachine.uri.as_str())};
-    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
-        co_return e.what();
-    }
-} catch (...) {
-    co_return result::current_exception();
-}
-
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
@@ -200,18 +182,22 @@ try {
         true
     );
 
-    auto result = TRY_AWAIT(connectToBuilder(machine));
+    std::shared_ptr<Store> sshStore;
 
-    if (auto immediateResponse = std::get_if<std::string>(&result)) {
-        RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, *immediateResponse);
+    try {
+        auto act = logger->startActivity(
+            lvlTalkative, actUnknown, fmt("connecting to '%s'", to_std_string(machine.name.as_str()))
+        );
+        sshStore = TRY_AWAIT(openStore(machine));
+    } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+        RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, e.what());
         co_return result::success();
     }
 
-    auto builder = std::get_if<BuilderConnection>(&result);
-    assert(builder);
+    auto builder = BuilderConnection{sshStore, to_std_string(machine.uri.as_str())};
 
     auto ac = context.getResults().initResult().initAccept();
-    ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(*builder)));
+    ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(builder)));
 
     co_return result::success();
 } catch (...) {
