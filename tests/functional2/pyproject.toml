@@ -5,6 +5,9 @@ requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
 addopts = "-p no:xonsh"
+# When tests hang, let's try to dump their stacks before the final timeout.
+# See gc-auto for an example.
+faulthandler_timeout = 300
 
 markers = [
     "full_sandbox: test requires a fully isolated sandbox",
