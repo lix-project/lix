@@ -109,15 +109,50 @@ def test_fetch_default_branch(nix: Nix, repo: Path):
 
 @with_files(repo_files)
 def test_fetch_rev_another_branch(nix: Nix, repo: Path, devrev: str):
-    # if this is not set, then the revision will be found
+    # Force the cache/remote path even though the fixture is a local repo.
     nix.env["_NIX_FORCE_HTTP"] = "1"
 
     res = (
-        nix.nix([*eval_args, f'builtins.fetchGit {{ url = "file://{repo}"; rev = "{devrev}";}}'])
+        nix.nix(
+            [
+                *eval_args,
+                f'builtins.readFile (builtins.fetchGit {{ url = "file://{repo}"; rev = "{devrev}";}} + "/differentbranch")',
+            ]
+        )
         .run()
-        .expect(1)
+        .ok()
     )
-    assert "Cannot find Git revision" in res.stderr_plain
+    assert res.stdout_plain == "different file"
+
+    res = (
+        nix.nix(
+            [*eval_args, f'(builtins.fetchGit {{ url = "file://{repo}"; rev = "{devrev}";}}).rev']
+        )
+        .run()
+        .ok()
+    )
+    assert res.stdout_plain == devrev
+
+
+@with_files(repo_files)
+def test_fetch_rev_does_not_create_branch(nix: Nix, repo: Path, devrev: str):
+    nix.env["_NIX_FORCE_HTTP"] = "1"
+
+    nix.nix(
+        [*eval_args, f'(builtins.fetchGit {{ url = "file://{repo}"; rev = "{devrev}";}}).outPath']
+    ).run().ok()
+
+    cache_dirs = list((nix.env.dirs.xdg_cache_home / "nix" / "gitv3").iterdir())
+    assert len(cache_dirs) == 1
+    refs = (
+        Command(
+            ["git", "--git-dir", str(cache_dirs[0]), "for-each-ref", "--format=%(refname)"], nix.env
+        )
+        .run()
+        .ok()
+        .stdout_plain
+    )
+    assert f"refs/heads/{devrev}" not in refs
 
 
 @with_files(repo_files)
@@ -140,8 +175,7 @@ def test_allow_revs_as_refs(nix: Nix, repo: Path, devrev: str, parent_cwd: bool)
 
 
 @with_files(repo_files)
-def test_allow_revs_as_refs_invalid(nix: Nix, repo: Path, devrev: str):
-    # for 2.3 compat
+def test_rev_does_not_override_ref(nix: Nix, repo: Path, devrev: str):
     nix.env["_NIX_FORCE_HTTP"] = "1"
     res = (
         nix.nix(
@@ -155,6 +189,27 @@ def test_allow_revs_as_refs_invalid(nix: Nix, repo: Path, devrev: str):
         .expect(1)
     )
     assert "Cannot find Git revision" in res.stderr_plain
+
+
+@with_files(repo_files)
+def test_ref_as_rev_2_3_compat(nix: Nix, repo: Path, repo_revs: RepoRevs):
+    nix.env["_NIX_FORCE_HTTP"] = "1"
+
+    for attrs in (
+        f'ref = "{repo_revs.rev2}"',
+        f'ref = "{repo_revs.rev2}"; rev = "{repo_revs.rev2}"',
+    ):
+        res = (
+            nix.nix(
+                [
+                    *eval_args,
+                    f'builtins.readFile (builtins.fetchGit {{ url = "file://{repo}"; {attrs}; }} + "/hello")',
+                ]
+            )
+            .run()
+            .ok()
+        )
+        assert res.stdout_plain == "world"
 
 
 @with_files(repo_files)

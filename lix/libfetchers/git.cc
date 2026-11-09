@@ -630,6 +630,7 @@ struct GitInputScheme : InputScheme
     fetch(ref<Store> store, const Input & _input) override
     try {
         Input input(_input);
+        const bool refWasSpecified = _input.getRef().has_value();
         auto gitDir = ".git";
 
         std::string name = input.getName();
@@ -836,15 +837,13 @@ struct GitInputScheme : InputScheme
                 auto ref = input.getRef();
                 std::string fetchRef;
                 if (allRefs) {
-                    fetchRef = "refs/*";
-                } else if (
-                    ref->starts_with("refs/")
-                    || *ref == "HEAD"
-                    || std::regex_match(*ref, revRegex))
-                {
-                    fetchRef = *ref;
+                    fetchRef = "refs/*:refs/*";
+                } else if (input.getRev() && !refWasSpecified) {
+                    fetchRef = base16Encode(*input.getRev());
+                } else if (ref->starts_with("refs/") || *ref == "HEAD" || std::regex_match(*ref, revRegex)) {
+                    fetchRef = *ref + ":" + *ref;
                 } else {
-                    fetchRef = "refs/*/" + *ref;
+                    fetchRef = fmt("refs/*/%1%:refs/*/%1%", *ref);
                 }
 
                 // A cache directory is keyed by URL only. If that URL is repointed at a repository
@@ -869,7 +868,7 @@ struct GitInputScheme : InputScheme
                                  "--force",
                                  "--",
                                  actualUrl,
-                                 fmt("%s:%s", fetchRef, fetchRef)},
+                                 fetchRef},
                             .environment = {env},
                             .redirections = {{.dup = STDERR_FILENO, .from = STDOUT_FILENO}},
                         }
@@ -1020,9 +1019,9 @@ struct GitInputScheme : InputScheme
             TRY_AWAIT(runProgram("git", true, initArgs));
 
             {
-                // TODO: repoDir might lack the ref (it only checks if rev
-                // exists, see FIXME above) so use a big hammer and fetch
-                // everything to ensure we get the rev.
+                // Fetch all refs for submodule resolution, plus the exact
+                // revision: a rev fetched by object id is unreferenced, so
+                // fetching only refs/* could not lead to a transfer of it.
                 auto act = logger->startActivity(
                     lvlTalkative, actUnknown, fmt("making temporary clone of '%s'", repoDir)
                 );
@@ -1037,7 +1036,8 @@ struct GitInputScheme : InputScheme
                      "--update-head-ok",
                      "--",
                      repoDir,
-                     "refs/*:refs/*"},
+                     "refs/*:refs/*",
+                     base16Encode(*input.getRev())},
                     true
                 ));
             }
