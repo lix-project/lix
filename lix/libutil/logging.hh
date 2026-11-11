@@ -116,10 +116,12 @@ struct LoggerSettings : Config
 extern LoggerSettings loggerSettings;
 
 class Activity;
+class WrappedLogger;
 
 class Logger
 {
     friend class Activity;
+    friend WrappedLogger;
 
 public:
 
@@ -227,6 +229,87 @@ public:
 
     virtual void setPrintMultiline(bool printMultiline)
     { }
+};
+
+class WrappedLogger : public Logger
+{
+protected:
+    Logger * parent;
+
+    explicit WrappedLogger(Logger & parent) : parent(&parent) {}
+
+public:
+    void pause() override
+    {
+        parent->pause();
+    }
+    void resetProgress() override
+    {
+        parent->resetProgress();
+    }
+    void resume() override
+    {
+        parent->resume();
+    }
+    bool isVerbose() override
+    {
+        return parent->isVerbose();
+    }
+    BufferState bufferState() const override
+    {
+        return parent->bufferState();
+    }
+    kj::Promise<Result<void>> flush() override
+    {
+        return parent->flush();
+    }
+    void waitForSpace(NeverAsync = {}) override
+    {
+        parent->waitForSpace();
+    }
+    void writeToStdout(std::string_view s) override
+    {
+        parent->writeToStdout(s);
+    }
+    std::optional<std::string> ask(std::string_view s) override
+    {
+        return parent->ask(s);
+    }
+    void setPrintBuildLogs(bool printBuildLogs) override
+    {
+        parent->setPrintBuildLogs(printBuildLogs);
+    }
+    void setPrintMultiline(bool printMultiline) override
+    {
+        parent->setPrintMultiline(printMultiline);
+    }
+    BufferState log(Verbosity lvl, std::string_view s) override
+    {
+        return parent->log(lvl, s);
+    }
+    BufferState logEI(const ErrorInfo & ei) override
+    {
+        return parent->logEI(ei);
+    }
+    BufferState startActivityImpl(
+        ActivityId act,
+        Verbosity lvl,
+        ActivityType type,
+        const std::string & s,
+        const Fields & fields,
+        ActivityId parent
+    ) override
+    {
+        return this->parent->startActivityImpl(act, lvl, type, s, fields, parent);
+    }
+    BufferState stopActivityImpl(ActivityId act) override
+    {
+        return parent->stopActivityImpl(act);
+    }
+    BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields) override
+    {
+        return parent->resultImpl(act, type, fields);
+    }
 };
 
 /**
