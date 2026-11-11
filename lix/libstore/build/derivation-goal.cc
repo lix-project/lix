@@ -823,12 +823,6 @@ void replaceValidPath(const Path & storePath, const Path & tmpPath)
         deletePath(oldPath);
 }
 
-
-int DerivationGoal::getChildStatus()
-{
-    return hook->kill();
-}
-
 void DerivationGoal::closeReadPipes() {}
 
 void DerivationGoal::cleanupHookFinally()
@@ -954,8 +948,8 @@ std::string DerivationGoal::buildErrorContents(const std::string & exitMsg, bool
     return msg;
 }
 
-kj::Promise<Result<Goal::WorkResult>> DerivationGoal::buildDone(std::shared_ptr<Error> remoteError
-) noexcept
+kj::Promise<Result<Goal::WorkResult>>
+DerivationGoal::buildDone(int rawStatus, std::shared_ptr<Error> remoteError) noexcept
 try {
     trace("build done");
 
@@ -968,7 +962,6 @@ try {
        to have terminated.  In fact, the builder could also have
        simply have closed its end of the pipe, so just to be sure,
        kill it. */
-    int rawStatus = getChildStatus();
     const auto [exited, exitCode, exitMsg] = [&]() -> std::tuple<bool, int, std::string> {
         // override exit status with 1 if we received an exception via rpc for
         // historical reasons: the build hook used to turn build errors into a
@@ -1369,8 +1362,7 @@ try {
                 }
                 // close the rpc connection to have the hook exit
                 hook->rpc = nullptr;
-                hook->wait();
-                return buildDone(remoteError);
+                return buildDone(hook->wait(), remoteError);
             } catch (...) {
                 return {result::current_exception()};
             }

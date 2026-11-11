@@ -266,14 +266,12 @@ struct DerivationGoal : public Goal
     kj::Promise<Result<WorkResult>> tryToBuild() noexcept;
     virtual kj::Promise<Result<WorkResult>> tryLocalBuild() noexcept;
     kj::Promise<Result<WorkResult>>
-    buildDone(std::shared_ptr<Error> remoteError = nullptr) noexcept;
+    buildDone(int rawStatus, std::shared_ptr<Error> remoteError = nullptr) noexcept;
 
     /**
      * Is the build hook willing to perform the build?
      */
     kj::Promise<Result<HookResult>> tryBuildHook();
-
-    virtual int getChildStatus();
 
     /**
      * Check that the derivation outputs all exist and register them

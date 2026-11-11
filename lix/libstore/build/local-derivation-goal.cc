@@ -376,9 +376,6 @@ extern void replaceValidPath(const Path & storePath, const Path & tmpPath);
 
 int LocalDerivationGoal::getChildStatus()
 {
-    if (hook) {
-        return DerivationGoal::getChildStatus();
-    }
     if (auto running = std::get_if<ProcessGroup>(&pg)) {
         pg = running->kill();
     }
@@ -2318,7 +2315,7 @@ try {
     if (auto error = TRY_AWAIT(handleRawChildStream())) {
         co_return std::move(*error);
     }
-    co_return TRY_AWAIT(buildDone());
+    co_return TRY_AWAIT(buildDone(getChildStatus()));
 } catch (...) {
     co_return result::current_exception();
 }

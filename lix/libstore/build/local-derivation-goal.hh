@@ -206,7 +206,7 @@ struct LocalDerivationGoal : public DerivationGoal
      */
     void chownToBuilder(const AutoCloseFD & fd);
 
-    int getChildStatus() override;
+    int getChildStatus();
 
     /**
      * Check that the derivation outputs all exist and register them
