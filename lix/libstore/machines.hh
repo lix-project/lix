@@ -1,6 +1,7 @@
 #pragma once
 ///@file
 
+#include "lix/libstore/store-api.hh"
 #include "lix/libutil/ref.hh"
 #include "lix/libutil/result.hh"
 #include "lix/lix-rs/utils.hh"
@@ -15,7 +16,7 @@ using rust::lix::machines::Machine;
 
 class Store;
 
-kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m);
+kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m, StoreConfig::Params storeParams = {});
 
 typedef rust::Vec<Machine> Machines;
 

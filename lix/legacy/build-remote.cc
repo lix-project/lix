@@ -144,8 +144,6 @@ kj::Promise<void> Instance::init(InitContext context)
             globalConfig.set(name, value);
         }
 
-        settings.maxBuildJobs.set("1"); // hack to make tests with local?root= work
-
         initPlugins();
 
         initialized = true;
@@ -201,7 +199,7 @@ try {
         auto act = logger->startActivity(
             lvlTalkative, actUnknown, fmt("connecting to '%s'", to_std_string(machine.name.as_str()))
         );
-        sshStore = TRY_AWAIT(openStore(machine));
+        sshStore = TRY_AWAIT(openStore(machine, {{"max-build-jobs", "1"}}));
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, e.what());
         co_return result::success();

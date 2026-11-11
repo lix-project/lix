@@ -807,6 +807,8 @@ try {
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
+    // NOTE: we turn our local max-build-jobs into the global max-jobs, otherwise remote builds break.
+    overrides[settings.maxBuildJobs.name].value = std::to_string(config().maxBuildJobs());
 
     std::erase_if(overrides, [](const auto & kv) { return isClientPreference(kv.first); });
 

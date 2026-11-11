@@ -10,6 +10,7 @@
 #include "lix/libutil/strings.hh"
 
 #include "lix/libutil/config-impl.hh"
+#include <cstdint>
 #include <mutex>
 
 namespace nix {
@@ -377,6 +378,7 @@ template class BaseSetting<StringSet>;
 template class BaseSetting<StringMap>;
 template class BaseSetting<ExperimentalFeatures>;
 template class BaseSetting<DeprecatedFeatures>;
+template class BaseSetting<std::optional<uint32_t>>;
 
 static Path parsePath(const AbstractSetting & s, const std::string & str, const ApplyConfigOptions & options)
 {

@@ -192,6 +192,20 @@ struct StoreConfig : public Config
         {},
         // Don't document the machine-specific default value
         false};
+
+    uint32_t maxBuildJobs() const
+    {
+        return maxBuildJobs_.get() ? *maxBuildJobs_.get() : settings.maxBuildJobs;
+    }
+
+private:
+    Setting<std::optional<uint32_t>> maxBuildJobs_{
+        this,
+        std::nullopt,
+        "max-build-jobs",
+        "Maximum number of jobs to schedule to this store. Defaults to the global `max-jobs` setting if not "
+        "set."
+    };
 };
 
 class Store : public std::enable_shared_from_this<Store>

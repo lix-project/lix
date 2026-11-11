@@ -132,7 +132,7 @@ try {
        << settings.keepGoing
        << settings.tryFallback
        << getVerbosity()
-       << settings.maxBuildJobs
+       << config().maxBuildJobs()
        << settings.maxSilentTime
        << (withBlob ? WORKER_EXTENDED_OPTIONS_KEY1 : true)
        << lvlError // obsolete verboseBuild (2026-08-29)

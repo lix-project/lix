@@ -14,9 +14,8 @@
 
 namespace nix {
 
-kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m)
+kj::Promise<Result<ref<Store>>> openStore(rust::Ref<Machine> m, StoreConfig::Params storeParams)
 try {
-    StoreConfig::Params storeParams;
     auto storeUri = m.uri.as_str();
 
     if (storeUri.starts_with("ssh://"_rs) || storeUri.starts_with("ssh-ng://"_rs)) {

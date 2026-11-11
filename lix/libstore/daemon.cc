@@ -1462,6 +1462,10 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         return RPC_IMPL({
             auto args = context.getParams();
 
+            // NOTE: some settings (max-build-jobs, max-silent-time, ...) should not be global!
+            // we can't currently transfer store-local settings correctly; while for now things
+            // work well enough we will need much better settings system for the rpc protocols.
+
             ClientSettings clientSettings;
             clientSettings.verbosity = static_cast<Verbosity>(args.getVerbosity());
 

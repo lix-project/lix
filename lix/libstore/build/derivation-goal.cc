@@ -718,9 +718,8 @@ retry:
     /* Don't do a remote build if the derivation has the attribute
        `preferLocalBuild' set.  Also, check and repair modes are only
        supported for local builds. */
-    bool buildLocally =
-        (buildMode != bmNormal || parsedDrv->willBuildLocally(worker.store))
-        && settings.maxBuildJobs.get() != 0;
+    bool buildLocally = (buildMode != bmNormal || parsedDrv->willBuildLocally(worker.store))
+        && worker.store.config().maxBuildJobs() != 0;
 
     if (!buildLocally) {
         auto hookReply = TRY_AWAIT(tryBuildHook());
@@ -1242,7 +1241,7 @@ try {
 
     /* It would be possible to build locally after some builds clear out,
        we may later use this to print machine selection warnings. */
-    const bool couldBuildLocally = settings.maxBuildJobs > 0
+    const bool couldBuildLocally = worker.store.config().maxBuildJobs() > 0
         && (drv->platform == settings.thisSystem || settings.extraPlatforms.get().count(drv->platform) > 0)
         && allSupportedLocally(worker.store, parsedDrv->getRequiredSystemFeatures());
     /* It's possible to build this locally right now: */
