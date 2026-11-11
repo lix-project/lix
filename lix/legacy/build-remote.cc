@@ -152,6 +152,19 @@ kj::Promise<void> Instance::init(InitContext context)
     });
 }
 
+kj::Promise<void> Instance::build(BuildContext context)
+{
+    return RPC_IMPL({
+        if (used) {
+            throw Error("build hooks can only accept a single job");
+        }
+        used = true; // lock out other rpc calls during processing
+        auto result = co_await buildImpl(context);
+        used = result.has_value() && context.getResults().getResult().isAccept();
+        result.value();
+    });
+}
+
 kj::Promise<Result<void>> Instance::buildImpl(BuildContext context)
 try {
     if (!initialized) {
@@ -204,19 +217,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<void> Instance::build(BuildContext context)
-{
-    return RPC_IMPL({
-        if (used) {
-            throw Error("build hooks can only accept a single job");
-        }
-        used = true; // lock out other rpc calls during processing
-        auto result = co_await buildImpl(context);
-        used = result.has_value() && context.getResults().getResult().isAccept();
-        result.value();
-    });
-}
-
 kj::Promise<void> AcceptedBuild::run(RunContext context)
 {
     return RPC_IMPL({
@@ -234,122 +234,111 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
 }
 
 kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
-{
-    try {
-        auto & sshStore = builder.sshStore;
-        auto & storeUri = builder.storeUri;
+try {
+    auto & sshStore = builder.sshStore;
+    auto & storeUri = builder.storeUri;
 
-        auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
-        auto inputs = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
-        auto wantedOutputs = rpc::to<std::set<std::string>>(context.getParams().getWantedOutputs());
+    auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
+    auto inputs = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
+    auto wantedOutputs = rpc::to<std::set<std::string>>(context.getParams().getWantedOutputs());
 
-        auto lockFileName = lockDir + "/" + makeLockFilename(storeUri) + ".upload-lock";
+    auto lockFileName = lockDir + "/" + makeLockFilename(storeUri) + ".upload-lock";
 
-        AutoCloseFD uploadLock = openLockFile(lockFileName, true);
+    AutoCloseFD uploadLock = openLockFile(lockFileName, true);
 
-        {
-            auto act = logger->startActivity(
-                lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri)
-            );
+    {
+        auto act = logger->startActivity(
+            lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri)
+        );
 
-            auto result = TRY_AWAIT(
-                AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite))
-            );
-            if (!result) {
-                printError("somebody is hogging the upload lock for '%s', continuing...", storeUri);
-            }
+        auto result =
+            TRY_AWAIT(AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite)));
+        if (!result) {
+            printError("somebody is hogging the upload lock for '%s', continuing...", storeUri);
         }
-
-        auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;
-
-        {
-            auto act = logger->startActivity(
-                lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri)
-            );
-            TRY_AWAIT(copyPaths(*store, *sshStore, inputs, NoRepair, NoCheckSigs, substitute));
-        }
-
-        uploadLock.reset();
-
-        auto drv = TRY_AWAIT(store->readDerivation(drvPath));
-
-        std::optional<BuildResult> optResult;
-
-        // If we don't know whether we are trusted (e.g. `ssh://`
-        // stores), we assume we are. This is necessary for backwards
-        // compat.
-        bool trustedOrLegacy = ({
-            std::optional trusted = TRY_AWAIT(sshStore->isTrustedClient());
-            !trusted || *trusted;
-        });
-
-        // See the very large comment in `case WorkerProto::Op::BuildDerivation:` in
-        // `lix/libstore/daemon.cc` that explains the trust model here.
-        //
-        // This condition mirrors that: that code enforces the "rules" outlined there;
-        // we do the best we can given those "rules".
-        if (trustedOrLegacy || drv.type().isCA())  {
-            // Hijack the inputs paths of the derivation to include all
-            // the paths that come from the `inputDrvs` set. We don’t do
-            // that for the derivations whose `inputDrvs` is empty
-            // because:
-            //
-            // 1. It’s not needed
-            //
-            // 2. Changing the `inputSrcs` set changes the associated
-            //    output ids, which break CA derivations
-            if (!drv.inputDrvs.empty()) {
-                drv.inputSrcs = inputs;
-            }
-            optResult =
-                TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
-        } else {
-            TRY_AWAIT(copyClosure(
-                *store, *sshStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute
-            ));
-            auto res = TRY_AWAIT(sshStore->buildPathsWithResults({DerivedPath::Built{
-                .drvPath = makeConstantStorePath(drvPath),
-                .outputs = OutputsSpec::All{},
-            }}));
-            // One path to build should produce exactly one build result
-            assert(res.size() == 1);
-            optResult = std::move(res[0]);
-        }
-
-        auto & result = *optResult;
-        if (!result.success()) {
-            throw Error(
-                "build of '%s' on '%s' failed: %s",
-                store->printStorePath(drvPath),
-                storeUri,
-                result.errorMsg
-            );
-        }
-
-        StorePathSet missingPaths;
-        auto outputPaths = drv.outputsAndPaths(*store);
-        for (auto & [outputName, outputPath] : outputPaths) {
-            if (!TRY_AWAIT(store->isValidPath(outputPath.second))) {
-                missingPaths.insert(outputPath.second);
-            }
-        }
-
-        if (!missingPaths.empty()) {
-            auto act = logger->startActivity(
-                lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri)
-            );
-            if (auto localStore = store.try_cast_shared<LocalStore>())
-                for (auto & path : missingPaths)
-                    localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
-            TRY_AWAIT(
-                copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
-            );
-        }
-
-        co_return result::success();
-    } catch (...) {
-        co_return result::current_exception();
     }
+
+    auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;
+
+    {
+        auto act =
+            logger->startActivity(lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
+        TRY_AWAIT(copyPaths(*store, *sshStore, inputs, NoRepair, NoCheckSigs, substitute));
+    }
+
+    uploadLock.reset();
+
+    auto drv = TRY_AWAIT(store->readDerivation(drvPath));
+
+    std::optional<BuildResult> optResult;
+
+    // If we don't know whether we are trusted (e.g. `ssh://`
+    // stores), we assume we are. This is necessary for backwards
+    // compat.
+    bool trustedOrLegacy = ({
+        std::optional trusted = TRY_AWAIT(sshStore->isTrustedClient());
+        !trusted || *trusted;
+    });
+
+    // See the very large comment in `case WorkerProto::Op::BuildDerivation:` in
+    // `lix/libstore/daemon.cc` that explains the trust model here.
+    //
+    // This condition mirrors that: that code enforces the "rules" outlined there;
+    // we do the best we can given those "rules".
+    if (trustedOrLegacy || drv.type().isCA()) {
+        // Hijack the inputs paths of the derivation to include all
+        // the paths that come from the `inputDrvs` set. We don’t do
+        // that for the derivations whose `inputDrvs` is empty
+        // because:
+        //
+        // 1. It’s not needed
+        //
+        // 2. Changing the `inputSrcs` set changes the associated
+        //    output ids, which break CA derivations
+        if (!drv.inputDrvs.empty()) {
+            drv.inputSrcs = inputs;
+        }
+        optResult = TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
+    } else {
+        TRY_AWAIT(copyClosure(*store, *sshStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute));
+        auto res = TRY_AWAIT(sshStore->buildPathsWithResults({DerivedPath::Built{
+            .drvPath = makeConstantStorePath(drvPath),
+            .outputs = OutputsSpec::All{},
+        }}));
+        // One path to build should produce exactly one build result
+        assert(res.size() == 1);
+        optResult = std::move(res[0]);
+    }
+
+    auto & result = *optResult;
+    if (!result.success()) {
+        throw Error(
+            "build of '%s' on '%s' failed: %s", store->printStorePath(drvPath), storeUri, result.errorMsg
+        );
+    }
+
+    StorePathSet missingPaths;
+    auto outputPaths = drv.outputsAndPaths(*store);
+    for (auto & [outputName, outputPath] : outputPaths) {
+        if (!TRY_AWAIT(store->isValidPath(outputPath.second))) {
+            missingPaths.insert(outputPath.second);
+        }
+    }
+
+    if (!missingPaths.empty()) {
+        auto act =
+            logger->startActivity(lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri));
+        if (auto localStore = store.try_cast_shared<LocalStore>()) {
+            for (auto & path : missingPaths) {
+                localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
+            }
+        }
+        TRY_AWAIT(copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute));
+    }
+
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
 }
 
 void registerLegacyBuildRemote() {
