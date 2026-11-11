@@ -239,7 +239,7 @@ try {
     auto & storeUri = builder.storeUri;
 
     auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
-    auto inputs = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
+    auto inputPaths = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
     auto wantedOutputs = rpc::to<std::set<std::string>>(context.getParams().getWantedOutputs());
 
     auto lockFileName = lockDir + "/" + makeLockFilename(storeUri) + ".upload-lock";
@@ -263,7 +263,7 @@ try {
     {
         auto act =
             logger->startActivity(lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
-        TRY_AWAIT(copyPaths(*store, *sshStore, inputs, NoRepair, NoCheckSigs, substitute));
+        TRY_AWAIT(copyPaths(*store, *sshStore, inputPaths, NoRepair, NoCheckSigs, substitute));
     }
 
     uploadLock.reset();
@@ -296,7 +296,7 @@ try {
         // 2. Changing the `inputSrcs` set changes the associated
         //    output ids, which break CA derivations
         if (!drv.inputDrvs.empty()) {
-            drv.inputSrcs = inputs;
+            drv.inputSrcs = inputPaths;
         }
         optResult = TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
     } else {
