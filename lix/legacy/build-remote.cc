@@ -73,7 +73,7 @@ static std::string makeLockFilename(const std::string & storeUri) {
 namespace {
 struct BuilderConnection
 {
-    std::shared_ptr<Store> sshStore;
+    std::shared_ptr<Store> remoteStore;
     std::string storeUri;
 };
 
@@ -177,19 +177,19 @@ try {
         true
     );
 
-    std::shared_ptr<Store> sshStore;
+    std::shared_ptr<Store> remoteStore;
 
     try {
         auto act = logger->startActivity(
             lvlTalkative, actUnknown, fmt("connecting to '%s'", to_std_string(machine.name.as_str()))
         );
-        sshStore = TRY_AWAIT(openStore(machine, {{"max-build-jobs", "1"}}));
+        remoteStore = TRY_AWAIT(openStore(machine, {{"max-build-jobs", "1"}}));
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, e.what());
         co_return result::success();
     }
 
-    auto builder = BuilderConnection{sshStore, to_std_string(machine.uri.as_str())};
+    auto builder = BuilderConnection{remoteStore, to_std_string(machine.uri.as_str())};
 
     auto ac = context.getResults().initResult().initAccept();
     ac.setMachine(kj::heap<AcceptedBuild>(store, drvPath, std::move(builder)));
@@ -217,8 +217,13 @@ kj::Promise<void> AcceptedBuild::run(RunContext context)
 
 kj::Promise<Result<void>> AcceptedBuild::runImpl(RunContext context)
 try {
-    auto & sshStore = builder.sshStore;
+    auto & remoteStore = builder.remoteStore;
     auto & storeUri = builder.storeUri;
+    struct Worker
+    {
+        Store & store;
+        Worker(Store & store) : store(store) {}
+    } worker{*store};
 
     auto lockDir = rpc::to<Path>(context.getParams().getLockDir());
     auto inputPaths = rpc::to<std::set<StorePath>>(context.getParams().getInputs(), *store);
@@ -245,12 +250,12 @@ try {
     {
         auto act =
             logger->startActivity(lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri));
-        TRY_AWAIT(copyPaths(*store, *sshStore, inputPaths, NoRepair, NoCheckSigs, substitute));
+        TRY_AWAIT(copyPaths(worker.store, *remoteStore, inputPaths, NoRepair, NoCheckSigs, substitute));
     }
 
     uploadLock.reset();
 
-    auto drv = TRY_AWAIT(store->readDerivation(drvPath));
+    std::optional drv = TRY_AWAIT(worker.store.readDerivation(drvPath));
 
     std::optional<BuildResult> optResult;
 
@@ -258,7 +263,7 @@ try {
     // stores), we assume we are. This is necessary for backwards
     // compat.
     bool trustedOrLegacy = ({
-        std::optional trusted = TRY_AWAIT(sshStore->isTrustedClient());
+        std::optional trusted = TRY_AWAIT(remoteStore->isTrustedClient());
         !trusted || *trusted;
     });
 
@@ -267,7 +272,7 @@ try {
     //
     // This condition mirrors that: that code enforces the "rules" outlined there;
     // we do the best we can given those "rules".
-    if (trustedOrLegacy || drv.type().isCA()) {
+    if (trustedOrLegacy || drv->type().isCA()) {
         // Hijack the inputs paths of the derivation to include all
         // the paths that come from the `inputDrvs` set. We don’t do
         // that for the derivations whose `inputDrvs` is empty
@@ -277,13 +282,15 @@ try {
         //
         // 2. Changing the `inputSrcs` set changes the associated
         //    output ids, which break CA derivations
-        if (!drv.inputDrvs.empty()) {
-            drv.inputSrcs = inputPaths;
+        if (!drv->inputDrvs.empty()) {
+            drv->inputSrcs = inputPaths;
         }
-        optResult = TRY_AWAIT(sshStore->buildDerivation(drvPath, (const BasicDerivation &) drv));
+        optResult = TRY_AWAIT(remoteStore->buildDerivation(drvPath, (const BasicDerivation &) *drv));
     } else {
-        TRY_AWAIT(copyClosure(*store, *sshStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute));
-        auto res = TRY_AWAIT(sshStore->buildPathsWithResults({DerivedPath::Built{
+        TRY_AWAIT(
+            copyClosure(worker.store, *remoteStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute)
+        );
+        auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
             .drvPath = makeConstantStorePath(drvPath),
             .outputs = OutputsSpec::All{},
         }}));
@@ -295,14 +302,17 @@ try {
     auto & result = *optResult;
     if (!result.success()) {
         throw Error(
-            "build of '%s' on '%s' failed: %s", store->printStorePath(drvPath), storeUri, result.errorMsg
+            "build of '%s' on '%s' failed: %s",
+            worker.store.printStorePath(drvPath),
+            storeUri,
+            result.errorMsg
         );
     }
 
     StorePathSet missingPaths;
-    auto outputPaths = drv.outputsAndPaths(*store);
+    auto outputPaths = drv->outputsAndPaths(worker.store);
     for (auto & [outputName, outputPath] : outputPaths) {
-        if (!TRY_AWAIT(store->isValidPath(outputPath.second))) {
+        if (!TRY_AWAIT(worker.store.isValidPath(outputPath.second))) {
             missingPaths.insert(outputPath.second);
         }
     }
@@ -310,12 +320,12 @@ try {
     if (!missingPaths.empty()) {
         auto act =
             logger->startActivity(lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri));
-        if (auto localStore = store.try_cast_shared<LocalStore>()) {
+        if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
             for (auto & path : missingPaths) {
-                localStore->locksHeld.insert(store->printStorePath(path)); /* FIXME: ugly */
+                localStore->locksHeld.insert(worker.store.printStorePath(path)); /* FIXME: ugly */
             }
         }
-        TRY_AWAIT(copyPaths(*sshStore, *store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute));
+        TRY_AWAIT(copyPaths(*remoteStore, worker.store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute));
     }
 
     co_return result::success();
