@@ -1217,13 +1217,7 @@ try {
 
     // make sure we don't launch an unbounded number of build hooks
     auto hookSlot = co_await worker.hook.instancesSem.acquire();
-
-    if (!worker.hook.instances.empty()) {
-        hook = std::move(worker.hook.instances.front());
-        worker.hook.instances.pop_front();
-    } else {
-        hook = TRY_AWAIT(HookInstance::create(worker.act));
-    }
+    hook = TRY_AWAIT(HookInstance::create(worker.act));
 
     KJ_DEFER(hook = nullptr);
 
@@ -1260,7 +1254,6 @@ try {
 
         if (!bestSlotLock) {
             if (rightType && !canBuildLocally) {
-                worker.hook.instances.push_back(std::move(hook));
                 co_return HookResult::Postpone{};
             } else {
                 printSelectionFailureMessage(
@@ -1271,7 +1264,6 @@ try {
                     requiredFeatures
                 );
 
-                worker.hook.instances.push_back(std::move(hook));
                 co_return HookResult::Decline{};
             }
         }

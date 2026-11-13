@@ -210,7 +210,6 @@ public:
         // expensive to start and may be requested in great numbers for wide build trees.
         // the original implementation only allowed a single process, we allow some more.
         AsyncSemaphore instancesSem{4};
-        std::list<std::unique_ptr<HookInstance>> instances;
 
         /**
          * Whether to ask the build hook if it can build a derivation. If
