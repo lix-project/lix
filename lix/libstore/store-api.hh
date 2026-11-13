@@ -198,6 +198,11 @@ struct StoreConfig : public Config
         return maxBuildJobs_.get() ? *maxBuildJobs_.get() : settings.maxBuildJobs;
     }
 
+    const std::string & builders() const
+    {
+        return builders_.get() ? *builders_.get() : settings.builders;
+    }
+
 private:
     Setting<std::optional<uint32_t>> maxBuildJobs_{
         this,
@@ -205,6 +210,13 @@ private:
         "max-build-jobs",
         "Maximum number of jobs to schedule to this store. Defaults to the global `max-jobs` setting if not "
         "set."
+    };
+
+    Setting<std::optional<std::string>> builders_{
+        this,
+        std::nullopt,
+        "builders",
+        "Remote builder for this store. Defaults to the global `builders` setting if not set."
     };
 };
 
