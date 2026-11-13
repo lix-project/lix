@@ -1217,7 +1217,6 @@ try {
 
     // make sure we don't launch an unbounded number of build hooks
     auto hookSlot = co_await worker.hook.instancesSem.acquire();
-    hook = TRY_AWAIT(HookInstance::create(worker.act));
 
     KJ_DEFER(hook = nullptr);
 
@@ -1268,27 +1267,9 @@ try {
             }
         }
 
-        auto toVec = [](auto & rs) {
-            std::vector<std::string> cxx;
-            for (auto & s : rs.iter()) {
-                cxx.emplace_back(to_std_string(s));
-            }
-            return cxx;
-        };
-
-        auto buildReq = hook->rpc->buildRequest();
-        auto machine = buildReq.initMachine();
-        RPC_FILL(machine, setName, to_std_string(bestMachine.name));
-        RPC_FILL(machine, setUri, to_std_string(bestMachine.uri));
-        RPC_FILL(machine, initSystemTypes, toVec(bestMachine.system_types));
-        RPC_FILL(machine, setSshKey, to_std_string(bestMachine.ssh_key));
-        RPC_FILL(machine, setMaxJobs, bestMachine.max_jobs);
-        RPC_FILL(machine, setSpeedFactor, bestMachine.speed_factor);
-        RPC_FILL(machine, initSupportedFeatures, toVec(bestMachine.supported_features));
-        RPC_FILL(machine, initMandatoryFeatures, toVec(bestMachine.mandatory_features));
-        RPC_FILL(machine, setSshPublicHostKey, to_std_string(bestMachine.ssh_public_host_key));
-        RPC_FILL(buildReq, initDrvPath, drvPath, worker.store);
-        auto buildRespV = TRY_AWAIT_RPC(buildReq.send());
+        auto [hook_, buildRespV] =
+            TRY_AWAIT(HookInstance::create(worker.act, bestMachine, drvPath, worker.store));
+        hook = std::move(hook_);
         auto buildResp = buildRespV.getResult();
 
         debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());

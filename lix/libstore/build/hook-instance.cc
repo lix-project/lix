@@ -13,6 +13,8 @@
 #include "lix/libutil/strings.hh"
 #include "lix/libutil/logging-rpc.hh" // IWYU pragma: keep
 #include "lix/libutil/types-rpc.hh" // IWYU pragma: keep
+#include "lix/libstore/types-rpc.hh" // IWYU pragma: keep
+#include "lix/lix-rs/main.gen.hh"
 #include <fcntl.h>
 #include <kj/common.h>
 #include <kj/memory.h>
@@ -64,7 +66,11 @@ kj::Promise<void> HookInstance::HookLogger::push(PushContext context)
     return RpcLoggerServer::push(context);
 }
 
-kj::Promise<Result<std::unique_ptr<HookInstance>>> HookInstance::create(const Activity & act)
+kj::Promise<Result<
+    std::pair<std::unique_ptr<HookInstance>, capnp::Response<rpc::build_remote::HookInstance::InitResults>>>>
+HookInstance::create(
+    const Activity & act, rust::Ref<Machine> bestMachine, const StorePath & drvPath, Store & store
+)
 try {
     debug("starting build hook '%s'", concatStringsSep(" ", settings.buildHook.get()));
 
@@ -103,16 +109,38 @@ try {
     auto client = std::make_unique<capnp::TwoPartyClient>(*conn, 1);
     auto rpc = client->bootstrap().castAs<rpc::build_remote::HookInstance>();
 
+    auto toVec = [](auto & rs) {
+        std::vector<std::string> cxx;
+        for (auto & s : rs.iter()) {
+            cxx.emplace_back(to_std_string(s));
+        }
+        return cxx;
+    };
+
     {
         auto initReq = rpc.initRequest();
         initReq.setLogger(kj::heap<HookLogger>(act, nullptr));
         RPC_FILL(initReq, initSettings, settings);
-        TRY_AWAIT_RPC(initReq.send());
-    }
+        auto machine = initReq.initMachine();
+        RPC_FILL(machine, setName, to_std_string(bestMachine.name));
+        RPC_FILL(machine, setUri, to_std_string(bestMachine.uri));
+        RPC_FILL(machine, initSystemTypes, toVec(bestMachine.system_types));
+        RPC_FILL(machine, setSshKey, to_std_string(bestMachine.ssh_key));
+        RPC_FILL(machine, setMaxJobs, bestMachine.max_jobs);
+        RPC_FILL(machine, setSpeedFactor, bestMachine.speed_factor);
+        RPC_FILL(machine, initSupportedFeatures, toVec(bestMachine.supported_features));
+        RPC_FILL(machine, initMandatoryFeatures, toVec(bestMachine.mandatory_features));
+        RPC_FILL(machine, setSshPublicHostKey, to_std_string(bestMachine.ssh_public_host_key));
+        RPC_FILL(initReq, initDrvPath, drvPath, store);
+        auto resp = TRY_AWAIT_RPC(initReq.send());
 
-    co_return std::make_unique<HookInstance>(
-        kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), std::move(pid)
-    );
+        co_return {
+            std::make_unique<HookInstance>(
+                kj::heap(std::move(rpc)).attach(std::move(conn), std::move(client)), std::move(pid)
+            ),
+            std::move(resp)
+        };
+    }
 } catch (...) {
     co_return result::current_exception();
 }

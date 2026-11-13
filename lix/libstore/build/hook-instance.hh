@@ -2,6 +2,8 @@
 ///@file
 
 #include "hook-instance.capnp.h"
+#include "lix/libstore/machines.hh"
+#include "lix/libstore/path.hh"
 #include "lix/libutil/logging-rpc.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/processes.hh"
@@ -32,7 +34,10 @@ struct HookInstance
 
     kj::Own<rpc::build_remote::HookInstance::Client> rpc;
 
-    static kj::Promise<Result<std::unique_ptr<HookInstance>>> create(const Activity & act);
+    static kj::Promise<Result<std::pair<
+        std::unique_ptr<HookInstance>,
+        capnp::Response<rpc::build_remote::HookInstance::InitResults>>>>
+    create(const Activity & act, rust::Ref<Machine> bestMachine, const StorePath & drvPath, Store & store);
 
     HookInstance(kj::Own<rpc::build_remote::HookInstance::Client> rpc, RunningHelper hook)
         : rpc(std::move(rpc))

@@ -46,12 +46,11 @@ namespace nix {
 namespace {
 struct Instance final : rpc::build_remote::HookInstance::Server
 {
-    bool initialized = false, used = false;
+    bool initialized = false;
 
     kj::Promise<void> init(InitContext context) override;
 
-    kj::Promise<Result<void>> buildImpl(BuildContext context);
-    kj::Promise<void> build(BuildContext context) override;
+    kj::Promise<Result<void>> buildImpl(InitContext context);
 };
 }
 
@@ -147,28 +146,13 @@ kj::Promise<void> Instance::init(InitContext context)
         initPlugins();
 
         initialized = true;
+
+        TRY_AWAIT(buildImpl(context));
     });
 }
 
-kj::Promise<void> Instance::build(BuildContext context)
-{
-    return RPC_IMPL({
-        if (used) {
-            throw Error("build hooks can only accept a single job");
-        }
-        used = true; // lock out other rpc calls during processing
-        auto result = co_await buildImpl(context);
-        used = result.has_value() && context.getResults().getResult().isAccept();
-        result.value();
-    });
-}
-
-kj::Promise<Result<void>> Instance::buildImpl(BuildContext context)
+kj::Promise<Result<void>> Instance::buildImpl(InitContext context)
 try {
-    if (!initialized) {
-        throw Error("build hook not fully initialized");
-    }
-
     // FIXME this does not open a daemon connection for historical reasons.
     // we may create a lot of build hook instances, and having each of them
     // also create a daemon instance is inefficient and wasteful. in future

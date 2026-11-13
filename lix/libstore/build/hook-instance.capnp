@@ -43,8 +43,6 @@ interface HookInstance $Types.throws(Types.v1Errors) {
   init @0 (
     logger :Log.LogStream,
     settings :Types.Settings,
-  );
-  build @1 (
     machine :Machine,
     drvPath :StoreTypes.StorePath,
   ) -> (result :BuildResponse);
