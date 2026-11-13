@@ -18,6 +18,7 @@ private:
     const std::string keyFile;
     const std::string sshPublicHostKey;
     const bool compress;
+    const bool noninteractive;
 
     struct State
     {
@@ -33,7 +34,8 @@ public:
         const std::optional<uint16_t> port,
         const std::string & keyFile,
         const std::string & sshPublicHostKey,
-        bool compress);
+        bool compress,
+        bool noninteractive);
 
     struct Connection
     {

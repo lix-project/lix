@@ -21,6 +21,10 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     const Setting<Path> remoteProgram{this, "nix-daemon", "remote-program",
         "Path to the `nix-daemon` executable on the remote machine."};
 
+    const Setting<bool> noninteractive{
+        this, false, "noninteractive", "Disable interactive authentication for SSH."
+    };
+
     const std::string name() override { return "Experimental SSH Store"; }
 
     std::string doc() override
@@ -50,7 +54,12 @@ public:
         , RemoteStore(w, config, parent)
         , config_(std::move(config))
         , host(host)
-        , ssh(host, config_.port, config_.sshKey, config_.sshPublicHostKey, config_.compress)
+        , ssh(host,
+              config_.port,
+              config_.sshKey,
+              config_.sshPublicHostKey,
+              config_.compress,
+              config_.noninteractive)
     {
     }
 

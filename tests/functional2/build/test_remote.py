@@ -337,6 +337,44 @@ def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
 
 @pytest.mark.no_daemon
 @pytest.mark.full_sandbox
+def test_remote_builds_use_noninteractive_ssh(nix: Nix):
+    expr = """
+        derivation {
+            name = "test";
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "echo foo > bar" ];
+        }
+    """
+
+    home = nix.env.dirs.home
+    ssh = home / "ssh"
+    ssh.write_text(
+        dedent("""
+            #!/bin/sh
+
+            [ "${DISPLAY}" ] && echo "DISPLAY set" >&2
+            [ "${SSH_ASKPASS}" ] && echo "SSH_ASKPASS set" >&2
+            exit 42
+        """)
+    )
+    ssh.chmod(0o755)
+
+    nix.env.set_env("DISPLAY", ":99")
+    nix.env.set_env("SSH_ASKPASS", "/bin/false")
+    nix.env.path.prepend(home)
+
+    result = (
+        nix.nix_build(["--debug", "--builders", "ssh-ng://otherhost", "-j0", "--expr", expr])
+        .run()
+        .expect(1)
+    )
+    assert "DISPLAY set" not in result.stderr_plain
+    assert "SSH_ASKPASS set" not in result.stderr_plain
+
+
+@pytest.mark.no_daemon
+@pytest.mark.full_sandbox
 @pytest.mark.parametrize("scheme", ["ssh-ng"])
 def test_keep_failed(nix: Nix, scheme: str):
     expr = """

@@ -19,7 +19,8 @@ SSH::SSH(
     const std::optional<uint16_t> port,
     const std::string & keyFile,
     const std::string & sshPublicHostKey,
-    bool compress
+    bool compress,
+    bool noninteractive
 )
     : host(host)
     , port(port)
@@ -27,6 +28,7 @@ SSH::SSH(
     , keyFile(keyFile)
     , sshPublicHostKey(sshPublicHostKey)
     , compress(compress)
+    , noninteractive(noninteractive)
 {
     if (host == "" || host.starts_with("-"))
         throw Error("invalid SSH host name '%s'", host);
@@ -83,6 +85,12 @@ std::unique_ptr<SSH::Connection> SSH::startCommand(const std::string & command)
         options.args = {host.c_str(), "-x", "-T"};
         addCommonSSHOpts(options.args);
         options.args.push_back(command);
+    }
+
+    if (noninteractive) {
+        options.environment = getEnv();
+        options.environment->erase("DISPLAY");
+        options.environment->erase("SSH_ASKPASS");
     }
 
     options.redirections.push_back({.dup = STDIN_FILENO, .from = child.get()});

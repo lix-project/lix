@@ -110,10 +110,6 @@ struct AcceptedBuild final : rpc::build_remote::HookInstance::AcceptedBuild::Ser
 static int main_build_remote(AsyncIoRoot & aio, std::string programName, Strings argv)
 {
     {
-        /* Ensure we don't get any SSH passphrase or host key popups. */
-        unsetenv("DISPLAY");
-        unsetenv("SSH_ASKPASS");
-
         /* If we ever use the common args framework, make sure to
            remove initPlugins below and initialize settings first.
         */
@@ -183,7 +179,11 @@ try {
         auto act = logger->startActivity(
             lvlTalkative, actUnknown, fmt("connecting to '%s'", to_std_string(machine.name.as_str()))
         );
-        remoteStore = TRY_AWAIT(openStore(machine, {{"max-build-jobs", "1"}}));
+        StoreConfig::Params config = {{"max-build-jobs", "1"}};
+        if (machine.uri.as_str().starts_with("ssh-ng://"_rs)) {
+            config["noninteractive"] = "1";
+        }
+        remoteStore = TRY_AWAIT(openStore(machine, std::move(config)));
     } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
         RPC_FILL(context.getResults().initResult(), setStoreConnectionFailed, e.what());
         co_return result::success();
