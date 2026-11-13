@@ -9,7 +9,6 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/namespaces.hh"
 #include "lix/libutil/signals.hh"
-#include "lix/libstore/build/hook-instance.hh" // IWYU pragma: keep
 #include <boost/outcome/try.hpp>
 #include <kj/vector.h>
 

@@ -215,9 +215,9 @@ struct DerivationGoal : public Goal
     std::list<std::string> logTail;
 
     /**
-     * The build hook.
+     * Are we using a remote builder?
      */
-    std::unique_ptr<HookInstance> hook;
+    bool usingRemoteBuilder = false;
 
     /**
      * The sort of derivation we are building.

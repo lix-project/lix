@@ -1,11 +1,14 @@
 #include "lix/libstore/build/derivation-goal.hh"
+#include "libstore/store-api.hh"
 #include "lix/libstore/machines.hh"
+#include "lix/libutil/error.hh"
+#include "lix/libutil/processes.hh"
+#include "lix/libutil/serialise.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/file-descriptor.hh"
 #include "lix/libutil/file-system.hh"
-#include "lix/libstore/build/hook-instance.hh"
 #include "lix/libstore/build/worker.hh"
 #include "lix/libutil/finally.hh"
 #include "lix/libutil/compression.hh"
@@ -18,7 +21,6 @@
 #include "lix/libutil/result.hh"
 #include "lix/libutil/rpc.hh"
 #include "lix/libutil/strings.hh"
-#include "lix/libstore/build/hook-instance.capnp.h"
 #include "lix/libstore/types-rpc.hh"
 #include "lix/libutil/types-rpc.hh"
 #include "lix/lix-rs/main.gen.hh"
@@ -125,12 +127,7 @@ DerivationGoal::~DerivationGoal() noexcept(false)
     try { closeLogFile(); } catch (...) { ignoreExceptionInDestructor(); }
 }
 
-
-void DerivationGoal::killChild()
-{
-    hook.reset();
-}
-
+void DerivationGoal::killChild() {}
 
 Goal::WorkResult DerivationGoal::timedOut(Error && ex)
 {
@@ -1031,16 +1028,15 @@ try {
 
         BuildResult::Status st = BuildResult::MiscFailure;
 
-        if (hook && exited && exitCode == 101) {
+        if (usingRemoteBuilder && exited && exitCode == 101) {
             st = BuildResult::TimedOut;
         }
 
-        else if (hook && (!exited || exitCode != 100))
+        else if (usingRemoteBuilder && (!exited || exitCode != 100))
         {
         }
 
-        else
-        {
+        else {
             assert(derivationType);
             st = dynamic_cast<NotDeterministic *>(&e)        ? BuildResult::NotDeterministic
                 : exited && exitCode == 0                    ? BuildResult::OutputRejected
@@ -1055,20 +1051,36 @@ try {
 }
 
 namespace {
-struct ActivityTrackingHookLogger final : HookInstance::HookLogger
+struct HookLogger : WrappedLogger
 {
-    kj::TimePoint & tracker;
+    std::shared_ptr<DerivationGoal::LogSink> & logSink;
 
-    ActivityTrackingHookLogger(const Activity & act, FinishSink * logSink, kj::TimePoint & tracker)
-        : HookLogger(act, logSink)
-        , tracker(tracker)
+    HookLogger(Logger & parent, std::shared_ptr<DerivationGoal::LogSink> & logSink)
+        : WrappedLogger(parent)
+        , logSink(logSink)
     {
     }
 
-    kj::Promise<void> push(PushContext context) override
+    BufferState resultImpl(ActivityId act, ResultType type, const Fields & fields) override
     {
-        tracker = AIO().provider.getTimer().now();
-        return HookLogger::push(context);
+        if (logSink) {
+            if (type == resBuildLogLine) {
+                if (fields.size() > 0 && fields[0].type == Field::tString) {
+                    (*logSink)(fmt("%s\n", fields[0].s));
+                } else {
+                    (*logSink)("\n");
+                }
+            } else if (type == resSetPhase && fields.size() > 0 && fields[0].type == Field::tString) {
+                // nixpkgs' stdenv produces lines in the log to signal phase changes.
+                // We want to get the same lines in case of remote builds.
+                // The format is:
+                //   @nix { "action": "setPhase", "phase": "$curPhase" }
+                const auto phase = fields[0].s;
+                const auto logLine = JSON::object({{"action", "setPhase"}, {"phase", phase}});
+                (*logSink)("@nix " + logLine.dump(-1, ' ', false, JSON::error_handler_t::replace) + "\n");
+            }
+        }
+        return WrappedLogger::resultImpl(act, type, fields);
     }
 };
 }
@@ -1217,8 +1229,8 @@ try {
 
     // make sure we don't launch an unbounded number of build hooks
     auto hookSlot = co_await worker.hook.instancesSem.acquire();
-
-    KJ_DEFER(hook = nullptr);
+    usingRemoteBuilder = true;
+    KJ_DEFER(usingRemoteBuilder = false);
 
     /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
        that gets cleared on reboot, but it wouldn't work on macOS. */
@@ -1242,13 +1254,17 @@ try {
     const auto & neededSystem = drv->platform;
     const auto requiredFeatures = parsedDrv->getRequiredSystemFeatures();
 
-    std::optional<rpc::build_remote::HookInstance::AcceptedBuild::Client> acceptedBuild;
+    std::shared_ptr<Store> remoteStore;
+    std::optional<Activity> remoteActivity;
+    std::string storeUri;
     AutoCloseFD slotLock;
 
-    while (!acceptedBuild) {
+    HookLogger remoteLogger{*logger, logSink};
+
+    while (!remoteStore) {
         slotLock.reset();
 
-        auto [rightType, bestMachine, bestSlotLock] =
+        auto [rightType, machine, bestSlotLock] =
             TRY_AWAIT(selectBestMachine(lockDir, machines, neededSystem, requiredFeatures));
 
         if (!bestSlotLock) {
@@ -1267,26 +1283,25 @@ try {
             }
         }
 
-        auto [hook_, buildRespV] =
-            TRY_AWAIT(HookInstance::create(worker.act, bestMachine, drvPath, worker.store));
-        hook = std::move(hook_);
-        auto buildResp = buildRespV.getResult();
-
-        debug("hook reply is '%1%'", buildResp.toString().flatten().cStr());
-
-        if (buildResp.isStoreConnectionFailed()) {
-            printError(
-                "cannot build on '%s': %s",
-                to_std_string(bestMachine.name),
-                rpc::to<std::string>(buildResp.getStoreConnectionFailed())
+        try {
+            auto act = logger->startActivity(
+                lvlTalkative, actUnknown, fmt("connecting to '%s'", to_std_string(machine.name.as_str()))
             );
-            bestMachine.disable();
+            remoteActivity = remoteLogger.startActivity(
+                lvlTalkative, actUnknown, fmt("building on %s", to_std_string(machine.name.as_str()))
+            );
+            StoreConfig::Params config = {{"max-build-jobs", "1"}};
+            if (machine.uri.as_str().starts_with("ssh-ng://"_rs)) {
+                config["noninteractive"] = "1";
+            }
+            remoteStore = TRY_AWAIT(openStore(machine, std::move(config), &*remoteActivity));
+        } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions)
+            printError("cannot build on '%s': %s", to_std_string(machine.name), e.what());
+            machine.disable();
             continue;
-        } else if (!buildResp.isAccept()) {
-            throw Error("bad hook reply '%s'", buildResp.which());
         }
 
-        acceptedBuild = buildResp.getAccept().getMachine();
+        storeUri = to_std_string(machine.uri.as_str());
         slotLock = std::move(bestSlotLock);
     }
 
@@ -1296,50 +1311,165 @@ try {
     /* Create the log file and pipe. */
     openLogFile();
 
-    auto runReq = acceptedBuild->runRequest();
-    /* Tell the hook all the inputs that have to be copied to the
-       remote system. */
-    runReq.setLogger(
-        kj::heap<ActivityTrackingHookLogger>(worker.act, logSink.get(), lastChildActivity)
-    );
-    RPC_FILL(runReq, setLockDir, lockDir);
-    RPC_FILL(runReq, initInputs, inputPaths, worker.store);
-
     /* Tell the hooks the missing outputs that have to be copied back
        from the remote system. */
-    {
+    auto wantedOutputs = [&] {
         StringSet missingOutputs;
         for (auto & [outputName, status] : initialOutputs) {
             // XXX: Does this include known CA outputs?
-            if (buildMode != bmCheck && status.known && status.known->isValid()) continue;
+            if (buildMode != bmCheck && status.known && status.known->isValid()) {
+                continue;
+            }
             missingOutputs.insert(outputName);
         }
-        RPC_FILL(runReq, initWantedOutputs, missingOutputs);
-    }
+        return missingOutputs;
+    }();
 
-    auto runPromise = LIX_WRAP_RPC_PROMISE_V1(runReq.send());
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+    auto doRemote = [&]() -> kj::Promise<Result<void>> {
+        try {
+            // keep a copy of the derivation because we may fuck with it later and
+            // do not want to destroy the ground truth. the optional is purely for
+            // ease of review, if you come across this and don't like it, kill it.
+            std::optional drv{*this->drv};
 
-    // build via hook is now properly running. wait for it to finish
-    actLock.reset();
-    buildResult.startTime = time(0); // inexact
-    mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
+            auto lockFileName = lockDir + "/" + makeLockFilename(storeUri) + ".upload-lock";
 
-    auto result = TRY_AWAIT(
-        wrapChildHandler(runPromise.then([&](auto result) -> kj::Promise<Result<WorkResult>> {
+            AutoCloseFD uploadLock = openLockFile(lockFileName, true);
+
+            {
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("waiting for the upload lock to '%s'", storeUri)
+                );
+
+                auto result =
+                    TRY_AWAIT(AIO().timeoutAfter(15 * kj::MINUTES, lockFileAsync(uploadLock.get(), ltWrite)));
+                if (!result) {
+                    printError("somebody is hogging the upload lock for '%s', continuing...", storeUri);
+                }
+            }
+
+            auto substitute = settings.buildersUseSubstitutes ? Substitute : NoSubstitute;
+
+            {
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri)
+                );
+                TRY_AWAIT(
+                    copyPaths(worker.store, *remoteStore, inputPaths, NoRepair, NoCheckSigs, substitute)
+                );
+            }
+            uploadLock.reset();
+
+            // build via hook is now properly running. wait for it to finish
+            actLock.reset();
+            buildResult.startTime = time(0); // inexact
+            mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
+
+            std::optional<BuildResult> optResult;
+
+            // If we don't know whether we are trusted (e.g. `ssh://`
+            // stores), we assume we are. This is necessary for backwards
+            // compat.
+            bool trustedOrLegacy = ({
+                std::optional trusted = TRY_AWAIT(remoteStore->isTrustedClient());
+                !trusted || *trusted;
+            });
+
+            // See the very large comment in `case WorkerProto::Op::BuildDerivation:` in
+            // `lix/libstore/daemon.cc` that explains the trust model here.
+            //
+            // This condition mirrors that: that code enforces the "rules" outlined there;
+            // we do the best we can given those "rules".
+            if (trustedOrLegacy || drv->type().isCA()) {
+                // Hijack the inputs paths of the derivation to include all
+                // the paths that come from the `inputDrvs` set. We don’t do
+                // that for the derivations whose `inputDrvs` is empty
+                // because:
+                //
+                // 1. It’s not needed
+                //
+                // 2. Changing the `inputSrcs` set changes the associated
+                //    output ids, which break CA derivations
+                if (!drv->inputDrvs.empty()) {
+                    drv->inputSrcs = inputPaths;
+                }
+                optResult = TRY_AWAIT(remoteStore->buildDerivation(drvPath, (const BasicDerivation &) *drv));
+            } else {
+                TRY_AWAIT(copyClosure(
+                    worker.store, *remoteStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute
+                ));
+                auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
+                    .drvPath = makeConstantStorePath(drvPath),
+                    .outputs = OutputsSpec::All{},
+                }}));
+                // One path to build should produce exactly one build result
+                assert(res.size() == 1);
+                optResult = std::move(res[0]);
+            }
+
+            auto & result = *optResult;
+            if (!result.success()) {
+                throw Error(
+                    "build of '%s' on '%s' failed: %s",
+                    worker.store.printStorePath(drvPath),
+                    storeUri,
+                    result.errorMsg
+                );
+            }
+
+            StorePathSet missingPaths;
+            auto outputPaths = drv->outputsAndPaths(worker.store);
+            for (auto & [outputName, outputPath] : outputPaths) {
+                if (!TRY_AWAIT(worker.store.isValidPath(outputPath.second))) {
+                    missingPaths.insert(outputPath.second);
+                }
+            }
+
+            if (!missingPaths.empty()) {
+                auto act = logger->startActivity(
+                    lvlTalkative, actUnknown, fmt("copying outputs from '%s'", storeUri)
+                );
+                // this locking dance is required because our locks are not recursive,
+                // we hold locks for the missing paths already, and copies will try to
+                // acquire the locks *again* on fresh file descriptors. naturally this
+                // deadlocks during the first path we'd copy. luckily it also means we
+                // can assume that we hold the *only* lock, and thus this insert+erase
+                // pair is actually safe. with recursive locks we'd need a lock count.
+                if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
+                    for (auto & path : missingPaths) {
+                        localStore->locksHeld.insert(worker.store.printStorePath(path)); /* FIXME: ugly */
+                    }
+                }
+                TRY_AWAIT(
+                    copyPaths(*remoteStore, worker.store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
+                );
+                if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
+                    for (auto & path : missingPaths) {
+                        localStore->locksHeld.erase(worker.store.printStorePath(path)); /* FIXME: ugly */
+                    }
+                }
+            }
+
+            co_return result::success();
+        } catch (...) {
+            co_return {result::current_exception()};
+        }
+    };
+
+    auto result =
+        TRY_AWAIT(wrapChildHandler(doRemote().then([&](auto result) -> kj::Promise<Result<WorkResult>> {
             try {
                 std::shared_ptr<Error> remoteError;
                 if (result.has_error()) {
                     remoteError = std::make_shared<Error>(detail::wrap_exception_as_lix(result.error()));
                     logErrorInfo(remoteError->info().level, remoteError->info());
                 }
-                // close the rpc connection to have the hook exit
-                hook->rpc = nullptr;
-                return buildDone(hook->wait(), remoteError);
+                return buildDone(remoteError ? 1 : 0, remoteError);
             } catch (...) {
                 return {result::current_exception()};
             }
-        }))
-    );
+        })));
 
     co_return HookResult::Accept{std::move(result)};
 } catch (...) {

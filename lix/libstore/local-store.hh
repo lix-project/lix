@@ -183,7 +183,7 @@ protected:
 public:
 
     /**
-     * Hack for build-remote.cc.
+     * Hack for path locks not being recursive and remote builds needing recursive locks.
      */
     PathSet locksHeld;
 

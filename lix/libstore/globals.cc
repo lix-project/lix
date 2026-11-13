@@ -131,10 +131,6 @@ Settings::Settings()
     if (!pathAccessible(nixExePath)) {
         nixExePath = getSelfExe().value_or("nix");
     }
-    buildHook.setDefault(Strings {
-        nixExePath,
-        "__build-remote",
-    });
 }
 
 void loadConfFile()

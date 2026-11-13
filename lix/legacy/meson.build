@@ -1,9 +1,6 @@
 legacy_include_directories = include_directories('.')
 
 legacy_sources = files(
-  # `build-remote` is not really legacy (it powers all remote builds), but it's
-  # not a `nix3` command.
-  'build-remote.cc',
   'builtin-builder.cc',
   'dotgraph.cc',
   'graphml.cc',
@@ -19,7 +16,6 @@ legacy_sources = files(
 )
 
 legacy_headers = files(
-  'build-remote.hh',
   'builtin-builder.hh',
   'nix-build.hh',
   'nix-channel.hh',

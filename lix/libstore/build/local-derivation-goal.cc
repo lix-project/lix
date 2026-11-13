@@ -384,7 +384,7 @@ int LocalDerivationGoal::getChildStatus()
 
 void LocalDerivationGoal::closeReadPipes()
 {
-    if (hook) {
+    if (usingRemoteBuilder) {
         DerivationGoal::closeReadPipes();
     } else {
         builderOutPTY.close();
@@ -1309,8 +1309,9 @@ try {
        We can only early return when the outputs are known a priori. For
        floating content-addressed derivations this isn't the case.
      */
-    if (hook)
+    if (usingRemoteBuilder) {
         co_return TRY_AWAIT(DerivationGoal::registerOutputs());
+    }
 
     std::map<std::string, ValidPathInfo> infos;
 

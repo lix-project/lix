@@ -16,7 +16,6 @@
 #include "lix/libmain/loggers.hh"
 #include "lix/libcmd/markdown.hh"
 #include "add-to-store.hh"
-#include "build-remote.hh"
 #include "builtin-builder.hh"
 #include "build.hh"
 #include "bundle.hh"
@@ -85,7 +84,6 @@ void registerLegacyCommands()
     registerLegacyNixCollectGarbage();
     registerLegacyNixChannel();
     registerLegacyNixStore();
-    registerLegacyBuildRemote();
     registerLegacyNixDaemon();
     registerLegacyNixPrefetchUrl();
     registerLegacyNixHash();
@@ -474,11 +472,6 @@ int mainWrapped(AsyncIoRoot & aio, int argc, char ** argv)
 
     programPath = argv[0];
     auto programName = std::string(baseNameOf(programPath));
-
-    if (argc > 1 && std::string_view(argv[1]) == "__build-remote") {
-        programName = "build-remote";
-        argv++; argc--;
-    }
 
     // Clean up the progress bar if shown using --log-format in a legacy command too.
     // Otherwise, this is a harmless no-op.

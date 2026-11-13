@@ -337,6 +337,34 @@ def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
 
 @pytest.mark.no_daemon
 @pytest.mark.full_sandbox
+@with_files(
+    {
+        "build-hook.nix": CopyFile("assets/build-hook.nix"),
+        "config.nix": get_global_asset("config.nix"),
+    }
+)
+def test_builders_from_cli_not_recursive(nix: Nix, busybox_args: list[str]):
+    nix.settings.add_xp_feature("nix-command")
+
+    # we only need this to *work*. we can't reliably test that the remote build
+    # store has not tried to select another remote builder for doing the build;
+    # the only way to observe this would be to see it deadlock. which we can't.
+    nix.nix_build(
+        [
+            *["--store", str(nix.env.dirs.home / "store")],
+            "--debug",
+            "-j0",
+            *["--builders", f"{nix.env.dirs.home / 'otherstore'} - - 1 1 foo"],
+            "build-hook.nix",
+            *busybox_args,
+            *["--arg", "useCA", "false"],
+            *["-A", "passthru.input1"],
+        ]
+    ).run().ok()
+
+
+@pytest.mark.no_daemon
+@pytest.mark.full_sandbox
 def test_remote_builds_use_noninteractive_ssh(nix: Nix):
     expr = """
         derivation {

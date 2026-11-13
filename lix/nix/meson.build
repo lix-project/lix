@@ -184,14 +184,6 @@ foreach linkname : nix_symlinks
 endforeach
 
 install_symlink(
-  'build-remote',
-  pointing_to : bindir / 'nix',
-  install_dir : libexecdir / 'nix',
-  # The 'runtime' tag is what executables default to, which we want to emulate here.
-  install_tag : 'runtime'
-)
-
-install_symlink(
   'builtin-builder',
   pointing_to : bindir / 'nix',
   install_dir : libexecdir / 'lix',

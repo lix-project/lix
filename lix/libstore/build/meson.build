@@ -1,6 +1,5 @@
 build_capnp_files = files(
   # keep-sorted start
-  'hook-instance.capnp',
   'request.capnp',
   # keep-sorted end
 )
