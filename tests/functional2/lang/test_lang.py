@@ -43,7 +43,7 @@ def pytest_generate_tests(metafunc: Metafunc):
         files, flags, ids = zip(*map(LangTest.to_params, selected_tests))  # type: ignore
     else:
         files, flags, ids = [], [], []
-    metafunc.parametrize(("files", "flags"), zip(files, flags), ids=ids, indirect=["files"])
+    metafunc.parametrize(("files", "flags"), list(zip(files, flags)), ids=ids, indirect=["files"])
 
 
 def _cleanup_output(stdout: str, stderr: str, origin: Path) -> tuple[str, str]:
@@ -73,7 +73,7 @@ def test_parse_okay(files: Path, nix: Nix, flags: list[str], snapshot: Callable[
     # use a custom dumper that produces the correct indentation.
     # Upstream issue (open since 2018): https://github.com/yaml/pyyaml/issues/234
     class CustomFixedIndentationDumper(yaml.Dumper):
-        def increase_indent(self, flow: bool = False, indentless: bool = False):  # ruff: ignore[unused-method-argument]
+        def increase_indent(self, flow: bool = False, indentless: bool = False):  # ruff: ignore[unused-method-argument]  # structure given by super
             super().increase_indent(flow, False)
 
     result_obj = json.loads(stdout)
