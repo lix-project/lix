@@ -574,17 +574,6 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> RemoteStore::ensurePath(const StorePath & path)
-try {
-    auto conn(TRY_AWAIT(getConnection()));
-    TRY_AWAIT(conn.sendCommand<unsigned>(WorkerProto::Op::EnsurePath, printStorePath(path)));
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
 kj::Promise<Result<void>> RemoteStore::addTempRoot(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));

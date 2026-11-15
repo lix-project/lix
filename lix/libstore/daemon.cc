@@ -1315,14 +1315,6 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
-    kj::Promise<void> ensurePath(EnsurePathContext context) override
-    {
-        return RPC_IMPL({
-            StorePath path = rpc::from(context.getParams().getPath(), *state->store);
-            TRY_AWAIT(state->store->ensurePath(path));
-        });
-    }
-
     kj::Promise<void> findRoots(FindRootsContext context) override
     {
         return RPC_IMPL({

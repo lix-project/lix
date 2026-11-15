@@ -464,17 +464,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RpcRemoteStore::ensurePath(const StorePath & path)
-try {
-    auto req = rpc->legacyProtocol.ensurePathRequest();
-    RPC_FILL(req, initPath, path, *this);
-    TRY_AWAIT_RPC(req.send());
-
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<Roots>> RpcRemoteStore::findRoots(bool censor)
 try {
     auto res = TRY_AWAIT_RPC(rpc->legacyProtocol.findRootsRequest().send());

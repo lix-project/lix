@@ -211,8 +211,6 @@ public:
     kj::Promise<Result<void>>
     collectGarbageImpl(ConnectionHandle & conn, const GCOptions & options, GCResults & results) override;
 
-    kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
-
     kj::Promise<Result<Roots>> findRoots(bool censor) override;
 
     kj::Promise<Result<bool>> isValidPathUncached(const StorePath & path, const Activity * context) override;

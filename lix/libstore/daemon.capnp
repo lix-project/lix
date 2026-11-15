@@ -133,6 +133,7 @@ interface LegacyBuildStore $T.throws(T.v1Errors) {
     dependentRealisations @3 :T.Map(DrvOutput, Libstore.StorePath);
   }
 
+  # TODO currently only used by hydra? in either case it should go away, it's a hazard.
   buildDerivation @0 (
     path :Libstore.StorePath,
     drv :Data,
@@ -140,9 +141,9 @@ interface LegacyBuildStore $T.throws(T.v1Errors) {
   ) -> (
     result :BuildResult
   );
+  # TODO remove in favor of only buildPathsWithResult
   buildPaths @1 (mode :BuildMode, paths :List(DerivedPath));
   buildPathsWithResult @2 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
-  ensurePath @3 (path :Libstore.StorePath);
 }
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments

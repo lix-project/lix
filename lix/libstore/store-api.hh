@@ -733,7 +733,7 @@ public:
      * may be made valid by running a substitute (if defined for the
      * path).
      */
-    virtual kj::Promise<Result<void>> ensurePath(const StorePath & path);
+    kj::Promise<Result<void>> ensurePath(const StorePath & path);
 
     /**
      * Add a store path as a temporary root of the garbage collector.

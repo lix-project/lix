@@ -142,8 +142,6 @@ public:
         const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode
     ) override;
 
-    kj::Promise<Result<void>> ensurePath(const StorePath & path) override;
-
     kj::Promise<Result<void>> addTempRoot(const StorePath & path) override;
 
     kj::Promise<Result<Roots>> findRoots(bool censor) override;
