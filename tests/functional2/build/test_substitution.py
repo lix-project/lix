@@ -90,11 +90,11 @@ class TestEnsurePath:
 
     def test_failure_without_cache(self):
         result = self.ensure().expect(1)
-        assert "does not exist and cannot be created" in result.stderr_plain
+        assert "is required, but there is no substituter that can build it" in result.stderr_plain
 
     def test_failure_with_cache(self, caches: Caches):
         result = self.ensure("--substituters", f"{caches.bad}").expect(1)
-        assert "does not exist and cannot be created" in result.stderr_plain
+        assert "is required, but there is no substituter that can build it" in result.stderr_plain
 
     def test_success_with_cache(self, caches: Caches):
         self.ensure("--substituters", f"{caches.good}").ok()

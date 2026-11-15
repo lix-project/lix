@@ -109,22 +109,11 @@ try {
 
 kj::Promise<Result<void>> Store::ensurePath(const StorePath & path)
 try {
-    /* If the path is already valid, we're done. */
-    if (TRY_AWAIT(isValidPath(path))) co_return result::success();
-
-    auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
-        Worker::Targets goals;
-        goals.emplace_back(gf.makePathSubstitutionGoal(path));
-        return goals;
-    }));
-    auto & result = results.goals.begin()->second;
-
-    if (result.exitCode != Goal::ecSuccess) {
-        if (result.ex) {
-            result.ex->withExitStatus(results.failingExitStatus);
-            throw std::move(*result.ex);
-        } else
-            throw Error(results.failingExitStatus, "path '%s' does not exist and cannot be created", printStorePath(path));
+    auto results = TRY_AWAIT(buildPathsWithResults({{DerivedPathOpaque{path}}}));
+    assert(results.size() == 1 && "expected a single result");
+    auto & result = results.front();
+    if (!result.success()) {
+        result.rethrow();
     }
 
     co_return result::success();
