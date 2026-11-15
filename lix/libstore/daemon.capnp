@@ -83,8 +83,70 @@ interface LegacyLogStore $T.throws(T.v1Errors) {
   getBuildLogExact @1 (path :Libstore.StorePath) -> (log :T.Option(Data));
 }
 
+# The RPC'd fragment of build-related ops of the legacy protocol. we will change this.
+interface LegacyBuildStore $T.throws(T.v1Errors) {
+  enum BuildMode {
+    bmNormal @0;
+    bmRepair @1;
+    bmCheck @2;
+  }
+  struct BuildResult {
+    enum Status {
+        built @0;
+        substituted @1;
+        alreadyValid @2;
+        permanentFailure @3;
+        inputRejected @4;
+        outputRejected @5;
+        transientFailure @6; # possibly transient
+        timedOut @7;
+        miscFailure @8;
+        dependencyFailed @9;
+        logLimitExceeded @10;
+        notDeterministic @11;
+        resolvesToAlreadyValid @12;
+        noSubstituters @13;
+    }
+
+    status @0 :Status;
+    errorMsg @1 :T.String;
+    timesBuilt @2 :UInt32;
+    isNonDeterministic @3 :Bool;
+    buildOutputs @4 :T.Map(T.String, Realisation);
+    startTime @5 :Int64;
+    stopTime @6 :Int64;
+    cpuUser @7 :T.OptionInt64;
+    cpuSystem @8 :T.OptionInt64;
+  }
+  struct DrvOutput {
+    drvHash @0 :Hash;
+    outputName @1 :T.String;
+  }
+  struct KeyedBuildResult {
+    result @0 :BuildResult;
+    path @1 :DerivedPath;
+  }
+  struct Realisation {
+    id @0 :DrvOutput;
+    outPath @1 :Libstore.StorePath;
+    signatures @2 :List(T.String);
+    dependentRealisations @3 :T.Map(DrvOutput, Libstore.StorePath);
+  }
+
+  buildDerivation @0 (
+    path :Libstore.StorePath,
+    drv :Data,
+    mode :BuildMode,
+  ) -> (
+    result :BuildResult
+  );
+  buildPaths @1 (mode :BuildMode, paths :List(DerivedPath));
+  buildPathsWithResult @2 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
+  ensurePath @3 (path :Libstore.StorePath);
+}
+
 # The RPC'd version of the legacy protocol, with only minimal adjustments
-interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
+interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.v1Errors) {
   enum ContentAddressMethod {
     textIngestion @0;
     flatFileIngestion @1;
@@ -122,53 +184,6 @@ interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
     downloadSize @3 :UInt64;
     narSize @4 :UInt64;
   }
-  enum BuildMode {
-    bmNormal @0;
-    bmRepair @1;
-    bmCheck @2;
-  }
-  struct DrvOutput {
-    drvHash @0 :Hash;
-    outputName @1 :T.String;
-  }
-  struct Realisation {
-    id @0 :DrvOutput;
-    outPath @1 :Libstore.StorePath;
-    signatures @2 :List(T.String);
-    dependentRealisations @3 :T.Map(DrvOutput, Libstore.StorePath);
-  }
-  struct BuildResult {
-    enum Status {
-        built @0;
-        substituted @1;
-        alreadyValid @2;
-        permanentFailure @3;
-        inputRejected @4;
-        outputRejected @5;
-        transientFailure @6; # possibly transient
-        timedOut @7;
-        miscFailure @8;
-        dependencyFailed @9;
-        logLimitExceeded @10;
-        notDeterministic @11;
-        resolvesToAlreadyValid @12;
-        noSubstituters @13;
-    }
-
-    status @0 :Status;
-    errorMsg @1 :T.String;
-    timesBuilt @2 :UInt32;
-    isNonDeterministic @3 :Bool;
-    buildOutputs @4 :T.Map(T.String, Realisation);
-    startTime @5 :Int64;
-    stopTime @6 :Int64;
-    cpuUser @7 :T.OptionInt64;
-    cpuSystem @8 :T.OptionInt64;
-  }
-  struct KeyedBuildResult {
-    result @0 :BuildResult;
-    path @1 :DerivedPath;
-  }
 
   interface AddToStoreStream {
     feed @0 (raw :Data) -> stream;
@@ -179,33 +194,24 @@ interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
     finalize @1 ();
   }
 
-  addIndirectRoot @11 (path :T.String);
-  addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
-  addTempRoot @10 (path :Libstore.StorePath);
-  addCAToStore @9 (
+  addIndirectRoot @10 (path :T.String);
+  addSignatures @16 (path :Libstore.StorePath, signatures :List(T.String));
+  addTempRoot @9 (path :Libstore.StorePath);
+  addCAToStore @8 (
     name :T.String,
     contentAddressMethod :ContentAddressMethod,
     hashType :HashType,
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);
-  addToStoreNar @18 (
+  addToStoreNar @17 (
     info: ValidPathInfo,
     repair :Bool,
     dontCheckSigs :Bool
   ) -> (
     result :Stream
   );
-  buildDerivation @23 (
-    path :Libstore.StorePath,
-    drv :Data,
-    mode :BuildMode,
-  ) -> (
-    result :BuildResult
-  );
-  buildPaths @21 (mode :BuildMode, paths :List(DerivedPath));
-  buildPathsWithResult @22 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
-  collectGarbage @13 (
+  collectGarbage @12 (
     action :GCAction,
     pathsToDelete :List(Libstore.StorePath),
     ignoreLiveness :Bool,
@@ -214,25 +220,24 @@ interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
     paths :List(T.String),
     bytesFreed :UInt64
   );
-  ensurePath @1 (path :Libstore.StorePath);
-  findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
-  isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
-  narFromPath @20 (path :Libstore.StorePath, into :Stream);
+  findRoots @11 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
+  isValidPath @1 (path :Libstore.StorePath) -> (result :Bool);
+  narFromPath @19 (path :Libstore.StorePath, into :Stream);
   optimiseStore @0 ();
-  queryAllValidPaths @24 () -> (result :List(Libstore.StorePath));
-  queryValidPaths @3 (
+  queryAllValidPaths @20 () -> (result :List(Libstore.StorePath));
+  queryValidPaths @2 (
     paths :List(Libstore.StorePath),
     substitute :Bool
   ) -> (
     result :List(Libstore.StorePath)
   );
-  querySubstitutablePaths @4 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
-  queryReferrers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
-  queryValidDerivers @6 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
-  queryDerivationOutputMap @7 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
-  queryMissing @19 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
-  queryPathFromHashPart @8 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
-  queryPathInfo @15 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
-  setOptions @14 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
-  verifyStore @16 (checkContents :Bool, repair :Bool) -> (result :Bool);
+  querySubstitutablePaths @3 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
+  queryReferrers @4 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
+  queryValidDerivers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
+  queryDerivationOutputMap @6 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
+  queryMissing @18 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
+  queryPathFromHashPart @7 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
+  queryPathInfo @14 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
+  setOptions @13 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
+  verifyStore @15 (checkContents :Bool, repair :Bool) -> (result :Bool);
 }

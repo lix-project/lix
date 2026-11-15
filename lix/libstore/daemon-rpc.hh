@@ -291,36 +291,36 @@ struct Fill<daemon::DerivedPath, nix::DerivedPath>
 };
 
 namespace daemon {
-inline nix::BuildMode from(LegacyProtocol::BuildMode bm, auto &&...)
+inline nix::BuildMode from(LegacyBuildStore::BuildMode bm, auto &&...)
 {
     switch (bm) {
-    case LegacyProtocol::BuildMode::BM_NORMAL:
+    case LegacyBuildStore::BuildMode::BM_NORMAL:
         return bmNormal;
-    case LegacyProtocol::BuildMode::BM_REPAIR:
+    case LegacyBuildStore::BuildMode::BM_REPAIR:
         return bmRepair;
-    case LegacyProtocol::BuildMode::BM_CHECK:
+    case LegacyBuildStore::BuildMode::BM_CHECK:
         return bmCheck;
     }
     throw nix::Error("invalid BuildMode received over RPC: %d", uint16_t(bm));
 }
 }
 
-inline daemon::LegacyProtocol::BuildMode from(nix::BuildMode bm, auto &&...)
+inline daemon::LegacyBuildStore::BuildMode from(nix::BuildMode bm, auto &&...)
 {
     switch (bm) {
     case bmNormal:
-        return daemon::LegacyProtocol::BuildMode::BM_NORMAL;
+        return daemon::LegacyBuildStore::BuildMode::BM_NORMAL;
     case bmRepair:
-        return daemon::LegacyProtocol::BuildMode::BM_REPAIR;
+        return daemon::LegacyBuildStore::BuildMode::BM_REPAIR;
     case bmCheck:
-        return daemon::LegacyProtocol::BuildMode::BM_CHECK;
+        return daemon::LegacyBuildStore::BuildMode::BM_CHECK;
     }
     abort(); // unreachable
 }
 
-inline daemon::LegacyProtocol::BuildResult::Status from(nix::BuildResult::Status s, auto &&...)
+inline daemon::LegacyBuildStore::BuildResult::Status from(nix::BuildResult::Status s, auto &&...)
 {
-    using Status = daemon::LegacyProtocol::BuildResult::Status;
+    using Status = daemon::LegacyBuildStore::BuildResult::Status;
     switch (s) {
     case nix::BuildResult::Built:
         return Status::BUILT;
@@ -355,9 +355,9 @@ inline daemon::LegacyProtocol::BuildResult::Status from(nix::BuildResult::Status
 }
 
 namespace daemon {
-inline nix::BuildResult::Status from(LegacyProtocol::BuildResult::Status s, auto &&...)
+inline nix::BuildResult::Status from(LegacyBuildStore::BuildResult::Status s, auto &&...)
 {
-    using Status = LegacyProtocol::BuildResult::Status;
+    using Status = LegacyBuildStore::BuildResult::Status;
     switch (s) {
     case Status::BUILT:
         return nix::BuildResult::Built;
@@ -393,7 +393,7 @@ inline nix::BuildResult::Status from(LegacyProtocol::BuildResult::Status s, auto
 }
 
 namespace daemon {
-inline nix::DrvOutput from(const LegacyProtocol::DrvOutput::Reader & r, auto &&... args)
+inline nix::DrvOutput from(const LegacyBuildStore::DrvOutput::Reader & r, auto &&... args)
 {
     return nix::DrvOutput{
         .drvHash = from(r.getDrvHash(), args...),
@@ -403,9 +403,10 @@ inline nix::DrvOutput from(const LegacyProtocol::DrvOutput::Reader & r, auto &&.
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::DrvOutput, nix::DrvOutput>
+struct Fill<daemon::LegacyBuildStore::DrvOutput, nix::DrvOutput>
 {
-    static void fill(daemon::LegacyProtocol::DrvOutput::Builder b, const nix::DrvOutput & o, auto &&... args)
+    static void
+    fill(daemon::LegacyBuildStore::DrvOutput::Builder b, const nix::DrvOutput & o, auto &&... args)
     {
         LIX_RPC_FILL_STRUCT(b, initDrvHash, o.drvHash, args...);
         LIX_RPC_FILL(b, setOutputName, o.outputName);
@@ -413,7 +414,7 @@ struct Fill<daemon::LegacyProtocol::DrvOutput, nix::DrvOutput>
 };
 
 namespace daemon {
-inline nix::Realisation from(const LegacyProtocol::Realisation::Reader & r, auto &&... args)
+inline nix::Realisation from(const LegacyBuildStore::Realisation::Reader & r, auto &&... args)
 {
     return nix::Realisation{
         .id = from(r.getId(), args...),
@@ -426,10 +427,10 @@ inline nix::Realisation from(const LegacyProtocol::Realisation::Reader & r, auto
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::Realisation, nix::Realisation>
+struct Fill<daemon::LegacyBuildStore::Realisation, nix::Realisation>
 {
     static void
-    fill(daemon::LegacyProtocol::Realisation::Builder b, const nix::Realisation & real, auto &&... args)
+    fill(daemon::LegacyBuildStore::Realisation::Builder b, const nix::Realisation & real, auto &&... args)
     {
         LIX_RPC_FILL_STRUCT(b, initId, real.id, args...);
         LIX_RPC_FILL_STRUCT(b, initOutPath, real.outPath, args...);
@@ -439,7 +440,7 @@ struct Fill<daemon::LegacyProtocol::Realisation, nix::Realisation>
 };
 
 namespace daemon {
-inline nix::BuildResult from(const LegacyProtocol::BuildResult::Reader & r, auto &&... args)
+inline nix::BuildResult from(const LegacyBuildStore::BuildResult::Reader & r, auto &&... args)
 {
     return nix::BuildResult{
         .status = from(r.getStatus()),
@@ -459,7 +460,7 @@ inline nix::BuildResult from(const LegacyProtocol::BuildResult::Reader & r, auto
     };
 }
 
-inline nix::KeyedBuildResult from(const LegacyProtocol::KeyedBuildResult::Reader & r, auto &&... args)
+inline nix::KeyedBuildResult from(const LegacyBuildStore::KeyedBuildResult::Reader & r, auto &&... args)
 {
     return nix::KeyedBuildResult{
         from(r.getResult(), args...),
@@ -469,10 +470,10 @@ inline nix::KeyedBuildResult from(const LegacyProtocol::KeyedBuildResult::Reader
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::BuildResult, nix::BuildResult>
+struct Fill<daemon::LegacyBuildStore::BuildResult, nix::BuildResult>
 {
     static void
-    fill(daemon::LegacyProtocol::BuildResult::Builder b, const nix::BuildResult & res, auto &&... args)
+    fill(daemon::LegacyBuildStore::BuildResult::Builder b, const nix::BuildResult & res, auto &&... args)
     {
         b.setStatus(from(res.status));
         LIX_RPC_FILL(b, setErrorMsg, res.errorMsg);
@@ -491,10 +492,10 @@ struct Fill<daemon::LegacyProtocol::BuildResult, nix::BuildResult>
 };
 
 template<>
-struct Fill<daemon::LegacyProtocol::KeyedBuildResult, nix::KeyedBuildResult>
+struct Fill<daemon::LegacyBuildStore::KeyedBuildResult, nix::KeyedBuildResult>
 {
     static void fill(
-        daemon::LegacyProtocol::KeyedBuildResult::Builder b,
+        daemon::LegacyBuildStore::KeyedBuildResult::Builder b,
         const nix::KeyedBuildResult & res,
         auto &&... args
     )
