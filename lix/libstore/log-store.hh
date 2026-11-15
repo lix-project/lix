@@ -16,6 +16,7 @@ struct LogStore : public virtual Store
      */
     kj::Promise<Result<std::optional<std::string>>> getBuildLog(const StorePath & path);
 
+    // TODO: wouldn't it be great if every derivation could have multiple logs stored?
     virtual kj::Promise<Result<std::optional<std::string>>> getBuildLogExact(const StorePath & path) = 0;
 
     virtual kj::Promise<Result<void>> addBuildLog(const StorePath & path, std::string_view log) = 0;

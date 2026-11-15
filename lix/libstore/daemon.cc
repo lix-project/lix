@@ -990,6 +990,16 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
+    kj::Promise<void> getBuildLogExact(GetBuildLogExactContext context) override
+    {
+        return RPC_IMPL({
+            auto & logStore = require<LogStore>(*state->store);
+            auto log =
+                TRY_AWAIT(logStore.getBuildLogExact(from(context.getParams().getPath(), *state->store)));
+            RPC_FILL(context.initResults(), initLog, log);
+        });
+    }
+
     kj::Promise<void> addIndirectRoot(AddIndirectRootContext context) override
     {
         return RPC_IMPL({

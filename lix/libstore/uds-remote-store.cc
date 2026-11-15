@@ -355,6 +355,16 @@ try {
     co_return result::current_exception();
 }
 
+kj::Promise<Result<std::optional<std::string>>> RpcRemoteStore::getBuildLogExact(const StorePath & path)
+try {
+    auto req = rpc->legacyProtocol.getBuildLogExactRequest();
+    RPC_FILL(req, initPath, path, *this);
+    auto result = TRY_AWAIT_RPC(req.send());
+    co_return rpc::to<std::optional<std::string>>(result.getLog());
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> RpcRemoteStore::addIndirectRoot(const Path & path)
 try {
     auto req = rpc->legacyProtocol.addIndirectRootRequest();
