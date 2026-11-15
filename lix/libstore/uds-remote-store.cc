@@ -787,7 +787,7 @@ kj::Promise<Result<ref<const ValidPathInfo>>> RpcRemoteStore::addCAToStore(
     RepairFlag repair
 )
 try {
-    auto req = rpc->legacyProtocol.addToStoreRequest();
+    auto req = rpc->legacyProtocol.addCAToStoreRequest();
     RPC_FILL(req, setName, name);
     RPC_FILL(req, setContentAddressMethod, rpc::daemon::to(caMethod));
     RPC_FILL(req, setHashType, rpc::daemon::to(hashType));

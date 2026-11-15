@@ -1028,7 +1028,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     }
 
     // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
-    struct AddToStoreStream final : LegacyProtocol::AddToStoreStream::Server
+    struct AddCAToStoreStream final : LegacyProtocol::AddToStoreStream::Server
     {
         ref<LegacyState> state;
         std::string name;
@@ -1038,7 +1038,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         std::unique_ptr<AsyncOutputStream> writer;
         kj::Function<kj::Promise<Result<StorePath>>()> finish;
 
-        AddToStoreStream(ref<LegacyState> state, AddToStoreParams::Reader args)
+        AddCAToStoreStream(ref<LegacyState> state, AddCAToStoreParams::Reader args)
             : state(state)
             , name(rpc::to<std::string>(args.getName()))
             , refs(rpc::to<StorePathSet>(args.getReferences(), *state->store))
@@ -1105,11 +1105,11 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         }
     };
 
-    kj::Promise<void> addToStore(AddToStoreContext context) override
+    kj::Promise<void> addCAToStore(AddCAToStoreContext context) override
     {
         return RPC_IMPL({
             requireTrustedRepair(state->trusted, RepairFlag{context.getParams().getRepair()});
-            context.initResults().setResult(kj::heap<AddToStoreStream>(state, context.getParams()));
+            context.initResults().setResult(kj::heap<AddCAToStoreStream>(state, context.getParams()));
         });
     }
 
