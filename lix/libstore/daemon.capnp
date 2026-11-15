@@ -44,8 +44,19 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
   );
 }
 
+# The RPC'd version of LogStore, very close to the legacy protocol. we will change this.
+interface LegacyLogStore $T.throws(T.v1Errors) {
+  interface AddLogStream {
+    feed @0 (raw :Data) -> stream;
+    finalize @1 ();
+  }
+
+  addBuildLog @0 (path :Libstore.StorePath) -> (stream :AddLogStream);
+  getBuildLogExact @1 (path :Libstore.StorePath) -> (log :T.Option(Data));
+}
+
 # The RPC'd version of the legacy protocol, with only minimal adjustments
-interface LegacyProtocol $T.throws(T.v1Errors) {
+interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
   enum HashType {
     md5 @0;
     sha1 @1;
@@ -166,9 +177,6 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
     finalize @1 ();
   }
 
-  addBuildLog @20 (path :Libstore.StorePath) -> (stream :Stream);
-  getBuildLogExact @26 (path :Libstore.StorePath) -> (log :T.Option(Data));
-
   addIndirectRoot @11 (path :T.String);
   addSignatures @17 (path :Libstore.StorePath, signatures :List(T.String));
   addTempRoot @10 (path :Libstore.StorePath);
@@ -186,15 +194,15 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ) -> (
     result :Stream
   );
-  buildDerivation @24 (
+  buildDerivation @23 (
     path :Libstore.StorePath,
     drv :Data,
     mode :BuildMode,
   ) -> (
     result :BuildResult
   );
-  buildPaths @22 (mode :BuildMode, paths :List(DerivedPath));
-  buildPathsWithResult @23 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
+  buildPaths @21 (mode :BuildMode, paths :List(DerivedPath));
+  buildPathsWithResult @22 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
   collectGarbage @13 (
     action :GCAction,
     pathsToDelete :List(Libstore.StorePath),
@@ -207,9 +215,9 @@ interface LegacyProtocol $T.throws(T.v1Errors) {
   ensurePath @1 (path :Libstore.StorePath);
   findRoots @12 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
-  narFromPath @21 (path :Libstore.StorePath, into :Stream);
+  narFromPath @20 (path :Libstore.StorePath, into :Stream);
   optimiseStore @0 ();
-  queryAllValidPaths @25 () -> (result :List(Libstore.StorePath));
+  queryAllValidPaths @24 () -> (result :List(Libstore.StorePath));
   queryValidPaths @3 (
     paths :List(Libstore.StorePath),
     substitute :Bool

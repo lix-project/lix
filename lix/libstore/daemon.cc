@@ -950,7 +950,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
 
     LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
 
-    struct AddBuildLogStream final : LegacyProtocol::Stream::Server
+    struct AddBuildLogStream final : LegacyLogStore::AddLogStream::Server
     {
         ref<LegacyState> state;
         StorePath path;
