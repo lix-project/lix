@@ -10,17 +10,19 @@ from testlib.fixtures.env import ManagedEnv
 pytestmark = [pytest.mark.nix_settings(trusted_users="*")]
 
 
+expr = """
+    derivation {
+        name = "test";
+        system = builtins.currentSystem;
+        builder = "/bin/sh";
+        args = [ "-c" "echo > $out" ];
+        outputHashMode = "flat";
+        outputHash = "sha256-AbpHGcgLb+kRsJGnwFEktk7uzpZOCcBY74+YBdrKVGs=";
+    }
+"""
+
+
 def build(nix: Nix, *args) -> CommandResult:
-    expr = """
-        derivation {
-            name = "test";
-            system = builtins.currentSystem;
-            builder = "/bin/sh";
-            args = [ "-c" "echo > $out" ];
-            outputHashMode = "flat";
-            outputHash = "sha256-AbpHGcgLb+kRsJGnwFEktk7uzpZOCcBY74+YBdrKVGs=";
-        }
-    """
     return nix.nix_build(["-E", expr, "--no-link", "--no-require-sigs", *args]).run()
 
 
@@ -69,3 +71,30 @@ def test_substitution_fallback_no_build(nix: Nix, caches: Caches):
     # we expect one error, and it's fatal
     result = build(nix, "--substituters", f"{caches.bad}").expect(1)
     assert len(re.findall(r"error.*narinfo", result.stderr_s)) == 1
+
+
+class TestEnsurePath:
+    @pytest.fixture(autouse=True)
+    def setup(self, nix: Nix):
+        self.nix = nix
+        self.path = (
+            nix.nix_instantiate(["--raw", "--eval", "--expr", f"({expr}).outPath"])
+            .run()
+            .ok()
+            .stdout_plain
+        )
+
+    def ensure(self, *args) -> CommandResult:
+        # --force-realise in --query calls Store::ensurePath on the given paths
+        return self.nix.nix_store(["--query", "--force-realise", *args, self.path]).run()
+
+    def test_failure_without_cache(self):
+        result = self.ensure().expect(1)
+        assert "does not exist and cannot be created" in result.stderr_plain
+
+    def test_failure_with_cache(self, caches: Caches):
+        result = self.ensure("--substituters", f"{caches.bad}").expect(1)
+        assert "does not exist and cannot be created" in result.stderr_plain
+
+    def test_success_with_cache(self, caches: Caches):
+        self.ensure("--substituters", f"{caches.good}").ok()
