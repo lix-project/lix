@@ -1051,7 +1051,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                 return std::visit(
                     overloaded{
                         [&](TextIngestionMethod) {
-                            if (hashType != HashType::SHA256) {
+                            if (hashType != nix::HashType::SHA256) {
                                 throw UnimplementedError(
                                     "When adding text-hashed data called '%s', only SHA-256 is supported "
                                     "but '%s' was given",
@@ -1079,7 +1079,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         }
 
         kj::Promise<Result<StorePath>>
-        consume(AsyncInputStream & reader, FileIngestionMethod fim, HashType hashType)
+        consume(AsyncInputStream & reader, FileIngestionMethod fim, nix::HashType hashType)
         try {
             co_return TRY_AWAIT(state->store->addToStoreFromDump(reader, name, fim, hashType, repair, refs));
         } catch (...) {

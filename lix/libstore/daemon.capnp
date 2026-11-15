@@ -44,6 +44,34 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
   );
 }
 
+# legacy rpc protocol data structures. UNSTABLE.
+struct DerivedPathOpaque {
+  path @0 :Libstore.StorePath;
+}
+struct DerivedPathBuilt {
+  drvPath @0 :DerivedPathOpaque;
+  outputs :union {
+    all @1 :Void;
+    names @2 :List(T.String);
+  }
+}
+struct DerivedPath {
+  raw :union {
+    opaque @0 :DerivedPathOpaque;
+    built @1 :DerivedPathBuilt;
+  }
+}
+enum HashType {
+  md5 @0;
+  sha1 @1;
+  sha256 @2;
+  sha512 @3;
+}
+struct Hash {
+  hash @0 :Data;
+  hashType @1 :HashType;
+}
+
 # The RPC'd version of LogStore, very close to the legacy protocol. we will change this.
 interface LegacyLogStore $T.throws(T.v1Errors) {
   interface AddLogStream {
@@ -57,16 +85,6 @@ interface LegacyLogStore $T.throws(T.v1Errors) {
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
-  enum HashType {
-    md5 @0;
-    sha1 @1;
-    sha256 @2;
-    sha512 @3;
-  }
-  struct Hash {
-    hash @0 :Data;
-    hashType @1 :HashType;
-  }
   enum ContentAddressMethod {
     textIngestion @0;
     flatFileIngestion @1;
@@ -103,22 +121,6 @@ interface LegacyProtocol extends (LegacyLogStore) $T.throws(T.v1Errors) {
     unknown @2 :List(Libstore.StorePath);
     downloadSize @3 :UInt64;
     narSize @4 :UInt64;
-  }
-  struct DerivedPathOpaque {
-    path @0 :Libstore.StorePath;
-  }
-  struct DerivedPathBuilt {
-    drvPath @0 :DerivedPathOpaque;
-    outputs :union {
-      all @1 :Void;
-      names @2 :List(T.String);
-    }
-  }
-  struct DerivedPath {
-    raw :union {
-      opaque @0 :DerivedPathOpaque;
-      built @1 :DerivedPathBuilt;
-    }
   }
   enum BuildMode {
     bmNormal @0;

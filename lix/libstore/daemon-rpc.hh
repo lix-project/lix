@@ -16,32 +16,32 @@
 
 namespace nix::rpc {
 namespace daemon {
-inline nix::HashType from(LegacyProtocol::HashType ht, auto &&...)
+inline nix::HashType from(HashType ht, auto &&...)
 {
     switch (ht) {
-    case LegacyProtocol::HashType::MD5:
-        return HashType::MD5;
-    case LegacyProtocol::HashType::SHA1:
-        return HashType::SHA1;
-    case LegacyProtocol::HashType::SHA256:
-        return HashType::SHA256;
-    case LegacyProtocol::HashType::SHA512:
-        return HashType::SHA512;
+    case HashType::MD5:
+        return nix::HashType::MD5;
+    case HashType::SHA1:
+        return nix::HashType::SHA1;
+    case HashType::SHA256:
+        return nix::HashType::SHA256;
+    case HashType::SHA512:
+        return nix::HashType::SHA512;
     }
     throw nix::Error("invalid HashType received over RPC: %d", uint16_t(ht));
 }
 
-inline LegacyProtocol::HashType to(nix::HashType ht, auto &&...)
+inline HashType to(nix::HashType ht, auto &&...)
 {
     switch (ht) {
     case nix::HashType::MD5:
-        return LegacyProtocol::HashType::MD5;
+        return HashType::MD5;
     case nix::HashType::SHA1:
-        return LegacyProtocol::HashType::SHA1;
+        return HashType::SHA1;
     case nix::HashType::SHA256:
-        return LegacyProtocol::HashType::SHA256;
+        return HashType::SHA256;
     case nix::HashType::SHA512:
-        return LegacyProtocol::HashType::SHA512;
+        return HashType::SHA512;
     }
     abort(); // unreachable
 }
@@ -74,7 +74,7 @@ inline LegacyProtocol::ContentAddressMethod to(const nix::ContentAddressMethod &
     );
 }
 
-inline nix::Hash from(const LegacyProtocol::Hash::Reader & h, auto &&... args)
+inline nix::Hash from(const Hash::Reader & h, auto &&... args)
 {
     auto type = from(h.getHashType(), args...);
     auto bytes = h.getHash();
@@ -89,9 +89,9 @@ inline nix::Hash from(const LegacyProtocol::Hash::Reader & h, auto &&... args)
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::Hash, Hash>
+struct Fill<daemon::Hash, Hash>
 {
-    static void fill(daemon::LegacyProtocol::Hash::Builder hb, const Hash & h, auto &&... args)
+    static void fill(daemon::Hash::Builder hb, const Hash & h, auto &&... args)
     {
         hb.setHashType(daemon::to(h.type, args...));
         hb.setHash(kj::ArrayPtr<const capnp::byte>{h.hash.data(), h.hash.size()});
@@ -212,27 +212,23 @@ inline daemon::LegacyProtocol::GCAction from(GCOptions::GCAction ht, auto &&...)
 }
 
 namespace daemon {
-inline nix::DerivedPathOpaque from(const LegacyProtocol::DerivedPathOpaque::Reader & r, auto &&... args)
+inline nix::DerivedPathOpaque from(const DerivedPathOpaque::Reader & r, auto &&... args)
 {
     return nix::DerivedPathOpaque{from(r.getPath(), args...)};
 }
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::DerivedPathOpaque, nix::DerivedPathOpaque>
+struct Fill<daemon::DerivedPathOpaque, nix::DerivedPathOpaque>
 {
-    static void fill(
-        daemon::LegacyProtocol::DerivedPathOpaque::Builder b,
-        const nix::DerivedPathOpaque & p,
-        auto &&... args
-    )
+    static void fill(daemon::DerivedPathOpaque::Builder b, const nix::DerivedPathOpaque & p, auto &&... args)
     {
         LIX_RPC_FILL_STRUCT(b, initPath, p.path, args...);
     }
 };
 
 namespace daemon {
-inline nix::DerivedPathBuilt from(const LegacyProtocol::DerivedPathBuilt::Reader & r, auto &&... args)
+inline nix::DerivedPathBuilt from(const DerivedPathBuilt::Reader & r, auto &&... args)
 {
     auto outputs = r.getOutputs();
     return nix::DerivedPathBuilt{
@@ -246,11 +242,9 @@ inline nix::DerivedPathBuilt from(const LegacyProtocol::DerivedPathBuilt::Reader
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::DerivedPathBuilt, nix::DerivedPathBuilt>
+struct Fill<daemon::DerivedPathBuilt, nix::DerivedPathBuilt>
 {
-    static void fill(
-        daemon::LegacyProtocol::DerivedPathBuilt::Builder b, const nix::DerivedPathBuilt & p, auto &&... args
-    )
+    static void fill(daemon::DerivedPathBuilt::Builder b, const nix::DerivedPathBuilt & p, auto &&... args)
     {
         LIX_RPC_FILL_STRUCT(b, initDrvPath, p.drvPath, args...);
         auto outputs = b.getOutputs();
@@ -267,7 +261,7 @@ struct Fill<daemon::LegacyProtocol::DerivedPathBuilt, nix::DerivedPathBuilt>
 };
 
 namespace daemon {
-inline nix::DerivedPath from(const LegacyProtocol::DerivedPath::Reader & r, auto &&... args)
+inline nix::DerivedPath from(const DerivedPath::Reader & r, auto &&... args)
 {
     auto raw = r.getRaw();
     if (raw.isOpaque()) {
@@ -279,10 +273,9 @@ inline nix::DerivedPath from(const LegacyProtocol::DerivedPath::Reader & r, auto
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::DerivedPath, nix::DerivedPath>
+struct Fill<daemon::DerivedPath, nix::DerivedPath>
 {
-    static void
-    fill(daemon::LegacyProtocol::DerivedPath::Builder b, const nix::DerivedPath & p, auto &&... args)
+    static void fill(daemon::DerivedPath::Builder b, const nix::DerivedPath & p, auto &&... args)
     {
         auto raw = b.getRaw();
         std::visit(
