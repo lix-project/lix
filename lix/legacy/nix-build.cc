@@ -340,7 +340,6 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
         auto drv = aio.blockOn(evalStore->derivationFromPath(drvInfo.requireDrvPath(*state)));
 
         std::vector<DerivedPath> pathsToBuild;
-        RealisedPath::Set pathsToCopy;
 
         /* Figure out what bash shell to use. If $NIX_BUILD_SHELL
            is not set, then build bashInteractive from
@@ -362,11 +361,12 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                     throw Error("the 'bashInteractive' attribute in <nixpkgs> did not evaluate to a derivation");
 
                 auto bashDrv = drv->requireDrvPath(*state);
-                pathsToBuild.push_back(DerivedPath::Built {
-                    .drvPath = makeConstantStorePath(bashDrv),
-                    .outputs = OutputsSpec::Names {"out"},
-                });
-                pathsToCopy.insert(bashDrv);
+                pathsToBuild.push_back(
+                    DerivedPath::Built{
+                        .drvPath = makeConstantStorePath(bashDrv),
+                        .outputs = OutputsSpec::Names{"out"},
+                    }
+                );
                 shellDrv = bashDrv;
 
             } catch (Error & e) {
@@ -395,12 +395,10 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                     }))
             {
                 accumDerivedPath(makeConstantStorePath(inputDrv), inputNode);
-                pathsToCopy.insert(inputDrv);
             }
         }
         for (const auto & src : drv.inputSrcs) {
             pathsToBuild.emplace_back(DerivedPath::Opaque{src});
-            pathsToCopy.insert(src);
         }
 
         buildPaths(pathsToBuild);
@@ -573,7 +571,6 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
 
         std::vector<DerivedPath> pathsToBuild;
         std::vector<std::pair<StorePath, std::string>> pathsToBuildOrdered;
-        RealisedPath::Set drvsToCopy;
 
         std::map<StorePath, std::pair<size_t, StringSet>> drvMap;
 
@@ -589,7 +586,6 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                 .outputs = OutputsSpec::Names{outputName},
             });
             pathsToBuildOrdered.push_back({drvPath, {outputName}});
-            drvsToCopy.insert(drvPath);
 
             auto i = drvMap.find(drvPath);
             if (i != drvMap.end())
