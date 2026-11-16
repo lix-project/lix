@@ -107,7 +107,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<FSAccessor::Stat>> RemoteFSAccessor::stat(const Path & path)
+kj::Promise<Result<std::optional<FSAccessor::Stat>>> RemoteFSAccessor::stat(const Path & path)
 try {
     auto res = TRY_AWAIT(fetch(path));
     co_return TRY_AWAIT(res.first->stat(res.second));

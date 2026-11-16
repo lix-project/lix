@@ -23,14 +23,14 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<FSAccessor::Stat>> LocalStoreAccessor::stat(const Path & path)
+kj::Promise<Result<std::optional<FSAccessor::Stat>>> LocalStoreAccessor::stat(const Path & path)
 try {
     auto realPath = TRY_AWAIT(toRealPath(path));
 
     struct stat st;
     if (sys::lstat(realPath, &st)) {
         if (errno == ENOENT || errno == ENOTDIR) {
-            co_return {Type::tMissing, 0, false};
+            co_return std::nullopt;
         }
         throw SysError("getting status of '%1%'", path);
     }
@@ -39,7 +39,7 @@ try {
         throw Error("file '%1%' has unsupported type", path);
     }
 
-    co_return {
+    co_return Stat{
         S_ISREG(st.st_mode)       ? Type::tRegular
             : S_ISLNK(st.st_mode) ? Type::tSymlink
                                   : Type::tDirectory,

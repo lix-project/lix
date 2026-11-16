@@ -45,6 +45,9 @@ try {
        contain the reference. */
     std::map<std::string, Strings> hits;
     auto st = TRY_AWAIT(accessor->stat(p));
+    if (!st) {
+        co_return hits;
+    }
 
     auto p2 = p == pathS ? "/" : std::string(p, pathS.size() + 1);
 
@@ -52,7 +55,7 @@ try {
         return hash == dependencyPathHash ? ANSI_GREEN : ANSI_BLUE;
     };
 
-    if (st.type == FSAccessor::Type::tDirectory) {
+    if (st->type == FSAccessor::Type::tDirectory) {
         auto names = TRY_AWAIT(accessor->readDirectory(p));
         for (auto & name : names) {
             auto found = TRY_AWAIT(visitPath(
@@ -60,7 +63,7 @@ try {
             ));
             hits.merge(found);
         }
-    } else if (st.type == FSAccessor::Type::tRegular) {
+    } else if (st->type == FSAccessor::Type::tRegular) {
         auto contents = TRY_AWAIT(accessor->readFile(p));
 
         for (auto & hash : hashes) {
@@ -82,7 +85,7 @@ try {
                 );
             }
         }
-    } else if (st.type == FSAccessor::Type::tSymlink) {
+    } else if (st->type == FSAccessor::Type::tSymlink) {
         auto target = TRY_AWAIT(accessor->readLink(p));
 
         for (auto & hash : hashes) {

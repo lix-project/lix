@@ -45,24 +45,28 @@ struct MixLs : virtual Args, MixJSON
 
         auto showFile = [&](const Path & curPath, const std::string & relPath) {
             if (verbose) {
-                auto st = aio().blockOn(accessor->stat(curPath));
-                std::string tp =
-                    st.type == FSAccessor::Type::tRegular ?
-                        (st.isExecutable ? "-r-xr-xr-x" : "-r--r--r--") :
-                    st.type == FSAccessor::Type::tSymlink ? "lrwxrwxrwx" :
-                    "dr-xr-xr-x";
-                auto line = fmt("%s %20d %s", tp, st.fileSize, relPath);
-                if (st.type == FSAccessor::Type::tSymlink)
-                    line += " -> " + aio().blockOn(accessor->readLink(curPath));
-                logger->cout(line);
-                if (recursive && st.type == FSAccessor::Type::tDirectory)
-                    doPath(st, curPath, relPath, false);
+                if (auto st = aio().blockOn(accessor->stat(curPath))) {
+                    std::string tp = st->type == FSAccessor::Type::tRegular
+                        ? (st->isExecutable ? "-r-xr-xr-x" : "-r--r--r--")
+                        : st->type == FSAccessor::Type::tSymlink ? "lrwxrwxrwx"
+                                                                 : "dr-xr-xr-x";
+                    auto line = fmt("%s %20d %s", tp, st->fileSize, relPath);
+                    if (st->type == FSAccessor::Type::tSymlink) {
+                        line += " -> " + aio().blockOn(accessor->readLink(curPath));
+                    }
+                    logger->cout(line);
+                    if (recursive && st->type == FSAccessor::Type::tDirectory) {
+                        doPath(*st, curPath, relPath, false);
+                    }
+                }
             } else {
                 logger->cout(relPath);
                 if (recursive) {
-                    auto st = aio().blockOn(accessor->stat(curPath));
-                    if (st.type == FSAccessor::Type::tDirectory)
-                        doPath(st, curPath, relPath, false);
+                    if (auto st = aio().blockOn(accessor->stat(curPath))) {
+                        if (st->type == FSAccessor::Type::tDirectory) {
+                            doPath(*st, curPath, relPath, false);
+                        }
+                    }
                 }
             }
         };
@@ -79,11 +83,15 @@ struct MixLs : virtual Args, MixJSON
         };
 
         auto st = aio().blockOn(accessor->stat(path));
-        if (st.type == FSAccessor::Type::tMissing)
+        if (!st) {
             throw Error("path '%1%' does not exist", path);
-        doPath(st, path,
-            st.type == FSAccessor::Type::tDirectory ? "." : std::string(baseNameOf(path)),
-            showDirectory);
+        }
+        doPath(
+            *st,
+            path,
+            st->type == FSAccessor::Type::tDirectory ? "." : std::string(baseNameOf(path)),
+            showDirectory
+        );
     }
 
     void list(ref<FSAccessor> accessor)

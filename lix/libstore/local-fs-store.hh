@@ -85,7 +85,7 @@ struct LocalStoreAccessor : public FSAccessor
 
     virtual kj::Promise<Result<Path>> toRealPath(const Path & path, bool requireValidPath = true);
 
-    kj::Promise<Result<FSAccessor::Stat>> stat(const Path & path) override;
+    kj::Promise<Result<std::optional<Stat>>> stat(const Path & path) override;
 
     kj::Promise<Result<StringSet>> readDirectory(const Path & path) override;
 

@@ -94,11 +94,11 @@ struct NarAccessor : public FSAccessor
         return *result;
     }
 
-    kj::Promise<Result<Stat>> stat(const Path & path) override
+    kj::Promise<Result<std::optional<Stat>>> stat(const Path & path) override
     try {
         auto i = find(path);
         if (i == nullptr)
-            co_return {FSAccessor::Type::tMissing, 0, false};
+            co_return std::nullopt;
         auto handlers = overloaded{
             [](const nar_index::File & f) {
                 return Stat{tRegular, f.size, f.executable, f.offset};
@@ -175,17 +175,22 @@ ref<FSAccessor> makeLazyNarAccessor(const std::string & listing,
 kj::Promise<Result<JSON>> listNar(ref<FSAccessor> accessor, const Path & path, bool recurse)
 try {
     auto st = TRY_AWAIT(accessor->stat(path));
+    if (!st) {
+        throw Error("path '%s' does not exist in NAR", path);
+    }
 
     JSON obj = JSON::object();
 
-    switch (st.type) {
+    switch (st->type) {
     case FSAccessor::Type::tRegular:
         obj["type"] = "regular";
-        obj["size"] = st.fileSize;
-        if (st.isExecutable)
+        obj["size"] = st->fileSize;
+        if (st->isExecutable) {
             obj["executable"] = true;
-        if (st.narOffset)
-            obj["narOffset"] = st.narOffset;
+        }
+        if (st->narOffset) {
+            obj["narOffset"] = st->narOffset;
+        }
         break;
     case FSAccessor::Type::tDirectory:
         obj["type"] = "directory";
@@ -204,9 +209,6 @@ try {
         obj["type"] = "symlink";
         obj["target"] = TRY_AWAIT(accessor->readLink(path));
         break;
-    case FSAccessor::Type::tMissing:
-    default:
-        throw Error("path '%s' does not exist in NAR", path);
     }
     co_return obj;
 } catch (...) {

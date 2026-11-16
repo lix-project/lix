@@ -29,7 +29,7 @@ public:
     RemoteFSAccessor(ref<Store> store,
         const /* FIXME: use std::optional */ Path & cacheDir = "");
 
-    kj::Promise<Result<Stat>> stat(const Path & path) override;
+    kj::Promise<Result<std::optional<Stat>>> stat(const Path & path) override;
 
     kj::Promise<Result<StringSet>> readDirectory(const Path & path) override;
 

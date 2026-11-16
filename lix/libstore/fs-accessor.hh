@@ -14,11 +14,11 @@ namespace nix {
 class FSAccessor
 {
 public:
-    enum Type { tMissing, tRegular, tSymlink, tDirectory };
+    enum Type { tRegular, tSymlink, tDirectory };
 
     struct Stat
     {
-        Type type = tMissing;
+        Type type;
         /**
          * regular files only
          */
@@ -35,7 +35,7 @@ public:
 
     virtual ~FSAccessor() { }
 
-    virtual kj::Promise<Result<Stat>> stat(const Path & path) = 0;
+    virtual kj::Promise<Result<std::optional<Stat>>> stat(const Path & path) = 0;
 
     virtual kj::Promise<Result<StringSet>> readDirectory(const Path & path) = 0;
 
