@@ -47,11 +47,7 @@ struct CmdCopy : virtual CopyCommand, StorePathsCommand
     {
         auto dstStore = getDstStore();
 
-        RealisedPath::Set stuffToCopy;
-
-        for (auto & path : paths) {
-            stuffToCopy.emplace(path);
-        }
+        StorePathSet stuffToCopy{paths.begin(), paths.end()};
 
         aio().blockOn(copyPaths(
             *srcStore, *dstStore, stuffToCopy, NoRepair, checkSigs, substitute));
