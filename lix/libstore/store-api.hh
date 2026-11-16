@@ -1030,14 +1030,6 @@ kj::Promise<Result<void>> copyClosure(
     bool includeOutputs = false);
 
 /**
- * Remove the temporary roots file for this process.  Any temporary
- * root becomes garbage after this point unless it has been registered
- * as a (permanent) root.
- */
-void removeTempRoots();
-
-
-/**
  * Resolve the derived path completely, failing if any derivation output
  * is unknown.
  */
