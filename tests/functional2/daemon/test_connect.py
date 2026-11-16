@@ -37,13 +37,13 @@ def test_connection_order_any(nix: Nix):
 def test_connection_protocol_invalid(nix: Nix):
     cmd = nix.nix(["store", "ping", "--store", "unix:///dev/null?protocol=invalid"]).run()
     cmd.expect(1)
-    assert "unsupported daemon protocol invalid" in cmd.stderr_s
+    assert "unsupported daemon protocol 'invalid'" in cmd.stderr_s
 
 
 def test_connection_protocol_any_not_standalone(nix: Nix):
     cmd = nix.nix(["store", "ping", "--store", "unix:///dev/null?protocol=any,any"]).run()
     cmd.expect(1)
-    assert "unsupported daemon protocol any" in cmd.stderr_s
+    assert "unsupported daemon protocol 'any'" in cmd.stderr_s
 
 
 _protocols: dict[str, str] = {

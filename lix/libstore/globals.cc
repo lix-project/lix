@@ -511,7 +511,7 @@ daemon::Protocol getProtocol(std::string_view protocol, std::optional<PathView> 
     } else if (protocol == LIX_XP_1_STR) {
         return {base + "lix-xp-1/socket", Protocol::RPC_V1};
     } else {
-        throw Error("unsupported daemon protocol %s", protocol);
+        throw Error("unsupported daemon protocol '%s'", protocol);
     }
 }
 }

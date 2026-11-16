@@ -492,6 +492,17 @@ daemonInstance(daemon::Protocol protocol, AsyncIoRoot & aio, char * peerPidArg, 
                 throw Error("unexpected systemd environment variables");
             }
             if (auto fdnames = getEnv("LISTEN_FDNAMES")) {
+                debug(
+                    "Using '%s' as the protocol to use, taken from the LISTEN_FDNAMES environment variable.",
+                    *fdnames
+                );
+                if (*fdnames == "connection") {
+                    throw Error(
+                        "unsupported daemon protocol 'connection', it seems that you are using systemd's "
+                        "socket-activation with default name, try setting `FileDescriptorName=$protocol` in "
+                        "the configuration of the socket unit."
+                    );
+                }
                 protocol = daemon::getProtocol(*fdnames);
             }
             closeOnExec(SD_LISTEN_FDS_START);
