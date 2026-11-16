@@ -84,25 +84,4 @@ SingleDrvOutputs filterDrvOutputs(const OutputsSpec& wanted, SingleDrvOutputs&& 
     return ret;
 }
 
-StorePath RealisedPath::path() const {
-    return std::visit([](auto && arg) { return arg.getPath(); }, raw);
-}
-
-kj::Promise<Result<void>> RealisedPath::closure(
-    Store & store, const RealisedPath::Set & startPaths, StorePathSet & ret, bool includeOutputs
-)
-try {
-    // FIXME: This only builds the store-path closure, not the real realisation
-    // closure
-    StorePathSet initialStorePaths, pathsClosure;
-    for (auto& path : startPaths)
-        initialStorePaths.insert(path.path());
-    TRY_AWAIT(store.computeFSClosure(initialStorePaths, pathsClosure, false, includeOutputs));
-    ret.merge(initialStorePaths);
-    ret.insert(pathsClosure.begin(), pathsClosure.end());
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
 } // namespace nix

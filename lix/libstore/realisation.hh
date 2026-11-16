@@ -103,34 +103,6 @@ struct OpaquePath {
     GENERATE_CMP(OpaquePath, me->path);
 };
 
-
-/**
- * A store path with all the history of how it went into the store
- */
-struct RealisedPath {
-    /*
-     * A path is either the result of the realisation of a derivation or
-     * an opaque blob that has been directly added to the store
-     */
-    using Raw = std::variant<Realisation, OpaquePath>;
-    Raw raw;
-
-    using Set = std::set<RealisedPath>;
-
-    RealisedPath(StorePath path) : raw(OpaquePath{path}) {}
-    RealisedPath(Realisation r) : raw(r) {}
-
-    /**
-     * Get the raw store path associated to this
-     */
-    StorePath path() const;
-
-    static kj::Promise<Result<void>>
-    closure(Store & store, const Set & startPaths, StorePathSet & ret, bool includeOutputs = false);
-
-    GENERATE_CMP(RealisedPath, me->raw);
-};
-
 class MissingRealisation : public Error
 {
 public:
