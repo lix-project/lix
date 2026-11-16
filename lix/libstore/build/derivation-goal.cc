@@ -428,7 +428,7 @@ try {
        Note that some inputs might not be in the eval store because they
        are (resolved) derivation outputs in a resolved derivation. */
     if (&worker.evalStore != &worker.store) {
-        RealisedPath::Set inputSrcs;
+        StorePathSet inputSrcs;
         for (auto & i : drv->inputSrcs)
             if (TRY_AWAIT(worker.evalStore.isValidPath(i)))
                 inputSrcs.insert(i);

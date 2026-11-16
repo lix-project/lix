@@ -492,7 +492,7 @@ try {
     if (evalStore && evalStore.get() != this) {
         /* The remote doesn't have a way to access evalStore, so copy
            the .drvs. */
-        RealisedPath::Set drvPaths2;
+        StorePathSet drvPaths2;
         for (const auto & i : paths) {
             std::visit(overloaded {
                 [&](const DerivedPath::Opaque & bp) {
