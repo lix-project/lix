@@ -1271,7 +1271,7 @@ kj::Promise<Result<void>> copyClosure(
 try {
     if (&srcStore == &dstStore) co_return result::success();
 
-    RealisedPath::Set closure;
+    StorePathSet closure;
     TRY_AWAIT(RealisedPath::closure(srcStore, paths, closure, includeOutputs));
 
     TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
