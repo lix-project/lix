@@ -1013,13 +1013,6 @@ kj::Promise<Result<void>> copyStorePath(
  */
 kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore, Store & dstStore,
-    const RealisedPath::Set &,
-    RepairFlag repair = NoRepair,
-    CheckSigsFlag checkSigs = CheckSigs,
-    SubstituteFlag substitute = NoSubstitute);
-
-kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
-    Store & srcStore, Store & dstStore,
     const StorePathSet & paths,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,

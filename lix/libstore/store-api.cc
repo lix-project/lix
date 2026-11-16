@@ -1103,27 +1103,6 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
-    Store & srcStore,
-    Store & dstStore,
-    const RealisedPath::Set & paths,
-    RepairFlag repair,
-    CheckSigsFlag checkSigs,
-    SubstituteFlag substitute)
-try {
-    StorePathSet storePaths;
-    for (auto & path : paths) {
-        storePaths.insert(path.path());
-        if (auto _ = std::get_if<Realisation>(&path.raw)) {
-            throw UnimplementedError("ca derivations are not supported");
-        }
-    }
-    co_return TRY_AWAIT(copyPaths(srcStore, dstStore, storePaths, repair, checkSigs, substitute));
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore,
     Store & dstStore,
