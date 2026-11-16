@@ -92,14 +92,5 @@ typedef std::map<DrvOutput, Realisation> DrvOutputs;
  *
  * Moves the `outputs` input.
  */
-SingleDrvOutputs filterDrvOutputs(const OutputsSpec&, SingleDrvOutputs&&);
-
-
-struct OpaquePath {
-    StorePath path;
-
-    StorePath getPath() const { return path; }
-
-    GENERATE_CMP(OpaquePath, me->path);
-};
+SingleDrvOutputs filterDrvOutputs(const OutputsSpec &, SingleDrvOutputs &&);
 }
