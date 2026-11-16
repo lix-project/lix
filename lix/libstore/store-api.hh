@@ -1023,14 +1023,6 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
  */
 kj::Promise<Result<void>> copyClosure(
     Store & srcStore, Store & dstStore,
-    const RealisedPath::Set & paths,
-    RepairFlag repair = NoRepair,
-    CheckSigsFlag checkSigs = CheckSigs,
-    SubstituteFlag substitute = NoSubstitute,
-    bool includeOutputs = false);
-
-kj::Promise<Result<void>> copyClosure(
-    Store & srcStore, Store & dstStore,
     const StorePathSet & paths,
     RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,

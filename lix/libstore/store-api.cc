@@ -1242,26 +1242,6 @@ try {
 kj::Promise<Result<void>> copyClosure(
     Store & srcStore,
     Store & dstStore,
-    const RealisedPath::Set & paths,
-    RepairFlag repair,
-    CheckSigsFlag checkSigs,
-    SubstituteFlag substitute,
-    bool includeOutputs)
-try {
-    if (&srcStore == &dstStore) co_return result::success();
-
-    StorePathSet closure;
-    TRY_AWAIT(RealisedPath::closure(srcStore, paths, closure, includeOutputs));
-
-    TRY_AWAIT(copyPaths(srcStore, dstStore, closure, repair, checkSigs, substitute));
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-kj::Promise<Result<void>> copyClosure(
-    Store & srcStore,
-    Store & dstStore,
     const StorePathSet & storePaths,
     RepairFlag repair,
     CheckSigsFlag checkSigs,
