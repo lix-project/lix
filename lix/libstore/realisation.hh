@@ -102,19 +102,4 @@ struct OpaquePath {
 
     GENERATE_CMP(OpaquePath, me->path);
 };
-
-class MissingRealisation : public Error
-{
-public:
-    MissingRealisation(DrvOutput & outputId)
-        : MissingRealisation(outputId.outputName, outputId.strHash())
-    {}
-    MissingRealisation(std::string_view drv, OutputName outputName)
-        : Error( "cannot operate on output '%s' of the "
-                "unbuilt derivation '%s'",
-                outputName,
-                drv)
-    {}
-};
-
 }

@@ -70,23 +70,17 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
          * to build.
          */
         auto dependency = parseInstallable(*state, store, _dependency);
-        auto optDependencyPath = [&]() -> std::optional<StorePath> {
-            try {
-                return {Installable::toStorePath(*state, getEvalStore(), store, Realise::Derivation, operateOn, dependency)};
-            } catch (MissingRealisation &) {
-                return std::nullopt;
-            }
-        }();
+        auto dependencyPath = Installable::toStorePath(
+            *state, getEvalStore(), store, Realise::Derivation, operateOn, dependency
+        );
 
         StorePathSet closure;
         aio().blockOn(store->computeFSClosure({packagePath}, closure, false, false));
 
-        if (!optDependencyPath.has_value() || !closure.count(*optDependencyPath)) {
+        if (!closure.count(dependencyPath)) {
             printError("'%s' does not depend on '%s'", package->what(), dependency->what());
             return;
         }
-
-        auto dependencyPath = *optDependencyPath;
 
         logger->pause(); // FIXME
 
