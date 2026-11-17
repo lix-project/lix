@@ -832,18 +832,21 @@ public:
     kj::Promise<Result<Derivation>> readInvalidDerivation(const StorePath & drvPath);
 
     /**
-     * @param [out] out Place in here the set of all store paths in the
-     * file system closure of `storePath`; that is, all paths than can
-     * be directly or indirectly reached from it. `out` is not cleared.
-     *
      * @param flipDirection If true, the set of paths that can reach
      * `storePath` is returned; that is, the closures under the
      * `referrers` relation instead of the `references` relation is
      * returned.
+     *
+     * @returns the set of all store paths in the
+     * file system closure of `storePath`; that is, all paths than can
+     * be directly or indirectly reached from it.
      */
-    virtual kj::Promise<Result<void>> computeFSClosure(const StorePathSet & paths,
-        StorePathSet & out, bool flipDirection = false,
-        bool includeOutputs = false, bool includeDerivers = false);
+    virtual kj::Promise<Result<StorePathSet>> computeFSClosure(
+        const StorePathSet & paths,
+        bool flipDirection = false,
+        bool includeOutputs = false,
+        bool includeDerivers = false
+    );
 
     /**
      * Given a set of paths that are to be built, return the set of

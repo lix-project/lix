@@ -44,9 +44,7 @@ struct CmdShowDerivation : InstallablesCommand
             Installable::toDerivations(*getEvaluator()->begin(aio()), store, installables, true);
 
         if (recursive) {
-            StorePathSet closure;
-            aio().blockOn(store->computeFSClosure(drvPaths, closure));
-            drvPaths = std::move(closure);
+            drvPaths = aio().blockOn(store->computeFSClosure(drvPaths));
         }
 
         JSON jsonRoot = JSON::object();

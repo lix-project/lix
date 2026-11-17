@@ -711,8 +711,8 @@ try {
         for (auto & i : pathsInChroot)
             try {
                 if (worker.store.isInStore(i.second.source)) {
-                    TRY_AWAIT(worker.store.computeFSClosure(
-                        {worker.store.toStorePath(i.second.source).first}, closure
+                    closure.merge(TRY_AWAIT(
+                        worker.store.computeFSClosure({worker.store.toStorePath(i.second.source).first})
                     ));
                 }
             } catch (InvalidPath & e) {

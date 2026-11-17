@@ -285,8 +285,8 @@ EvalPaths::EvalPaths(
 
             if (store->isInStore(path)) {
                 try {
-                    StorePathSet closure;
-                    aio.blockOn(store->computeFSClosure({store->toStorePath(path).first}, closure));
+                    StorePathSet closure =
+                        aio.blockOn(store->computeFSClosure({store->toStorePath(path).first}));
                     for (auto & path : closure)
                         allowPath(path);
                 } catch (InvalidPath &) {

@@ -198,8 +198,7 @@ void StorePathsCommand::run(ref<Store> store, Installables && installables)
         if (recursive) {
             // XXX: This only computes the store path closure, ignoring
             // intermediate realisations
-            StorePathSet pathsClosure;
-            aio().blockOn(store->computeFSClosure(storePaths, pathsClosure));
+            StorePathSet pathsClosure = aio().blockOn(store->computeFSClosure(storePaths));
             storePaths.merge(pathsClosure);
         }
     }

@@ -11,8 +11,7 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> makeContentAddressed(
     Store & dstStore,
     const StorePathSet & storePaths)
 try {
-    StorePathSet closure;
-    TRY_AWAIT(srcStore.computeFSClosure(storePaths, closure));
+    StorePathSet closure = TRY_AWAIT(srcStore.computeFSClosure(storePaths));
 
     auto paths = TRY_AWAIT(srcStore.topoSortPaths(closure));
 

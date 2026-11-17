@@ -742,10 +742,8 @@ try {
                         alive.insert(*path);
                         alive.insert(start);
                         try {
-                            StorePathSet closure;
-                            TRY_AWAIT(computeFSClosure(
+                            StorePathSet closure = TRY_AWAIT(computeFSClosure(
                                 {*path},
-                                closure,
                                 /* flipDirection */ false,
                                 gcKeepOutputs,
                                 gcKeepDerivations

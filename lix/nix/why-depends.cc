@@ -74,8 +74,7 @@ struct CmdWhyDepends : SourceExprCommand, MixOperateOnOptions
             *state, getEvalStore(), store, Realise::Derivation, operateOn, dependency
         );
 
-        StorePathSet closure;
-        aio().blockOn(store->computeFSClosure({packagePath}, closure, false, false));
+        StorePathSet closure = aio().blockOn(store->computeFSClosure({packagePath}, false, false));
 
         if (!closure.count(dependencyPath)) {
             printError("'%s' does not depend on '%s'", package->what(), dependency->what());

@@ -399,7 +399,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 );
                 for (auto & j : ps) {
                     if (query == qRequisites) {
-                        aio.blockOn(store->computeFSClosure({j}, paths, false, includeOutputs));
+                        paths.merge(aio.blockOn(store->computeFSClosure({j}, false, includeOutputs)));
                     } else if (query == qReferences) {
                         for (auto & p : aio.blockOn(store->queryPathInfo(j))->references) {
                             paths.insert(p);
@@ -411,7 +411,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                             paths.insert(i);
                         }
                     } else if (query == qReferrersClosure) {
-                        aio.blockOn(store->computeFSClosure({j}, paths, true));
+                        paths.merge(aio.blockOn(store->computeFSClosure({j}, true)));
                     }
                 }
             }
@@ -536,10 +536,9 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 }
             }
 
-            StorePathSet referrers;
-            aio.blockOn(store->computeFSClosure(
-                args, referrers, true, settings.gcKeepOutputs, settings.gcKeepDerivations
-            ));
+            StorePathSet referrers = aio.blockOn(
+                store->computeFSClosure(args, true, settings.gcKeepOutputs, settings.gcKeepDerivations)
+            );
 
             auto & gcStore = require<GcStore>(*store);
             Roots roots = aio.blockOn(gcStore.findRoots(false));
@@ -755,7 +754,7 @@ opDelete(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
     for (auto & arg : opArgs) {
         StorePath path = store->followLinksToStorePath(arg);
         if (deleteClosure) {
-            aio.blockOn(store->computeFSClosure({path}, options.pathsToDelete));
+            options.pathsToDelete.merge(aio.blockOn(store->computeFSClosure({path})));
         } else {
             options.pathsToDelete.insert(path);
         }

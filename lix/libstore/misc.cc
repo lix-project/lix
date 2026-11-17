@@ -16,8 +16,9 @@
 
 namespace nix {
 
-kj::Promise<Result<void>> Store::computeFSClosure(const StorePathSet & startPaths,
-    StorePathSet & paths_, bool flipDirection, bool includeOutputs, bool includeDerivers)
+kj::Promise<Result<StorePathSet>> Store::computeFSClosure(
+    const StorePathSet & startPaths, bool flipDirection, bool includeOutputs, bool includeDerivers
+)
 try {
     std::function<
         kj::Promise<Result<std::set<StorePath>>>(const StorePath & path, ref<const ValidPathInfo>)>
@@ -71,17 +72,19 @@ try {
         };
     }
 
-    paths_.merge(TRY_AWAIT(computeClosureAsync<StorePath>(
-        startPaths,
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        [&](const StorePath& path) -> kj::Promise<Result<StorePathSet>> {
-            try {
-                co_return TRY_AWAIT(queryDeps(path, TRY_AWAIT(queryPathInfo(path))));
-            } catch (...) {
-                co_return result::current_exception();
+    co_return TRY_AWAIT(
+        computeClosureAsync<StorePath>(
+            startPaths,
+            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+            [&](const StorePath & path) -> kj::Promise<Result<StorePathSet>> {
+                try {
+                    co_return TRY_AWAIT(queryDeps(path, TRY_AWAIT(queryPathInfo(path))));
+                } catch (...) {
+                    co_return result::current_exception();
+                }
             }
-        })));
-    co_return result::success();
+        )
+    );
 } catch (...) {
     co_return result::current_exception();
 }

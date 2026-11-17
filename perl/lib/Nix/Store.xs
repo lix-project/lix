@@ -164,9 +164,9 @@ SV * computeFSClosure(int flipDirection, int includeOutputs, ...)
         try {
             StorePathSet paths;
             for (int n = 2; n < items; ++n)
-                aio().blockOn(store()->computeFSClosure(
-                        {store()->parseStorePath(SvPV_nolen(ST(n)))}, paths, flipDirection, includeOutputs
-                ));
+                paths.merge(aio().blockOn(store()->computeFSClosure(
+                        {store()->parseStorePath(SvPV_nolen(ST(n)))}, flipDirection, includeOutputs
+                )));
             for (auto & i : paths)
                 XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(i).c_str(), 0)));
         } catch (Error & e) {
