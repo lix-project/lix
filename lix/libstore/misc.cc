@@ -20,83 +20,83 @@ kj::Promise<Result<StorePathSet>> Store::computeFSClosure(
     const StorePathSet & startPaths, bool flipDirection, bool includeOutputs, bool includeDerivers
 )
 try {
-    std::function<kj::Promise<Result<std::set<StorePath>>>(const StorePath & path, ref<const ValidPathInfo>)>
-        queryDeps;
     if (flipDirection) {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        queryDeps = [&](const StorePath & path,
-                        ref<const ValidPathInfo>) -> kj::Promise<Result<std::set<StorePath>>> {
-            try {
-                StorePathSet res;
-                StorePathSet referrers;
-                TRY_AWAIT(queryReferrers(path, referrers));
-                for (auto & ref : referrers) {
-                    if (ref != path) {
-                        res.insert(ref);
-                    }
-                }
+        // require that all inputs paths actually exist. store invariants mean
+        // we shouldn't need to check referrers we find through store queries.
+        for (auto & path : startPaths) {
+            (void) TRY_AWAIT(queryPathInfo(path));
+        }
 
-                if (includeOutputs) {
-                    for (auto & i : TRY_AWAIT(queryValidDerivers(path))) {
-                        res.insert(i);
-                    }
-                }
-
-                if (includeDerivers && path.isDerivation()) {
-                    for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
-                        if (TRY_AWAIT(isValidPath(outPath))) {
-                            res.insert(outPath);
+        co_return TRY_AWAIT(
+            computeClosureAsync<StorePath>(
+                startPaths,
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                [&](const StorePath & path) -> kj::Promise<Result<std::set<StorePath>>> {
+                    try {
+                        StorePathSet res;
+                        StorePathSet referrers;
+                        TRY_AWAIT(queryReferrers(path, referrers));
+                        for (auto & ref : referrers) {
+                            if (ref != path) {
+                                res.insert(ref);
+                            }
                         }
+
+                        if (includeOutputs) {
+                            for (auto & i : TRY_AWAIT(queryValidDerivers(path))) {
+                                res.insert(i);
+                            }
+                        }
+
+                        if (includeDerivers && path.isDerivation()) {
+                            for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
+                                if (TRY_AWAIT(isValidPath(outPath))) {
+                                    res.insert(outPath);
+                                }
+                            }
+                        }
+                        co_return res;
+                    } catch (...) {
+                        co_return result::current_exception();
                     }
                 }
-                co_return res;
-            } catch (...) {
-                co_return result::current_exception();
-            }
-        };
+            )
+        );
     } else {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-        queryDeps = [&](const StorePath & path,
-                        ref<const ValidPathInfo> info) -> kj::Promise<Result<std::set<StorePath>>> {
-            try {
-                StorePathSet res;
-                for (auto & ref : info->references) {
-                    if (ref != path) {
-                        res.insert(ref);
-                    }
-                }
+        co_return TRY_AWAIT(
+            computeClosureAsync<StorePath>(
+                startPaths,
+                // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
+                [&](const StorePath & path) -> kj::Promise<Result<std::set<StorePath>>> {
+                    try {
+                        auto info = TRY_AWAIT(queryPathInfo(path));
 
-                if (includeOutputs && path.isDerivation()) {
-                    for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
-                        if (TRY_AWAIT(isValidPath(outPath))) {
-                            res.insert(outPath);
+                        StorePathSet res;
+                        for (auto & ref : info->references) {
+                            if (ref != path) {
+                                res.insert(ref);
+                            }
                         }
+
+                        if (includeOutputs && path.isDerivation()) {
+                            for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
+                                if (TRY_AWAIT(isValidPath(outPath))) {
+                                    res.insert(outPath);
+                                }
+                            }
+                        }
+
+                        if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
+                            res.insert(*info->deriver);
+                        }
+                        co_return res;
+                    } catch (...) {
+                        co_return result::current_exception();
                     }
                 }
-
-                if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
-                    res.insert(*info->deriver);
-                }
-                co_return res;
-            } catch (...) {
-                co_return result::current_exception();
-            }
-        };
+            )
+        );
     }
-
-    co_return TRY_AWAIT(
-        computeClosureAsync<StorePath>(
-            startPaths,
-            // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-            [&](const StorePath & path) -> kj::Promise<Result<StorePathSet>> {
-                try {
-                    co_return TRY_AWAIT(queryDeps(path, TRY_AWAIT(queryPathInfo(path))));
-                } catch (...) {
-                    co_return result::current_exception();
-                }
-            }
-        )
-    );
 } catch (...) {
     co_return result::current_exception();
 }
