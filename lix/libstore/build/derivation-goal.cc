@@ -1355,9 +1355,7 @@ try {
                 auto act = logger->startActivity(
                     lvlTalkative, actUnknown, fmt("copying dependencies to '%s'", storeUri)
                 );
-                TRY_AWAIT(
-                    copyPaths(worker.store, *remoteStore, inputPaths, NoRepair, NoCheckSigs, substitute)
-                );
+                TRY_AWAIT(copyPaths(worker.store, *remoteStore, inputPaths, NoCheckSigs, substitute));
             }
             uploadLock.reset();
 
@@ -1441,9 +1439,7 @@ try {
                         localStore->locksHeld.insert(worker.store.printStorePath(path)); /* FIXME: ugly */
                     }
                 }
-                TRY_AWAIT(
-                    copyPaths(*remoteStore, worker.store, missingPaths, NoRepair, NoCheckSigs, NoSubstitute)
-                );
+                TRY_AWAIT(copyPaths(*remoteStore, worker.store, missingPaths, NoCheckSigs, NoSubstitute));
                 if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
                     for (auto & path : missingPaths) {
                         localStore->locksHeld.erase(worker.store.printStorePath(path)); /* FIXME: ugly */

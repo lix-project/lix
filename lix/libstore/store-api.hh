@@ -1009,11 +1009,12 @@ kj::Promise<Result<void>> copyStorePath(
  * @return a map of what each path was copied to the dstStore as.
  */
 kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
-    Store & srcStore, Store & dstStore,
+    Store & srcStore,
+    Store & dstStore,
     const StorePathSet & paths,
-    RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
-    SubstituteFlag substitute = NoSubstitute);
+    SubstituteFlag substitute = NoSubstitute
+);
 
 /**
  * Copy the closure of `paths` from `srcStore` to `dstStore`.

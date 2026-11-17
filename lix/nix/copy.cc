@@ -49,8 +49,7 @@ struct CmdCopy : virtual CopyCommand, StorePathsCommand
 
         StorePathSet stuffToCopy{paths.begin(), paths.end()};
 
-        aio().blockOn(copyPaths(
-            *srcStore, *dstStore, stuffToCopy, NoRepair, checkSigs, substitute));
+        aio().blockOn(copyPaths(*srcStore, *dstStore, stuffToCopy, checkSigs, substitute));
     }
 };
 

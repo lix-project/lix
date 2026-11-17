@@ -1107,9 +1107,9 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & storePaths,
-    RepairFlag repair,
     CheckSigsFlag checkSigs,
-    SubstituteFlag substitute)
+    SubstituteFlag substitute
+)
 try {
     auto valid = TRY_AWAIT(dstStore.queryValidPaths(storePaths, substitute));
 
@@ -1232,7 +1232,7 @@ try {
         });
     }
 
-    TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, repair, checkSigs));
+    TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, NoRepair, checkSigs));
 
     co_return pathsMap;
 } catch (...) {
@@ -1252,7 +1252,7 @@ try {
 
     StorePathSet closure;
     TRY_AWAIT(srcStore.computeFSClosure(storePaths, closure, false, includeOutputs));
-    TRY_AWAIT(copyPaths(srcStore, dstStore, closure, NoRepair, checkSigs, substitute));
+    TRY_AWAIT(copyPaths(srcStore, dstStore, closure, checkSigs, substitute));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
