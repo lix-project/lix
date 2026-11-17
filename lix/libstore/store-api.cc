@@ -1339,23 +1339,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::optional<StorePath>>> Store::getBuildDerivationPath(const StorePath & path)
-try {
-
-    if (!path.isDerivation()) {
-        try {
-            auto info = TRY_AWAIT(queryPathInfo(path));
-            co_return info->deriver;
-        } catch (InvalidPath &) {
-            co_return std::nullopt;
-        }
-    }
-
-    co_return path;
-} catch (...) {
-    co_return result::current_exception();
-}
-
 kj::Promise<Result<Derivation>> Store::readDerivation(const StorePath & drvPath)
 { return readDerivationCommon(*this, drvPath, true); }
 
