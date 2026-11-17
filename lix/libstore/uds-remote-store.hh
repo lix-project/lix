@@ -179,10 +179,7 @@ public:
     kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
     kj::Promise<Result<void>> addMultipleToStore(
-        PathsSource & pathsToCopy,
-        Activity & act,
-        RepairFlag repair = NoRepair,
-        CheckSigsFlag checkSigs = CheckSigs
+        PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs = CheckSigs
     ) override;
 
     kj::Promise<Result<void>> addSignatures(const StorePath & storePath, const StringSet & sigs) override;

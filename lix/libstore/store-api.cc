@@ -318,11 +318,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::addMultipleToStore(
-    PathsSource & pathsToCopy,
-    Activity & act,
-    RepairFlag repair,
-    CheckSigsFlag checkSigs)
+kj::Promise<Result<void>>
+Store::addMultipleToStore(PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs)
 try {
     std::atomic<size_t> nrDone{0};
     std::atomic<size_t> nrFailed{0};
@@ -381,7 +378,7 @@ try {
                     MaintainCount<decltype(nrRunning)> mc(nrRunning);
                     SHOW_PROGRESS();
                     try {
-                        TRY_AWAIT(addToStore(info, *TRY_AWAIT(source()), repair, checkSigs));
+                        TRY_AWAIT(addToStore(info, *TRY_AWAIT(source()), NoRepair, checkSigs));
                     } catch (Error & e) {
                         nrFailed++;
                         if (!settings.keepGoing)
@@ -1232,7 +1229,7 @@ try {
         });
     }
 
-    TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, NoRepair, checkSigs));
+    TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, checkSigs));
 
     co_return pathsMap;
 } catch (...) {

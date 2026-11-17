@@ -376,9 +376,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RpcRemoteStore::addMultipleToStore(
-    PathsSource & pathsToCopy, Activity & act, RepairFlag repair, CheckSigsFlag checkSigs
-)
+kj::Promise<Result<void>>
+RpcRemoteStore::addMultipleToStore(PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs)
 try {
     struct PathState
     {
@@ -420,7 +419,7 @@ try {
             auto pathSource = TRY_AWAIT(path.second());
             auto info = path.first;
 
-            TRY_AWAIT(addToStore(info, *pathSource, repair, checkSigs, &act));
+            TRY_AWAIT(addToStore(info, *pathSource, NoRepair, checkSigs, &act));
             for (auto & downstream : pathStates[path.first.path].neededBy) {
                 auto & downstreamState = pathStates[downstream];
                 downstreamState.needs.erase(path.first.path);

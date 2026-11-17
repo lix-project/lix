@@ -431,19 +431,15 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> RemoteStore::addMultipleToStore(
-    PathsSource & pathsToCopy,
-    Activity & act,
-    RepairFlag repair,
-    CheckSigsFlag checkSigs)
+kj::Promise<Result<void>>
+RemoteStore::addMultipleToStore(PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs)
 try {
     auto remoteVersion = TRY_AWAIT(getProtocol());
 
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(
         WorkerProto::Op::AddMultipleToStore,
-        repair,
+        NoRepair,
         !checkSigs,
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
         [&](AsyncOutputStream & stream) -> kj::Promise<Result<void>> {

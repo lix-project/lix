@@ -110,11 +110,8 @@ public:
         const Activity * context
     ) override;
 
-    kj::Promise<Result<void>> addMultipleToStore(
-        PathsSource & pathsToCopy,
-        Activity & act,
-        RepairFlag repair,
-        CheckSigsFlag checkSigs) override;
+    kj::Promise<Result<void>>
+    addMultipleToStore(PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs) override;
 
     kj::Promise<Result<StorePath>> addTextToStore(
         std::string_view name,
