@@ -20,8 +20,7 @@ kj::Promise<Result<StorePathSet>> Store::computeFSClosure(
     const StorePathSet & startPaths, bool flipDirection, bool includeOutputs, bool includeDerivers
 )
 try {
-    std::function<
-        kj::Promise<Result<std::set<StorePath>>>(const StorePath & path, ref<const ValidPathInfo>)>
+    std::function<kj::Promise<Result<std::set<StorePath>>>(const StorePath & path, ref<const ValidPathInfo>)>
         queryDeps;
     if (flipDirection) {
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
@@ -31,18 +30,25 @@ try {
                 StorePathSet res;
                 StorePathSet referrers;
                 TRY_AWAIT(queryReferrers(path, referrers));
-                for (auto& ref : referrers)
-                    if (ref != path)
+                for (auto & ref : referrers) {
+                    if (ref != path) {
                         res.insert(ref);
+                    }
+                }
 
-                if (includeOutputs)
-                    for (auto& i : TRY_AWAIT(queryValidDerivers(path)))
+                if (includeOutputs) {
+                    for (auto & i : TRY_AWAIT(queryValidDerivers(path))) {
                         res.insert(i);
+                    }
+                }
 
-                if (includeDerivers && path.isDerivation())
-                    for (auto& [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path)))
-                        if (TRY_AWAIT(isValidPath(outPath)))
+                if (includeDerivers && path.isDerivation()) {
+                    for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
+                        if (TRY_AWAIT(isValidPath(outPath))) {
                             res.insert(outPath);
+                        }
+                    }
+                }
                 co_return res;
             } catch (...) {
                 co_return result::current_exception();
@@ -54,17 +60,23 @@ try {
                         ref<const ValidPathInfo> info) -> kj::Promise<Result<std::set<StorePath>>> {
             try {
                 StorePathSet res;
-                for (auto& ref : info->references)
-                    if (ref != path)
+                for (auto & ref : info->references) {
+                    if (ref != path) {
                         res.insert(ref);
+                    }
+                }
 
-                if (includeOutputs && path.isDerivation())
-                    for (auto& [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path)))
-                        if (TRY_AWAIT(isValidPath(outPath)))
+                if (includeOutputs && path.isDerivation()) {
+                    for (auto & [_, outPath] : TRY_AWAIT(queryDerivationOutputMap(path))) {
+                        if (TRY_AWAIT(isValidPath(outPath))) {
                             res.insert(outPath);
+                        }
+                    }
+                }
 
-                if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver)))
+                if (includeDerivers && info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
                     res.insert(*info->deriver);
+                }
                 co_return res;
             } catch (...) {
                 co_return result::current_exception();
