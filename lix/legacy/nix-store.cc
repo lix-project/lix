@@ -399,7 +399,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                 );
                 for (auto & j : ps) {
                     if (query == qRequisites) {
-                        aio.blockOn(store->computeFSClosure(j, paths, false, includeOutputs));
+                        aio.blockOn(store->computeFSClosure({j}, paths, false, includeOutputs));
                     } else if (query == qReferences) {
                         for (auto & p : aio.blockOn(store->queryPathInfo(j))->references) {
                             paths.insert(p);
@@ -411,7 +411,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                             paths.insert(i);
                         }
                     } else if (query == qReferrersClosure) {
-                        aio.blockOn(store->computeFSClosure(j, paths, true));
+                        aio.blockOn(store->computeFSClosure({j}, paths, true));
                     }
                 }
             }
@@ -755,7 +755,7 @@ opDelete(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
     for (auto & arg : opArgs) {
         StorePath path = store->followLinksToStorePath(arg);
         if (deleteClosure) {
-            aio.blockOn(store->computeFSClosure(path, options.pathsToDelete));
+            aio.blockOn(store->computeFSClosure({path}, options.pathsToDelete));
         } else {
             options.pathsToDelete.insert(path);
         }

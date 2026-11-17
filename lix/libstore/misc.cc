@@ -86,18 +86,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::computeFSClosure(const StorePath & startPath,
-    StorePathSet & paths_, bool flipDirection, bool includeOutputs, bool includeDerivers)
-try {
-    StorePathSet paths;
-    paths.insert(startPath);
-    TRY_AWAIT(computeFSClosure(paths, paths_, flipDirection, includeOutputs, includeDerivers));
-    co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
 const ContentAddress * getDerivationCA(const BasicDerivation & drv)
 {
     auto out = drv.outputs.find("out");

@@ -743,8 +743,13 @@ try {
                         alive.insert(start);
                         try {
                             StorePathSet closure;
-                            TRY_AWAIT(computeFSClosure(*path, closure,
-                                /* flipDirection */ false, gcKeepOutputs, gcKeepDerivations));
+                            TRY_AWAIT(computeFSClosure(
+                                {*path},
+                                closure,
+                                /* flipDirection */ false,
+                                gcKeepOutputs,
+                                gcKeepDerivations
+                            ));
                             for (auto & p : closure)
                                 alive.insert(p);
                         } catch (InvalidPath &) { }

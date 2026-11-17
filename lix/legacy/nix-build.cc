@@ -468,7 +468,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                     aio.blockOn(store->queryDerivationOutputMap(inputDrv, &*evalStore));
                 for (auto & i : inputNode) {
                     auto o = outputs.at(i);
-                    aio.blockOn(store->computeFSClosure(o, inputs));
+                    aio.blockOn(store->computeFSClosure({o}, inputs));
                 }
             };
 

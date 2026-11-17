@@ -464,7 +464,7 @@ try {
     StorePathSet outputClosure;
     for (auto & i : outputs) {
         if (!wantedOutputs.contains(i.first)) continue;
-        TRY_AWAIT(worker.store.computeFSClosure(i.second, outputClosure));
+        TRY_AWAIT(worker.store.computeFSClosure({i.second}, outputClosure));
     }
 
     /* Filter out our own outputs (which we have already checked). */
@@ -475,7 +475,9 @@ try {
        derivation is responsible for which path in the output
        closure. */
     StorePathSet inputClosure;
-    if (useDerivation) TRY_AWAIT(worker.store.computeFSClosure(drvPath, inputClosure));
+    if (useDerivation) {
+        TRY_AWAIT(worker.store.computeFSClosure({drvPath}, inputClosure));
+    }
     std::map<StorePath, StorePath> outputsToDrv;
     for (auto & i : inputClosure)
         if (i.isDerivation()) {
@@ -608,9 +610,7 @@ try {
                 };
 
                 for (auto & outputName : inputNode) {
-                    TRY_AWAIT(
-                        worker.store.computeFSClosure(TRY_AWAIT(getOutput(outputName)), inputPaths)
-                    );
+                    TRY_AWAIT(worker.store.computeFSClosure({TRY_AWAIT(getOutput(outputName))}, inputPaths));
                 }
 
                 co_return result::success();

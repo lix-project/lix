@@ -1199,7 +1199,7 @@ static Value derivationStrictInternal(EvalState & state, const std::string & drv
             [&](const NixStringContextElem::DrvDeep & d) {
                 /* !!! This doesn't work if readOnlyMode is set. */
                 StorePathSet refs;
-                state.aio.blockOn(state.ctx.store->computeFSClosure(d.drvPath, refs));
+                state.aio.blockOn(state.ctx.store->computeFSClosure({d.drvPath}, refs));
                 for (auto & j : refs) {
                     drv.inputSrcs.insert(j);
                     if (j.isDerivation()) {

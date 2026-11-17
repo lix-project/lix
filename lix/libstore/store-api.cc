@@ -828,7 +828,7 @@ try {
         if (j.isDerivation()) {
             Derivation drv = TRY_AWAIT(derivationFromPath(j));
             for (auto & k : drv.outputsAndPaths(*this)) {
-                TRY_AWAIT(computeFSClosure(k.second.second, paths));
+                TRY_AWAIT(computeFSClosure({k.second.second}, paths));
             }
         }
     }
@@ -957,7 +957,7 @@ Store::getClosureSize(const StorePath & storePath)
 try {
     uint64_t totalNarSize = 0, totalDownloadSize = 0;
     StorePathSet closure;
-    TRY_AWAIT(computeFSClosure(storePath, closure, false, false));
+    TRY_AWAIT(computeFSClosure({storePath}, closure, false, false));
     for (auto & p : closure) {
         auto info = TRY_AWAIT(queryPathInfo(p));
         totalNarSize += info->narSize;
