@@ -1396,9 +1396,9 @@ try {
                 }
                 optResult = TRY_AWAIT(remoteStore->buildDerivation(drvPath, (const BasicDerivation &) *drv));
             } else {
-                TRY_AWAIT(copyClosure(
-                    worker.store, *remoteStore, StorePathSet{drvPath}, NoRepair, NoCheckSigs, substitute
-                ));
+                TRY_AWAIT(
+                    copyClosure(worker.store, *remoteStore, StorePathSet{drvPath}, NoCheckSigs, substitute)
+                );
                 auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
                     .drvPath = makeConstantStorePath(drvPath),
                     .outputs = OutputsSpec::All{},

@@ -1019,12 +1019,13 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
  * Copy the closure of `paths` from `srcStore` to `dstStore`.
  */
 kj::Promise<Result<void>> copyClosure(
-    Store & srcStore, Store & dstStore,
+    Store & srcStore,
+    Store & dstStore,
     const StorePathSet & paths,
-    RepairFlag repair = NoRepair,
     CheckSigsFlag checkSigs = CheckSigs,
     SubstituteFlag substitute = NoSubstitute,
-    bool includeOutputs = false);
+    bool includeOutputs = false
+);
 
 /**
  * Resolve the derived path completely, failing if any derivation output
