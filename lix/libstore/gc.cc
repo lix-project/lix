@@ -771,8 +771,7 @@ try {
                     /* Visit the referrers of this path. */
                     auto i = referrersCache.find(*path);
                     if (i == referrersCache.end()) {
-                        StorePathSet referrers;
-                        TRY_AWAIT(queryReferrers(*path, referrers));
+                        StorePathSet referrers = TRY_AWAIT(queryReferrers(*path));
                         referrersCache.emplace(*path, std::move(referrers));
                         i = referrersCache.find(*path);
                     }

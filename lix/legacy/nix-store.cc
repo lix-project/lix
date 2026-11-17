@@ -405,8 +405,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
                             paths.insert(p);
                         }
                     } else if (query == qReferrers) {
-                        StorePathSet tmp;
-                        aio.blockOn(store->queryReferrers(j, tmp));
+                        StorePathSet tmp = aio.blockOn(store->queryReferrers(j));
                         for (auto & i : tmp) {
                             paths.insert(i);
                         }

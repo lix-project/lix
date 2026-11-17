@@ -282,7 +282,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         #pragma GCC diagnostic ignored "-Wswitch-enum"
         switch (op) {
             case WorkerProto::Op::QueryReferrers: {
-                aio.blockOn(store->queryReferrers(path, paths));
+                paths = aio.blockOn(store->queryReferrers(path));
                 break;
             }
             case WorkerProto::Op::QueryValidDerivers: {
@@ -1388,9 +1388,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     {
         return RPC_IMPL({
             StorePath path = rpc::from(context.getParams().getPath(), *state->store);
-            StorePathSet paths;
-
-            TRY_AWAIT(state->store->queryReferrers(path, paths));
+            StorePathSet paths = TRY_AWAIT(state->store->queryReferrers(path));
             RPC_FILL_LIST(context.initResults(), initResult, paths, *state->store);
         });
     }

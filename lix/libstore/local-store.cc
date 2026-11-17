@@ -846,30 +846,27 @@ try {
     co_return result::current_exception();
 }
 
-
-void LocalStore::queryReferrers(DBState & state, const StorePath & path, StorePathSet & referrers)
+StorePathSet LocalStore::queryReferrers(DBState & state, const StorePath & path)
 {
     auto useQueryReferrers(state.stmts->QueryReferrers.use()(printStorePath(path)));
 
+    StorePathSet referrers;
     while (useQueryReferrers.next())
         referrers.insert(parseStorePath(useQueryReferrers.getStr(0)));
+    return referrers;
 }
 
-
-kj::Promise<Result<void>>
-LocalStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
+kj::Promise<Result<StorePathSet>> LocalStore::queryReferrers(const StorePath & path)
 try {
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<void>> {
+    co_return TRY_AWAIT(retrySQLite([&]() -> kj::Promise<Result<StorePathSet>> {
         try {
             auto state = co_await _dbState.lock();
-            queryReferrers(*state, path, referrers);
-            co_return result::success();
+            co_return queryReferrers(*state, path);
         } catch (...) {
             co_return result::current_exception();
         }
     }));
-    co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1450,7 +1447,7 @@ try {
             SQLiteTxn txn = state->db.beginTransaction(SQLiteTxnType::Immediate);
 
             if (isValidPath_(*state, path)) {
-                StorePathSet referrers; queryReferrers(*state, path, referrers);
+                StorePathSet referrers = queryReferrers(*state, path);
                 referrers.erase(path); /* ignore self-references */
                 if (!referrers.empty())
                     throw PathInUse("cannot delete path '%s' because it is in use by %s",
@@ -1627,7 +1624,7 @@ try {
         /* Check any referrers first.  If we can invalidate them
            first, then we can invalidate this path as well. */
         bool canInvalidate = true;
-        StorePathSet referrers; TRY_AWAIT(queryReferrers(path, referrers));
+        StorePathSet referrers = TRY_AWAIT(queryReferrers(path));
         for (auto & i : referrers)
             if (i != path) {
                 TRY_AWAIT(verifyPath(i, storePathsInStoreDir, done, validPaths, repair, errors));

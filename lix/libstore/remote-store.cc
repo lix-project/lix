@@ -285,15 +285,12 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> RemoteStore::queryReferrers(const StorePath & path,
-    StorePathSet & referrers)
+kj::Promise<Result<StorePathSet>> RemoteStore::queryReferrers(const StorePath & path)
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    referrers.merge(TRY_AWAIT(
+    co_return TRY_AWAIT(
         conn.sendCommand<StorePathSet>(WorkerProto::Op::QueryReferrers, printStorePath(path))
-    ));
-    co_return result::success();
+    );
 } catch (...) {
     co_return result::current_exception();
 }

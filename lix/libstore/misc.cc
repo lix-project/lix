@@ -32,8 +32,7 @@ try {
             [&](const StorePath & path) -> kj::Promise<Result<std::set<StorePath>>> {
                 try {
                     StorePathSet res;
-                    StorePathSet referrers;
-                    TRY_AWAIT(queryReferrers(path, referrers));
+                    StorePathSet referrers = TRY_AWAIT(queryReferrers(path));
                     for (auto & ref : referrers) {
                         if (ref != path) {
                             res.insert(ref);

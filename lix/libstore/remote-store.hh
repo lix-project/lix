@@ -60,8 +60,7 @@ public:
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoUncached(const StorePath & path, const Activity * context) override;
 
-    kj::Promise<Result<void>>
-    queryReferrers(const StorePath & path, StorePathSet & referrers) override;
+    kj::Promise<Result<StorePathSet>> queryReferrers(const StorePath & path) override;
 
     kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 

@@ -672,14 +672,13 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RpcRemoteStore::queryReferrers(const StorePath & path, StorePathSet & referrers)
+kj::Promise<Result<StorePathSet>> RpcRemoteStore::queryReferrers(const StorePath & path)
 try {
     auto req = rpc->legacyProtocol.queryReferrersRequest();
     RPC_FILL(req, initPath, path, *this);
 
     auto res = TRY_AWAIT_RPC(req.send());
-    referrers.merge(rpc::to<StorePathSet>(res.getResult(), *this));
-    co_return result::success();
+    co_return rpc::to<StorePathSet>(res.getResult(), *this);
 } catch (...) {
     co_return result::current_exception();
 }

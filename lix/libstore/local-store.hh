@@ -212,8 +212,7 @@ public:
     kj::Promise<Result<std::shared_ptr<const ValidPathInfo>>>
     queryPathInfoUncached(const StorePath & path, const Activity * context) override;
 
-    kj::Promise<Result<void>>
-    queryReferrers(const StorePath & path, StorePathSet & referrers) override;
+    kj::Promise<Result<StorePathSet>> queryReferrers(const StorePath & path) override;
 
     kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 
@@ -422,7 +421,7 @@ private:
 
     // Internal versions that are not wrapped in retry_sqlite.
     bool isValidPath_(DBState & state, const StorePath & path);
-    void queryReferrers(DBState & state, const StorePath & path, StorePathSet & referrers);
+    StorePathSet queryReferrers(DBState & state, const StorePath & path);
 
     /**
      * Add signatures to a ValidPathInfo or Realisation using the secret keys
