@@ -805,7 +805,7 @@ opExport(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
         paths.insert(store->followLinksToStorePath(i));
 
     FdSink sink(STDOUT_FILENO);
-    aio.blockOn(store->exportPaths(paths, sink));
+    aio.blockOn(exportPaths(*store, paths, sink));
     sink.flush();
 }
 
@@ -818,7 +818,7 @@ opImport(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Strin
     if (!opArgs.empty()) throw UsageError("no arguments expected");
 
     FdSource source(STDIN_FILENO);
-    auto paths = aio.blockOn(store->importPaths(source, NoCheckSigs));
+    auto paths = aio.blockOn(importPaths(*store, source, NoCheckSigs));
 
     for (auto & i : paths)
         cout << fmt("%s\n", store->printStorePath(i)) << std::flush;

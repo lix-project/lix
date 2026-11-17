@@ -9,14 +9,16 @@
 
 namespace nix {
 
-kj::Promise<Result<void>> Store::exportPaths(const StorePathSet & paths, Sink & sink)
+static kj::Promise<Result<void>> exportPath(Store & source, const StorePath & path, Sink & sink);
+
+kj::Promise<Result<void>> exportPaths(Store & source, const StorePathSet & paths, Sink & sink)
 try {
-    auto sorted = TRY_AWAIT(topoSortPaths(paths));
+    auto sorted = TRY_AWAIT(source.topoSortPaths(paths));
     std::reverse(sorted.begin(), sorted.end());
 
     for (auto & path : sorted) {
         sink << 1;
-        TRY_AWAIT(exportPath(path, sink));
+        TRY_AWAIT(exportPath(source, path, sink));
     }
 
     sink << 0;
@@ -25,14 +27,14 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::exportPath(const StorePath & path, Sink & sink)
+kj::Promise<Result<void>> exportPath(Store & source, const StorePath & path, Sink & sink)
 try {
-    auto info = TRY_AWAIT(queryPathInfo(path));
+    auto info = TRY_AWAIT(source.queryPathInfo(path));
 
     HashSink hashSink(HashType::SHA256);
     TeeSink teeSink(sink, hashSink);
 
-    TRY_AWAIT(TRY_AWAIT(narFromPath(path))->drainInto(teeSink));
+    TRY_AWAIT(TRY_AWAIT(source.narFromPath(path))->drainInto(teeSink));
 
     /* Refuse to export paths that have changed.  This prevents
        filesystem corruption from spreading to other machines.
@@ -41,24 +43,20 @@ try {
     if (hash != info->narHash && info->narHash != Hash(info->narHash.type))
         throw Error(
             "hash of path '%s' has changed from '%s' to '%s'!",
-            printStorePath(path),
+            source.printStorePath(path),
             info->narHash.to_sri(),
             hash.to_sri()
         );
 
-    teeSink
-        << exportMagic
-        << printStorePath(path);
-    teeSink << CommonProto::write(CommonProto::WriteConn{*this}, info->references);
-    teeSink
-        << (info->deriver ? printStorePath(*info->deriver) : "")
-        << 0;
+    teeSink << exportMagic << source.printStorePath(path);
+    teeSink << CommonProto::write(CommonProto::WriteConn{source}, info->references);
+    teeSink << (info->deriver ? source.printStorePath(*info->deriver) : "") << 0;
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<StorePaths>> Store::importPaths(Source & source, CheckSigsFlag checkSigs)
+kj::Promise<Result<StorePaths>> importPaths(Store & target, Source & source, CheckSigsFlag checkSigs)
 try {
     StorePaths res;
     while (true) {
@@ -74,19 +72,19 @@ try {
         if (magic != exportMagic)
             throw Error("Nix archive cannot be imported; wrong format");
 
-        auto path = parseStorePath(readString(source));
+        auto path = target.parseStorePath(readString(source));
 
         //Activity act(*logger, lvlInfo, "importing path '%s'", info.path);
 
         auto references = CommonProto::Serialise<StorePathSet>::read(
-            CommonProto::ReadConn{.from = source, .store = *this}
+            CommonProto::ReadConn{.from = source, .store = target}
         );
         auto deriver = readString(source);
         auto narHash = hashString(HashType::SHA256, saved.s);
 
         ValidPathInfo info { path, narHash };
         if (deriver != "")
-            info.deriver = parseStorePath(deriver);
+            info.deriver = target.parseStorePath(deriver);
         info.references = references;
         info.narSize = saved.s.size();
 
@@ -97,7 +95,7 @@ try {
 
         // Can't use underlying source, which would have been exhausted
         auto source = AsyncStringInputStream(saved.s);
-        TRY_AWAIT(addToStore(info, source, NoRepair, checkSigs));
+        TRY_AWAIT(target.addToStore(info, source, NoRepair, checkSigs));
 
         res.push_back(info.path);
     }

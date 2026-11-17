@@ -867,22 +867,6 @@ public:
      */
     kj::Promise<Result<StorePaths>> topoSortPaths(const StorePathSet & paths);
 
-    /**
-     * Export multiple paths in the format expected by ‘nix-store
-     * --import’.
-     */
-    kj::Promise<Result<void>> exportPaths(const StorePathSet & paths, Sink & sink);
-
-    kj::Promise<Result<void>> exportPath(const StorePath & path, Sink & sink);
-
-    /**
-     * Import a sequence of NAR dumps created by exportPaths() into the
-     * Nix store. Optionally, the contents of the NARs are preloaded
-     * into the specified FS accessor to speed up subsequent access.
-     */
-    kj::Promise<Result<StorePaths>>
-    importPaths(Source & source, CheckSigsFlag checkSigs = CheckSigs);
-
     template<template<typename> typename Wrapper = std::type_identity_t>
     struct Stats
     {
@@ -990,6 +974,19 @@ protected:
     }
 };
 
+/**
+ * Export multiple paths in the format expected by ‘nix-store
+ * --import’.
+ */
+kj::Promise<Result<void>> exportPaths(Store & source, const StorePathSet & paths, Sink & sink);
+
+/**
+ * Import a sequence of NAR dumps created by exportPaths() into the
+ * Nix store. Optionally, the contents of the NARs are preloaded
+ * into the specified FS accessor to speed up subsequent access.
+ */
+kj::Promise<Result<StorePaths>>
+importPaths(Store & target, Source & source, CheckSigsFlag checkSigs = CheckSigs);
 
 /**
  * Copy a path from one store to another.

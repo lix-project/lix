@@ -204,7 +204,7 @@ void exportPaths(int fd, ...)
             StorePathSet paths;
             for (int n = 1; n < items; ++n) paths.insert(store()->parseStorePath(SvPV_nolen(ST(n))));
             FdSink sink(fd);
-            aio().blockOn(store()->exportPaths(paths, sink));
+            aio().blockOn(exportPaths(*store(), paths, sink));
         } catch (Error & e) {
             croak("%s", e.what());
         }
@@ -214,7 +214,7 @@ void importPaths(int fd, int dontCheckSigs)
     PPCODE:
         try {
             FdSource source(fd);
-            aio().blockOn(store()->importPaths(source, dontCheckSigs ? NoCheckSigs : CheckSigs));
+            aio().blockOn(importPaths(*store(), source, dontCheckSigs ? NoCheckSigs : CheckSigs));
         } catch (Error & e) {
             croak("%s", e.what());
         }
