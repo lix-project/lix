@@ -464,7 +464,7 @@ try {
     StorePathSet outputClosure;
     for (auto & i : outputs) {
         if (!wantedOutputs.contains(i.first)) continue;
-        outputClosure.merge(TRY_AWAIT(worker.store.computeFSClosure({i.second})));
+        outputClosure.merge(TRY_AWAIT(worker.store.computeReferenceClosure({i.second})));
     }
 
     /* Filter out our own outputs (which we have already checked). */
@@ -476,7 +476,7 @@ try {
        closure. */
     StorePathSet inputClosure;
     if (useDerivation) {
-        inputClosure = TRY_AWAIT(worker.store.computeFSClosure({drvPath}));
+        inputClosure = TRY_AWAIT(worker.store.computeReferenceClosure({drvPath}));
     }
     std::map<StorePath, StorePath> outputsToDrv;
     for (auto & i : inputClosure)
@@ -611,7 +611,7 @@ try {
 
                 for (auto & outputName : inputNode) {
                     inputPaths.merge(
-                        TRY_AWAIT(worker.store.computeFSClosure({TRY_AWAIT(getOutput(outputName))}))
+                        TRY_AWAIT(worker.store.computeReferenceClosure({TRY_AWAIT(getOutput(outputName))}))
                     );
                 }
 
@@ -626,7 +626,7 @@ try {
     }
 
     /* Second, the input sources. */
-    inputPaths.merge(TRY_AWAIT(worker.store.computeFSClosure(drv->inputSrcs)));
+    inputPaths.merge(TRY_AWAIT(worker.store.computeReferenceClosure(drv->inputSrcs)));
 
     debug("added input paths %s", worker.store.showPaths(inputPaths));
 

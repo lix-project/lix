@@ -815,7 +815,7 @@ try {
         if (!inputPaths.count(storePath))
             throw BuildError("cannot export references of path '%s' because it is not in the input closure of the derivation", printStorePath(storePath));
 
-        paths.merge(TRY_AWAIT(computeFSClosure({storePath})));
+        paths.merge(TRY_AWAIT(computeReferenceClosure({storePath})));
     }
 
     /* If there are derivations in the graph, then include their
@@ -828,7 +828,7 @@ try {
         if (j.isDerivation()) {
             Derivation drv = TRY_AWAIT(derivationFromPath(j));
             for (auto & k : drv.outputsAndPaths(*this)) {
-                paths.merge(TRY_AWAIT(computeFSClosure({k.second.second})));
+                paths.merge(TRY_AWAIT(computeReferenceClosure({k.second.second})));
             }
         }
     }
@@ -956,7 +956,7 @@ kj::Promise<Result<std::pair<uint64_t, uint64_t>>>
 Store::getClosureSize(const StorePath & storePath)
 try {
     uint64_t totalNarSize = 0, totalDownloadSize = 0;
-    StorePathSet closure = TRY_AWAIT(computeFSClosure({storePath}, false, false));
+    StorePathSet closure = TRY_AWAIT(computeReferenceClosure({storePath}, false));
     for (auto & p : closure) {
         auto info = TRY_AWAIT(queryPathInfo(p));
         totalNarSize += info->narSize;
@@ -1246,7 +1246,7 @@ kj::Promise<Result<void>> copyClosure(
 try {
     if (&srcStore == &dstStore) co_return result::success();
 
-    StorePathSet closure = TRY_AWAIT(srcStore.computeFSClosure(storePaths, false, includeOutputs));
+    StorePathSet closure = TRY_AWAIT(srcStore.computeReferenceClosure(storePaths, includeOutputs));
     TRY_AWAIT(copyPaths(srcStore, dstStore, closure, checkSigs, substitute));
     co_return result::success();
 } catch (...) {

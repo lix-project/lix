@@ -58,7 +58,7 @@ JSON toJSON(const DiffInfo & diff)
 static kj::Promise<Result<GroupedPaths>>
 getClosureInfo(ref<Store> store, const StorePath & toplevel)
 try {
-    StorePathSet closure = TRY_AWAIT(store->computeFSClosure({toplevel}));
+    StorePathSet closure = TRY_AWAIT(store->computeReferenceClosure({toplevel}));
 
     GroupedPaths groupedPaths;
 

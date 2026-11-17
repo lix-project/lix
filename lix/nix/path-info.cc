@@ -119,7 +119,7 @@ struct CmdPathInfo : StorePathsCommand, MixJSON
             if (recursive) {
                 // XXX: This only computes the store path closure, ignoring
                 // intermediate realisations
-                StorePathSet closure = aio().blockOn(store->computeFSClosure(paths));
+                StorePathSet closure = aio().blockOn(store->computeReferenceClosure(paths));
 
                 paths.insert(closure.begin(), closure.end());
             }

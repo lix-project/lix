@@ -66,7 +66,7 @@ struct CmdStoreDelete : StorePathsCommand
 
         for (auto const & path : storePaths) {
             if (deleteClosure) {
-                options.pathsToDelete.merge(aio().blockOn(store->computeFSClosure({path})));
+                options.pathsToDelete.merge(aio().blockOn(store->computeReferenceClosure({path})));
             } else {
                 options.pathsToDelete.insert(path);
             }

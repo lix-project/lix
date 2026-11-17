@@ -163,10 +163,25 @@ SV * computeFSClosure(int flipDirection, int includeOutputs, ...)
     PPCODE:
         try {
             StorePathSet paths;
-            for (int n = 2; n < items; ++n)
-                paths.merge(aio().blockOn(store()->computeFSClosure(
-                        {store()->parseStorePath(SvPV_nolen(ST(n)))}, flipDirection, includeOutputs
-                )));
+            for (int n = 2; n < items; ++n) {
+                if (flipDirection) {
+                    paths.merge(
+                        aio().blockOn(
+                            store()->computeReferrersClosure(
+                                {store()->parseStorePath(SvPV_nolen(ST(n)))}, includeOutputs
+                            )
+                        )
+                    );
+                } else {
+                    paths.merge(
+                        aio().blockOn(
+                            store()->computeReferenceClosure(
+                                {store()->parseStorePath(SvPV_nolen(ST(n)))}, includeOutputs
+                            )
+                        )
+                    );
+                }
+            }
             for (auto & i : paths)
                 XPUSHs(sv_2mortal(newSVpv(store()->printStorePath(i).c_str(), 0)));
         } catch (Error & e) {
