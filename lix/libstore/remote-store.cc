@@ -782,6 +782,7 @@ kj::Promise<Result<RemoteStore::Connection::RemoteError>>
 RemoteStore::Connection::processStderr(AsyncFdIoStream & stream, Activity * parent)
 try {
     AsyncBufferedInputStream from{stream, fromBuf};
+    Logger & actLogger = parent ? parent->getLogger() : *logger;
 
     std::map<ActivityId, Activity> remoteActivities;
 
@@ -808,7 +809,7 @@ try {
                 }
                 return parent;
             }();
-            remoteActivities.emplace(act, logger->startActivity(lvl, type, s, fields, parent));
+            remoteActivities.emplace(act, actLogger.startActivity(lvl, type, s, fields, parent));
         } else if (msg == STDERR_STOP_ACTIVITY) {
             auto act = TRY_AWAIT(readNum<ActivityId>(from));
             if (remoteActivities.erase(act) == 0) {
@@ -825,13 +826,8 @@ try {
                 );
                 continue;
             }
-            // HACK: dump build logs into our parent if we're parented. ideally we would handle this
-            // at the logger interface, but the logger interface is currently too broken to do that.
-            if (type == resBuildLogLine && parent) {
-                ACTIVITY_RESULT(*parent, type, fields);
-            } else {
-                ACTIVITY_RESULT(*act, type, fields);
-            }
+
+            ACTIVITY_RESULT(*act, type, fields);
         } else if (msg == STDERR_LAST) {
             break;
         } else {

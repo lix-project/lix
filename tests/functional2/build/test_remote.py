@@ -557,3 +557,37 @@ def test_remote_log_lines_default(nix: Nix, env: ManagedEnv):
     result.expect(1)
     tail = _remote_tail(result, 25)
     assert tail[-1] == "> line-30"
+
+
+@pytest.mark.nix_settings(trusted_users="*")
+@pytest.mark.full_sandbox
+@with_files(
+    {
+        "config.nix": get_global_asset("config.nix"),
+        "remote-log-prefix.nix": CopyFile("assets/remote-log-prefix.nix"),
+    }
+)
+def test_remote_build_log_prefix(nix: Nix, env: ManagedEnv):
+    nix.settings.add_xp_feature("nix-command")
+    nix.settings["log-format"] = "bar-with-logs"
+
+    result = (
+        nix.nix(
+            [
+                "build",
+                "-L",
+                "--no-link",
+                "--max-jobs",
+                "0",
+                "--builders",
+                _builders("ssh-ng", False, env),
+                "-f",
+                "./remote-log-prefix.nix",
+            ]
+        )
+        .run()
+        .ok()
+    )
+
+    assert "remote-log-prefix> hello-from-remote-builder" in result.stderr_plain
+    assert "unnamed>" not in result.stderr_plain
