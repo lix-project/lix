@@ -200,8 +200,21 @@ struct StoreConfig : public Config
 
     const std::string & builders() const
     {
-        return builders_.get() ? *builders_.get() : settings.builders;
+        if (!builders_.get()) {
+            return settings.builders;
+        } else if (builders_ == NO_BUILDERS) {
+            static std::string empty = "";
+            return empty;
+        } else {
+            return *builders_.get();
+        }
     }
+
+    /// workaround for the setting system not accepting empty strings as values
+    /// for optional settings, daemons only accepting empty an builders setting
+    /// from untrusted clients, and us needing to send an empty builders string
+    /// to remotes during remote builds. the setting system is so badly broken.
+    static constexpr std::string NO_BUILDERS = "# no builders";
 
 private:
     Setting<std::optional<uint32_t>> maxBuildJobs_{

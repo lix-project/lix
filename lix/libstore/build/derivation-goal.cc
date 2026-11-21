@@ -1272,7 +1272,8 @@ try {
             remoteActivity = remoteLogger.startActivity(
                 lvlTalkative, actUnknown, fmt("building on %s", to_std_string(machine.name.as_str()))
             );
-            StoreConfig::Params config = {{"max-build-jobs", "1"}, {"builders", ""}};
+            // empty strings after trimming count as unset!
+            StoreConfig::Params config = {{"max-build-jobs", "1"}, {"builders", StoreConfig::NO_BUILDERS}};
             if (machine.uri.as_str().starts_with("ssh-ng://"_rs)) {
                 config["noninteractive"] = "1";
             }
