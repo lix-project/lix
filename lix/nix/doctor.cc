@@ -294,7 +294,7 @@ struct CmdDoctor : StoreCommand
     {
         Machines machines;
         try {
-            machines = getMachines();
+            machines = getMachines(settings.builders);
         } catch (nix::Error & e) {
             std::stringstream ss;
             ss << "invalid remote builders configuration\n";

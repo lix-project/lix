@@ -174,13 +174,12 @@ static Machines getMachines(const std::string & builders, const std::string & th
 
 }
 
-Machines getMachines()
+Machines getMachines(const std::string & builders)
 {
-    auto const builders = settings.builders;
     auto const thisSystem = settings.thisSystem;
 
     auto machinesResult = rust::lix::machines::get_machines(
-        rust::to_string(builders.get()).to_owned(), rust::to_string(thisSystem.get()).to_owned()
+        rust::to_string(builders).to_owned(), rust::to_string(thisSystem.get()).to_owned()
     );
 
     return match_result(
@@ -189,7 +188,6 @@ Machines getMachines()
         [](auto err) -> Machines { throw UsageError(to_std_string(err.to_string())); }
     );
 }
-
 }
 
 namespace rust {

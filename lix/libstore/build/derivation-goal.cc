@@ -1202,7 +1202,7 @@ try {
         co_return HookResult::Decline{};
     }
 
-    auto machines = getMachines();
+    auto machines = getMachines(worker.store.config().builders());
     debug("got %d remote builders", machines.len());
     if (machines.len() == 0) {
         worker.hook.available = false;

@@ -22,6 +22,5 @@ openStore(rust::Ref<Machine> m, StoreConfig::Params storeParams = {}, Activity *
 
 typedef rust::Vec<Machine> Machines;
 
-Machines getMachines();
-
+Machines getMachines(const std::string & builders);
 }

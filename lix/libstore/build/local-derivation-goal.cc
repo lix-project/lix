@@ -232,7 +232,7 @@ retry:
             co_return co_await tryToBuild();
         }
 
-        if (getMachines().len() == 0) {
+        if (getMachines(worker.store.config().builders()).len() == 0) {
             throw Error(
                 "unable to start any build; either set '--max-jobs' to a non-zero value or enable "
                 "remote builds.\n"
