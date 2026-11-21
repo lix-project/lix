@@ -991,10 +991,8 @@ kj::Promise<Result<void>> copyStorePath(
  * in parallel. They are copied in a topologically sorted order (i.e. if
  * A is a reference of B, then A is copied before B), but the set of
  * store paths is not automatically closed; use copyClosure() for that.
- *
- * @return a map of what each path was copied to the dstStore as.
  */
-kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
+kj::Promise<Result<void>> copyPaths(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & paths,

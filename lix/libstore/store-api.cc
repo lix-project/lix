@@ -724,6 +724,10 @@ try {
 
 kj::Promise<Result<void>> Store::substitutePaths(const StorePathSet & paths)
 try {
+    if (paths.empty()) {
+        co_return result::success();
+    }
+
     std::vector<DerivedPath> paths2;
     for (auto & path : paths)
         if (!path.isDerivation())
@@ -1097,7 +1101,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
+kj::Promise<Result<void>> copyPaths(
     Store & srcStore,
     Store & dstStore,
     const StorePathSet & storePaths,
@@ -1115,6 +1119,11 @@ try {
     for (auto & path : storePaths)
         if (!valid.count(path)) missing.insert(path);
 
+    // Everything is already present, don't start an activity showing "copying 0 paths".
+    if (missing.empty()) {
+        co_return result::success();
+    }
+
     auto act =
         logger->startActivity(lvlInfo, actCopyPaths, fmt("copying %d paths", missing.size()));
 
@@ -1122,10 +1131,6 @@ try {
     // store paths to add, so sort them right now
     auto sortedMissing = TRY_AWAIT(srcStore.topoSortPaths(missing));
     std::reverse(sortedMissing.begin(), sortedMissing.end());
-
-    std::map<StorePath, StorePath> pathsMap;
-    for (auto & path : storePaths)
-        pathsMap.insert_or_assign(path, path);
 
     Store::PathsSource pathsToCopy;
     std::shared_ptr<AsyncSemaphore> pathCopyRatelimiter = std::make_shared<AsyncSemaphore>(
@@ -1162,7 +1167,6 @@ try {
         auto info = TRY_AWAIT(srcStore.queryPathInfo(missingPath));
 
         auto storePathForDst = computeStorePathForDst(*info);
-        pathsMap.insert_or_assign(missingPath, storePathForDst);
 
         ValidPathInfo infoForDst = *info;
         infoForDst.path = storePathForDst;
@@ -1232,7 +1236,7 @@ try {
 
     TRY_AWAIT(dstStore.addMultipleToStore(pathsToCopy, act, checkSigs));
 
-    co_return pathsMap;
+    co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
@@ -1247,6 +1251,9 @@ kj::Promise<Result<void>> copyClosure(
 )
 try {
     if (&srcStore == &dstStore) co_return result::success();
+    if (storePaths.empty()) {
+        co_return result::success();
+    }
 
     StorePathSet closure = TRY_AWAIT(srcStore.computeReferenceClosure(storePaths, includeOutputs));
     TRY_AWAIT(copyPaths(srcStore, dstStore, closure, checkSigs, substitute));
