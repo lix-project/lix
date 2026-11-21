@@ -169,7 +169,6 @@ public:
     const Activity actSubstitutions;
 
     Store & store;
-    Store & evalStore;
     AsyncSemaphore substitutions, builds, localJobs;
     std::optional<Path> buildDirOverride;
 
@@ -224,7 +223,7 @@ public:
     void requireBuildSupport();
 
 private:
-    Worker(Store & store, Store & evalStore, AvailableNamespaces namespaces);
+    Worker(Store & store, AvailableNamespaces namespaces);
     ~Worker();
 
     /**
@@ -301,15 +300,13 @@ public:
     void markContentsGood(const StorePath & path);
 
     template<typename MkGoals>
-    friend kj::Promise<Result<Results>>
-    processGoals(Store & store, Store & evalStore, MkGoals && mkGoals) noexcept;
+    friend kj::Promise<Result<Results>> processGoals(Store & store, MkGoals && mkGoals) noexcept;
 };
 
 template<typename MkGoals>
-kj::Promise<Result<Worker::Results>>
-processGoals(Store & store, Store & evalStore, MkGoals && mkGoals) noexcept
+kj::Promise<Result<Worker::Results>> processGoals(Store & store, MkGoals && mkGoals) noexcept
 try {
-    co_return co_await Worker(store, evalStore, LIX_TRY_AWAIT(queryAvailableNamespaces()))
+    co_return co_await Worker(store, LIX_TRY_AWAIT(queryAvailableNamespaces()))
         .run(std::forward<MkGoals>(mkGoals));
 } catch (...) {
     co_return result::current_exception();

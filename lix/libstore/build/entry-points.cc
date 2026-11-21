@@ -52,16 +52,51 @@ static unsigned int failingExitStatus(Worker::Results & results)
     return mask ? mask : 1;
 }
 
+static kj::Promise<Result<void>>
+copyDrvsFromEvalStore(const std::vector<DerivedPath> & paths, Store * evalStore, Store & to)
+try {
+    if (evalStore && evalStore != &to) {
+        // the remote doesn't have a way to access evalStore, so copy the derivation closure.
+        // ths includes all input sources and dependency derivations that will never be built
+        // on the building store (for example because they can be substituted, or are already
+        // present). we consider this a correctness advantage despite some inefficienty since
+        // then for all output paths we also have full and correct deriver information in the
+        // building store, not just ephemeral derivations that cause outputs paths to appear.
+        StorePathSet drvPaths;
+        for (const auto & i : paths) {
+            std::visit(
+                overloaded{
+                    [&](const DerivedPath::Opaque & bp) {
+                        // Do nothing, path is hopefully there already
+                    },
+                    [&](const DerivedPath::Built & bp) { drvPaths.insert(bp.drvPath.path); },
+                },
+                i.raw()
+            );
+        }
+        StorePathSet validDrvPaths;
+        for (const auto & drv : drvPaths) {
+            if (TRY_AWAIT(evalStore->isValidPath(drv))) {
+                validDrvPaths.insert(drv);
+            }
+        }
+        TRY_AWAIT(copyClosure(*evalStore, to, validDrvPaths));
+    }
+    co_return result::success();
+} catch (...) {
+    co_return result::current_exception();
+}
+
 kj::Promise<Result<void>> Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
 try {
-    auto results =
-        TRY_AWAIT(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
-            Worker::Targets goals;
-            for (auto & br : reqs) {
-                goals.emplace_back(gf.makeGoal(br, buildMode));
-            }
-            return goals;
-        }));
+    TRY_AWAIT(copyDrvsFromEvalStore(reqs, evalStore.get(), *this));
+    auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
+        Worker::Targets goals;
+        for (auto & br : reqs) {
+            goals.emplace_back(gf.makeGoal(br, buildMode));
+        }
+        return goals;
+    }));
 
     StringSet failed;
     std::shared_ptr<Error> ex;
@@ -98,14 +133,14 @@ kj::Promise<Result<std::vector<KeyedBuildResult>>> Store::buildPathsWithResults(
     BuildMode buildMode,
     std::shared_ptr<Store> evalStore)
 try {
-    auto goals =
-        TRY_AWAIT(processGoals(*this, evalStore ? *evalStore : *this, [&](GoalFactory & gf) {
-            Worker::Targets goals;
-            for (const auto & req : reqs) {
-                goals.emplace_back(gf.makeGoal(req, buildMode));
-            }
-            return goals;
-        })).goals;
+    TRY_AWAIT(copyDrvsFromEvalStore(reqs, evalStore.get(), *this));
+    auto goals = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
+                     Worker::Targets goals;
+                     for (const auto & req : reqs) {
+                         goals.emplace_back(gf.makeGoal(req, buildMode));
+                     }
+                     return goals;
+                 })).goals;
 
     std::vector<KeyedBuildResult> results;
 
@@ -121,7 +156,7 @@ kj::Promise<Result<BuildResult>> Store::buildDerivation(const StorePath & drvPat
     BuildMode buildMode)
 try {
     try {
-        auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
+        auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
             // sometimes clang lints are really annoying. this would be safe without
             // the explicit coroutine param captures, but clang-tidy does not see it
             return [](auto && gf, auto && drvPath, auto && drv, auto buildMode
@@ -170,7 +205,7 @@ try {
 
 kj::Promise<Result<void>> Store::repairPath(const StorePath & path)
 try {
-    auto results = TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
+    auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
         Worker::Targets goals;
         goals.emplace_back(gf.makePathSubstitutionGoal(path, Repair));
         return goals;
@@ -182,7 +217,7 @@ try {
            deriver, then rebuild the deriver. */
         auto info = TRY_AWAIT(queryPathInfo(path));
         if (info->deriver && TRY_AWAIT(isValidPath(*info->deriver))) {
-            TRY_AWAIT(processGoals(*this, *this, [&](GoalFactory & gf) {
+            TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
                 Worker::Targets goals;
                 goals.emplace_back(gf.makeGoal(
                     DerivedPath::Built{

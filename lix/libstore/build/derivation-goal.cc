@@ -185,7 +185,7 @@ try {
     /* The first thing to do is to make sure that the derivation
        exists.  If it doesn't, it may be created through a
        substitute. */
-    if (buildMode == bmNormal && TRY_AWAIT(worker.evalStore.isValidPath(drvPath))) {
+    if (buildMode == bmNormal && TRY_AWAIT(worker.store.isValidPath(drvPath))) {
         co_return co_await loadDerivation();
     }
 
@@ -211,19 +211,10 @@ try {
     /* `drvPath' should already be a root, but let's be on the safe
        side: if the user forgot to make it a root, we wouldn't want
        things being garbage collected while we're busy. */
-    TRY_AWAIT(worker.evalStore.addTempRoot(drvPath));
+    TRY_AWAIT(worker.store.addTempRoot(drvPath));
 
-    /* Get the derivation. It is probably in the eval store, but it might be inthe main store:
-
-         - Resolved derivation are resolved against main store realisations, and so must be stored there.
-     */
-    for (auto * drvStore : { &worker.evalStore, &worker.store }) {
-        if (TRY_AWAIT(drvStore->isValidPath(drvPath))) {
-            drv = std::make_unique<Derivation>(TRY_AWAIT(drvStore->readDerivation(drvPath)));
-            break;
-        }
-    }
-    assert(drv);
+    /* Get the derivation. */
+    drv = std::make_unique<Derivation>(TRY_AWAIT(worker.store.readDerivation(drvPath)));
 
     co_return TRY_AWAIT(haveDerivation());
 } catch (...) {
@@ -240,7 +231,7 @@ try {
     for (auto & i : drv->outputsAndPaths(worker.store))
         TRY_AWAIT(worker.store.addTempRoot(i.second.second));
 
-    auto outputHashes = TRY_AWAIT(staticOutputHashes(worker.evalStore, *drv));
+    auto outputHashes = TRY_AWAIT(staticOutputHashes(worker.store, *drv));
     for (auto & [outputName, outputHash] : outputHashes)
         initialOutputs.insert({
             outputName,
@@ -422,19 +413,6 @@ try {
         }
     }
 
-    /* Copy the input sources from the eval store to the build
-       store.
-
-       Note that some inputs might not be in the eval store because they
-       are (resolved) derivation outputs in a resolved derivation. */
-    if (&worker.evalStore != &worker.store) {
-        StorePathSet inputSrcs;
-        for (auto & i : drv->inputSrcs)
-            if (TRY_AWAIT(worker.evalStore.isValidPath(i)))
-                inputSrcs.insert(i);
-        TRY_AWAIT(copyClosure(worker.evalStore, worker.store, inputSrcs));
-    }
-
     for (auto & i : drv->inputSrcs) {
         if (TRY_AWAIT(worker.store.isValidPath(i))) continue;
         if (!settings.useSubstitutes)
@@ -481,8 +459,7 @@ try {
     std::map<StorePath, StorePath> outputsToDrv;
     for (auto & i : inputClosure)
         if (i.isDerivation()) {
-            auto depOutputs =
-                TRY_AWAIT(worker.store.queryDerivationOutputMap(i, &worker.evalStore));
+            auto depOutputs = TRY_AWAIT(worker.store.queryDerivationOutputMap(i));
             for (auto & j : depOutputs)
                 outputsToDrv.insert_or_assign(j.second, i);
         }
@@ -590,11 +567,14 @@ try {
                             co_return *outPath;
                         }
                         else {
-                            auto outMap = TRY_AWAIT(worker.evalStore.isValidPath(depDrvPath))
-                                ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.evalStore))
-                                : TRY_AWAIT(worker.store.isValidPath(depDrvPath))
-                                ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath, &worker.store))
-                                : (assert(false), OutputPathMap{});
+                            auto outMap = TRY_AWAIT(worker.store.isValidPath(depDrvPath))
+                                ? TRY_AWAIT(worker.store.queryDerivationOutputMap(depDrvPath))
+                                : (throw Error(
+                                       "dependency '%s' of '%s' is not valid",
+                                       worker.store.printStorePath(depDrvPath),
+                                       fullDrv.name
+                                   ),
+                                   OutputPathMap{});
 
                             auto outMapPath = outMap.find(outputName);
                             if (outMapPath == outMap.end()) {
