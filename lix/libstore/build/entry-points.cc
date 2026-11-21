@@ -8,6 +8,50 @@
 
 namespace nix {
 
+/**
+ * The exit status in case of failure.
+ *
+ * In the case of a build failure, returned value follows this
+ * bitmask:
+ *
+ * ```
+ * 0b1100100
+ *      ^^^^
+ *      |||`- timeout
+ *      ||`-- output hash mismatch
+ *      |`--- build failure
+ *      `---- not deterministic
+ * ```
+ *
+ * In other words, the failure code is at least 100 (0b1100100), but
+ * might also be greater.
+ *
+ * Otherwise (no build failure, but some other sort of failure by
+ * assumption), this returned value is 1.
+ */
+static unsigned int failingExitStatus(Worker::Results & results)
+{
+    unsigned int mask = 0;
+    bool buildFailure = results.permanentFailure || results.timedOut || results.hashMismatch;
+    if (buildFailure) {
+        mask |= 0x04; // 100
+    }
+    if (results.timedOut) {
+        mask |= 0x01; // 101
+    }
+    if (results.hashMismatch) {
+        mask |= 0x02; // 102
+    }
+    if (results.checkMismatch) {
+        mask |= 0x08; // 104
+    }
+
+    if (mask) {
+        mask |= 0x60;
+    }
+    return mask ? mask : 1;
+}
+
 kj::Promise<Result<void>> Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
 try {
     auto results =
@@ -35,11 +79,13 @@ try {
     }
 
     if (failed.size() == 1 && ex) {
-        ex->withExitStatus(results.failingExitStatus);
+        ex->withExitStatus(failingExitStatus(results));
         throw std::move(*ex);
     } else if (!failed.empty()) {
         if (ex) logError(ex->info());
-        throw Error(results.failingExitStatus, "build of %s failed", concatStringsSep(", ", quoteStrings(failed)));
+        throw Error(
+            failingExitStatus(results), "build of %s failed", concatStringsSep(", ", quoteStrings(failed))
+        );
     }
 
     co_return result::success();
@@ -150,9 +196,7 @@ try {
             }));
         } else
             throw Error(
-                results.failingExitStatus,
-                "cannot repair path '%s'",
-                toRealPath(printStorePath(path))
+                failingExitStatus(results), "cannot repair path '%s'", toRealPath(printStorePath(path))
             );
     }
 

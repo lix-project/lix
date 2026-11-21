@@ -356,13 +356,13 @@ try {
         promises.add(idx, std::move(gp.second));
     }
 
-    Results results;
+    std::map<size_t, Goal::WorkResult> goalResults;
 
     auto collect = AsyncCollect(promises.releaseAsArray());
     while (auto done = co_await collect.next()) {
         // propagate goal exceptions outward
         BOOST_OUTCOME_CO_TRY(auto result, done->second);
-        results.goals.emplace(done->first, result);
+        goalResults.emplace(done->first, result);
 
         /* If a top-level goal failed, then kill all other goals
            (unless keepGoing was set). */
@@ -377,26 +377,13 @@ try {
        --keep-going *is* set, then they must all be finished now. */
     assert(!settings.keepGoing || children.isEmpty());
 
-    results.failingExitStatus = [&] {
-        // See API docs in header for explanation
-        unsigned int mask = 0;
-        bool buildFailure = permanentFailure || timedOut || hashMismatch;
-        if (buildFailure)
-            mask |= 0x04;  // 100
-        if (timedOut)
-            mask |= 0x01;  // 101
-        if (hashMismatch)
-            mask |= 0x02;  // 102
-        if (checkMismatch) {
-            mask |= 0x08;  // 104
-        }
-
-        if (mask)
-            mask |= 0x60;
-        return mask ? mask : 1;
-    }();
-
-    co_return std::move(results);
+    co_return Results{
+        .goals = std::move(goalResults),
+        .permanentFailure = permanentFailure,
+        .timedOut = timedOut,
+        .hashMismatch = hashMismatch,
+        .checkMismatch = checkMismatch,
+    };
 } catch (...) {
     co_return result::current_exception();
 }
