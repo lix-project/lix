@@ -1,4 +1,4 @@
-{ busybox, useCA }:
+{ busybox, useCA, topFeatures ? [] }:
 
 with import ./config.nix;
 
@@ -17,6 +17,12 @@ let
     } // removeAttrs args ["builder" "meta" "passthru"])
     // { meta = args.meta or {}; passthru = args.passthru or {}; };
 
+  input0 = mkDerivation {
+    shell = busybox;
+    name = "build-remote-input-0";
+    buildCommand = "echo hi-input0; echo FOO > $out";
+  };
+
   input1 = mkDerivation {
     shell = busybox;
     name = "build-remote-input-1";
@@ -28,7 +34,7 @@ let
   input2 = mkDerivation {
     shell = busybox;
     name = "build-remote-input-2";
-    buildCommand = "echo hi; echo BAR > $out";
+    buildCommand = "echo hi; echo ${input0}; echo BAR > $out";
     requiredSystemFeatures = ["bar"];
     ${if useCA then "outputHash" else null} = "sha256-XArauVH91AVwP9hBBQNlkX9ccuPpSYx9o0zeIHb6e+Q=";
   };
@@ -58,5 +64,6 @@ in
         read y < ${input3}
         echo "$x $y" > $out
       '';
+    requiredSystemFeatures = topFeatures;
     ${if useCA then "outputHash" else null} = "sha256-5SxbkUw6xe2l9TE1uwCvTtTDysD1vhRor38OtDF0LqQ=";
   }

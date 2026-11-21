@@ -305,12 +305,31 @@ def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
 
     # Note: ssh-ng://localhost bypasses ssh, directly invoking nix-daemon as a
     # child process. This allows us to test RemoteStore::buildDerivation().
-    result = nix.nix(["build", "-Lv", "-j0", *build_args, "--print-out-paths"]).run().ok()
+    result = (
+        nix.nix(
+            [
+                "build",
+                "-L",
+                *["--system-features", "top"],
+                *["--arg", "topFeatures", '["top"]'],
+                *build_args,
+                "--print-out-paths",
+            ]
+        )
+        .run()
+        .ok()
+    )
 
     out_path = (nix.env.dirs.home / "result").readlink()
     assert out_path.read_text() == "FOO BAR BAZ\n"
 
     assert re.findall(r"store.*build-remote", result.stdout_plain)
+
+    # NOTE: in the past lix did not copy derivation *closures* to the remote builder, only
+    # inputs and the derivation itself (which was never written to disk, and thus wasn't a
+    # store consistency problem due to missing references). we have stopped doing this for
+    # protocol simplification reasons, but it also means we never produce stores without a
+    # valid deriver for built outputs. this is likely an improvement all things considered
 
     # Ensure that input1 was built on store1 due to the required feature.
     output = nix.nix(["path-info", "--store", f"{nix.env.dirs.home}/machine1", "--all"]).run().ok()
@@ -327,7 +346,7 @@ def test_feature_scheduling(nix: Nix, busybox_args: list[str], use_ca: str):
     # Ensure that input3 was built on store3 due to the required feature.
     output = nix.nix(["path-info", "--store", f"{nix.env.dirs.home}/machine3", "--all"]).run().ok()
     assert "builder-build-remote-input-1.sh" not in output.stdout_plain
-    assert "builder-build-remote-input-2.sh" not in output.stdout_plain
+    assert "builder-build-remote-input-2.sh" in output.stdout_plain
     assert "builder-build-remote-input-3.sh" in output.stdout_plain
 
     for i in ["input1", "input3"]:

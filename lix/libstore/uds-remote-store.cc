@@ -517,13 +517,7 @@ try {
 kj::Promise<Result<BuildResult>>
 RpcRemoteStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode)
 try {
-    auto req = rpc->legacyProtocol.buildDerivationRequest();
-    RPC_FILL(req, initPath, drvPath, *this);
-    RPC_FILL(req, setDrv, GeneratorSource{serializeDerivation(*this, drv)}.drain());
-    req.setMode(rpc::from(buildMode));
-
-    auto res = TRY_AWAIT_RPC(req.send());
-    co_return rpc::to<nix::BuildResult>(res.getResult(), *this);
+    unsupported("BuildDerivation is a legacy verb and not supported by this lix rpc");
 } catch (...) {
     co_return result::current_exception();
 }

@@ -1347,49 +1347,18 @@ try {
             buildResult.startTime = time(0); // inexact
             mcRunningBuilds = worker.runningBuilds.addTemporarily(1);
 
-            std::optional<BuildResult> optResult;
+            TRY_AWAIT(
+                copyClosure(worker.store, *remoteStore, StorePathSet{drvPath}, NoCheckSigs, substitute)
+            );
 
-            // If we don't know whether we are trusted (e.g. `ssh://`
-            // stores), we assume we are. This is necessary for backwards
-            // compat.
-            bool trustedOrLegacy = ({
-                std::optional trusted = TRY_AWAIT(remoteStore->isTrustedClient());
-                !trusted || *trusted;
-            });
+            auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
+                .drvPath = makeConstantStorePath(drvPath),
+                .outputs = OutputsSpec::All{},
+            }}));
+            // One path to build should produce exactly one build result
+            assert(res.size() == 1);
 
-            // See the very large comment in `case WorkerProto::Op::BuildDerivation:` in
-            // `lix/libstore/daemon.cc` that explains the trust model here.
-            //
-            // This condition mirrors that: that code enforces the "rules" outlined there;
-            // we do the best we can given those "rules".
-            if (trustedOrLegacy || drv->type().isCA()) {
-                // Hijack the inputs paths of the derivation to include all
-                // the paths that come from the `inputDrvs` set. We don’t do
-                // that for the derivations whose `inputDrvs` is empty
-                // because:
-                //
-                // 1. It’s not needed
-                //
-                // 2. Changing the `inputSrcs` set changes the associated
-                //    output ids, which break CA derivations
-                if (!drv->inputDrvs.empty()) {
-                    drv->inputSrcs = inputPaths;
-                }
-                optResult = TRY_AWAIT(remoteStore->buildDerivation(drvPath, (const BasicDerivation &) *drv));
-            } else {
-                TRY_AWAIT(
-                    copyClosure(worker.store, *remoteStore, StorePathSet{drvPath}, NoCheckSigs, substitute)
-                );
-                auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
-                    .drvPath = makeConstantStorePath(drvPath),
-                    .outputs = OutputsSpec::All{},
-                }}));
-                // One path to build should produce exactly one build result
-                assert(res.size() == 1);
-                optResult = std::move(res[0]);
-            }
-
-            auto & result = *optResult;
+            auto & result = res[0];
             if (!result.success()) {
                 throw Error(
                     "build of '%s' on '%s' failed: %s",
