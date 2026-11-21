@@ -1256,12 +1256,12 @@ try {
     const auto & neededSystem = drv->platform;
     const auto requiredFeatures = parsedDrv->getRequiredSystemFeatures();
 
+    HookLogger remoteLogger{*logger, logSink};
+
     std::shared_ptr<Store> remoteStore;
     std::optional<Activity> remoteActivity;
     std::string storeUri;
     AutoCloseFD slotLock;
-
-    HookLogger remoteLogger{*logger, logSink};
 
     while (!remoteStore) {
         slotLock.reset();
