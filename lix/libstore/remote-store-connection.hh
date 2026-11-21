@@ -81,6 +81,12 @@ struct RemoteStore::Connection
     std::chrono::time_point<std::chrono::steady_clock> startTime;
 
     /**
+     * Remote activities: they live longer than the lifetime
+     * of one operation, so they cannot be a local of `processStderr`.
+     */
+    std::map<ActivityId, Activity> remoteActivities;
+
+    /**
      * Coercion to `WorkerProto::WriteConn`. This makes it easy to use the
      * factored out worker protocol searlizers with a
      * `RemoteStore::Connection`.

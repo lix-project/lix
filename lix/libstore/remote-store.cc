@@ -784,8 +784,6 @@ try {
     AsyncBufferedInputStream from{stream, fromBuf};
     Logger & actLogger = parent ? parent->getLogger() : *logger;
 
-    std::map<ActivityId, Activity> remoteActivities;
-
     while (true) {
         auto msg = TRY_AWAIT(readNum<uint64_t>(from));
 
