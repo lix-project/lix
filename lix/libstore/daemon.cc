@@ -223,7 +223,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         if (substitute) {
             aio.blockOn(store->substitutePaths(paths));
         }
-        auto res = aio.blockOn(store->queryValidPaths(paths, substitute));
+        auto res = aio.blockOn(store->queryValidPaths(paths));
         logger->stopWork();
         to << WorkerProto::write(wconn, res);
         break;
@@ -1364,12 +1364,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             auto args = context.getParams();
 
             StorePathSet paths = rpc::to<StorePathSet>(args.getPaths(), *state->store);
-            SubstituteFlag substitute = args.getSubstitute() ? Substitute : NoSubstitute;
-
-            if (substitute) {
-                TRY_AWAIT(state->store->substitutePaths(paths));
-            }
-            auto validPaths = TRY_AWAIT(state->store->queryValidPaths(paths, substitute));
+            auto validPaths = TRY_AWAIT(state->store->queryValidPaths(paths));
             RPC_FILL_LIST(context.initResults(), initResult, validPaths, *state->store);
         });
     }

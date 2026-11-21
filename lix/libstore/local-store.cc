@@ -815,9 +815,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<StorePathSet>>
-LocalStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+kj::Promise<Result<StorePathSet>> LocalStore::queryValidPaths(const StorePathSet & paths)
 try {
     StorePathSet res;
     for (auto & i : paths)

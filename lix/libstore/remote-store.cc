@@ -1,3 +1,4 @@
+#include "libstore/store-api.hh"
 #include "libutil/fmt.hh"
 #include "libutil/ref.hh"
 #include "lix/libutil/async-collect.hh"
@@ -214,13 +215,11 @@ try {
     co_return result::current_exception();
 }
 
-
-kj ::Promise<Result<StorePathSet>>
-RemoteStore::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+kj ::Promise<Result<StorePathSet>> RemoteStore::queryValidPaths(const StorePathSet & paths)
 try {
     auto conn(TRY_AWAIT(getConnection()));
     co_return TRY_AWAIT(conn.sendCommand<StorePathSet>(
-        WorkerProto::Op::QueryValidPaths, WorkerProto::write(*conn, paths), maybeSubstitute
+        WorkerProto::Op::QueryValidPaths, WorkerProto::write(*conn, paths), NoSubstitute
     ));
 } catch (...) {
     co_return result::current_exception();

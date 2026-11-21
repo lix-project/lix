@@ -747,9 +747,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<StorePathSet>>
-Store::queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute)
+kj::Promise<Result<StorePathSet>> Store::queryValidPaths(const StorePathSet & paths)
 try {
     StorePathSet valid;
 
@@ -1107,7 +1105,11 @@ kj::Promise<Result<std::map<StorePath, StorePath>>> copyPaths(
     SubstituteFlag substitute
 )
 try {
-    auto valid = TRY_AWAIT(dstStore.queryValidPaths(storePaths, substitute));
+    if (substitute) {
+        TRY_AWAIT(dstStore.substitutePaths(storePaths));
+    }
+
+    auto valid = TRY_AWAIT(dstStore.queryValidPaths(storePaths));
 
     StorePathSet missing;
     for (auto & path : storePaths)

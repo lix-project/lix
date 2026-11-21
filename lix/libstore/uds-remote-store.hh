@@ -249,8 +249,7 @@ public:
 
     kj::Promise<Result<StorePathSet>> queryValidDerivers(const StorePath & path) override;
 
-    kj::Promise<Result<StorePathSet>>
-    queryValidPaths(const StorePathSet & paths, SubstituteFlag maybeSubstitute) override;
+    kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths) override;
 
     kj::Promise<Result<bool>> verifyStore(bool checkContents, RepairFlag repair) override;
 

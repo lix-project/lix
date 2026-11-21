@@ -226,12 +226,7 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.
   narFromPath @19 (path :Libstore.StorePath, into :Stream);
   optimiseStore @0 ();
   queryAllValidPaths @20 () -> (result :List(Libstore.StorePath));
-  queryValidPaths @2 (
-    paths :List(Libstore.StorePath),
-    substitute :Bool
-  ) -> (
-    result :List(Libstore.StorePath)
-  );
+  queryValidPaths @2 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
   querySubstitutablePaths @3 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
   queryReferrers @4 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryValidDerivers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));

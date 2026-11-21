@@ -204,8 +204,7 @@ public:
     kj::Promise<Result<bool>>
     isValidPathUncached(const StorePath & path, const Activity * context) override;
 
-    kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths,
-        SubstituteFlag maybeSubstitute = NoSubstitute) override;
+    kj::Promise<Result<StorePathSet>> queryValidPaths(const StorePathSet & paths) override;
 
     kj::Promise<Result<StorePathSet>> queryAllValidPaths() override;
 
