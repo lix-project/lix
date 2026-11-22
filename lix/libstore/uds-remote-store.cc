@@ -804,6 +804,9 @@ try {
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
     // NOTE: we turn our local max-build-jobs into the global max-jobs, otherwise remote builds break.
     overrides[settings.maxBuildJobs.name].value = std::to_string(config().maxBuildJobs());
+    if (config().hasBuilders()) {
+        overrides[settings.builders.name].value = config().builders();
+    }
 
     std::erase_if(overrides, [](const auto & kv) { return isClientPreference(kv.first); });
 

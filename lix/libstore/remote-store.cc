@@ -162,6 +162,9 @@ try {
     overrides.erase(settings.pluginFiles.name);
     overrides.erase(settings.storeUri.name); // the daemon *is* the store
     overrides.erase(settings.tarballTtl.name); // eval-time only, implictly set by flake cli
+    if (config().hasBuilders()) {
+        overrides[settings.builders.name].value = config().builders();
+    }
 
     if (withBlob) {
         std::erase_if(overrides, [](const auto & kv) { return isClientPreference(kv.first); });

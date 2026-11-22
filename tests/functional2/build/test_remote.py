@@ -431,6 +431,34 @@ def test_keep_failed(nix: Nix, scheme: str):
     assert next(iter(nix.env.dirs.nix_state_dir.glob("b/**/bar"))).read_text() == "foo\n"
 
 
+@pytest.mark.full_sandbox
+@pytest.mark.parametrize("trusted", ["", "*"])
+def test_remote_builders_propagation(nix: Nix, daemon: NixDaemon, trusted: str):
+    expr = """
+        derivation {
+            name = "test";
+            system = builtins.currentSystem;
+            builder = "/bin/sh";
+            args = [ "-c" "echo foo > $out" ];
+        }
+    """
+
+    with daemon(nix, [], {"trusted-users": trusted, "builders": "daemon"}) as inner:
+        result = (
+            inner.nix_build(
+                [
+                    *["--store", str(nix.env.dirs.home / "store")],
+                    *["--builders", "daemon"],
+                    *["--max-jobs", "0"],
+                    *["--expr", expr],
+                ]
+            )
+            .run()
+            .ok()
+        )
+        assert "Ignoring the client-specified setting 'builders'" not in result.stderr_plain
+
+
 @pytest.mark.no_daemon
 def test_keep_going(nix: Nix):
     """

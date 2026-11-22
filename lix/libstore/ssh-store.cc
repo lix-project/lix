@@ -184,6 +184,9 @@ protected:
         override(settings.buildTimeout);
         override(settings.keepFailed);
         override(settings.keepGoing);
+        if (config().hasBuilders()) {
+            overrides.insert_or_assign(settings.builders.name, config().builders());
+        }
 
         JSON blob{{"exact", overrides}};
 

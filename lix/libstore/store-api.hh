@@ -216,7 +216,12 @@ struct StoreConfig : public Config
     /// to remotes during remote builds. the setting system is so badly broken.
     static constexpr std::string NO_BUILDERS = "# no builders";
 
-private:
+    bool hasBuilders() const
+    {
+        return builders_.get().has_value();
+    }
+
+protected:
     Setting<std::optional<uint32_t>> maxBuildJobs_{
         this,
         std::nullopt,
