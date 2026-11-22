@@ -8,6 +8,10 @@ addopts = "-p no:xonsh"
 # When tests hang, let's try to dump their stacks before the final timeout.
 # See gc-auto for an example.
 faulthandler_timeout = 300
+# A test has at most 10 minutes to complete which is reasonable for all of our
+# tests. To benefit from the faulthandler_timeout, esp. in CI, we need to fail
+# our test suite and let meson flush its buffers.
+timeout = 600
 
 markers = [
     "full_sandbox: test requires a fully isolated sandbox",
