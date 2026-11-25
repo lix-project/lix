@@ -1681,7 +1681,7 @@ std::optional<ref<FSAccessor>> LinuxLocalDerivationGoal::getChrootDirAwareFSAcce
 {
     return make_ref<ChrootDirAwareFSAccessor>(
         ref<LocalFSStore>::unsafeFromPtr(
-            std::dynamic_pointer_cast<LocalFSStore>(getLocalStore().shared_from_this())
+            std::dynamic_pointer_cast<LocalFSStore>(worker.store.shared_from_this())
         ),
         chrootRootDir
     );

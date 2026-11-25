@@ -201,6 +201,24 @@ public:
 
     std::string getUri() override;
 
+    kj::Promise<Result<void>> buildPaths(
+        const std::vector<DerivedPath> & paths,
+        BuildMode buildMode = bmNormal,
+        std::shared_ptr<Store> evalStore = nullptr
+    ) override;
+
+    kj::Promise<Result<std::vector<KeyedBuildResult>>> buildPathsWithResults(
+        const std::vector<DerivedPath> & paths,
+        BuildMode buildMode = bmNormal,
+        std::shared_ptr<Store> evalStore = nullptr
+    ) override;
+
+    kj::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode = bmNormal
+    ) override;
+
+    kj::Promise<Result<void>> repairPath(const StorePath & path) override;
+
     kj::Promise<Result<bool>>
     isValidPathUncached(const StorePath & path, const Activity * context) override;
 

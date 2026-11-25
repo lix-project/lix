@@ -88,7 +88,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> BuildStore::buildPaths(
+kj::Promise<Result<void>> LocalStore::buildPaths(
     const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore
 )
 try {
@@ -131,7 +131,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::vector<KeyedBuildResult>>> BuildStore::buildPathsWithResults(
+kj::Promise<Result<std::vector<KeyedBuildResult>>> LocalStore::buildPathsWithResults(
     const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore
 )
 try {
@@ -155,7 +155,7 @@ try {
 }
 
 kj::Promise<Result<BuildResult>>
-BuildStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode)
+LocalStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode)
 try {
     try {
         auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
@@ -203,7 +203,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> BuildStore::repairPath(const StorePath & path)
+kj::Promise<Result<void>> LocalStore::repairPath(const StorePath & path)
 try {
     auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
         Worker::Targets goals;

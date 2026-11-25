@@ -23,8 +23,6 @@ struct BuildContext
 
 struct LocalDerivationGoal : public DerivationGoal
 {
-    LocalStore & getLocalStore();
-
     /**
      * User selected for running the builder.
      */
@@ -317,5 +315,4 @@ protected:
         return true;
     }
 };
-
 }

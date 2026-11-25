@@ -644,17 +644,13 @@ retry:
        other goal can start a build, and if not, the main loop will sleep a few
        seconds and then retry this goal. */
     PathSet lockFiles;
-    if (dynamic_cast<LocalStore *>(&worker.store)) {
-        /* If we aren't a local store, we might need to use the local store as
-           a build remote, but that would cause a deadlock. */
-        /* FIXME: Make it so we can use ourselves as a build remote even if we
-           are the local store (separate locking for building vs scheduling? */
-        /* FIXME: find some way to lock for scheduling for the other stores so
-           a forking daemon with --store still won't farm out redundant builds.
-           */
-        for (auto & i : drv->outputsAndPaths(worker.store)) {
-            lockFiles.insert(worker.store.Store::toRealPath(i.second.second));
-        }
+    /* FIXME: Make it so we can use ourselves as a build remote even if we
+        are the local store (separate locking for building vs scheduling? */
+    /* FIXME: find some way to lock for scheduling for the other stores so
+        a forking daemon with --store still won't farm out redundant builds.
+        */
+    for (auto & i : drv->outputsAndPaths(worker.store)) {
+        lockFiles.insert(worker.store.Store::toRealPath(i.second.second));
     }
 
     outputLocks = tryLockPaths(lockFiles);
@@ -1218,12 +1214,7 @@ try {
     /* It would be more appropriate to use $XDG_RUNTIME_DIR, since
        that gets cleared on reboot, but it wouldn't work on macOS. */
     auto currentLoadName = "/current-load";
-    Path lockDir;
-    if (auto localStore = dynamic_cast<LocalFSStore *>(&worker.store)) {
-        lockDir = std::string{localStore->config().stateDir} + currentLoadName;
-    } else {
-        lockDir = settings.nixStateDir + currentLoadName;
-    }
+    Path lockDir = std::string{worker.store.config().stateDir} + currentLoadName;
 
     createDirs(lockDir);
 
@@ -1390,16 +1381,12 @@ try {
                 // deadlocks during the first path we'd copy. luckily it also means we
                 // can assume that we hold the *only* lock, and thus this insert+erase
                 // pair is actually safe. with recursive locks we'd need a lock count.
-                if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
-                    for (auto & path : missingPaths) {
-                        localStore->locksHeld.insert(worker.store.printStorePath(path)); /* FIXME: ugly */
-                    }
+                for (auto & path : missingPaths) {
+                    worker.store.locksHeld.insert(worker.store.printStorePath(path)); /* FIXME: ugly */
                 }
                 TRY_AWAIT(copyPaths(*remoteStore, worker.store, missingPaths, NoCheckSigs, NoSubstitute));
-                if (auto localStore = dynamic_cast<LocalStore *>(&worker.store)) {
-                    for (auto & path : missingPaths) {
-                        localStore->locksHeld.erase(worker.store.printStorePath(path)); /* FIXME: ugly */
-                    }
+                for (auto & path : missingPaths) {
+                    worker.store.locksHeld.erase(worker.store.printStorePath(path)); /* FIXME: ugly */
                 }
             }
 
@@ -1478,11 +1465,7 @@ Path DerivationGoal::openLogFile()
     auto baseName = std::string(baseNameOf(worker.store.printStorePath(drvPath)));
 
     /* Create a log file. */
-    Path logDir;
-    if (auto localStore = dynamic_cast<LocalStore *>(&worker.store))
-        logDir = localStore->config().logDir;
-    else
-        logDir = settings.nixLogDir;
+    Path logDir = worker.store.config().logDir;
     Path dir = fmt("%s/%s/%s/", logDir, LocalFSStore::drvsLogDir, baseName.substr(0, 2));
     createDirs(dir);
 

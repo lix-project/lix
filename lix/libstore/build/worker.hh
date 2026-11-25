@@ -11,7 +11,7 @@
 #include "lix/libutil/types.hh"
 #include "lix/libstore/lock.hh"
 #include "lix/libstore/store-api.hh"
-#include "lix/libstore/build-store.hh"
+#include "lix/libstore/local-store.hh"
 #include "lix/libstore/build/goal.hh"
 #include "lix/libstore/realisation.hh"
 
@@ -161,7 +161,7 @@ private:
     }
 
     kj::Promise<Result<Results>> runImpl(Targets topGoals);
-    kj::Promise<Result<Results>> boopGC(LocalStore & localStore);
+    kj::Promise<Result<Results>> boopGC();
 
 public:
 
@@ -169,7 +169,7 @@ public:
     const Activity actDerivations;
     const Activity actSubstitutions;
 
-    BuildStore & store;
+    LocalStore & store;
     AsyncSemaphore substitutions, builds, localJobs;
     std::optional<Path> buildDirOverride;
 
@@ -224,7 +224,7 @@ public:
     void requireBuildSupport();
 
 private:
-    Worker(BuildStore & store, AvailableNamespaces namespaces);
+    Worker(LocalStore & store, AvailableNamespaces namespaces);
     ~Worker();
 
     /**
@@ -301,11 +301,11 @@ public:
     void markContentsGood(const StorePath & path);
 
     template<typename MkGoals>
-    friend kj::Promise<Result<Results>> processGoals(BuildStore & store, MkGoals && mkGoals) noexcept;
+    friend kj::Promise<Result<Results>> processGoals(LocalStore & store, MkGoals && mkGoals) noexcept;
 };
 
 template<typename MkGoals>
-kj::Promise<Result<Worker::Results>> processGoals(BuildStore & store, MkGoals && mkGoals) noexcept
+kj::Promise<Result<Worker::Results>> processGoals(LocalStore & store, MkGoals && mkGoals) noexcept
 try {
     co_return co_await Worker(store, LIX_TRY_AWAIT(queryAvailableNamespaces()))
         .run(std::forward<MkGoals>(mkGoals));

@@ -151,15 +151,6 @@ bool LocalDerivationGoal::needsHashRewrite()
     return !useChroot;
 }
 
-
-LocalStore & LocalDerivationGoal::getLocalStore()
-{
-    auto p = dynamic_cast<LocalStore *>(&worker.store);
-    assert(p);
-    return *p;
-}
-
-
 void LocalDerivationGoal::killChild()
 {
     if (auto running = std::get_if<ProcessGroup>(&pg); running && *running) {
@@ -272,9 +263,8 @@ retry:
             useChroot = derivationType->isSandboxed() && !noChroot;
     }
 
-    auto & localStore = getLocalStore();
     const bool sandboxFallbackAllowed = [&]() {
-        if (localStore.config().storeDir != localStore.config().realStoreDir.get()) {
+        if (worker.store.config().storeDir != worker.store.config().realStoreDir.get()) {
 #if __linux__
             if (!useChroot) {
                 printTaggedWarning("auto-enabling the sandbox due to using a diverted store");
@@ -428,10 +418,9 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
        so, we don't mark this build as a permanent failure. */
 #if HAVE_STATVFS
     {
-        auto & localStore = getLocalStore();
         uint64_t required = 8ULL * 1024 * 1024; // FIXME: make configurable
         struct statvfs st;
-        if (sys::statvfs(localStore.config().realStoreDir, &st) == 0
+        if (sys::statvfs(worker.store.config().realStoreDir, &st) == 0
             && (uint64_t) st.f_bavail * st.f_bsize < required)
         {
             diskFull = true;
@@ -450,7 +439,7 @@ bool LocalDerivationGoal::cleanupDecideWhetherDiskFull()
         for (auto & [_, status] : initialOutputs) {
             if (!status.known) continue;
             if (buildMode != bmCheck && status.known->isValid()) continue;
-            auto p = worker.store.toRealPath(status.known->path);
+            auto p = worker.store.Store::toRealPath(status.known->path);
             if (pathExists(chrootRootDir + p))
                 renameFile((chrootRootDir + p), p);
         }
@@ -1476,7 +1465,6 @@ try {
                      return dependencies;
                  }});
 
-    auto & localStore = getLocalStore();
     auto sortedOutputNames = TRY_AWAIT(std::visit(
         overloaded{
             // NOLINTNEXTLINE(cppcoreguidelines-avoid-capturing-lambda-coroutines)
@@ -1832,8 +1820,8 @@ try {
             /* Since we verified the build, it's now ultimately trusted. */
             else if (!oldInfo.ultimate) {
                 oldInfo.ultimate = true;
-                localStore.signPathInfo(oldInfo);
-                TRY_AWAIT(localStore.registerValidPaths({{oldInfo.path, oldInfo}}));
+                worker.store.signPathInfo(oldInfo);
+                TRY_AWAIT(worker.store.registerValidPaths({{oldInfo.path, oldInfo}}));
             }
 
             /* Don't register anything, since we already have the
@@ -1850,12 +1838,12 @@ try {
         }
 
         // FIXME: combine with scanForReferences()
-        TRY_AWAIT(localStore.optimisePath(actualPath, NoRepair));
+        TRY_AWAIT(worker.store.optimisePath(actualPath, NoRepair));
         worker.markContentsGood(newInfo.path);
 
         newInfo.deriver = drvPath;
         newInfo.ultimate = true;
-        localStore.signPathInfo(newInfo);
+        worker.store.signPathInfo(newInfo);
 
         finish(newInfo.path);
 
@@ -1863,7 +1851,7 @@ try {
            isn't statically known so that we can safely unlock the path before
            the next iteration */
         if (newInfo.ca)
-            TRY_AWAIT(localStore.registerValidPaths({{newInfo.path, newInfo}}));
+            TRY_AWAIT(worker.store.registerValidPaths({{newInfo.path, newInfo}}));
 
         infos.emplace(outputName, std::move(newInfo));
     }
@@ -1897,13 +1885,11 @@ try {
        paths referenced by each of them.  If there are cycles in the
        outputs, this will fail. */
     {
-        auto & localStore = getLocalStore();
-
         ValidPathInfos infos2;
         for (auto & [outputName, newInfo] : infos) {
             infos2.insert_or_assign(newInfo.path, newInfo);
         }
-        TRY_AWAIT(localStore.registerValidPaths(infos2));
+        TRY_AWAIT(worker.store.registerValidPaths(infos2));
     }
 
     /* In case of a fixed-output derivation hash mismatch, throw an

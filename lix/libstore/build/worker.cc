@@ -25,7 +25,7 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 } errorHandler;
 }
 
-Worker::Worker(BuildStore & store, AvailableNamespaces namespaces)
+Worker::Worker(LocalStore & store, AvailableNamespaces namespaces)
     : act(logger->startActivity(actRealise))
     , actDerivations(logger->startActivity(actBuilds))
     , actSubstitutions(logger->startActivity(actCopyPaths))
@@ -229,13 +229,9 @@ std::pair<std::shared_ptr<DerivationGoal>, kj::Promise<Result<Goal::WorkResult>>
         derivationGoals,
         drvPath,
         [&]() -> std::unique_ptr<DerivationGoal> {
-            return !dynamic_cast<LocalStore *>(&store)
-                ? std::make_unique<DerivationGoal>(
-                    drvPath, wantedOutputs, *this, running, buildMode
-                )
-                : LocalDerivationGoal::makeLocalDerivationGoal(
-                    drvPath, wantedOutputs, *this, running, buildMode
-                );
+            return LocalDerivationGoal::makeLocalDerivationGoal(
+                drvPath, wantedOutputs, *this, running, buildMode
+            );
         },
         [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }
     );
@@ -259,13 +255,9 @@ try {
         derivationGoals,
         drvPath,
         [&]() -> std::unique_ptr<DerivationGoal> {
-            return !dynamic_cast<LocalStore *>(&store)
-                ? std::make_unique<DerivationGoal>(
-                    DerivationGoal::DrvHasRoot{}, drvPath, drv, wantedOutputs, *this, running, buildMode
-                )
-                : LocalDerivationGoal::makeLocalDerivationGoal(
-                    DerivationGoal::DrvHasRoot{}, drvPath, drv, wantedOutputs, *this, running, buildMode
-                );
+            return LocalDerivationGoal::makeLocalDerivationGoal(
+                DerivationGoal::DrvHasRoot{}, drvPath, drv, wantedOutputs, *this, running, buildMode
+            );
         },
         [&](DerivationGoal & g) { return g.addWantedOutputs(wantedOutputs); }
     );
@@ -336,10 +328,8 @@ try {
     auto promise = makeInterruptible(runImpl(std::move(topGoals))).exclusiveJoin(updateStatistics());
 
     // TODO GC interface?
-    if (auto localStore = dynamic_cast<LocalStore *>(&store); localStore && settings.minFree != 0u) {
-        // Periodically wake up to see if we need to run the garbage collector.
-        promise = promise.exclusiveJoin(boopGC(*localStore));
-    }
+    // Periodically wake up to see if we need to run the garbage collector.
+    promise = promise.exclusiveJoin(boopGC());
 
     co_return co_await promise;
 } catch (...) {
@@ -387,11 +377,11 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<Worker::Results>> Worker::boopGC(LocalStore & localStore)
+kj::Promise<Result<Worker::Results>> Worker::boopGC()
 try {
     while (true) {
         co_await AIO().provider.getTimer().afterDelay(10 * kj::SECONDS);
-        TRY_AWAIT(localStore.autoGC(false));
+        TRY_AWAIT(store.autoGC(false));
     }
 } catch (...) {
     co_return result::current_exception();

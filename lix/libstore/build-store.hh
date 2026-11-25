@@ -32,7 +32,7 @@ public:
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode = bmNormal,
         std::shared_ptr<Store> evalStore = nullptr
-    );
+    ) = 0;
 
     /**
      * Like buildPaths(), but return a vector of \ref BuildResult
@@ -44,7 +44,7 @@ public:
         const std::vector<DerivedPath> & paths,
         BuildMode buildMode = bmNormal,
         std::shared_ptr<Store> evalStore = nullptr
-    );
+    ) = 0;
 
     /**
      * Build a single non-materialized derivation (i.e. not from an
@@ -81,8 +81,9 @@ public:
      *     up with multiple different versions of dependencies without
      *     explicitly choosing to allow it).
      */
-    virtual kj::Promise<Result<BuildResult>>
-    buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode = bmNormal);
+    virtual kj::Promise<Result<BuildResult>> buildDerivation(
+        const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode = bmNormal
+    ) = 0;
 
     /**
      * Ensure that a path is valid.  If it is not currently valid, it
@@ -95,7 +96,7 @@ public:
      * Repair the contents of the given path by redownloading it using
      * a substituter (if available).
      */
-    virtual kj::Promise<Result<void>> repairPath(const StorePath & path);
+    virtual kj::Promise<Result<void>> repairPath(const StorePath & path) = 0;
 
     /**
      * Read a derivation, after ensuring its existence through
