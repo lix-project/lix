@@ -240,9 +240,7 @@ struct QueryMissingContext
     try {
         auto & drvPath = bfd.drvPath.path;
 
-        TRY_AWAIT(store.addTempRoot(drvPath));
-
-        if (!TRY_AWAIT(store.isValidPath(drvPath))) {
+        if (!TRY_AWAIT(store.useValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.
             state.unknown.insert(drvPath);
             co_return result::success();

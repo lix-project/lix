@@ -446,6 +446,18 @@ public:
     kj::Promise<Result<bool>>
     isValidPath(const StorePath & path, const Activity * context = nullptr);
 
+    /**
+     * Check whether a path is valid and mark it as in use if it is.
+     * This is equivalent to addTempRoot+isValidPath, but may be faster.
+     */
+    kj::Promise<Result<bool>> useValidPath(const StorePath & path, const Activity * context = nullptr)
+    try {
+        LIX_TRY_AWAIT(addTempRoot(path));
+        co_return LIX_TRY_AWAIT(isValidPath(path, context));
+    } catch (...) {
+        co_return result::current_exception();
+    }
+
 protected:
 
     virtual kj::Promise<Result<bool>>

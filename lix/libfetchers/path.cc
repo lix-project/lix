@@ -135,14 +135,10 @@ struct PathInputScheme : InputScheme
 
         // FIXME: check whether access to 'path' is allowed.
         auto storePath = store->maybeParseStorePath(absPath);
-
-        if (storePath)
-            TRY_AWAIT(store->addTempRoot(*storePath));
+        auto alreadyValid = storePath ? TRY_AWAIT(store->useValidPath(*storePath)) : false;
 
         time_t mtime = 0;
-        if (!storePath || storePath->name() != "source"
-            || !TRY_AWAIT(store->isValidPath(*storePath)))
-        {
+        if (!storePath || storePath->name() != "source" || !alreadyValid) {
             // FIXME: try to substitute storePath.
             auto src = AsyncGeneratorInputStream{dumpPathAndGetMtime(absPath, mtime)};
             storePath = TRY_AWAIT(store->addToStoreFromDump(src, "source"));
