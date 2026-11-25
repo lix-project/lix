@@ -67,15 +67,16 @@ try {
 
 /* Realise the given path.  For a derivation that means build it; for
    other paths it means ensure their validity. */
-static kj::Promise<Result<PathSet>>
-realisePath(std::shared_ptr<Store> store, StorePathWithOutputs path, bool build = true)
+static kj::Promise<Result<PathSet>> realisePath(Store & store, StorePathWithOutputs path, bool build = true)
 try {
-    auto store2 = std::dynamic_pointer_cast<LocalFSStore>(store);
+    auto store2 = dynamic_cast<LocalFSStore *>(&store);
 
     if (path.path.isDerivation()) {
-        if (build) TRY_AWAIT(store->buildPaths({path.toDerivedPath()}));
-        auto outputPaths = TRY_AWAIT(store->queryDerivationOutputMap(path.path));
-        Derivation drv = TRY_AWAIT(store->derivationFromPath(path.path));
+        if (build) {
+            TRY_AWAIT(store.buildPaths({path.toDerivedPath()}));
+        }
+        auto outputPaths = TRY_AWAIT(store.queryDerivationOutputMap(path.path));
+        Derivation drv = TRY_AWAIT(store.derivationFromPath(path.path));
         rootNr++;
 
         /* FIXME: Encode this empty special case explicitly in the type. */
@@ -100,7 +101,7 @@ try {
                 );
             }
             auto outPath = outputPaths.at(i->first);
-            auto retPath = store->printStorePath(outPath);
+            auto retPath = store.printStorePath(outPath);
             if (store2) {
                 if (gcRoot == "")
                     printGCWarning();
@@ -117,9 +118,11 @@ try {
     }
 
     else {
-        if (build) TRY_AWAIT(store->ensurePath(path.path));
-        else if (!TRY_AWAIT(store->isValidPath(path.path)))
-            throw Error("path '%s' does not exist and cannot be created", store->printStorePath(path.path));
+        if (build) {
+            TRY_AWAIT(store.ensurePath(path.path));
+        } else if (!TRY_AWAIT(store.isValidPath(path.path))) {
+            throw Error("path '%s' does not exist and cannot be created", store.printStorePath(path.path));
+        }
         if (store2) {
             if (gcRoot == "")
                 printGCWarning();
@@ -130,7 +133,7 @@ try {
                 co_return PathSet{TRY_AWAIT(store2->addPermRoot(path.path, rootName))};
             }
         }
-        co_return PathSet{store->printStorePath(path.path)};
+        co_return PathSet{store.printStorePath(path.path)};
     }
 } catch (...) {
     co_return result::current_exception();
@@ -182,7 +185,7 @@ opRealise(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Stri
 
     if (!ignoreUnknown)
         for (auto & i : paths) {
-            auto paths2 = aio.blockOn(realisePath(store, i, false));
+            auto paths2 = aio.blockOn(realisePath(*store, i, false));
             if (!noOutput)
                 for (auto & j : paths2)
                     cout << fmt("%1%\n", j);
@@ -259,19 +262,18 @@ opPrintFixedPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlag
     })));
 }
 
-static kj::Promise<Result<StorePathSet>> maybeUseOutputs(
-    std::shared_ptr<Store> store, const StorePath & storePath, bool useOutput, bool forceRealise
-)
+static kj::Promise<Result<StorePathSet>>
+maybeUseOutputs(Store & store, const StorePath & storePath, bool useOutput, bool forceRealise)
 try {
     if (forceRealise) {
         TRY_AWAIT(realisePath(store, {storePath}));
     }
     if (useOutput && storePath.isDerivation()) {
-        auto drv = TRY_AWAIT(store->derivationFromPath(storePath));
+        auto drv = TRY_AWAIT(store.derivationFromPath(storePath));
         StorePathSet outputs;
         if (forceRealise)
-            co_return TRY_AWAIT(store->queryDerivationOutputs(storePath));
-        for (auto & i : drv.outputsAndPaths(*store)) {
+            co_return TRY_AWAIT(store.queryDerivationOutputs(storePath));
+        for (auto & i : drv.outputsAndPaths(store)) {
             outputs.insert(i.second.second);
         }
         co_return outputs;
@@ -377,8 +379,9 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         switch (*query) {
         case qOutputs: {
             for (auto & i : opArgs) {
-                auto outputs =
-                    aio.blockOn(maybeUseOutputs(store, store->followLinksToStorePath(i), true, forceRealise));
+                auto outputs = aio.blockOn(
+                    maybeUseOutputs(*store, store->followLinksToStorePath(i), true, forceRealise)
+                );
                 for (auto & outputPath : outputs) {
                     pager << fmt("%1%\n", store->printStorePath(outputPath));
                 }
@@ -393,7 +396,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             StorePathSet paths;
             for (auto & i : opArgs) {
                 auto ps = aio.blockOn(
-                    maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                    maybeUseOutputs(*store, store->followLinksToStorePath(i), useOutput, forceRealise)
                 );
                 for (auto & j : ps) {
                     if (query == qRequisites) {
@@ -463,7 +466,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qSize:
             for (auto & i : opArgs) {
                 for (auto & j : aio.blockOn(
-                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                         maybeUseOutputs(*store, store->followLinksToStorePath(i), useOutput, forceRealise)
                      ))
                 {
                     auto info = aio.blockOn(store->queryPathInfo(j));
@@ -491,7 +494,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             StorePathSet roots;
             for (auto & i : opArgs) {
                 for (auto & j : aio.blockOn(
-                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                         maybeUseOutputs(*store, store->followLinksToStorePath(i), useOutput, forceRealise)
                      ))
                 {
                     roots.insert(j);
@@ -505,7 +508,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             StorePathSet roots;
             for (auto & i : opArgs) {
                 for (auto & j : aio.blockOn(
-                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                         maybeUseOutputs(*store, store->followLinksToStorePath(i), useOutput, forceRealise)
                      ))
                 {
                     roots.insert(j);
@@ -526,7 +529,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
             StorePathSet args;
             for (auto & i : opArgs) {
                 for (auto & p : aio.blockOn(
-                         maybeUseOutputs(store, store->followLinksToStorePath(i), useOutput, forceRealise)
+                         maybeUseOutputs(*store, store->followLinksToStorePath(i), useOutput, forceRealise)
                      ))
                 {
                     args.insert(p);
