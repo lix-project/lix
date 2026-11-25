@@ -46,28 +46,28 @@ inline HashType to(nix::HashType ht, auto &&...)
     abort(); // unreachable
 }
 
-inline nix::ContentAddressMethod from(LegacyProtocol::ContentAddressMethod cam, auto &&...)
+inline nix::ContentAddressMethod from(LegacyCache::ContentAddressMethod cam, auto &&...)
 {
     switch (cam) {
-    case LegacyProtocol::ContentAddressMethod::TEXT_INGESTION:
+    case LegacyCache::ContentAddressMethod::TEXT_INGESTION:
         return {TextIngestionMethod{}};
-    case LegacyProtocol::ContentAddressMethod::FLAT_FILE_INGESTION:
+    case LegacyCache::ContentAddressMethod::FLAT_FILE_INGESTION:
         return {FileIngestionMethod::Flat};
-    case LegacyProtocol::ContentAddressMethod::RECURSIVE_FILE_INGESTION:
+    case LegacyCache::ContentAddressMethod::RECURSIVE_FILE_INGESTION:
         return {FileIngestionMethod::Recursive};
     }
     throw nix::Error("invalid ContentAddressMethod received over RPC: %d", uint16_t(cam));
 }
 
-inline LegacyProtocol::ContentAddressMethod to(const nix::ContentAddressMethod & cam, auto &&...)
+inline LegacyCache::ContentAddressMethod to(const nix::ContentAddressMethod & cam, auto &&...)
 {
     return std::visit(
         overloaded{
-            [](const TextIngestionMethod &) { return LegacyProtocol::ContentAddressMethod::TEXT_INGESTION; },
+            [](const TextIngestionMethod &) { return LegacyCache::ContentAddressMethod::TEXT_INGESTION; },
             [](const FileIngestionMethod & fim) {
                 return fim == FileIngestionMethod::Recursive
-                    ? LegacyProtocol::ContentAddressMethod::RECURSIVE_FILE_INGESTION
-                    : LegacyProtocol::ContentAddressMethod::FLAT_FILE_INGESTION;
+                    ? LegacyCache::ContentAddressMethod::RECURSIVE_FILE_INGESTION
+                    : LegacyCache::ContentAddressMethod::FLAT_FILE_INGESTION;
             },
         },
         cam.raw
@@ -99,7 +99,7 @@ struct Fill<daemon::Hash, Hash>
 };
 
 namespace daemon {
-inline nix::ContentAddress from(const LegacyProtocol::ContentAddress::Reader & ca, auto &&... args)
+inline nix::ContentAddress from(const LegacyCache::ContentAddress::Reader & ca, auto &&... args)
 {
     return ContentAddress{
         .method = from(ca.getMethod(), args...),
@@ -109,10 +109,10 @@ inline nix::ContentAddress from(const LegacyProtocol::ContentAddress::Reader & c
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::ContentAddress, ContentAddress>
+struct Fill<daemon::LegacyCache::ContentAddress, ContentAddress>
 {
     static void
-    fill(daemon::LegacyProtocol::ContentAddress::Builder cb, const ContentAddress & ca, auto &&... args)
+    fill(daemon::LegacyCache::ContentAddress::Builder cb, const ContentAddress & ca, auto &&... args)
     {
         cb.setMethod(daemon::to(ca.method, args...));
         LIX_RPC_FILL_STRUCT(cb, initHash, ca.hash, args...);
@@ -120,7 +120,7 @@ struct Fill<daemon::LegacyProtocol::ContentAddress, ContentAddress>
 };
 
 namespace daemon {
-inline UnkeyedValidPathInfo from(const LegacyProtocol::UnkeyedValidPathInfo::Reader & r, auto &&... args)
+inline UnkeyedValidPathInfo from(const LegacyCache::UnkeyedValidPathInfo::Reader & r, auto &&... args)
 {
     UnkeyedValidPathInfo info{from(r.getNarHash(), args...)};
     info.deriver = rpc::from(r.getDeriver(), args...);
@@ -135,10 +135,10 @@ inline UnkeyedValidPathInfo from(const LegacyProtocol::UnkeyedValidPathInfo::Rea
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::UnkeyedValidPathInfo, nix::UnkeyedValidPathInfo>
+struct Fill<daemon::LegacyCache::UnkeyedValidPathInfo, nix::UnkeyedValidPathInfo>
 {
     static void fill(
-        daemon::LegacyProtocol::UnkeyedValidPathInfo::Builder b,
+        daemon::LegacyCache::UnkeyedValidPathInfo::Builder b,
         const nix::UnkeyedValidPathInfo & info,
         auto &&... args
     )
@@ -155,7 +155,7 @@ struct Fill<daemon::LegacyProtocol::UnkeyedValidPathInfo, nix::UnkeyedValidPathI
 };
 
 namespace daemon {
-inline nix::ValidPathInfo from(const LegacyProtocol::ValidPathInfo::Reader & r, auto &&... args)
+inline nix::ValidPathInfo from(const LegacyCache::ValidPathInfo::Reader & r, auto &&... args)
 {
     nix::StorePath path = from(r.getPath(), args...);
     return nix::ValidPathInfo{std::move(path), from(r.getUnkeyedValidPathInfo(), args...)};
@@ -163,10 +163,10 @@ inline nix::ValidPathInfo from(const LegacyProtocol::ValidPathInfo::Reader & r, 
 }
 
 template<>
-struct Fill<daemon::LegacyProtocol::ValidPathInfo, nix::ValidPathInfo>
+struct Fill<daemon::LegacyCache::ValidPathInfo, nix::ValidPathInfo>
 {
     static void
-    fill(daemon::LegacyProtocol::ValidPathInfo::Builder b, const nix::ValidPathInfo & info, auto &&... args)
+    fill(daemon::LegacyCache::ValidPathInfo::Builder b, const nix::ValidPathInfo & info, auto &&... args)
     {
         LIX_RPC_FILL_STRUCT(
             b, initUnkeyedValidPathInfo, static_cast<const nix::UnkeyedValidPathInfo &>(info), args...

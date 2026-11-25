@@ -583,7 +583,7 @@ try {
 kj::Promise<Result<box_ptr<AsyncInputStream>>>
 RpcRemoteStore::narFromPath(const StorePath & path, const Activity * context)
 try {
-    struct FeedStream final : rpc::daemon::LegacyProtocol::Stream::Server
+    struct FeedStream final : rpc::daemon::LegacyCache::Stream::Server
     {
         std::unique_ptr<AsyncOutputStream> out;
 
@@ -606,11 +606,11 @@ try {
     struct ReturnStream : AsyncInputStream
     {
         std::unique_ptr<AsyncInputStream> in;
-        capnp::RemotePromise<rpc::daemon::LegacyProtocol::NarFromPathResults> source;
+        capnp::RemotePromise<rpc::daemon::LegacyCache::NarFromPathResults> source;
 
         ReturnStream(
             std::unique_ptr<AsyncInputStream> in,
-            capnp::RemotePromise<rpc::daemon::LegacyProtocol::NarFromPathResults> source
+            capnp::RemotePromise<rpc::daemon::LegacyCache::NarFromPathResults> source
         )
             : in(std::move(in))
             , source(std::move(source))

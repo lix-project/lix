@@ -160,8 +160,8 @@ interface LegacyGCStore $T.throws(T.v1Errors) {
   findRoots @3 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
 }
 
-# The RPC'd version of the legacy protocol, with only minimal adjustments
-interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore) $T.throws(T.v1Errors) {
+# The RPC'd fragment of build-related ops of the legacy protocol. we will change this.
+interface LegacyCache $T.throws(T.v1Errors) {
   enum ContentAddressMethod {
     textIngestion @0;
     flatFileIngestion @1;
@@ -202,36 +202,43 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore, LegacyGCStor
     finalize @1 ();
   }
 
-  addSignatures @12 (path :Libstore.StorePath, signatures :List(T.String));
-  addCAToStore @8 (
+  addCAToStore @0 (
     name :T.String,
     contentAddressMethod :ContentAddressMethod,
     hashType :HashType,
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);
-  addToStoreNar @13 (
+  addToStoreNar @1 (
     info: ValidPathInfo,
     repair :Bool,
     dontCheckSigs :Bool
   ) -> (
     result :Stream
   );
-  isValidPath @1 (path :Libstore.StorePath) -> (result :Bool);
-  narFromPath @15 (path :Libstore.StorePath, into :Stream);
-  optimiseStore @0 ();
-  queryAllValidPaths @16 () -> (result :List(Libstore.StorePath));
-  queryValidPaths @2 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
-  querySubstitutablePaths @3 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
-  queryReferrers @4 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
-  queryValidDerivers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
-  queryDerivationOutputMap @6 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
-  queryMissing @14 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
-  queryPathFromHashPart @7 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
-  queryPathInfo @10 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
-  setOptions @9 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
-  verifyStore @11 (checkContents :Bool, repair :Bool) -> (result :Bool);
+  isValidPath @2 (path :Libstore.StorePath) -> (result :Bool);
+  narFromPath @3 (path :Libstore.StorePath, into :Stream);
+  queryAllValidPaths @4 () -> (result :List(Libstore.StorePath));
+  queryValidPaths @5 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
+  querySubstitutablePaths @6 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
+  queryReferrers @7 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
+  queryValidDerivers @8 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
+  queryDerivationOutputMap @9 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
+  queryMissing @10 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
+  queryPathFromHashPart @11 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
+  queryPathInfo @12 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
+}
 
-  getTrust @17 () -> (trust :LegacyBoot.Trust);
-  getVersion @18 () -> (version :Text);
+# The RPC'd version of the legacy protocol, with only minimal adjustments
+interface LegacyProtocol
+    extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacyCache)
+    $T.throws(T.v1Errors)
+{
+  addSignatures @3 (path :Libstore.StorePath, signatures :List(T.String));
+  optimiseStore @0 ();
+  setOptions @1 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
+  verifyStore @2 (checkContents :Bool, repair :Bool) -> (result :Bool);
+
+  getTrust @4 () -> (trust :LegacyBoot.Trust);
+  getVersion @5 () -> (version :Text);
 }

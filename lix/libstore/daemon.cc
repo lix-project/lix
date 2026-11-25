@@ -1034,7 +1034,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     }
 
     // TODO this is essentially RemoteStore::addCAToStore. Move it up to Store.
-    struct AddCAToStoreStream final : LegacyProtocol::AddToStoreStream::Server
+    struct AddCAToStoreStream final : LegacyCache::AddToStoreStream::Server
     {
         ref<LegacyState> state;
         std::string name;
@@ -1119,7 +1119,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
         });
     }
 
-    struct AddToStoreNarStream final : LegacyProtocol::Stream::Server
+    struct AddToStoreNarStream final : LegacyCache::Stream::Server
     {
         ref<LegacyState> state;
         ValidPathInfo info;
