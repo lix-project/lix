@@ -240,6 +240,8 @@ struct QueryMissingContext
     try {
         auto & drvPath = bfd.drvPath.path;
 
+        TRY_AWAIT(store.addTempRoot(drvPath));
+
         if (!TRY_AWAIT(store.isValidPath(drvPath))) {
             // FIXME: we could try to substitute the derivation.
             state.unknown.insert(drvPath);
@@ -256,7 +258,7 @@ struct QueryMissingContext
             co_return result::success();
         }
 
-        auto drv = make_ref<Derivation>(TRY_AWAIT(store.derivationFromPath(drvPath)));
+        auto drv = make_ref<Derivation>(TRY_AWAIT(store.readDerivation(drvPath)));
         ParsedDerivation parsedDrv(StorePath(drvPath), *drv);
 
         if (settings.useSubstitutes && parsedDrv.substitutesAllowed()) {
