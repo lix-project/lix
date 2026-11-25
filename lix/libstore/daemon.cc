@@ -530,7 +530,11 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::AddTempRoot: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        aio.blockOn(store->addTempRoot(path));
+        if (auto gcStore = dynamic_cast<GcStore *>(&*store)) {
+            aio.blockOn(gcStore->addTempRoot(path));
+        } else {
+            debug("not creating temporary root, store doesn't support GC");
+        }
         logger->stopWork();
         to << 1;
         break;
@@ -1024,7 +1028,12 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     {
         return RPC_IMPL({
             StorePath path = rpc::from(context.getParams().getPath(), *state->store);
-            TRY_AWAIT(state->store->addTempRoot(path));
+            if (auto gcStore = dynamic_cast<GcStore *>(&*state->store)) {
+                TRY_AWAIT(gcStore->addTempRoot(path));
+            } else {
+                // legacy compat. we should probably not be doing this, but it's fine for xp-1
+                debug("not creating temporary root, store doesn't support GC");
+            }
         });
     }
 

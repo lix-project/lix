@@ -448,11 +448,11 @@ public:
 
     /**
      * Check whether a path is valid and mark it as in use if it is.
-     * This is equivalent to addTempRoot+isValidPath, but may be faster.
+     * This is equivalent to addTempRoot+isValidPath on gc-able stores,
+     * but may be faster.
      */
-    kj::Promise<Result<bool>> useValidPath(const StorePath & path, const Activity * context = nullptr)
+    virtual kj::Promise<Result<bool>> useValidPath(const StorePath & path, const Activity * context = nullptr)
     try {
-        LIX_TRY_AWAIT(addTempRoot(path));
         co_return LIX_TRY_AWAIT(isValidPath(path, context));
     } catch (...) {
         co_return result::current_exception();
@@ -676,18 +676,6 @@ public:
      */
     virtual kj::Promise<Result<box_ptr<AsyncInputStream>>>
     narFromPath(const StorePath & path, const Activity * context = nullptr) = 0;
-
-    /**
-     * Add a store path as a temporary root of the garbage collector.
-     * The root disappears as soon as we exit.
-     */
-    virtual kj::Promise<Result<void>> addTempRoot(const StorePath & path)
-    try {
-        debug("not creating temporary root, store doesn't support GC");
-        return {result::success()};
-    } catch (...) {
-        return {result::current_exception()};
-    }
 
     /**
      * @return a string representing information about the path that

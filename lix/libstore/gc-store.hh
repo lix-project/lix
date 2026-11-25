@@ -122,6 +122,12 @@ struct GcStore : public virtual Store
     inline static std::string operationName = "Garbage collection";
 
     /**
+     * Add a store path as a temporary root of the garbage collector.
+     * The root disappears as soon as we exit.
+     */
+    virtual kj::Promise<Result<void>> addTempRoot(const StorePath & path) = 0;
+
+    /**
      * Find the roots of the garbage collector.  Each root is a pair
      * `(link, storepath)` where `link` is the path of the symlink
      * outside of the Nix store that point to `storePath`. If
@@ -135,6 +141,15 @@ struct GcStore : public virtual Store
      */
     virtual kj::Promise<Result<void>>
     collectGarbage(const GCOptions & options, GCResults & results) = 0;
+
+    kj::Promise<Result<bool>>
+    useValidPath(const StorePath & path, const Activity * context = nullptr) override
+    try {
+        LIX_TRY_AWAIT(addTempRoot(path));
+        co_return LIX_TRY_AWAIT(Store::useValidPath(path, context));
+    } catch (...) {
+        co_return result::current_exception();
+    }
 };
 
 }

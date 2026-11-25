@@ -32,6 +32,7 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/build-store.hh"
+#include "lix/libstore/gc-store.hh"
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/crypto.hh"
 #include "lix/libutil/async.hh"
@@ -388,7 +389,7 @@ SV * derivationFromPath(char * drvPath)
 void addTempRoot(char * storePath)
     PPCODE:
         try {
-            aio().blockOn(store()->addTempRoot(store()->parseStorePath(storePath)));
+            aio().blockOn(require<GcStore>(*store()).addTempRoot(store()->parseStorePath(storePath)));
         } catch (Error & e) {
             croak("%s", e.what());
         }
