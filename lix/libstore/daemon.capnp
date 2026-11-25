@@ -134,8 +134,34 @@ interface LegacyBuildStore $T.throws(T.v1Errors) {
   buildPathsWithResult @1 (mode :BuildMode, paths :List(DerivedPath)) -> (result :List(KeyedBuildResult));
 }
 
+# The RPC'd fragment of gc-related ops of the legacy protocol. we will change this.
+interface LegacyGCStore $T.throws(T.v1Errors) {
+  enum GCAction {
+    returnLive @0;
+    returnDead @1;
+    deleteDead @2;
+    deleteSpecific @3;
+    tryDeleteSpecific @4;
+  }
+
+  # TODO this has its own c++ interface, what to do here?
+  addIndirectRoot @0 (path :T.String);
+  # TODO remove this, it should always be implicit
+  addTempRoot @1 (path :Libstore.StorePath);
+  collectGarbage @2 (
+    action :GCAction,
+    pathsToDelete :List(Libstore.StorePath),
+    ignoreLiveness :Bool,
+    maxFreed :UInt64
+  ) -> (
+    paths :List(T.String),
+    bytesFreed :UInt64
+  );
+  findRoots @3 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
+}
+
 # The RPC'd version of the legacy protocol, with only minimal adjustments
-interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.v1Errors) {
+interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore) $T.throws(T.v1Errors) {
   enum ContentAddressMethod {
     textIngestion @0;
     flatFileIngestion @1;
@@ -159,13 +185,6 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.
     unkeyedValidPathInfo @0 :UnkeyedValidPathInfo;
     path @1 :Libstore.StorePath;
   }
-  enum GCAction {
-    returnLive @0;
-    returnDead @1;
-    deleteDead @2;
-    deleteSpecific @3;
-    tryDeleteSpecific @4;
-  }
   struct QueryMissingResult {
     willBuild @0 :List(Libstore.StorePath);
     willSubstitute @1 :List(Libstore.StorePath);
@@ -183,9 +202,7 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.
     finalize @1 ();
   }
 
-  addIndirectRoot @10 (path :T.String);
-  addSignatures @16 (path :Libstore.StorePath, signatures :List(T.String));
-  addTempRoot @9 (path :Libstore.StorePath);
+  addSignatures @12 (path :Libstore.StorePath, signatures :List(T.String));
   addCAToStore @8 (
     name :T.String,
     contentAddressMethod :ContentAddressMethod,
@@ -193,38 +210,28 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.
     references :List(Libstore.StorePath),
     repair :Bool
   ) -> (result :AddToStoreStream);
-  addToStoreNar @17 (
+  addToStoreNar @13 (
     info: ValidPathInfo,
     repair :Bool,
     dontCheckSigs :Bool
   ) -> (
     result :Stream
   );
-  collectGarbage @12 (
-    action :GCAction,
-    pathsToDelete :List(Libstore.StorePath),
-    ignoreLiveness :Bool,
-    maxFreed :UInt64
-  ) -> (
-    paths :List(T.String),
-    bytesFreed :UInt64
-  );
-  findRoots @11 () -> (result :T.Map(Libstore.StorePath, List(T.String)));
   isValidPath @1 (path :Libstore.StorePath) -> (result :Bool);
-  narFromPath @19 (path :Libstore.StorePath, into :Stream);
+  narFromPath @15 (path :Libstore.StorePath, into :Stream);
   optimiseStore @0 ();
-  queryAllValidPaths @20 () -> (result :List(Libstore.StorePath));
+  queryAllValidPaths @16 () -> (result :List(Libstore.StorePath));
   queryValidPaths @2 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
   querySubstitutablePaths @3 (paths :List(Libstore.StorePath)) -> (result :List(Libstore.StorePath));
   queryReferrers @4 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryValidDerivers @5 (path :Libstore.StorePath) -> (result :List(Libstore.StorePath));
   queryDerivationOutputMap @6 (path :Libstore.StorePath) -> (result :T.Map(Text, Libstore.StorePath));
-  queryMissing @18 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
+  queryMissing @14 (targets :List(DerivedPath)) -> (result :QueryMissingResult);
   queryPathFromHashPart @7 (hashPart :T.String) -> (result :T.Option(Libstore.StorePath));
-  queryPathInfo @14 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
-  setOptions @13 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
-  verifyStore @15 (checkContents :Bool, repair :Bool) -> (result :Bool);
+  queryPathInfo @10 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
+  setOptions @9 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
+  verifyStore @11 (checkContents :Bool, repair :Bool) -> (result :Bool);
 
-  getTrust @21 () -> (trust :LegacyBoot.Trust);
-  getVersion @22 () -> (version :Text);
+  getTrust @17 () -> (trust :LegacyBoot.Trust);
+  getVersion @18 () -> (version :Text);
 }
