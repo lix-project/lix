@@ -49,12 +49,6 @@ struct RemoteStore::Connection
     Store * store;
 
     /**
-     * The worker protocol version of the connected daemon. This may be newer
-     * than this Lix supports.
-     */
-    WorkerProto::Version daemonVersion;
-
-    /**
      * Whether the remote side trusts us or not.
      *
      * 3 values: "yes", "no", or `std::nullopt` for "unknown".
@@ -96,7 +90,7 @@ struct RemoteStore::Connection
      */
     operator WorkerProto::WriteConn ()
     {
-        return WorkerProto::WriteConn{*store, daemonVersion};
+        return WorkerProto::WriteConn{*store};
     }
 
     virtual ~Connection() = default;
@@ -220,9 +214,7 @@ struct RemoteStore::ConnectionHandle
             try {
                 AsyncBufferedInputStream from{stream, (*handle)->fromBuf};
                 auto result = LIX_TRY_AWAIT(
-                    WorkerProto::readAsync(
-                        from, *(*handle)->store, (*handle)->daemonVersion, WorkerProto::Serialise<R>::read
-                    )
+                    WorkerProto::readAsync(from, *(*handle)->store, WorkerProto::Serialise<R>::read)
                 );
                 invalidateOnCancel.cancel();
                 co_return result;

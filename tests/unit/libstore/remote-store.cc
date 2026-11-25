@@ -74,7 +74,6 @@ struct TestConnection final : RemoteStore::Connection
     explicit TestConnection(int fd) : fd(fd)
     {
         store = nullptr;
-        daemonVersion = MIN_SUPPORTED_WORKER_PROTO_VERSION;
     }
 
     int getFD() const override

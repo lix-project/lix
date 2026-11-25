@@ -79,11 +79,13 @@ try {
         if (magic != WORKER_MAGIC_2)
             throw Error("protocol mismatch");
 
-        conn.daemonVersion = TRY_AWAIT(readNum<unsigned>(from));
-        if (GET_PROTOCOL_MAJOR(conn.daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION))
+        auto daemonVersion = TRY_AWAIT(readNum<unsigned>(from));
+        if (GET_PROTOCOL_MAJOR(daemonVersion) != GET_PROTOCOL_MAJOR(PROTOCOL_VERSION)) {
             throw Error("Nix daemon protocol version not supported");
-        if (GET_PROTOCOL_MINOR(conn.daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION)
+        }
+        if (GET_PROTOCOL_MINOR(daemonVersion) < MIN_SUPPORTED_MINOR_WORKER_PROTO_VERSION) {
             throw Error("The remote Nix daemon version is too old");
+        }
 
         {
             StringSink packet;
@@ -94,12 +96,11 @@ try {
         }
 
         conn.daemonNixVersion = TRY_AWAIT(readString(from));
-        conn.remoteTrustsUs = TRY_AWAIT(WorkerProto::readAsync(
-            from,
-            *conn.store,
-            conn.daemonVersion,
-            WorkerProto::Serialise<std::optional<TrustedFlag>>::read
-        ));
+        conn.remoteTrustsUs = TRY_AWAIT(
+            WorkerProto::readAsync(
+                from, *conn.store, WorkerProto::Serialise<std::optional<TrustedFlag>>::read
+            )
+        );
 
         auto ex = TRY_AWAIT(conn.processStderr(stream, parent));
         if (ex.e) {
@@ -434,8 +435,6 @@ try {
 kj::Promise<Result<void>>
 RemoteStore::addMultipleToStore(PathsSource & pathsToCopy, Activity & act, CheckSigsFlag checkSigs)
 try {
-    auto remoteVersion = TRY_AWAIT(getProtocol());
-
     auto conn(TRY_AWAIT(getConnection()));
     TRY_AWAIT(conn.sendCommand(
         WorkerProto::Op::AddMultipleToStore,
@@ -452,9 +451,9 @@ try {
 
                 TRY_AWAIT(send(pathsToCopy.size()));
                 for (auto & [pathInfo, pathSource] : pathsToCopy) {
-                    TRY_AWAIT(send(WorkerProto::Serialise<ValidPathInfo>::write(
-                        WorkerProto::WriteConn{*this, remoteVersion}, pathInfo
-                    )));
+                    TRY_AWAIT(send(
+                        WorkerProto::Serialise<ValidPathInfo>::write(WorkerProto::WriteConn{*this}, pathInfo)
+                    ));
                     TRY_AWAIT(TRY_AWAIT(pathSource())->drainInto(stream));
                 }
                 co_return result::success();
@@ -467,7 +466,6 @@ try {
 } catch (...) {
     co_return result::current_exception();
 }
-
 
 kj::Promise<Result<StorePath>> RemoteStore::addTextToStore(
     std::string_view name,
@@ -708,14 +706,6 @@ kj::Promise<Result<void>> RemoteStore::init()
 try {
     auto conn(TRY_AWAIT(getConnection()));
     co_return result::success();
-} catch (...) {
-    co_return result::current_exception();
-}
-
-
-kj::Promise<Result<unsigned int>> RemoteStore::getProtocol()
-try {
-    co_return TRY_AWAIT(getConnection())->daemonVersion;
 } catch (...) {
     co_return result::current_exception();
 }

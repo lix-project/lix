@@ -1659,11 +1659,6 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<unsigned int>> LocalStore::getProtocol()
-{
-    return {result::success(PROTOCOL_VERSION)};
-}
-
 kj::Promise<Result<std::optional<TrustedFlag>>> LocalStore::isTrustedClient()
 {
     return {result::success(Trusted)};

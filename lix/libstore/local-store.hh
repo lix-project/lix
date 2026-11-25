@@ -338,8 +338,6 @@ public:
 
     kj::Promise<Result<void>> registerValidPaths(const ValidPathInfos & infos);
 
-    kj::Promise<Result<unsigned int>> getProtocol() override;
-
     kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
 
     kj::Promise<Result<void>>

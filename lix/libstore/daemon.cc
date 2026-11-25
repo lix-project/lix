@@ -76,15 +76,7 @@ struct TunnelLogger : public Logger
 
     Sync<State> state_;
 
-    /**
-     * Worker protocol version of the other side. May be newer than this daemon.
-     */
-    const WorkerProto::Version clientVersion;
-
-    TunnelLogger(FdSink & to, WorkerProto::Version clientVersion)
-        : to(to), clientVersion(clientVersion) {
-        assert(clientVersion >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
-    }
+    TunnelLogger(FdSink & to) : to(to) {}
 
     BufferState enqueueMsg(const std::string & s)
     {
@@ -197,12 +189,18 @@ static void requireTrustedRepair(TrustedFlag trusted, RepairFlag repair)
     }
 }
 
-static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store,
-    TrustedFlag trusted, WorkerProto::Version clientVersion,
-    Source & from, BufferedSink & to, WorkerProto::Op op)
+static void performOp(
+    AsyncIoRoot & aio,
+    TunnelLogger * logger,
+    ref<Store> store,
+    TrustedFlag trusted,
+    Source & from,
+    BufferedSink & to,
+    WorkerProto::Op op
+)
 {
-    WorkerProto::ReadConn rconn{from, *store, clientVersion};
-    WorkerProto::WriteConn wconn{*store, clientVersion};
+    WorkerProto::ReadConn rconn{from, *store};
+    WorkerProto::WriteConn wconn{*store};
 
     switch (op) {
 
@@ -382,9 +380,8 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             FramedSource source(from);
             auto expected = readNum<uint64_t>(source);
             for (uint64_t i = 0; i < expected; ++i) {
-                auto info = WorkerProto::Serialise<ValidPathInfo>::read(
-                    WorkerProto::ReadConn{source, *store, clientVersion}
-                );
+                auto info =
+                    WorkerProto::Serialise<ValidPathInfo>::read(WorkerProto::ReadConn{source, *store});
                 info.ultimate = false; // duplicated in RemoteStore::addMultipleToStore
                 AsyncSourceInputStream stream{source};
                 aio.blockOn(store->addToStore(
@@ -823,8 +820,7 @@ static void processLegacyRequests(
     ref<Store> store,
     FdSource & from,
     FdSink & to,
-    TrustedFlag trusted,
-    WorkerProto::Version clientVersion
+    TrustedFlag trusted
 )
 {
     unsigned int opCount = 0;
@@ -849,7 +845,7 @@ static void processLegacyRequests(
 
         try {
             KJ_DEFER(aio.blockOn(logger->flush()));
-            performOp(aio, tunnelLogger, store, trusted, clientVersion, from, to, op);
+            performOp(aio, tunnelLogger, store, trusted, from, to, op);
         } catch (Error & e) {
             /* If we're not in a state where we can send replies, then
                something went wrong processing the input of the
@@ -884,12 +880,12 @@ void processLegacyConnection(
     if (magic != WORKER_MAGIC_1) throw Error("protocol mismatch");
     to << WORKER_MAGIC_2 << PROTOCOL_VERSION;
     to.flush();
-    WorkerProto::Version clientVersion = readNum<unsigned>(from);
+    auto clientVersion = readNum<unsigned>(from);
 
     if (clientVersion < MIN_SUPPORTED_WORKER_PROTO_VERSION)
         throw Error("the Nix client version is too old");
 
-    auto tunnelLogger = new TunnelLogger(to, clientVersion);
+    auto tunnelLogger = new TunnelLogger(to);
     auto prevLogger = nix::logger;
     logger = tunnelLogger;
 
@@ -908,7 +904,7 @@ void processLegacyConnection(
     auto temp = trusted
         ? aio.blockOn(store->isTrustedClient())
         : std::optional { NotTrusted };
-    WorkerProto::WriteConn wconn {*store, clientVersion};
+    WorkerProto::WriteConn wconn{*store};
     to << WorkerProto::write(wconn, temp);
 
     /* Send startup error messages to the client. */
@@ -918,7 +914,7 @@ void processLegacyConnection(
         tunnelLogger->stopWork();
         to.flush();
 
-        processLegacyRequests(aio, prevLogger, tunnelLogger, store, from, to, trusted, clientVersion);
+        processLegacyRequests(aio, prevLogger, tunnelLogger, store, from, to, trusted);
     } catch (Error & e) {
         tunnelLogger->stopWork(&e);
         to.flush();

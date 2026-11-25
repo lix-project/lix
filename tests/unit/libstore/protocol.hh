@@ -27,7 +27,7 @@ public:
      * Golden test for `T` reading
      */
     template<typename T>
-    void readTest(PathView testStem, typename Proto::Version version, T value)
+    void readTest(PathView testStem, T value)
     {
         if (testAccept())
         {
@@ -39,9 +39,7 @@ public:
 
             T got = ({
                 StringSource from { expected };
-                Proto::template Serialise<T>::read(
-                    typename Proto::ReadConn{from, *LibStoreTest::store, version}
-                );
+                Proto::template Serialise<T>::read(typename Proto::ReadConn{from, *LibStoreTest::store});
             });
 
             ASSERT_EQ(got, value);
@@ -52,12 +50,12 @@ public:
      * Golden test for `T` write
      */
     template<typename T>
-    void writeTest(PathView testStem, typename Proto::Version version, const T & value)
+    void writeTest(PathView testStem, const T & value)
     {
         auto file = ProtoTest<Proto, protocolDir>::goldenMaster(testStem);
 
         StringSink to;
-        to << Proto::write(typename Proto::WriteConn{*LibStoreTest::store, version}, value);
+        to << Proto::write(typename Proto::WriteConn{*LibStoreTest::store}, value);
 
         if (testAccept())
         {
@@ -72,13 +70,4 @@ public:
         }
     }
 };
-
-#define VERSIONED_CHARACTERIZATION_TEST(FIXTURE, NAME, STEM, VERSION, VALUE) \
-    TEST_F(FIXTURE, NAME ## _read) { \
-        readTest(STEM, VERSION, VALUE); \
-    } \
-    TEST_F(FIXTURE, NAME ## _write) { \
-        writeTest(STEM, VERSION, VALUE); \
-    }
-
 }

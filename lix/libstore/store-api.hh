@@ -815,14 +815,6 @@ public:
     }
 
     /**
-     * Get the protocol version of this store or it's connection.
-     */
-    virtual kj::Promise<Result<unsigned int>> getProtocol()
-    {
-        return {result::success(0)};
-    };
-
-    /**
      * @return/ whether store trusts *us*.
      *
      * `std::nullopt` means we do not know.

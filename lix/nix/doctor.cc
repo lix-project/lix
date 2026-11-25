@@ -41,16 +41,6 @@ struct SearchPathFacts
     std::string originReference;
 };
 
-std::string formatProtocol(unsigned int proto)
-{
-    if (proto) {
-        auto major = GET_PROTOCOL_MAJOR(proto) >> 8;
-        auto minor = GET_PROTOCOL_MINOR(proto);
-        return fmt("%1%.%2%", major, minor);
-    }
-    return "unknown";
-}
-
 bool checkPass(const std::string & msg) {
     notice(ANSI_GREEN "[PASS] " ANSI_NORMAL "%1%", Uncolored(msg));
     return true;
@@ -142,7 +132,6 @@ struct CmdDoctor : StoreCommand
             success &= checkNixInPath();
             success &= checkProfileRoots(store);
         }
-        success &= checkStoreProtocol(aio().blockOn(store->getProtocol()));
         checkTrustedUser(store);
         return success;
     }
@@ -375,23 +364,6 @@ struct CmdDoctor : StoreCommand
         }
 
         return checkPass("All profiles are gcroots.");
-    }
-
-    bool checkStoreProtocol(unsigned int storeProto)
-    {
-        unsigned int clientProto = PROTOCOL_VERSION;
-
-        if (clientProto != storeProto) {
-            std::stringstream ss;
-            ss << "Warning: protocol version of this client does not match the store.\n"
-               << "While this is not necessarily a problem it's recommended to keep the client in\n"
-               << "sync with the daemon.\n\n"
-               << "Client protocol: " << formatProtocol(clientProto) << "\n"
-               << "Store protocol: " << formatProtocol(storeProto) << "\n\n";
-            return checkFail(ss.str());
-        }
-
-        return checkPass("Client protocol matches store protocol.");
     }
 
     void checkTrustedUser(ref<Store> store)

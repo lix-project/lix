@@ -174,8 +174,6 @@ public:
 
     kj::Promise<Result<std::optional<std::string>>> getVersion() override;
 
-    kj::Promise<Result<unsigned int>> getProtocol() override;
-
     kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
 
     struct Connection;

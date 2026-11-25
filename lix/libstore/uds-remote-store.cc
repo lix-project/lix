@@ -308,7 +308,6 @@ try {
         ? std::optional{Trusted}
         : initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::UNTRUSTED ? std::optional{NotTrusted}
                                                                              : std::nullopt;
-    con.daemonVersion = PROTOCOL_VERSION;
     con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
     con.store = this;
     rpc->legacyProtocol = initResult.getProtocol();

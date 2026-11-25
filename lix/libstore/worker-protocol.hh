@@ -68,28 +68,14 @@ struct WorkerProto
     enum struct Op : uint64_t;
 
     /**
-     * Version type for the protocol.
-     *
-     * @todo Convert to struct with separate major vs minor fields.
-     */
-    using Version = unsigned int;
-
-    /**
      * A unidirectional read connection, to be used by the read half of the
      * canonical serializers below.
      */
     struct ReadConn {
         Source & from;
         const Store & store;
-        Version version;
 
-        ReadConn(Source & from, const Store & store, Version version)
-            : from(from)
-            , store(store)
-            , version(version)
-        {
-            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
-        }
+        ReadConn(Source & from, const Store & store) : from(from), store(store) {}
     };
 
     /**
@@ -98,12 +84,8 @@ struct WorkerProto
      */
     struct WriteConn {
         const Store & store;
-        Version version;
 
-        WriteConn(const Store & store, Version version) : store(store), version(version)
-        {
-            assert(version >= MIN_SUPPORTED_WORKER_PROTO_VERSION);
-        }
+        WriteConn(const Store & store) : store(store) {}
     };
 
     /**
@@ -153,10 +135,10 @@ struct WorkerProto
      * it to `fn`. `fn` will be run asynchronously on a fresh stack using kj fibers
      * and can thus safely use synchronous deserializers with very little overhead.
      */
-    static auto readAsync(auto & from, Store & store, WorkerProto::Version version, auto fn)
+    static auto readAsync(auto & from, Store & store, auto fn)
     {
-        return deserializeFrom(from, [&store, version, fn{std::move(fn)}](Source & wrapped) {
-            return fn(WorkerProto::ReadConn{wrapped, store, version});
+        return deserializeFrom(from, [&store, fn{std::move(fn)}](Source & wrapped) {
+            return fn(WorkerProto::ReadConn{wrapped, store});
         });
     }
 };

@@ -14,7 +14,6 @@ def test_doctor_local_store(nix: Nix):
     res = nix.nix(["doctor", "-v"]).run().ok()
     out = res.stderr_plain
     assert "[PASS] All profiles are gcroots." in out
-    assert "[PASS] Client protocol matches store protocol." in out
     assert "You are trusted" in out
     assert "[FAIL] Error: current generation cannot be discovered" in out
 
@@ -70,12 +69,11 @@ def test_doctor_checks_builder_bad(nix: Nix):
 @pytest.mark.usefixtures("fake_nixpkgs")
 def test_doctor_checks_builder_connection_flag(nix: Nix, files: Path):
     nix.settings.builders = f"@{files / 'machines.toml'}"
-    res = nix.nix(["doctor", "-v", "--check-remotes"]).run().expect(2)
+    res = nix.nix(["doctor", "-v", "--check-remotes"]).run().ok()
     out = res.stderr_plain
 
     assert "[INFO] 1 remote builder(s) configured" in out
     assert "Running checks against store uri dummy" in out
-    assert "Store protocol: unknown" in out
 
 
 @with_files(
