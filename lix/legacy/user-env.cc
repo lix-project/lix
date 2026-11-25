@@ -77,7 +77,6 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
 
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
-            state.aio.blockOn(state.ctx.store->addTempRoot(*j.second));
             state.aio.blockOn(require<BuildStore>(*state.ctx.store).ensurePath(*j.second));
 
             references.insert(*j.second);
