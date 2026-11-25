@@ -229,16 +229,20 @@ interface LegacyCache $T.throws(T.v1Errors) {
   queryPathInfo @12 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
 }
 
+interface LegacySignedCache extends (LegacyCache) $T.throws(T.v1Errors) {
+  # TODO this is sus. signatures should have substructure
+  addSignatures @0 (path :Libstore.StorePath, signatures :List(T.String));
+}
+
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol
-    extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacyCache)
+    extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacySignedCache)
     $T.throws(T.v1Errors)
 {
-  addSignatures @3 (path :Libstore.StorePath, signatures :List(T.String));
   optimiseStore @0 ();
   setOptions @1 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
   verifyStore @2 (checkContents :Bool, repair :Bool) -> (result :Bool);
 
-  getTrust @4 () -> (trust :LegacyBoot.Trust);
-  getVersion @5 () -> (version :Text);
+  getTrust @3 () -> (trust :LegacyBoot.Trust);
+  getVersion @4 () -> (version :Text);
 }
