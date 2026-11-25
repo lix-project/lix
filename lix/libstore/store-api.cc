@@ -1,3 +1,4 @@
+#include "lix/libstore/store-cast.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/derivations.hh"
@@ -722,7 +723,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::substitutePaths(const StorePathSet & paths)
+kj::Promise<Result<void>> BuildStore::substitutePaths(const StorePathSet & paths)
 try {
     if (paths.empty()) {
         co_return result::success();
@@ -807,9 +808,8 @@ try {
     co_return result::current_exception();
 }
 
-
 kj::Promise<Result<StorePathSet>>
-Store::exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths)
+BuildStore::exportReferences(const StorePathSet & storePaths, const StorePathSet & inputPaths)
 try {
     StorePathSet paths;
 
@@ -1110,7 +1110,7 @@ kj::Promise<Result<void>> copyPaths(
 )
 try {
     if (substitute) {
-        TRY_AWAIT(dstStore.substitutePaths(storePaths));
+        TRY_AWAIT(require<BuildStore>(dstStore).substitutePaths(storePaths));
     }
 
     auto valid = TRY_AWAIT(dstStore.queryValidPaths(storePaths));
@@ -1310,8 +1310,7 @@ std::string showPaths(const PathSet & paths)
     return concatStringsSep(", ", quoteStrings(paths));
 }
 
-
-kj::Promise<Result<Derivation>> Store::derivationFromPath(const StorePath & drvPath)
+kj::Promise<Result<Derivation>> BuildStore::derivationFromPath(const StorePath & drvPath)
 try {
     TRY_AWAIT(ensurePath(drvPath));
     co_return TRY_AWAIT(readDerivation(drvPath));

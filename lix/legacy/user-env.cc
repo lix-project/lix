@@ -8,6 +8,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libstore/profiles.hh"
 #include "lix/libexpr/print-ambiguous.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/lix-rs/main.gen.hh"
 
 #include <limits>
@@ -28,9 +29,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             drvsToBuild.push_back({*drvPath});
 
     debug("building user environment dependencies");
-    state.aio.blockOn(state.ctx.store->buildPaths(
-        toDerivedPaths(drvsToBuild),
-        state.ctx.repair ? bmRepair : bmNormal));
+    state.aio.blockOn(
+        require<BuildStore>(*state.ctx.store)
+            .buildPaths(toDerivedPaths(drvsToBuild), state.ctx.repair ? bmRepair : bmNormal)
+    );
 
     /* Construct the whole top level derivation. */
     StorePathSet references;
@@ -76,7 +78,7 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
             /* This is only necessary when installing store paths, e.g.,
                `nix-env -i /nix/store/abcd...-foo'. */
             state.aio.blockOn(state.ctx.store->addTempRoot(*j.second));
-            state.aio.blockOn(state.ctx.store->ensurePath(*j.second));
+            state.aio.blockOn(require<BuildStore>(*state.ctx.store).ensurePath(*j.second));
 
             references.insert(*j.second);
         }
@@ -131,9 +133,10 @@ bool createUserEnv(EvalState & state, DrvInfos & elems,
     debug("building user environment");
     std::vector<StorePathWithOutputs> topLevelDrvs;
     topLevelDrvs.push_back({topLevelDrv});
-    state.aio.blockOn(state.ctx.store->buildPaths(
-        toDerivedPaths(topLevelDrvs),
-        state.ctx.repair ? bmRepair : bmNormal));
+    state.aio.blockOn(
+        require<BuildStore>(*state.ctx.store)
+            .buildPaths(toDerivedPaths(topLevelDrvs), state.ctx.repair ? bmRepair : bmNormal)
+    );
 
     /* Switch the current user environment to the output path. */
     auto store2 = state.ctx.store.try_cast_shared<LocalFSStore>();

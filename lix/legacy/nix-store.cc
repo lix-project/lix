@@ -1,3 +1,4 @@
+#include "lix/libstore/store-api.hh"
 #include "lix/libutil/archive.hh"
 #include "lix/libstore/derivations.hh"
 #include "dotgraph.hh"
@@ -67,7 +68,8 @@ try {
 
 /* Realise the given path.  For a derivation that means build it; for
    other paths it means ensure their validity. */
-static kj::Promise<Result<PathSet>> realisePath(Store & store, StorePathWithOutputs path, bool build = true)
+static kj::Promise<Result<PathSet>>
+realisePath(BuildStore & store, StorePathWithOutputs path, bool build = true)
 try {
     auto store2 = dynamic_cast<LocalFSStore *>(&store);
 
@@ -181,11 +183,11 @@ opRealise(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Stri
     if (dryRun) return;
 
     /* Build all paths at the same time to exploit parallelism. */
-    aio.blockOn(store->buildPaths(toDerivedPaths(paths), buildMode));
+    aio.blockOn(require<BuildStore>(*store).buildPaths(toDerivedPaths(paths), buildMode));
 
     if (!ignoreUnknown)
         for (auto & i : paths) {
-            auto paths2 = aio.blockOn(realisePath(*store, i, false));
+            auto paths2 = aio.blockOn(realisePath(require<BuildStore>(*store), i, false));
             if (!noOutput)
                 for (auto & j : paths2)
                     cout << fmt("%1%\n", j);
@@ -266,10 +268,10 @@ static kj::Promise<Result<StorePathSet>>
 maybeUseOutputs(Store & store, const StorePath & storePath, bool useOutput, bool forceRealise)
 try {
     if (forceRealise) {
-        TRY_AWAIT(realisePath(store, {storePath}));
+        TRY_AWAIT(realisePath(require<BuildStore>(store), {storePath}));
     }
     if (useOutput && storePath.isDerivation()) {
-        auto drv = TRY_AWAIT(store.derivationFromPath(storePath));
+        auto drv = TRY_AWAIT(require<BuildStore>(store).derivationFromPath(storePath));
         StorePathSet outputs;
         if (forceRealise)
             co_return TRY_AWAIT(store.queryDerivationOutputs(storePath));
@@ -449,7 +451,7 @@ opQuery(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, String
         case qBinding:
             for (auto & i : opArgs) {
                 auto path = aio.blockOn(useDeriver(store, store->followLinksToStorePath(i)));
-                Derivation drv = aio.blockOn(store->derivationFromPath(path));
+                Derivation drv = aio.blockOn(require<BuildStore>(*store).derivationFromPath(path));
                 StringPairs::iterator j = drv.env.find(bindingName);
                 if (j == drv.env.end()) {
                     throw Error(
@@ -565,7 +567,8 @@ opPrintEnv(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Str
     if (opArgs.size() != 1) throw UsageError("'--print-env' requires one derivation store path");
 
     Path drvPath = opArgs.front();
-    Derivation drv = aio.blockOn(store->derivationFromPath(store->parseStorePath(drvPath)));
+    Derivation drv =
+        aio.blockOn(require<BuildStore>(*store).derivationFromPath(store->parseStorePath(drvPath)));
 
     /* Print each environment variable in the derivation in a format
      * that can be sourced by the shell. */
@@ -897,7 +900,7 @@ opRepairPath(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, S
         throw UsageError("no flags expected");
 
     for (auto & i : opArgs)
-        aio.blockOn(store->repairPath(store->followLinksToStorePath(i)));
+        aio.blockOn(require<BuildStore>(*store).repairPath(store->followLinksToStorePath(i)));
 }
 
 /* Optimise the disk space usage of the Nix store by hard-linking

@@ -1,6 +1,8 @@
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/build-result.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/async.hh"
 #include <iostream>
 
@@ -30,7 +32,8 @@ int main (int argc, char **argv)
             }
         };
 
-        const auto results = aio.blockOn(store->buildPathsWithResults(paths, bmNormal, store));
+        const auto results =
+            aio.blockOn(require<BuildStore>(*store).buildPathsWithResults(paths, bmNormal, store));
 
         for (const auto & result : results) {
             for (const auto & [outputName, realisation] : result.builtOutputs) {

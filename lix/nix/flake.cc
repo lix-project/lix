@@ -15,6 +15,7 @@
 #include "lix/libfetchers/registry.hh"
 #include "lix/libexpr/eval-cache.hh"
 #include "lix/libcmd/markdown.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libutil/signals.hh"
@@ -863,7 +864,7 @@ struct CmdFlakeCheck : FlakeCommand
             auto act = logger->startActivity(
                 lvlInfo, actUnknown, fmt("running %d flake checks", drvPaths.size())
             );
-            aio().blockOn(store->buildPaths(drvPaths));
+            aio().blockOn(require<BuildStore>(*store).buildPaths(drvPaths));
         }
         if (hasErrors)
             throw Error("some errors were encountered during the evaluation");

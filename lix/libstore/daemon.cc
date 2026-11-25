@@ -12,6 +12,7 @@
 #include "lix/libstore/worker-protocol-impl.hh"
 #include "lix/libstore/build-result.hh" // IWYU pragma: keep
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/store-cast.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
@@ -221,7 +222,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
 
         logger->startWork();
         if (substitute) {
-            aio.blockOn(store->substitutePaths(paths));
+            aio.blockOn(require<BuildStore>(*store).substitutePaths(paths));
         }
         auto res = aio.blockOn(store->queryValidPaths(paths));
         logger->stopWork();
@@ -414,7 +415,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
           */
         requireTrustedRepair(trusted, RepairFlag{mode == bmRepair});
         logger->startWork();
-        aio.blockOn(store->buildPaths(drvs, mode));
+        aio.blockOn(require<BuildStore>(*store).buildPaths(drvs, mode));
         logger->stopWork();
         to << 1;
         break;
@@ -432,7 +433,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
         requireTrustedRepair(trusted, RepairFlag{mode == bmRepair});
 
         logger->startWork();
-        auto results = aio.blockOn(store->buildPathsWithResults(drvs, mode));
+        auto results = aio.blockOn(require<BuildStore>(*store).buildPathsWithResults(drvs, mode));
         logger->stopWork();
 
         to << WorkerProto::write(wconn, results);
@@ -511,7 +512,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
             drvPath = aio.blockOn(writeDerivation(*store, Derivation { drv2 }));
         }
 
-        auto res = aio.blockOn(store->buildDerivation(drvPath, drv, buildMode));
+        auto res = aio.blockOn(require<BuildStore>(*store).buildDerivation(drvPath, drv, buildMode));
         logger->stopWork();
         to << WorkerProto::write(wconn, res);
         break;
@@ -520,7 +521,7 @@ static void performOp(AsyncIoRoot & aio, TunnelLogger * logger, ref<Store> store
     case WorkerProto::Op::EnsurePath: {
         auto path = store->parseStorePath(readString(from));
         logger->startWork();
-        aio.blockOn(store->ensurePath(path));
+        aio.blockOn(require<BuildStore>(*store).ensurePath(path));
         logger->stopWork();
         to << 1;
         break;
@@ -1190,7 +1191,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
                Socket.
               */
             requireTrustedRepair(state->trusted, RepairFlag{mode == bmRepair});
-            TRY_AWAIT(state->store->buildPaths(paths, mode));
+            TRY_AWAIT(require<BuildStore>(*state->store).buildPaths(paths, mode));
         });
     }
 
@@ -1204,7 +1205,7 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
 
                FIXME: layer violation; see above. */
             requireTrustedRepair(state->trusted, RepairFlag{mode == bmRepair});
-            auto results = TRY_AWAIT(state->store->buildPathsWithResults(paths, mode));
+            auto results = TRY_AWAIT(require<BuildStore>(*state->store).buildPathsWithResults(paths, mode));
             RPC_FILL_LIST(context.initResults(), initResult, results, *state->store);
         });
     }

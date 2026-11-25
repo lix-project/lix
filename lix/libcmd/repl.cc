@@ -6,6 +6,7 @@
 #include <optional>
 #include <string_view>
 
+#include "lix/libstore/store-cast.hh"
 #include "libutil/logging.hh"
 #include "lix-rs/main.gen.hh"
 #include "lix/libexpr/value.hh"
@@ -570,12 +571,15 @@ Derivation NixRepl::buildWithProgressBar(const StorePath & drvPath)
     logger->resetProgress();
     logger->resume();
     Finally stopLogger([&]() { logger->pause(); });
-    state.aio.blockOn(evaluator.store->buildPaths({
-        DerivedPath::Built{
-            .drvPath = makeConstantStorePath(drvPath),
-            .outputs = OutputsSpec::All{},
-        },
-    }));
+    state.aio.blockOn(
+        require<BuildStore>(*evaluator.store)
+            .buildPaths({
+                DerivedPath::Built{
+                    .drvPath = makeConstantStorePath(drvPath),
+                    .outputs = OutputsSpec::All{},
+                },
+            })
+    );
     auto drv = state.aio.blockOn(evaluator.store->readDerivation(drvPath));
 
     return drv;

@@ -3,10 +3,12 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libmain/shared.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/outputs-spec.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/parsed-derivations.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/json.hh"
@@ -225,7 +227,7 @@ const static std::string getEnvSh = rust::to_std_string(rust::lix::embeds::get_e
    environment to a file and exits. */
 static kj::Promise<Result<StorePath>> getDerivationEnvironment(ref<Store> store, ref<Store> evalStore, const StorePath & drvPath)
 try {
-    auto drv = TRY_AWAIT(evalStore->derivationFromPath(drvPath));
+    auto drv = TRY_AWAIT(require<BuildStore>(*evalStore).derivationFromPath(drvPath));
     ParsedDerivation parsedDrv(drvPath, drv);
     JSON updatedStructuredAttrs;
 
@@ -285,12 +287,16 @@ try {
     auto shellDrvPath = TRY_AWAIT(writeDerivation(*evalStore, drv));
 
     /* Build the derivation. */
-    TRY_AWAIT(store->buildPaths(
-        { DerivedPath::Built {
-            .drvPath = makeConstantStorePath(shellDrvPath),
-            .outputs = OutputsSpec::All { },
-        }},
-        bmNormal, evalStore));
+    TRY_AWAIT(
+        require<BuildStore>(*store).buildPaths(
+            {DerivedPath::Built{
+                .drvPath = makeConstantStorePath(shellDrvPath),
+                .outputs = OutputsSpec::All{},
+            }},
+            bmNormal,
+            evalStore
+        )
+    );
 
     for (auto & [_0, outPath] : TRY_AWAIT(evalStore->queryDerivationOutputMap(shellDrvPath)))
     {

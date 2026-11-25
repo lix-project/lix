@@ -3,6 +3,7 @@
 #include "lix/libcmd/common-eval-args.hh"
 #include "lix/libexpr/value.hh"
 #include "lix/libstore/derivations.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/terminal.hh"
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/get-drvs.hh"
@@ -799,7 +800,8 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
     globals.aio.blockOn(printMissing(*globals.state->store, paths));
     if (globals.dryRun) return;
     globals.aio.blockOn(
-        globals.state->store->buildPaths(paths, globals.state->repair ? bmRepair : bmNormal)
+        require<BuildStore>(*globals.state->store)
+            .buildPaths(paths, globals.state->repair ? bmRepair : bmNormal)
     );
 
     debug("switching to new user environment");

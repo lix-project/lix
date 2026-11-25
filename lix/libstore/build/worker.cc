@@ -25,7 +25,7 @@ struct ErrorHandler : kj::TaskSet::ErrorHandler
 } errorHandler;
 }
 
-Worker::Worker(Store & store, AvailableNamespaces namespaces)
+Worker::Worker(BuildStore & store, AvailableNamespaces namespaces)
     : act(logger->startActivity(actRealise))
     , actDerivations(logger->startActivity(actBuilds))
     , actSubstitutions(logger->startActivity(actCopyPaths))

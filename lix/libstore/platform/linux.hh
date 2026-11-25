@@ -17,6 +17,7 @@ class LinuxLocalStore : public LocalStore
 public:
     LinuxLocalStore(kj::Badge<LocalStore>, LocalStoreConfig config, Activity * parent)
         : Store(config, parent)
+        , BuildStore(config, parent)
         , LocalStore(config, parent)
     {
     }

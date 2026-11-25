@@ -1,3 +1,4 @@
+#include "lix/libstore/store-cast.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libcmd/installables.hh"
 #include "lix/libcmd/installable-derived-path.hh"
@@ -13,6 +14,7 @@
 #include "lix/libexpr/eval.hh"
 #include "lix/libexpr/eval-settings.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libexpr/flake/flake.hh"
 #include "lix/libexpr/eval-cache.hh"
@@ -627,8 +629,9 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
         if (settings.printMissing)
             state.aio.blockOn(printMissing(*store, pathsToBuild, lvlInfo));
 
-        auto buildResults =
-            state.aio.blockOn(store->buildPathsWithResults(pathsToBuild, bMode, evalStore));
+        auto buildResults = state.aio.blockOn(
+            require<BuildStore>(*store).buildPathsWithResults(pathsToBuild, bMode, evalStore)
+        );
         throwBuildErrors(buildResults, *store);
         for (auto & buildResult : buildResults) {
             for (auto & aux : backmap[buildResult.path]) {

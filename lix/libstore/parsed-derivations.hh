@@ -4,6 +4,7 @@
 #include "lix/libutil/json-fwd.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 
 namespace nix {
 
@@ -41,7 +42,7 @@ public:
     bool useUidRange() const;
 
     kj::Promise<Result<std::optional<JSON>>>
-    prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths);
+    prepareStructuredAttrs(BuildStore & store, const StorePathSet & inputPaths);
 };
 
 std::string writeStructuredAttrsShell(const JSON & json);

@@ -1,6 +1,7 @@
 #include "lix/libstore/build/worker.hh"
 #include "lix/libstore/build/substitution-goal.hh"
 #include "lix/libstore/build/derivation-goal.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/local-store.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/result.hh"
@@ -87,7 +88,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> Store::buildPaths(const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore)
+kj::Promise<Result<void>> BuildStore::buildPaths(
+    const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore
+)
 try {
     TRY_AWAIT(copyDrvsFromEvalStore(reqs, evalStore.get(), *this));
     auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
@@ -128,10 +131,9 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::vector<KeyedBuildResult>>> Store::buildPathsWithResults(
-    const std::vector<DerivedPath> & reqs,
-    BuildMode buildMode,
-    std::shared_ptr<Store> evalStore)
+kj::Promise<Result<std::vector<KeyedBuildResult>>> BuildStore::buildPathsWithResults(
+    const std::vector<DerivedPath> & reqs, BuildMode buildMode, std::shared_ptr<Store> evalStore
+)
 try {
     TRY_AWAIT(copyDrvsFromEvalStore(reqs, evalStore.get(), *this));
     auto goals = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
@@ -152,8 +154,8 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<BuildResult>> Store::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
-    BuildMode buildMode)
+kj::Promise<Result<BuildResult>>
+BuildStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv, BuildMode buildMode)
 try {
     try {
         auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
@@ -187,8 +189,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> Store::ensurePath(const StorePath & path)
+kj::Promise<Result<void>> BuildStore::ensurePath(const StorePath & path)
 try {
     auto results = TRY_AWAIT(buildPathsWithResults({{DerivedPathOpaque{path}}}));
     assert(results.size() == 1 && "expected a single result");
@@ -202,8 +203,7 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> Store::repairPath(const StorePath & path)
+kj::Promise<Result<void>> BuildStore::repairPath(const StorePath & path)
 try {
     auto results = TRY_AWAIT(processGoals(*this, [&](GoalFactory & gf) {
         Worker::Targets goals;

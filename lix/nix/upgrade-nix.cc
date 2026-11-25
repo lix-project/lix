@@ -4,6 +4,7 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libmain/common-args.hh"
 #include "lix/libstore/local-fs-store.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/profiles.hh"
@@ -110,7 +111,7 @@ struct CmdUpgradeNix : MixDryRun, EvalCommand
             auto act = logger->startActivity(
                 lvlInfo, actUnknown, fmt("downloading '%s'...", store->printStorePath(storePath))
             );
-            aio().blockOn(store->ensurePath(storePath));
+            aio().blockOn(require<BuildStore>(*store).ensurePath(storePath));
         }
 
         // {profileDir}/bin/nix-env is a symlink to {profileDir}/bin/nix, which *then*

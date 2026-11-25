@@ -8,6 +8,7 @@
 #include "lix/libutil/logging.hh"
 #include "lix/libutil/sync.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/gc-store.hh"
 #include "lix/libstore/log-store.hh"
 #include "lix/libutil/async-io.hh"
@@ -33,8 +34,9 @@ struct RemoteStoreConfig : virtual StoreConfig
  * DaemonStore.
  */
 class RemoteStore : public virtual Store,
-    public virtual GcStore,
-    public virtual LogStore
+                    public virtual GcStore,
+                    public virtual BuildStore,
+                    public virtual LogStore
 {
 protected:
     struct ConnectionHandle;

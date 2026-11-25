@@ -93,6 +93,7 @@ int getSchema(Path schemaPath)
 // bother asyncifying this constructor (especially since it'll propagate to all other stores).
 LocalStore::LocalStore(LocalStoreConfig config, Activity * parent)
     : Store(config, parent)
+    , BuildStore(config, parent)
     , config_(std::move(config))
     , dbDir(config_.stateDir + "/db")
     , linksDir(config_.realStoreDir + "/.links")

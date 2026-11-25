@@ -4,6 +4,7 @@
 #include "lix/libstore/sqlite.hh"
 
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/indirect-root-store.hh"
 #include "lix/libutil/async-io.hh"
 #include "lix/libutil/sync.hh"
@@ -74,8 +75,7 @@ struct LocalStoreConfig final : LocalFSStoreConfig
     std::string doc() override;
 };
 
-class LocalStore : public virtual IndirectRootStore
-    , public virtual GcStore
+class LocalStore : public virtual IndirectRootStore, public virtual GcStore, public virtual BuildStore
 {
 private:
 
@@ -448,7 +448,6 @@ private:
     friend struct SubstitutionGoal;
     friend struct DerivationGoal;
 };
-
 
 typedef std::pair<dev_t, ino_t> Inode;
 typedef std::set<Inode> InodesSeen;

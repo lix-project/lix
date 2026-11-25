@@ -255,6 +255,7 @@ libstore_headers = files(
   # keep-sorted start
   'binary-cache-store.hh',
   'build-result.hh',
+  'build-store.hh',
   'build/derivation-goal.hh',
   'build/goal.hh',
   'build/local-derivation-goal.hh',

@@ -1,7 +1,9 @@
+#include "lix/libstore/store-cast.hh"
 #include "lix/libexpr/primops.hh"
 #include "lix/libexpr/extra-primops.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libutil/types.hh"
 #include "lix/libexpr/value.hh"
 
@@ -172,7 +174,7 @@ Value prim_appendContext(EvalState & state, Value ** args)
             ).atPos(i.pos).debugThrow();
         auto namePath = state.ctx.store->parseStorePath(name);
         if (!settings.readOnlyMode)
-            state.aio.blockOn(state.ctx.store->ensurePath(namePath));
+            state.aio.blockOn(require<BuildStore>(*state.ctx.store).ensurePath(namePath));
         state.forceAttrs(i.value, i.pos, "while evaluating the value of a string context");
         auto a = i.value.attrs()->get(state.ctx.symbols.sym_path);
         if (a) {

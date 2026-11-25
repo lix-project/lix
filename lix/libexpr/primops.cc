@@ -1,3 +1,4 @@
+#include "lix/libstore/store-cast.hh"
 #include "libutil/error-trace.hh"
 #include "lix/lix-rs/main.gen.hh"
 #include "lix/libutil/archive.hh"
@@ -14,6 +15,7 @@
 #include "lix/libutil/json.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libexpr/value-to-json.hh"
 #include "lix/libexpr/value-to-xml.hh"
 #include "lix/libexpr/primops.hh"
@@ -96,7 +98,7 @@ StringMap EvalState::realiseContext(const NixStringContext & context)
     /* Build/substitute the context. */
     std::vector<DerivedPath> buildReqs;
     for (auto & d : drvs) buildReqs.emplace_back(DerivedPath { d });
-    aio.blockOn(ctx.buildStore->buildPaths(buildReqs, bmNormal, ctx.store));
+    aio.blockOn(require<BuildStore>(*ctx.buildStore).buildPaths(buildReqs, bmNormal, ctx.store));
 
     StorePathSet outputsToCopyAndAllow;
 
@@ -1377,7 +1379,7 @@ static Value prim_storePath(EvalState & state, Value ** args)
             .debugThrow();
     auto path2 = state.ctx.store->toStorePath(path.abs()).first;
     if (!settings.readOnlyMode)
-        state.aio.blockOn(state.ctx.store->ensurePath(path2));
+        state.aio.blockOn(require<BuildStore>(*state.ctx.store).ensurePath(path2));
     context.insert(NixStringContextElem::Opaque { .path = path2 });
     return {NewValueAs::string, path.abs(), context};
 }

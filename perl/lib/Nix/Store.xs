@@ -31,6 +31,8 @@
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/globals.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libstore/crypto.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
@@ -340,7 +342,7 @@ SV * derivationFromPath(char * drvPath)
         HV *hash;
     CODE:
         try {
-            Derivation drv = aio().blockOn(store()->derivationFromPath(store()->parseStorePath(drvPath)));
+            Derivation drv = aio().blockOn(require<BuildStore>(*store()).derivationFromPath(store()->parseStorePath(drvPath)));
             hash = newHV();
 
             HV * outputs = newHV();

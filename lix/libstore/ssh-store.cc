@@ -51,6 +51,7 @@ public:
         Activity * parent
     )
         : Store(config, parent)
+        , BuildStore(config, parent)
         , RemoteStore(w, config, parent)
         , config_(std::move(config))
         , host(host)

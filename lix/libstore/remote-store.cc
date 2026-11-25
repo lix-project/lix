@@ -45,6 +45,7 @@ namespace nix {
 /* TODO: Separate these store impls into different files, give them better names */
 RemoteStore::RemoteStore(MustCallInit &, const RemoteStoreConfig & config, Activity * parent)
     : Store(config, parent)
+    , BuildStore(config, parent)
     , parent(parent)
 {
 }

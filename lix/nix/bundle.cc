@@ -4,9 +4,11 @@
 #include "lix/libmain/common-args.hh"
 #include "lix/libmain/shared.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/fs-accessor.hh"
 #include "lix/libexpr/eval-inline.hh"
+#include "lix/libstore/store-cast.hh"
 #include "bundle.hh"
 
 namespace nix {
@@ -116,12 +118,14 @@ struct CmdBundle : InstallableCommand
 
         auto outPath = evalState->coerceToStorePath(attr2->pos, attr2->value, context2, "");
 
-        aio().blockOn(store->buildPaths({
-            DerivedPath::Built {
-                .drvPath = makeConstantStorePath(drvPath),
-                .outputs = OutputsSpec::All { },
-            },
-        }));
+        aio().blockOn(
+            require<BuildStore>(*store).buildPaths({
+                DerivedPath::Built{
+                    .drvPath = makeConstantStorePath(drvPath),
+                    .outputs = OutputsSpec::All{},
+                },
+            })
+        );
 
         if (!outLink) {
             auto * attr = vRes.attrs()->get(evaluator->symbols.sym_name);

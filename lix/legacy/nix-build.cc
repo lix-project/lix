@@ -9,6 +9,7 @@
 #include "lix/libstore/store-api.hh"
 #include "lix/libstore/local-fs-store.hh"
 #include "lix/libstore/globals.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/c-calls.hh"
 #include "lix/libutil/current-process.hh"
 #include "lix/libstore/derivations.hh"
@@ -255,7 +256,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
                 } catch (Error & e) {};
                 auto [path, outputNames] = parsePathWithOutputs(absolute);
                 if (evalStore->isStorePath(path) && path.ends_with(".drv"))
-                    drvs.push_back(aio.blockOn(DrvInfo::create(evalStore, absolute)));
+                    drvs.push_back(aio.blockOn(DrvInfo::create(require<BuildStore>(*evalStore), absolute)));
                 else
                     /* If we're in a #! script, interpret filenames
                        relative to the script. */
@@ -327,7 +328,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
         }
 
         if (!dryRun)
-            aio.blockOn(store->buildPaths(paths, buildMode, evalStore));
+            aio.blockOn(require<BuildStore>(*store).buildPaths(paths, buildMode, evalStore));
     };
 
     if (runEnv) {
@@ -335,7 +336,8 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
             throw UsageError("nix-shell requires a single derivation");
 
         auto & drvInfo = drvs.front();
-        auto drv = aio.blockOn(evalStore->derivationFromPath(drvInfo.requireDrvPath(*state)));
+        auto drv =
+            aio.blockOn(require<BuildStore>(*evalStore).derivationFromPath(drvInfo.requireDrvPath(*state)));
 
         std::vector<DerivedPath> pathsToBuild;
 
@@ -475,7 +477,9 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
 
             ParsedDerivation parsedDrv(drvInfo.requireDrvPath(*state), drv);
 
-            if (auto structAttrs = aio.blockOn(parsedDrv.prepareStructuredAttrs(*store, inputs))) {
+            if (auto structAttrs =
+                    aio.blockOn(parsedDrv.prepareStructuredAttrs(require<BuildStore>(*store), inputs)))
+            {
                 auto json = structAttrs.value();
                 structuredAttrsRC = writeStructuredAttrsShell(json);
 

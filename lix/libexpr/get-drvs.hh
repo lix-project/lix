@@ -2,8 +2,10 @@
 ///@file
 
 #include "lix/libexpr/eval.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/derivations.hh"
 #include "lix/libstore/path.hh"
+#include "lix/libstore/store-api.hh"
 
 #include <string>
 #include <map>
@@ -39,7 +41,7 @@ private:
     void fillOutputs(EvalState & state, bool withPaths = true);
 
     DrvInfo(
-        ref<Store> store,
+        Store & store,
         const std::string & drvPathWithOutputs,
         Derivation drv,
         const StorePath & drvPath,
@@ -53,8 +55,7 @@ public:
     std::string attrPath;
 
     DrvInfo(std::string attrPath, Bindings * attrs);
-    static kj::Promise<Result<DrvInfo>>
-    create(ref<Store> store, const std::string & drvPathWithOutputs);
+    static kj::Promise<Result<DrvInfo>> create(BuildStore & store, const std::string & drvPathWithOutputs);
 
     std::string queryName(EvalState & state);
     std::string querySystem(EvalState & state);

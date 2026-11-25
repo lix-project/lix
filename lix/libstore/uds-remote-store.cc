@@ -63,6 +63,7 @@ UDSRemoteStore::UDSRemoteStore(
     MustCallInit & w, Badge, UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent
 )
     : Store(config, parent)
+    , BuildStore(config, parent)
     , RemoteStore(w, config, parent)
     , config_(std::move(config))
     , path(std::move(path))
@@ -73,6 +74,7 @@ RpcRemoteStore::RpcRemoteStore(
     MustCallInit & w, Badge b, UDSRemoteStoreConfig config, std::optional<std::string> path, Activity * parent
 )
     : Store(config, parent)
+    , BuildStore(config, parent)
     , RemoteStore(w, config, parent)
     , UDSRemoteStore(w, b, config, path, parent)
 {

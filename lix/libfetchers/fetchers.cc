@@ -1,6 +1,8 @@
 #include "lix/libfetchers/fetchers.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libfetchers/builtin-fetchers.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libutil/async.hh"
 #include "lix/libutil/json.hh"
 #include "lix/libutil/result.hh"
@@ -136,7 +138,7 @@ try {
         try {
             auto storePath = computeStorePath(*store);
 
-            TRY_AWAIT(store->ensurePath(storePath));
+            TRY_AWAIT(require<BuildStore>(*store).ensurePath(storePath));
 
             debug("using substituted/cached input '%s' in '%s'",
                 to_string(), store->printStorePath(storePath));

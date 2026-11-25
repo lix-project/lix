@@ -18,9 +18,8 @@ DrvInfo::DrvInfo(std::string attrPath, Bindings * attrs)
 {
 }
 
-
 DrvInfo::DrvInfo(
-    ref<Store> store,
+    Store & store,
     const std::string & drvPathWithOutputs,
     Derivation drv,
     const StorePath & drvPath,
@@ -43,17 +42,16 @@ DrvInfo::DrvInfo(
 
     auto i = drv.outputs.find(outputName);
     if (i == drv.outputs.end())
-        throw Error("derivation '%s' does not have output '%s'", store->printStorePath(drvPath), outputName);
+        throw Error("derivation '%s' does not have output '%s'", store.printStorePath(drvPath), outputName);
     auto & [outputName, output] = *i;
 
-    outPath = {output.path(*store, drv.name, outputName)};
+    outPath = {output.path(store, drv.name, outputName)};
 }
 
-kj::Promise<Result<DrvInfo>>
-DrvInfo::create(ref<Store> store, const std::string & drvPathWithOutputs)
+kj::Promise<Result<DrvInfo>> DrvInfo::create(BuildStore & store, const std::string & drvPathWithOutputs)
 try {
-    auto [drvPath, selectedOutputs] = parsePathWithOutputs(*store, drvPathWithOutputs);
-    auto drv = TRY_AWAIT(store->derivationFromPath(drvPath));
+    auto [drvPath, selectedOutputs] = parsePathWithOutputs(store, drvPathWithOutputs);
+    auto drv = TRY_AWAIT(store.derivationFromPath(drvPath));
 
     co_return DrvInfo(store, drvPathWithOutputs, drv, drvPath, selectedOutputs);
 } catch (...) {

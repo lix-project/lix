@@ -11,6 +11,7 @@
 #include "lix/libutil/types.hh"
 #include "lix/libstore/lock.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
 #include "lix/libstore/build/goal.hh"
 #include "lix/libstore/realisation.hh"
 
@@ -168,7 +169,7 @@ public:
     const Activity actDerivations;
     const Activity actSubstitutions;
 
-    Store & store;
+    BuildStore & store;
     AsyncSemaphore substitutions, builds, localJobs;
     std::optional<Path> buildDirOverride;
 
@@ -223,7 +224,7 @@ public:
     void requireBuildSupport();
 
 private:
-    Worker(Store & store, AvailableNamespaces namespaces);
+    Worker(BuildStore & store, AvailableNamespaces namespaces);
     ~Worker();
 
     /**
@@ -300,11 +301,11 @@ public:
     void markContentsGood(const StorePath & path);
 
     template<typename MkGoals>
-    friend kj::Promise<Result<Results>> processGoals(Store & store, MkGoals && mkGoals) noexcept;
+    friend kj::Promise<Result<Results>> processGoals(BuildStore & store, MkGoals && mkGoals) noexcept;
 };
 
 template<typename MkGoals>
-kj::Promise<Result<Worker::Results>> processGoals(Store & store, MkGoals && mkGoals) noexcept
+kj::Promise<Result<Worker::Results>> processGoals(BuildStore & store, MkGoals && mkGoals) noexcept
 try {
     co_return co_await Worker(store, LIX_TRY_AWAIT(queryAvailableNamespaces()))
         .run(std::forward<MkGoals>(mkGoals));

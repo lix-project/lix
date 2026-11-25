@@ -1,6 +1,7 @@
 #include "lix/libstore/build/derivation-goal.hh"
 #include "libstore/store-api.hh"
 #include "lix/libstore/machines.hh"
+#include "lix/libstore/store-cast.hh"
 #include "lix/libutil/error.hh"
 #include "lix/libutil/processes.hh"
 #include "lix/libutil/serialise.hh"
@@ -1351,10 +1352,13 @@ try {
                 copyClosure(worker.store, *remoteStore, StorePathSet{drvPath}, NoCheckSigs, substitute)
             );
 
-            auto res = TRY_AWAIT(remoteStore->buildPathsWithResults({DerivedPath::Built{
-                .drvPath = makeConstantStorePath(drvPath),
-                .outputs = OutputsSpec::All{},
-            }}));
+            auto res = TRY_AWAIT(
+                require<BuildStore>(*remoteStore)
+                    .buildPathsWithResults({DerivedPath::Built{
+                        .drvPath = makeConstantStorePath(drvPath),
+                        .outputs = OutputsSpec::All{},
+                    }})
+            );
             // One path to build should produce exactly one build result
             assert(res.size() == 1);
 

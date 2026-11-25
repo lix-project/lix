@@ -1,5 +1,7 @@
 #include "lix/libcmd/command.hh"
 #include "lix/libstore/store-api.hh"
+#include "lix/libstore/build-store.hh"
+#include "lix/libstore/store-cast.hh"
 #include "store-repair.hh"
 
 namespace nix {
@@ -21,7 +23,7 @@ struct CmdStoreRepair : StorePathsCommand
     void run(ref<Store> store, StorePaths && storePaths) override
     {
         for (auto & path : storePaths)
-            aio().blockOn(store->repairPath(path));
+            aio().blockOn(require<BuildStore>(*store).repairPath(path));
     }
 };
 

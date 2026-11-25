@@ -130,7 +130,7 @@ bool ParsedDerivation::useUidRange() const
 static std::regex shVarName = regex::parse("[A-Za-z_][A-Za-z0-9_]*");
 
 kj::Promise<Result<std::optional<JSON>>>
-ParsedDerivation::prepareStructuredAttrs(Store & store, const StorePathSet & inputPaths)
+ParsedDerivation::prepareStructuredAttrs(BuildStore & store, const StorePathSet & inputPaths)
 try {
     auto structuredAttrs = getStructuredAttrs();
     if (!structuredAttrs) co_return std::nullopt;
