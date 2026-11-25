@@ -58,8 +58,7 @@ struct UDSRemoteStoreConfig : virtual LocalFSStoreConfig, virtual RemoteStoreCon
     std::string doc() override;
 };
 
-class UDSRemoteStore : public virtual IndirectRootStore
-    , public virtual RemoteStore
+class UDSRemoteStore : public virtual IndirectRootStore, public virtual LegacyRemoteStore
 {
     friend MustCallInit;
 
@@ -132,7 +131,7 @@ public:
     kj::Promise<Result<void>> addIndirectRoot(const Path & path) override;
 
 private:
-    struct Connection : RemoteStore::Connection
+    struct Connection : LegacyRemoteStore::Connection
     {
         AutoCloseFD fd;
 
@@ -162,6 +161,10 @@ public:
     );
 
     /* Overrides for RPC-aware versions of RemoteStore commands */
+
+    kj::Promise<Result<std::optional<std::string>>> getVersion() override;
+
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
 
     kj::Promise<Result<void>> addBuildLog(const StorePath & drvPath, std::string_view log) override;
 

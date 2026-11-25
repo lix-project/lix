@@ -37,11 +37,7 @@ interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
     trusted @2;
   }
 
-  init @0 (logger :Log.LogStream) -> (
-    protocol :LegacyProtocol,
-    trust :Trust,
-    version :Text,
-  );
+  init @0 (logger :Log.LogStream) -> (protocol :LegacyProtocol);
 }
 
 # legacy rpc protocol data structures. UNSTABLE.
@@ -228,4 +224,7 @@ interface LegacyProtocol extends (LegacyLogStore, LegacyBuildStore) $T.throws(T.
   queryPathInfo @14 (path :Libstore.StorePath) -> (result :T.Option(ValidPathInfo));
   setOptions @13 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
   verifyStore @15 (checkContents :Bool, repair :Bool) -> (result :Bool);
+
+  getTrust @21 () -> (trust :LegacyBoot.Trust);
+  getVersion @22 () -> (version :Text);
 }

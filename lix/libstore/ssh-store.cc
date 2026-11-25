@@ -35,7 +35,7 @@ struct SSHStoreConfig : virtual RemoteStoreConfig, virtual CommonSSHStoreConfig
     }
 };
 
-class SSHStore final : public RemoteStore
+class SSHStore final : public LegacyRemoteStore
 {
     friend MustCallInit;
 
@@ -101,7 +101,7 @@ public:
 
 protected:
 
-    struct Connection : RemoteStore::Connection
+    struct Connection : LegacyRemoteStore::Connection
     {
         // make sure this is destroyed last so the sshConn that feeds it dies first
         kj::Promise<void> logHandlerPromise{nullptr};
@@ -168,11 +168,14 @@ protected:
            forward-cores or forward-overridden-cores that only
            override the requested settings.
         */
-        if (!conn.daemonNixVersion || !conn.daemonNixVersion->contains(sshNgExtendedOptionsFeature)) {
+        auto & legacyConn = dynamic_cast<LegacyRemoteStore::Connection &>(conn);
+        if (!legacyConn.daemonNixVersion
+            || !legacyConn.daemonNixVersion->contains(sshNgExtendedOptionsFeature))
+        {
             co_return {result::success()};
         }
 
-        const bool withPrefs = conn.daemonNixVersion->contains(clientPreferencesFeature);
+        const bool withPrefs = legacyConn.daemonNixVersion->contains(clientPreferencesFeature);
 
         std::map<std::string, std::string> overrides;
 
@@ -239,7 +242,7 @@ try {
         command += " --store " + shellEscape(config_.remoteStore.get());
 
     conn->sshConn = ssh.startCommand(command);
-    TRY_AWAIT(RemoteStore::initConnection(*conn));
+    TRY_AWAIT(LegacyRemoteStore::initConnection(*conn));
     conn->logHandlerPromise = conn->logHandler(getUri());
     co_return conn;
 } catch (...) {

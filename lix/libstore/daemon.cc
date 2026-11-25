@@ -1419,6 +1419,26 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             context.initResults().setResult(errors);
         });
     }
+
+    kj::Promise<void> getTrust(GetTrustContext context) override
+    {
+        return RPC_IMPL({
+            auto result = context.initResults();
+            // We and the underlying store both need to trust the client for it to be trusted.
+            if (!state->trusted) {
+                result.setTrust(LegacyBoot::Trust::UNTRUSTED);
+            } else if (auto trust = TRY_AWAIT(state->store->isTrustedClient()); trust) {
+                result.setTrust(*trust ? LegacyBoot::Trust::TRUSTED : LegacyBoot::Trust::UNTRUSTED);
+            } else {
+                result.setTrust(LegacyBoot::Trust::UNKNOWN);
+            }
+        });
+    }
+
+    kj::Promise<void> getVersion(GetVersionContext context) override
+    {
+        return RPC_IMPL({ context.initResults().setVersion(PACKAGE_VERSION); });
+    }
 };
 
 struct LegacyBootImpl final : LegacyBoot::Server
@@ -1437,17 +1457,7 @@ struct LegacyBootImpl final : LegacyBoot::Server
         logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
 
         auto result = context.initResults();
-        // We and the underlying store both need to trust the client for it to be trusted.
-        if (!state->trusted) {
-            result.setTrust(LegacyBoot::Trust::UNTRUSTED);
-        } else if (auto trust = TRY_AWAIT(state->store->isTrustedClient()); trust) {
-            result.setTrust(*trust ? LegacyBoot::Trust::TRUSTED : LegacyBoot::Trust::UNTRUSTED);
-        } else {
-            result.setTrust(LegacyBoot::Trust::UNKNOWN);
-        }
-        result.setVersion(PACKAGE_VERSION);
 
-        auto [rpcSock, workerSock] = SocketPair::stream();
         auto pfp = kj::newPromiseAndCrossThreadFulfiller<std::exception_ptr>();
 
         struct Request
@@ -1462,10 +1472,9 @@ struct LegacyBootImpl final : LegacyBoot::Server
             }
         };
 
-        auto req = make_ref<Request>(std::move(rpcSock), std::move(pfp.fulfiller));
-
         result.setProtocol(kj::heap<LegacyProtocolImpl>(state));
         used = true;
+        return kj::READY_NOW;
     } catch (...) {
         rpc::rethrow_as_rpc_error();
     }

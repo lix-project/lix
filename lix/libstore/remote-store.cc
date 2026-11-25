@@ -61,7 +61,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RemoteStore::initConnection(Connection & conn)
+kj::Promise<Result<void>> LegacyRemoteStore::initConnection(Connection & conn)
 try {
     /* Send the magic greeting, check for the reply. */
     try {
@@ -125,13 +125,15 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RemoteStore::setOptions(Connection & conn)
+kj::Promise<Result<void>> LegacyRemoteStore::setOptions(RemoteStore::Connection & conn)
 try {
+    auto & legacyConn = dynamic_cast<Connection &>(conn);
+
     StringSink command;
 
     auto prefs = getClientPreferences();
-    bool withBlob =
-        conn.daemonNixVersion && conn.daemonNixVersion->contains(clientPreferencesFeature) && !prefs.empty();
+    bool withBlob = legacyConn.daemonNixVersion
+        && legacyConn.daemonNixVersion->contains(clientPreferencesFeature) && !prefs.empty();
 
     // clang-format off
     command << WorkerProto::Op::SetOptions
@@ -201,7 +203,7 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<void>> RemoteStore::setOptions()
+kj::Promise<Result<void>> LegacyRemoteStore::setOptions()
 try {
     TRY_AWAIT(setOptions(*(TRY_AWAIT(getConnection()))));
     co_return result::success();
@@ -693,11 +695,10 @@ try {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<std::optional<std::string>>> RemoteStore::getVersion()
+kj::Promise<Result<std::optional<std::string>>> LegacyRemoteStore::getVersion()
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    co_return conn->daemonNixVersion;
+    co_return dynamic_cast<Connection &>(*conn).daemonNixVersion;
 } catch (...) {
     co_return result::current_exception();
 }
@@ -710,10 +711,10 @@ try {
     co_return result::current_exception();
 }
 
-kj::Promise<Result<std::optional<TrustedFlag>>> RemoteStore::isTrustedClient()
+kj::Promise<Result<std::optional<TrustedFlag>>> LegacyRemoteStore::isTrustedClient()
 try {
     auto conn(TRY_AWAIT(getConnection()));
-    co_return conn->remoteTrustsUs;
+    co_return dynamic_cast<Connection &>(*conn).remoteTrustsUs;
 } catch (...) {
     co_return result::current_exception();
 }

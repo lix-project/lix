@@ -49,27 +49,6 @@ struct RemoteStore::Connection
     Store * store;
 
     /**
-     * Whether the remote side trusts us or not.
-     *
-     * 3 values: "yes", "no", or `std::nullopt` for "unknown".
-     *
-     * Note that the "remote side" might not be just the end daemon, but
-     * also an intermediary forwarder that can make its own trusting
-     * decisions. This would be the intersection of all their trust
-     * decisions, since it takes only one link in the chain to start
-     * denying operations.
-     */
-    std::optional<TrustedFlag> remoteTrustsUs;
-
-    /**
-     * The version of the Nix daemon that is processing our requests.
-     *
-     * Do note, it may or may not communicating with another daemon,
-     * rather than being an "end" `LocalStore` or similar.
-     */
-    std::optional<std::string> daemonNixVersion;
-
-    /**
      * Time this connection was established.
      */
     std::chrono::time_point<std::chrono::steady_clock> startTime;
@@ -113,6 +92,31 @@ struct RemoteStore::Connection
     }
 
     bool invalidated = false;
+};
+
+struct LegacyRemoteStore::Connection : RemoteStore::Connection
+{
+
+    /**
+     * Whether the remote side trusts us or not.
+     *
+     * 3 values: "yes", "no", or `std::nullopt` for "unknown".
+     *
+     * Note that the "remote side" might not be just the end daemon, but
+     * also an intermediary forwarder that can make its own trusting
+     * decisions. This would be the intersection of all their trust
+     * decisions, since it takes only one link in the chain to start
+     * denying operations.
+     */
+    std::optional<TrustedFlag> remoteTrustsUs;
+
+    /**
+     * The version of the Nix daemon that is processing our requests.
+     *
+     * Do note, it may or may not communicating with another daemon,
+     * rather than being an "end" `LocalStore` or similar.
+     */
+    std::optional<std::string> daemonNixVersion;
 };
 
 /**

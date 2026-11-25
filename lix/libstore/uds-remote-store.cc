@@ -236,7 +236,8 @@ try {
 kj::Promise<Result<void>> UDSRemoteStore::init(AutoCloseFD fd, const daemon::Protocol & protocol)
 try {
     this->protocol = protocol;
-    *(co_await connection.lock()) = TRY_AWAIT(openConnection(std::move(fd)));
+    auto conn = TRY_AWAIT(openConnection(std::move(fd)));
+    *(co_await connection.lock()) = conn;
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
@@ -247,7 +248,7 @@ try {
     auto conn = std::make_shared<Connection>();
     conn->fd = std::move(fd);
     conn->startTime = std::chrono::steady_clock::now();
-    TRY_AWAIT(RemoteStore::initConnection(*conn));
+    TRY_AWAIT(LegacyRemoteStore::initConnection(*conn));
     co_return conn;
 } catch (...) {
     co_return result::current_exception();
@@ -304,11 +305,6 @@ try {
     initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(rpc->loggerActivity));
 
     auto initResult = TRY_AWAIT_RPC(initReq.send());
-    con.remoteTrustsUs = initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::TRUSTED
-        ? std::optional{Trusted}
-        : initResult.getTrust() == rpc::daemon::LegacyBoot::Trust::UNTRUSTED ? std::optional{NotTrusted}
-                                                                             : std::nullopt;
-    con.daemonNixVersion = rpc::to<std::string>(initResult.getVersion());
     con.store = this;
     rpc->legacyProtocol = initResult.getProtocol();
 
@@ -335,6 +331,25 @@ void registerUDSRemoteStore() {
 }
 
 /* Overrides for RPC-aware versions of RemoteStore commands */
+
+kj::Promise<Result<std::optional<std::string>>> RpcRemoteStore::getVersion()
+try {
+    co_return rpc::to<std::string>(
+        TRY_AWAIT_RPC(rpc->legacyProtocol.getVersionRequest().send()).getVersion()
+    );
+} catch (...) {
+    co_return result::current_exception();
+}
+
+kj::Promise<Result<std::optional<TrustedFlag>>> RpcRemoteStore::isTrustedClient()
+try {
+    auto trust = TRY_AWAIT_RPC(rpc->legacyProtocol.getTrustRequest().send()).getTrust();
+    co_return trust == rpc::daemon::LegacyBoot::Trust::TRUSTED ? std::optional{Trusted}
+        : trust == rpc::daemon::LegacyBoot::Trust::UNTRUSTED   ? std::optional{NotTrusted}
+                                                               : std::nullopt;
+} catch (...) {
+    co_return result::current_exception();
+}
 
 kj::Promise<Result<void>> RpcRemoteStore::addBuildLog(const StorePath & drvPath, std::string_view log)
 try {

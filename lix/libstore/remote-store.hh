@@ -172,22 +172,12 @@ public:
 
     kj::Promise<Result<void>> addBuildLog(const StorePath & drvPath, std::string_view log) override;
 
-    kj::Promise<Result<std::optional<std::string>>> getVersion() override;
-
-    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
-
     struct Connection;
 
 protected:
     kj::Promise<Result<void>> init();
 
-    kj::Promise<Result<void>> initConnection(Connection & conn);
-
     Sync<std::shared_ptr<Connection>, AsyncMutex> connection;
-
-    virtual kj::Promise<Result<void>> setOptions(Connection & conn);
-
-    kj::Promise<Result<void>> setOptions() override;
 
     kj::Promise<Result<ConnectionHandle>> getConnection();
 
@@ -206,4 +196,19 @@ private:
         std::shared_ptr<Store> evalStore);
 };
 
+class LegacyRemoteStore : public virtual RemoteStore
+{
+public:
+    struct Connection;
+
+    kj::Promise<Result<std::optional<std::string>>> getVersion() override;
+
+    kj::Promise<Result<std::optional<TrustedFlag>>> isTrustedClient() override;
+
+protected:
+    kj::Promise<Result<void>> initConnection(Connection & conn);
+
+    kj::Promise<Result<void>> setOptions() override;
+    virtual kj::Promise<Result<void>> setOptions(RemoteStore::Connection & conn);
+};
 }
