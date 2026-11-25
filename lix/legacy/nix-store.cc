@@ -172,9 +172,7 @@ opRealise(std::shared_ptr<Store> store, AsyncIoRoot & aio, Strings opFlags, Stri
     }
 
     if (settings.printMissing) {
-        aio.blockOn(printMissing(
-            ref<Store>::unsafeFromPtr(store), willBuild, willSubstitute, unknown, downloadSize, narSize
-        ));
+        aio.blockOn(printMissing(*store, willBuild, willSubstitute, unknown, downloadSize, narSize));
     }
 
     if (dryRun) return;

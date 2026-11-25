@@ -59,33 +59,36 @@ void printGCWarning()
     }
 }
 
-
-kj::Promise<Result<void>>
-printMissing(ref<Store> store, const std::vector<DerivedPath> & paths, Verbosity lvl)
+kj::Promise<Result<void>> printMissing(Store & store, const std::vector<DerivedPath> & paths, Verbosity lvl)
 try {
     uint64_t downloadSize, narSize;
     StorePathSet willBuild, willSubstitute, unknown;
-    TRY_AWAIT(store->queryMissing(paths, willBuild, willSubstitute, unknown, downloadSize, narSize));
+    TRY_AWAIT(store.queryMissing(paths, willBuild, willSubstitute, unknown, downloadSize, narSize));
     TRY_AWAIT(printMissing(store, willBuild, willSubstitute, unknown, downloadSize, narSize, lvl));
     co_return result::success();
 } catch (...) {
     co_return result::current_exception();
 }
 
-
-kj::Promise<Result<void>> printMissing(ref<Store> store, const StorePathSet & willBuild,
-    const StorePathSet & willSubstitute, const StorePathSet & unknown,
-    uint64_t downloadSize, uint64_t narSize, Verbosity lvl)
+kj::Promise<Result<void>> printMissing(
+    Store & store,
+    const StorePathSet & willBuild,
+    const StorePathSet & willSubstitute,
+    const StorePathSet & unknown,
+    uint64_t downloadSize,
+    uint64_t narSize,
+    Verbosity lvl
+)
 try {
     if (!willBuild.empty()) {
         if (willBuild.size() == 1)
             printMsg(lvl, "this derivation will be built:");
         else
             printMsg(lvl, "these %d derivations will be built:", willBuild.size());
-        auto sorted = TRY_AWAIT(store->topoSortPaths(willBuild));
+        auto sorted = TRY_AWAIT(store.topoSortPaths(willBuild));
         reverse(sorted.begin(), sorted.end());
         for (auto & i : sorted)
-            printMsg(lvl, "  %s", Uncolored(store->printStorePath(i)));
+            printMsg(lvl, "  %s", Uncolored(store.printStorePath(i)));
     }
 
     if (!willSubstitute.empty()) {
@@ -114,14 +117,14 @@ try {
                       return lhs->name() < rhs->name();
                   });
         for (auto p : willSubstituteSorted)
-            printMsg(lvl, "  %s", Uncolored(store->printStorePath(*p)));
+            printMsg(lvl, "  %s", Uncolored(store.printStorePath(*p)));
     }
 
     if (!unknown.empty()) {
         printMsg(lvl, "don't know how to build these paths%s:",
                 (settings.readOnlyMode ? " (may be caused by read-only store access)" : ""));
         for (auto & i : unknown)
-            printMsg(lvl, "  %s", Uncolored(store->printStorePath(i)));
+            printMsg(lvl, "  %s", Uncolored(store.printStorePath(i)));
     }
 
     co_return result::success();

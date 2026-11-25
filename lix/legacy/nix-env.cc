@@ -497,7 +497,7 @@ static void printMissing(EvalState & state, DrvInfos & elems)
                 .path = i.queryOutPath(state),
             });
 
-    state.aio.blockOn(printMissing(state.ctx.store, targets));
+    state.aio.blockOn(printMissing(*state.ctx.store, targets));
 }
 
 
@@ -796,7 +796,7 @@ static void opSet(Globals & globals, Strings opFlags, Strings opArgs)
             .path = drv.queryOutPath(*state),
         }),
     };
-    globals.aio.blockOn(printMissing(globals.state->store, paths));
+    globals.aio.blockOn(printMissing(*globals.state->store, paths));
     if (globals.dryRun) return;
     globals.aio.blockOn(
         globals.state->store->buildPaths(paths, globals.state->repair ? bmRepair : bmNormal)

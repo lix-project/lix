@@ -597,7 +597,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
 
     case Realise::Nothing:
     case Realise::Derivation:
-        state.aio.blockOn(printMissing(store, pathsToBuild, lvlError));
+        state.aio.blockOn(printMissing(*store, pathsToBuild, lvlError));
 
         for (auto & path : pathsToBuild) {
             for (auto & aux : backmap[path]) {
@@ -625,7 +625,7 @@ std::vector<std::pair<ref<Installable>, BuiltPathWithResult>> Installable::build
 
     case Realise::Outputs: {
         if (settings.printMissing)
-            state.aio.blockOn(printMissing(store, pathsToBuild, lvlInfo));
+            state.aio.blockOn(printMissing(*store, pathsToBuild, lvlInfo));
 
         auto buildResults =
             state.aio.blockOn(store->buildPathsWithResults(pathsToBuild, bMode, evalStore));

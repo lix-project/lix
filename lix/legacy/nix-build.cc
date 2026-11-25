@@ -323,9 +323,7 @@ static int main_nix_build(AsyncIoRoot & aio, std::string programName, Strings ar
             willBuild, willSubstitute, unknown, downloadSize, narSize));
 
         if (settings.printMissing) {
-            aio.blockOn(printMissing(
-                ref<Store>(store), willBuild, willSubstitute, unknown, downloadSize, narSize
-            ));
+            aio.blockOn(printMissing(*store, willBuild, willSubstitute, unknown, downloadSize, narSize));
         }
 
         if (!dryRun)
