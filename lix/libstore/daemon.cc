@@ -948,8 +948,11 @@ struct LegacyState
 struct LegacyProtocolImpl final : LegacyProtocol::Server
 {
     ref<LegacyState> state;
+    bool loggerSet = false;
 
-    LegacyProtocolImpl(ref<LegacyState> state) : state(state) {}
+    LegacyProtocolImpl(TrustedFlag trusted, ref<Store> store) : state(make_ref<LegacyState>(store, trusted))
+    {
+    }
 
     struct AddBuildLogStream final : LegacyLogStore::AddLogStream::Server
     {
@@ -1426,11 +1429,11 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
             auto result = context.initResults();
             // We and the underlying store both need to trust the client for it to be trusted.
             if (!state->trusted) {
-                result.setTrust(LegacyBoot::Trust::UNTRUSTED);
+                result.setTrust(LegacyProtocol::Trust::UNTRUSTED);
             } else if (auto trust = TRY_AWAIT(state->store->isTrustedClient()); trust) {
-                result.setTrust(*trust ? LegacyBoot::Trust::TRUSTED : LegacyBoot::Trust::UNTRUSTED);
+                result.setTrust(*trust ? LegacyProtocol::Trust::TRUSTED : LegacyProtocol::Trust::UNTRUSTED);
             } else {
-                result.setTrust(LegacyBoot::Trust::UNKNOWN);
+                result.setTrust(LegacyProtocol::Trust::UNKNOWN);
             }
         });
     }
@@ -1439,44 +1442,17 @@ struct LegacyProtocolImpl final : LegacyProtocol::Server
     {
         return RPC_IMPL({ context.initResults().setVersion(PACKAGE_VERSION); });
     }
-};
 
-struct LegacyBootImpl final : LegacyBoot::Server
-{
-    ref<LegacyState> state;
-    bool used = false;
-
-    LegacyBootImpl(TrustedFlag trusted, ref<Store> store) : state(make_ref<LegacyState>(store, trusted)) {}
-
-    kj::Promise<void> init(InitContext context) override
-    try {
-        if (used) {
-            throw Error("connection already initialized");
-        }
-
-        logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
-
-        auto result = context.initResults();
-
-        auto pfp = kj::newPromiseAndCrossThreadFulfiller<std::exception_ptr>();
-
-        struct Request
-        {
-            AutoCloseFD fd;
-            kj::Own<kj::CrossThreadPromiseFulfiller<std::exception_ptr>> signal;
-
-            Request(AutoCloseFD fd, kj::Own<kj::CrossThreadPromiseFulfiller<std::exception_ptr>> fulfiller)
-                : fd(std::move(fd))
-                , signal(std::move(fulfiller))
-            {
+    kj::Promise<void> setLogger(SetLoggerContext context) override
+    {
+        return RPC_IMPL({
+            if (loggerSet) {
+                throw Error("logger already set");
             }
-        };
 
-        result.setProtocol(kj::heap<LegacyProtocolImpl>(state));
-        used = true;
-        return kj::READY_NOW;
-    } catch (...) {
-        rpc::rethrow_as_rpc_error();
+            logger = rpc::log::makeRpcLoggerClient(context.getParams().getLogger());
+            loggerSet = true;
+        });
     }
 };
 
@@ -1499,7 +1475,7 @@ struct BootstrapImpl final : Bootstrap::Server
             protocols.emplace(
                 rpc::daemon::UNSTABLE_LEGACY_TUNNELED,
                 ProtocolEntry{"tunneled legacy wire protocol", [](TrustedFlag trusted, ref<Store> store) {
-                                  return kj::heap<LegacyBootImpl>(trusted, store);
+                                  return kj::heap<LegacyProtocolImpl>(trusted, store);
                               }}
             );
         }

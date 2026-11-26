@@ -299,14 +299,13 @@ try {
     auto bootstrapReq = bootstrap.requestRequest();
     bootstrapReq.setClientInfo(PACKAGE_STRING);
     RPC_FILL(bootstrapReq, setProtocol, rpc::daemon::UNSTABLE_LEGACY_TUNNELED);
-    auto legacyBoot =
-        TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyBoot>();
-    auto initReq = legacyBoot.initRequest();
+    rpc->legacyProtocol =
+        TRY_AWAIT_RPC_NOEXCEPT(bootstrapReq.send()).getResult().castAs<rpc::daemon::LegacyProtocol>();
+    auto initReq = rpc->legacyProtocol.setLoggerRequest();
     initReq.setLogger(kj::heap<rpc::log::RpcLoggerServer>(rpc->loggerActivity));
 
     auto initResult = TRY_AWAIT_RPC(initReq.send());
     con.store = this;
-    rpc->legacyProtocol = initResult.getProtocol();
 
     co_return true;
 } catch (std::exception & e) { // NOLINT(lix-foreign-exceptions): just fall back to legacy for now
@@ -344,9 +343,9 @@ try {
 kj::Promise<Result<std::optional<TrustedFlag>>> RpcRemoteStore::isTrustedClient()
 try {
     auto trust = TRY_AWAIT_RPC(rpc->legacyProtocol.getTrustRequest().send()).getTrust();
-    co_return trust == rpc::daemon::LegacyBoot::Trust::TRUSTED ? std::optional{Trusted}
-        : trust == rpc::daemon::LegacyBoot::Trust::UNTRUSTED   ? std::optional{NotTrusted}
-                                                               : std::nullopt;
+    co_return trust == rpc::daemon::LegacyProtocol::Trust::TRUSTED ? std::optional{Trusted}
+        : trust == rpc::daemon::LegacyProtocol::Trust::UNTRUSTED   ? std::optional{NotTrusted}
+                                                                   : std::nullopt;
 } catch (...) {
     co_return result::current_exception();
 }

@@ -29,17 +29,6 @@ interface Protocol {
   # TODO maybe add information or something
 }
 
-# Bootstrap protocol for the legacy protocol implementation
-interface LegacyBoot extends(Protocol) $T.throws(T.v1Errors) {
-  enum Trust {
-    unknown @0;
-    untrusted @1;
-    trusted @2;
-  }
-
-  init @0 (logger :Log.LogStream) -> (protocol :LegacyProtocol);
-}
-
 # legacy rpc protocol data structures. UNSTABLE.
 struct DerivedPathOpaque {
   path @0 :Libstore.StorePath;
@@ -236,13 +225,20 @@ interface LegacySignedCache extends (LegacyCache) $T.throws(T.v1Errors) {
 
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol
-    extends (LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacySignedCache)
+    extends (Protocol, LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacySignedCache)
     $T.throws(T.v1Errors)
 {
+  enum Trust {
+    unknown @0;
+    untrusted @1;
+    trusted @2;
+  }
+
   optimiseStore @0 ();
   setOptions @1 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
   verifyStore @2 (checkContents :Bool, repair :Bool) -> (result :Bool);
 
-  getTrust @3 () -> (trust :LegacyBoot.Trust);
+  getTrust @3 () -> (trust :Trust);
   getVersion @4 () -> (version :Text);
+  setLogger @5 (logger :Log.LogStream);
 }
