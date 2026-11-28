@@ -223,9 +223,18 @@ interface LegacySignedCache extends (LegacyCache) $T.throws(T.v1Errors) {
   addSignatures @0 (path :Libstore.StorePath, signatures :List(T.String));
 }
 
+interface LegacyOptimizableStore $T.throws(T.v1Errors) {
+  optimiseStore @0 ();
+}
+
+interface LegacyVerifiableStore $T.throws(T.v1Errors) {
+  verifyStore @0 (checkContents :Bool, repair :Bool) -> (result :Bool);
+}
+
 # The RPC'd version of the legacy protocol, with only minimal adjustments
 interface LegacyProtocol
-    extends (Protocol, LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacySignedCache)
+    extends (Protocol, LegacyLogStore, LegacyBuildStore, LegacyGCStore, LegacySignedCache,
+             LegacyOptimizableStore, LegacyVerifiableStore)
     $T.throws(T.v1Errors)
 {
   enum Trust {
@@ -234,11 +243,8 @@ interface LegacyProtocol
     trusted @2;
   }
 
-  optimiseStore @0 ();
-  setOptions @1 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
-  verifyStore @2 (checkContents :Bool, repair :Bool) -> (result :Bool);
-
-  getTrust @3 () -> (trust :Trust);
-  getVersion @4 () -> (version :Text);
-  setLogger @5 (logger :Log.LogStream);
+  setOptions @0 (verbosity :T.Verbosity, settingsOverrides :T.Settings, clientPreferences :T.Settings);
+  getTrust @1 () -> (trust :Trust);
+  getVersion @2 () -> (version :Text);
+  setLogger @3 (logger :Log.LogStream);
 }
